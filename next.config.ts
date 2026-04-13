@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* This tells Vercel: "Ignore the small stuff and just build my UI!" */
+  // This forces Vercel to ignore tiny errors and finish the build
   eslint: {
     ignoreDuringBuilds: true,
   },
