@@ -5,7 +5,7 @@ import { Search, MapPin, Wallet, User, Mic, Smartphone, Tv, Car, Lightbulb, Flam
 const GROCERY_PROFIT_MARGIN = 0.15;
 const A1_USERNAME = '505811';
 // Backend API URL (Replace with your live backend URL later)
-const API_URL = 'http://localhost:8000/api'; 
+const API_URL = 'https://zeshu-backend-https://zeshu-backend-api.onrender.com/apiapi.onrender.com/api'; 
 
 export default function Home() {
   const [products, setProducts] = useState([]);
