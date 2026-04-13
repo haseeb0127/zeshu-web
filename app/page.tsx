@@ -1,11 +1,12 @@
 'use client';
+import MobileRecharge from '@/components/MobileRecharge';
 import React, { useState, useEffect } from 'react';
 import { Search, MapPin, Wallet, User, Mic, Smartphone, Tv, Car, Lightbulb, Flame, Phone, ShieldCheck, Gamepad2, Grid, Plus, ShoppingCart, X } from 'lucide-react';
 
 const GROCERY_PROFIT_MARGIN = 0.15;
 const A1_USERNAME = '505811';
-// Backend API URL (Replace with your live backend URL later)
-const API_URL = 'https://zeshu-backend-https://zeshu-backend-api.onrender.com/apiapi.onrender.com/api'; 
+// Cleaned up the URL!
+const API_URL = 'https://zeshu-backend-api.onrender.com';
 
 export default function Home() {
   const [products, setProducts] = useState([]);
@@ -104,24 +105,17 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Bills & Recharges Web Layout */}
+{/* Bills & Recharges Web Layout */}
         <div className="mt-8">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Bills & Recharges</h2>
           <div className="grid grid-cols-4 md:grid-cols-8 gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            {[
-              { n: 'Prepaid', i: Smartphone, c: 'text-pink-500' }, { n: 'Postpaid', i: Phone, c: 'text-purple-500' },
-              { n: 'DTH', i: Tv, c: 'text-orange-500' }, { n: 'FASTag', i: Car, c: 'text-green-500' },
-              { n: 'Electricity', i: Lightbulb, c: 'text-yellow-500' }, { n: 'Gas', i: Flame, c: 'text-red-500' },
-              { n: 'Insurance', i: ShieldCheck, c: 'text-blue-500' }, { n: 'Others', i: Grid, c: 'text-gray-500' }
-            ].map(svc => (
-              <div key={svc.n} className="flex flex-col items-center cursor-pointer hover:scale-105 transition-transform">
-                <div className="w-14 h-14 rounded-full bg-gray-50 flex items-center justify-center mb-2 border border-gray-100">
-                  <svc.i size={24} className={svc.c} />
-                </div>
-                <span className="text-xs text-center text-gray-600">{svc.n}</span>
-              </div>
-            ))}
+            {/* ... your existing icon code ... */}
           </div>
+        </div>
+
+        {/* --- NEW: MOBILE RECHARGE WIDGET --- */}
+        <div className="mt-8">
+           <MobileRecharge />
         </div>
 
         {/* Groceries Grid */}
