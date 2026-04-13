@@ -1,4 +1,4 @@
-'use client';
+ 'use client';
 import MobileRecharge from '@/components/MobileRecharge';
 import React, { useState, useEffect } from 'react';
 import { Search, MapPin, Wallet, User, Mic, Smartphone, Tv, Car, Lightbulb, Flame, Phone, ShieldCheck, Gamepad2, Grid, Plus, ShoppingCart, X } from 'lucide-react';
