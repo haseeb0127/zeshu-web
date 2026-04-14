@@ -78,7 +78,7 @@ export default function ZeshuSuperApp() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-gradient-to-br from-pink-50 via-purple-50 to-white min-h-screen pb-40 font-sans antialiased text-gray-900 shadow-2xl overflow-hidden relative">
+    <div className="max-w-screen-xl mx-auto w-full bg-gradient-to-br from-pink-50 via-purple-50 to-white min-h-screen pb-40 font-sans antialiased text-gray-900 shadow-2xl overflow-hidden relative">
       
       {/* HEADER */}
       <header className="sticky top-0 bg-white/80 backdrop-blur-md p-4 z-40 border-b border-gray-100 shadow-sm">
@@ -133,7 +133,7 @@ export default function ZeshuSuperApp() {
       {activeTab === 'home' ? (
         <>
           {/* CATEGORIES */}
-          <div className="flex gap-4 overflow-x-auto p-4 scrollbar-hide mt-2">
+          <div className="flex gap-4 overflow-x-auto p-4 scrollbar-hide mt-2 md:justify-center">
             {['Summer', 'Electronics', 'Beauty', 'Pharmacy', 'Paan Corner'].map((cat, i) => (
               <div key={i} className="flex flex-col items-center min-w-[70px]">
                 <div className="h-16 w-16 bg-white rounded-2xl flex items-center justify-center border border-gray-100 shadow-sm mb-1">
@@ -144,11 +144,11 @@ export default function ZeshuSuperApp() {
             ))}
           </div>
 
-          {/* SERVICES GRID */}
+          {/* SERVICES GRID (Responsive: 4 on mobile, 6 on tablet, 8 on desktop) */}
           <section className="bg-white mx-4 mt-2 p-5 rounded-3xl shadow-sm border border-gray-100 relative overflow-hidden">
             <div className="absolute top-0 right-0 bg-yellow-400 text-black text-[8px] font-black px-3 py-1 rounded-bl-xl uppercase">Earn Zeshu Coins</div>
             <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-5">Bills & Recharges</h2>
-            <div className="grid grid-cols-4 gap-y-6">
+            <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-y-6">
               {[
                 { n: 'Mobile', i: <Smartphone size={24}/>, c: '#f3e8ff', tc: '#7e22ce', a: () => setActiveTab('recharge') },
                 { n: 'DTH', i: <Tv size={24}/>, c: '#fff7ed', tc: '#ea580c', a: () => setActiveTab('recharge') },
@@ -165,14 +165,14 @@ export default function ZeshuSuperApp() {
             </div>
           </section>
 
-          {/* GROCERY GRID */}
+          {/* GROCERY GRID (Responsive: 2 on mobile, 4 on tablet, 6 on desktop) */}
           <section className="p-4 mt-2">
             <div className="flex justify-between items-end mb-4">
                <h2 className="text-xl font-black text-gray-900">Grocery & Kitchen</h2>
                <span className="text-[10px] font-bold text-green-600 bg-green-100 px-2 py-1 rounded-lg">UPTO 60% COIN REWARDS</span>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-6">
               {products.map((p) => {
                 const inCart = cart.find(c => c.item.id === p.id);
                 return (
@@ -205,9 +205,9 @@ export default function ZeshuSuperApp() {
           </section>
         </>
       ) : (
-        /* RECHARGE UI SECTION */
+        /* RECHARGE UI SECTION (Constrained width on desktop) */
         <section className="p-4 animate-in fade-in zoom-in duration-300">
-           <div className="bg-white p-6 rounded-3xl shadow-xl border border-gray-100 relative overflow-hidden">
+           <div className="bg-white p-6 rounded-3xl shadow-xl border border-gray-100 relative overflow-hidden max-w-lg mx-auto mt-8">
               <div className="absolute -right-10 -top-10 w-32 h-32 bg-purple-100 rounded-full blur-3xl opacity-50"></div>
               
               <h2 className="text-lg font-black mb-1">Prepaid Recharge</h2>
@@ -274,7 +274,7 @@ export default function ZeshuSuperApp() {
       {/* STICKY CART FOOTER */}
       {cart.length > 0 && activeTab === 'home' && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-gray-100 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-50">
-          <div className="max-w-md mx-auto flex justify-between items-center bg-purple-700 text-white p-4 rounded-2xl shadow-lg active:scale-95 transition-transform cursor-pointer" onClick={() => setIsCartOpen(true)}>
+          <div className="max-w-screen-xl mx-auto w-full flex justify-between items-center bg-purple-700 text-white p-4 rounded-2xl shadow-lg active:scale-95 transition-transform cursor-pointer" onClick={() => setIsCartOpen(true)}>
             <div className="flex items-center gap-3">
               <div className="bg-purple-800 p-2 rounded-lg"><ShoppingBag size={20} /></div>
               <div>
@@ -290,7 +290,7 @@ export default function ZeshuSuperApp() {
       {/* CART MODAL (BLINKIT STYLE) */}
       {isCartOpen && (
         <div className="fixed inset-0 bg-black/60 z-[60] flex items-end">
-          <div className="w-full max-w-md mx-auto bg-gray-50 rounded-t-[30px] max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom-10 shadow-2xl">
+          <div className="w-full max-w-2xl mx-auto bg-gray-50 rounded-t-[30px] max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom-10 shadow-2xl">
             
             <div className="sticky top-0 bg-white p-5 border-b border-gray-100 flex justify-between items-center rounded-t-[30px] z-10">
               <h3 className="text-xl font-black">Shipment of {cart.length} item{cart.length > 1 ? 's' : ''}</h3>
