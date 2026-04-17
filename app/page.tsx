@@ -19,7 +19,7 @@ const SERVICES = [
   { id: 'mobile', label: 'Prepaid', icon: <Smartphone size={22}/>, color: 'bg-purple-100 text-purple-600', inputLabel: 'Mobile Number' },
   { id: 'postpaid', label: 'Postpaid', icon: <PhoneCall size={22}/>, color: 'bg-indigo-100 text-indigo-600', inputLabel: 'Mobile Number' },
   { id: 'dth', label: 'DTH', icon: <Tv size={22}/>, color: 'bg-orange-100 text-orange-600', inputLabel: 'DTH / VC Number' },
-  { id: 'upi', label: 'UPI Tools', icon: <BadgeCheck size={22}/>, color: 'bg-sky-100 text-sky-600', inputLabel: 'UPI ID or Mobile No.' }, // NEW!
+  { id: 'upi', label: 'UPI Tools', icon: <BadgeCheck size={22}/>, color: 'bg-sky-100 text-sky-600', inputLabel: 'UPI ID or Mobile No.' },
   { id: 'fastag', label: 'FASTag', icon: <Car size={22}/>, color: 'bg-green-100 text-green-600', inputLabel: 'Vehicle Registration No.' },
   { id: 'electricity', label: 'Electricity', icon: <Zap size={22}/>, color: 'bg-yellow-100 text-yellow-600', inputLabel: 'Consumer Number' },
   { id: 'gas', label: 'Piped Gas', icon: <Flame size={22}/>, color: 'bg-red-100 text-red-600', inputLabel: 'Consumer Number' },
@@ -98,6 +98,7 @@ const OPERATORS_DATA: any = {
     'ICICI Prudential Life': '268', 'HDFC Life': '201', 'Bajaj Allianz Life': '193', 'TATA AIA Life': '281' 
   },
 };
+
 export default function ZeshuSuperApp() {
   const [activeTab, setActiveTab] = useState('home'); 
   const [activeService, setActiveService] = useState('mobile');
@@ -208,24 +209,44 @@ export default function ZeshuSuperApp() {
     setIsLoading(false);
   };
 
-  // --- 🚀 NEW UPI TOOLS LOGIC ---
+  // --- 🚀 NEW SMART UPI TOOLS LOGIC ---
   const handleUpiSearch = async () => {
     if (!rechargeNumber) return alert("Please enter a UPI ID or Mobile Number.");
     setIsLoading(true); setUpiResult(null);
     
-    // Smart logic: If it contains '@', it's a UPI ID to verify. Otherwise, it's a mobile search.
-    const action = rechargeNumber.includes('@') ? 'upi_verify' : 'find_upi_by_mobile';
+    // 1. Determine if the user typed a Mobile Number or a UPI ID
+    const isMobileNumber = /^\d{10}$/.test(rechargeNumber);
+    const actionType = isMobileNumber ? 'mobile_to_multiple_upi' : 'vpa_info';
+
+    console.log(`Searching for: ${rechargeNumber} using action: ${actionType}`);
 
     try {
-      const res = await fetch('/api/upi-tools', {
+      // 2. Call our new Backend Switchboard
+      const response = await fetch('/api/upi-tools', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, query: rechargeNumber })
+        body: JSON.stringify({ 
+          action: actionType, 
+          mobileNo: isMobileNumber ? rechargeNumber : undefined,
+          upiId: !isMobileNumber ? rechargeNumber : undefined 
+        })
       });
-      const data = await res.json();
-      if (data.success) { setUpiResult(data.data); } 
-      else { alert(data.message); }
-    } catch (err) { alert("Failed to connect to banking network."); }
+
+      const result = await response.json();
+
+      // 3. Handle the Result
+      if (result.success) {
+        console.log("UPI Data Found!", result.data);
+        setUpiResult(result.data); // Save the data to React state
+      } else {
+        console.error("UPI Search Failed:", result.message);
+        alert(`Error: ${result.message}`);
+      }
+
+    } catch (error) {
+      console.error("Network error during UPI search:", error);
+      alert("Something went wrong with the network.");
+    }
     setIsLoading(false);
   };
 
@@ -556,6 +577,7 @@ export default function ZeshuSuperApp() {
           </div>
         </div>
       )}
+      
       {/* FLOATING CART */}
       {cart.length > 0 && activeTab === 'home' && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md z-[60]">
