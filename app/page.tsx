@@ -38,7 +38,7 @@ const OPERATORS_DATA: any = {
   fastag: { 'Airtel Payments Bank': '1', 'Axis Bank': '3', 'HDFC FASTag': '10', 'ICICI Bank': '12', 'SBI Fastag': '30', 'Paytm FASTag': '22', 'IDFC FIRST Bank': '14', 'Kotak Mahindra': '21' },
   electricity: { 'Adani Electricity - MUMBAI': '50', 'Tata Power - MUMBAI': '116', 'B.E.S.T Mumbai': '495', 'BSES Rajdhani': '448', 'Torrent Power': '53', 'UPPCL': '47', 'KSEBL - KERALA': '69', 'TNEB - TAMIL NADU': '115', 'WBSEDCL - WEST BENGAL': '148' },
   gas: { 'MAHANAGAR GAS': '62', 'INDRAPRASTHA GAS': '63', 'GUJARAT GAS': '64', 'Adani Gas': '147', 'Haryana City Gas': '134', 'Maharashtra Natural Gas': '475' },
-  lpg: { 'Bharat Gas': '203', 'HP Gas': '204', 'Indane Gas': '205' },
+  lpg: { 'Bharat Gas': '165', 'HP Gas': '166', 'Indane Gas': '167' },
   water: { 'Delhi Jal Board': '101', 'BWSSB Bangalore': '156', 'Kerala Water Authority': '164', 'Pune Municipal Corp': '171', 'MCGM Water Mumbai': '226', 'Gurugram Water': '100' },
   broadband: { 'Airtel Broadband': '313', 'ACT Fibernet': '303', 'Hathway': '351', 'Tikona': '68', 'Asianet': '318', 'Spectra': '388' },
   emi: { 'Bajaj Finance Limited': '443', 'TVS Credit Services': '444', 'Cholamandalam': '452', 'Home Credit': '454', 'L&T Finance': '456', 'Hero FinCorp': '453' },
