@@ -31,20 +31,73 @@ const SERVICES = [
 ];
 
 const OPERATORS_DATA: any = {
-  // We changed 'RELIANCE JIO' to 'JIO' and 'BSNL TOPUP' to 'BSNL' to perfectly match your backend!
+  // Mobile & DTH (Verified)
   mobile: { 'JIO': '11', 'Airtel': '2', 'Vodafone': '23', 'Idea': '6', 'BSNL': '4' },
   postpaid: { 'Jio Postpaid': '491', 'Airtel Postpaid': '34', 'Vodafone Postpaid': '36', 'BSNL Postpaid': '33', 'Idea Postpaid': '35' },
   dth: { 'TATA SKY': '28', 'AIRTEL DTH': '24', 'DISH TV': '25', 'SUN DIRECT': '27', 'VIDEOCON D2H': '29' },
-  fastag: { 'Airtel Payments Bank': '1', 'Axis Bank': '3', 'HDFC FASTag': '10', 'ICICI Bank': '12', 'SBI Fastag': '30', 'Paytm FASTag': '22', 'IDFC FIRST Bank': '14', 'Kotak Mahindra': '21' },
-  electricity: { 'Adani Electricity - MUMBAI': '50', 'Tata Power - MUMBAI': '116', 'B.E.S.T Mumbai': '495', 'BSES Rajdhani': '448', 'Torrent Power': '53', 'UPPCL': '47', 'KSEBL - KERALA': '69', 'TNEB - TAMIL NADU': '115', 'WBSEDCL - WEST BENGAL': '148' },
-  gas: { 'MAHANAGAR GAS': '62', 'INDRAPRASTHA GAS': '63', 'GUJARAT GAS': '64', 'Adani Gas': '147', 'Haryana City Gas': '134', 'Maharashtra Natural Gas': '475' },
-  lpg: { 'Bharat Gas': '203', 'HP Gas': '204', 'Indane Gas': '205' },
-  water: { 'Delhi Jal Board': '101', 'BWSSB Bangalore': '156', 'Kerala Water Authority': '164', 'Pune Municipal Corp': '171', 'MCGM Water Mumbai': '226', 'Gurugram Water': '100' },
-  broadband: { 'Airtel Broadband': '313', 'ACT Fibernet': '303', 'Hathway': '351', 'Tikona': '68', 'Asianet': '318', 'Spectra': '388' },
-  emi: { 'Bajaj Finance Limited': '443', 'TVS Credit Services': '444', 'Cholamandalam': '452', 'Home Credit': '454', 'L&T Finance': '456', 'Hero FinCorp': '453' },
-  insurance: { 'Life Insurance Corporation (LIC)': '176', 'SBI Life Insurance': '266', 'ICICI Prudential Life': '257', 'HDFC Life': '190', 'Bajaj Allianz Life': '182', 'TATA AIA Life': '270' },
-};
+  
+  // 🚀 THE GOLDEN FIX: Correct LPG OpCodes
+  lpg: { 
+    'Bharat Gas': '214', 
+    'HP Gas': '215',     
+    'Indane Gas': '216'      
+  },
 
+  // Pan-India Electricity (Including Telangana)
+  electricity: { 
+    'TSSPDCL - Telangana Southern': '474', 
+    'TSNPDCL - Telangana Northern': '475',
+    'Adani Electricity - MUMBAI': '50', 
+    'Tata Power - MUMBAI': '116', 
+    'B.E.S.T Mumbai': '495', 
+    'BSES Rajdhani': '449', 
+    'Torrent Power': '53', 
+    'UPPCL': '47', 
+    'KSEBL - KERALA': '69', 
+    'TNEB - TAMIL NADU': '115', 
+    'WBSEDCL - WEST BENGAL': '155',
+    'BESCOM - BENGALURU': '149',
+    'APSPDCL - ANDHRA PRADESH': '150'
+  },
+
+  // FASTag
+  fastag: { 
+    'Airtel Payments Bank': '1', 'Axis Bank': '3', 'HDFC FASTag': '10', 
+    'ICICI Bank': '12', 'SBI Fastag': '30', 'Paytm FASTag': '22', 
+    'IDFC FIRST Bank': '14', 'Kotak Mahindra': '21' 
+  },
+
+  // Piped Gas
+  gas: { 
+    'MAHANAGAR GAS': '62', 'INDRAPRASTHA GAS': '63', 'GUJARAT GAS': '64', 
+    'Adani Gas': '154', 'Haryana City Gas': '139', 'Maharashtra Natural Gas': '489' 
+  },
+
+  // Water (Pan-India)
+  water: { 
+    'Hyderabad Metro Water (HMWSSB)': '172',
+    'Delhi Jal Board': '219', 'BWSSB Bangalore': '166', 'Kerala Water Authority': '175', 
+    'Pune Municipal Corp': '182', 'MCGM Water Mumbai': '237', 'Gurugram Water': '223' 
+  },
+
+  // Broadband
+  broadband: { 
+    'Airtel Broadband': '324', 'ACT Fibernet': '314', 'Hathway': '362', 
+    'Tikona': '68', 'Asianet': '329', 'Spectra': '399' 
+  },
+
+  // EMI / Finance
+  emi: { 
+    'Bajaj Finance Limited': '457', 'TVS Credit Services': '458', 
+    'Cholamandalam': '466', 'Home Credit': '468', 'L&T Finance': '470', 'Hero FinCorp': '467' 
+  },
+
+  // Insurance
+  insurance: { 
+    'Life Insurance Corporation (LIC)': '187', 'SBI Life Insurance': '277', 
+    'ICICI Prudential Life': '268', 'HDFC Life': '201', 'Bajaj Allianz Life': '193', 'TATA AIA Life': '281' 
+  },
+};
 export default function ZeshuSuperApp() {
   const [activeTab, setActiveTab] = useState('home'); 
   const [activeService, setActiveService] = useState('mobile');
