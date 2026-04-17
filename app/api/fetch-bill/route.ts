@@ -51,7 +51,22 @@ export async function GET(request: Request) {
     // 4. Fetch from PlanAPI
     const apiUrl = `https://planapi.in/api/Mobile/${apiConfig.endpoint}?${params.toString()}`;
     const res = await fetch(apiUrl);
-    const data = await res.json();
+    const rawText = await res.text(); // 1. Read the raw response first
+    
+    console.log(`🔍 RAW PLANAPI RESPONSE for ${service}:`, rawText); // 2. Print it to Vercel logs
+
+    let data;
+    try {
+      data = JSON.parse(rawText); // 3. Safely try to convert to JSON
+    } catch (parseError) {
+      // 4. If it fails, it means PlanAPI sent HTML (probably a 404 error)
+      console.error("❌ PlanAPI sent invalid JSON (likely a 404 HTML page).");
+      return NextResponse.json({ 
+        success: false, 
+        message: "API Endpoint rejected the request.",
+        developer_hint: rawText.substring(0, 200) // Shows the first 200 characters of the error
+      }, { status: 502 });
+    }
 
     // 5. Handle the Response
     if (data.ERROR === "0" && data.STATUS === "1") {
