@@ -31,7 +31,8 @@ const SERVICES = [
 ];
 
 const OPERATORS_DATA: any = {
-  mobile: { 'RELIANCE JIO': '11', 'Airtel': '2', 'Vodafone': '23', 'Idea': '6', 'BSNL TOPUP': '4' },
+  // We changed 'RELIANCE JIO' to 'JIO' and 'BSNL TOPUP' to 'BSNL' to perfectly match your backend!
+  mobile: { 'JIO': '11', 'Airtel': '2', 'Vodafone': '23', 'Idea': '6', 'BSNL': '4' },
   postpaid: { 'Jio Postpaid': '491', 'Airtel Postpaid': '34', 'Vodafone Postpaid': '36', 'BSNL Postpaid': '33', 'Idea Postpaid': '35' },
   dth: { 'TATA SKY': '28', 'AIRTEL DTH': '24', 'DISH TV': '25', 'SUN DIRECT': '27', 'VIDEOCON D2H': '29' },
   fastag: { 'Airtel Payments Bank': '1', 'Axis Bank': '3', 'HDFC FASTag': '10', 'ICICI Bank': '12', 'SBI Fastag': '30', 'Paytm FASTag': '22', 'IDFC FIRST Bank': '14', 'Kotak Mahindra': '21' },
