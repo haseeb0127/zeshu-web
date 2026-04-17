@@ -31,11 +31,11 @@ export async function GET(request: Request) {
     const rawOperator = (data.Operator || "").toUpperCase();
     let matchedOperator = "";
 
-    if (rawOperator.includes("JIO")) matchedOperator = "RELIANCE - JIO";
+    if (rawOperator.includes("JIO")) matchedOperator = "JIO";
     else if (rawOperator.includes("AIRTEL")) matchedOperator = "Airtel";
     else if (rawOperator.includes("VODA") || rawOperator.includes("VI")) matchedOperator = "Vodafone";
     else if (rawOperator.includes("IDEA")) matchedOperator = "Idea";
-    else if (rawOperator.includes("BSNL")) matchedOperator = "BSNL - TOPUP";
+    else if (rawOperator.includes("BSNL")) matchedOperator = "BSNL";
 
     return NextResponse.json({ operator: matchedOperator, circle: data.Circle });
 
