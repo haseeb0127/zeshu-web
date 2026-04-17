@@ -51,7 +51,7 @@ export default function ZeshuSuperApp() {
   const [activeTab, setActiveTab] = useState('home'); 
   const [activeService, setActiveService] = useState('mobile');
   const [products, setProducts] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState(''); // NEW: From Mobile
+  const [searchQuery, setSearchQuery] = useState(''); 
   const [cart, setCart] = useState<{item: any, qty: number}[]>([]);
   const [user, setUser] = useState<any>(null);
   const [coinsBalance, setCoinsBalance] = useState(0);
@@ -61,7 +61,6 @@ export default function ZeshuSuperApp() {
   const [otpSent, setOtpSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Missing Web Modals from Mobile
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [isCoinHistoryOpen, setIsCoinHistoryOpen] = useState(false);
@@ -209,14 +208,20 @@ export default function ZeshuSuperApp() {
   const addToCart = (product: any) => setCart(prev => { const existing = prev.find(c => c.item.id === product.id); return existing ? prev.map(c => c.item.id === product.id ? { ...c, qty: c.qty + 1 } : c) : [...prev, { item: product, qty: 1 }]; });
   const removeFromCart = (productId: any) => { const existing = cart.find(c => c.item.id === productId); if (existing && existing.qty > 1) { setCart(cart.map(c => c.item.id === productId ? { ...c, qty: c.qty - 1 } : c)); } else { setCart(cart.filter(c => c.item.id !== productId)); if (cart.length === 1) setIsCartOpen(false); } };
 
-  // Advanced Cart Math (From Mobile)
+  // 🚀 --- ADVANCED CART MATH --- 🚀
   const itemTotal = cart.reduce((acc, curr) => acc + (curr.item.price * curr.qty), 0);
-  const deliveryCharge = (itemTotal > 0 && itemTotal < 500) ? 200 : 0; 
+  
+  // NEW: Small Cart Fee & Dynamic Delivery Calculation
+  const smallCartFee = (itemTotal > 0 && itemTotal < 100) ? 20 : 0;
+  const deliveryCharge = (itemTotal > 0 && itemTotal < 200) ? 30 : 0; 
+  
   const donationAmt = isDonating ? 1 : 0;
   const zeshuDiscount = useZeshuCoins ? Math.min(ZESHU_COINS_VAL, itemTotal) : 0; 
-  const finalCartTotal = itemTotal > 0 ? (itemTotal + deliveryCharge + HANDLING_FEE + donationAmt + tipAmount - zeshuDiscount) : 0;
+  
+  // Final calculation updated with small cart fee
+  const finalCartTotal = itemTotal > 0 ? (itemTotal + deliveryCharge + smallCartFee + HANDLING_FEE + donationAmt + tipAmount - zeshuDiscount) : 0;
 
-  // Recharge Math (From Mobile)
+  // Recharge Math
   const baseRate = COMMISSION_RATES[selectedOperator] || 1.00; 
   const exactProfit = (parseFloat(rechargeAmount) || 0) * (baseRate / 100);
   const cashbackEarned = Math.floor(exactProfit * 0.80);
@@ -262,7 +267,7 @@ export default function ZeshuSuperApp() {
   return (
     <div className="max-w-screen-xl mx-auto w-full bg-slate-50 min-h-screen pb-40 font-sans antialiased text-gray-900 overflow-hidden relative">
       
-      {/* HEADER WITH LOCATION & SEARCH (Ported from Mobile) */}
+      {/* HEADER WITH LOCATION & SEARCH */}
       <header className="sticky top-0 bg-white px-4 pt-4 pb-2 z-40 border-b border-gray-100 shadow-sm space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('home')}>
@@ -456,7 +461,7 @@ export default function ZeshuSuperApp() {
         </section>
       )}
 
-      {/* MY ACCOUNT MODAL (Ported from Mobile) */}
+      {/* MY ACCOUNT MODAL */}
       {isAccountOpen && (
         <div className="fixed inset-0 bg-black/80 z-[100] flex items-end sm:items-center justify-center p-4">
           <div className="bg-white rounded-t-[32px] sm:rounded-[32px] w-full max-w-md h-[75vh] flex flex-col shadow-2xl relative animate-in slide-in-from-bottom-10">
@@ -486,7 +491,7 @@ export default function ZeshuSuperApp() {
         </div>
       )}
 
-      {/* COIN HISTORY MODAL (Ported from Mobile) */}
+      {/* COIN HISTORY MODAL */}
       {isCoinHistoryOpen && (
         <div className="fixed inset-0 bg-black/80 z-[100] flex items-end sm:items-center justify-center p-4">
           <div className="bg-white rounded-t-[32px] sm:rounded-[32px] w-full max-w-md h-[60vh] flex flex-col shadow-2xl relative animate-in slide-in-from-bottom-10">
@@ -512,7 +517,7 @@ export default function ZeshuSuperApp() {
         </div>
       )}
 
-      {/* FULL DETAILED CART MODAL (Ported from Mobile) */}
+      {/* FULL DETAILED CART MODAL */}
       {isCartOpen && (
         <div className="fixed inset-0 bg-black/80 z-[100] flex flex-col justify-end">
           <div className="bg-gray-50 w-full h-[90vh] rounded-t-[32px] flex flex-col animate-in slide-in-from-bottom-10">
@@ -524,9 +529,15 @@ export default function ZeshuSuperApp() {
               <span className="text-purple-600 font-bold text-sm">Share</span>
             </div>
 
-            {itemTotal < 500 && (
+            {/* --- 🚀 NEW: DYNAMIC UPSELL BANNERS --- */}
+            {itemTotal > 0 && itemTotal < 100 && (
+              <div className="bg-red-50 border-b border-red-100 p-2 text-center">
+                <span className="text-red-500 font-bold text-[10px] uppercase tracking-wider">Add ₹{100 - itemTotal} more to avoid the ₹20 Small Cart Fee!</span>
+              </div>
+            )}
+            {itemTotal > 0 && itemTotal < 200 && (
               <div className="bg-purple-50 border-b border-purple-100 p-3 text-center">
-                <span className="text-purple-600 font-bold text-xs">Add ₹{500 - itemTotal} more to skip the ₹200 Delivery Charge!</span>
+                <span className="text-purple-600 font-bold text-xs">Add ₹{200 - itemTotal} more to skip the ₹30 Delivery Charge!</span>
               </div>
             )}
 
@@ -566,9 +577,17 @@ export default function ZeshuSuperApp() {
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-2">Bill Details</h3>
               <div className="bg-white p-4 rounded-2xl shadow-sm space-y-2">
                 <div className="flex justify-between text-sm text-gray-500"><span>Items total</span><span className="font-bold text-gray-800">₹{itemTotal}</span></div>
+                
                 {useZeshuCoins && <div className="flex justify-between text-sm text-purple-600 font-bold"><span>Zeshu Coins</span><span>-₹{zeshuDiscount}</span></div>}
+                
+                {/* --- 🚀 NEW: SMALL CART FEE DISPLAY --- */}
+                {smallCartFee > 0 && <div className="flex justify-between text-sm text-red-500"><span>Small cart fee</span><span className="font-bold">₹{smallCartFee}</span></div>}
+                
                 <div className="flex justify-between text-sm text-gray-500"><span>Handling charge</span><span className="font-bold text-gray-800">₹{HANDLING_FEE}</span></div>
+                
+                {/* --- 🚀 UPDATED: DYNAMIC DELIVERY CHARGE --- */}
                 <div className="flex justify-between text-sm text-gray-500"><span>Delivery charge</span><span className={`font-bold ${deliveryCharge===0 ? 'text-purple-600' : 'text-gray-800'}`}>{deliveryCharge===0 ? 'FREE' : `₹${deliveryCharge}`}</span></div>
+                
                 <div className="flex justify-between font-black text-lg pt-3 border-t border-gray-100 mt-2"><span>Grand total</span><span>₹{finalCartTotal}</span></div>
               </div>
 
