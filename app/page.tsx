@@ -212,32 +212,37 @@ export default function ZeshuSuperApp() {
   // --- 🚀 NEW SMART UPI TOOLS LOGIC ---
   const handleUpiSearch = async () => {
     if (!rechargeNumber) return alert("Please enter a UPI ID or Mobile Number.");
-    setIsLoading(true); setUpiResult(null);
+    setIsLoading(true); 
+    setUpiResult(null);
     
-    // 1. Determine if the user typed a Mobile Number or a UPI ID
-    const isMobileNumber = /^\d{10}$/.test(rechargeNumber);
+    // 1. Clean the input (removes accidental spaces)
+    const cleanInput = rechargeNumber.trim();
+
+    // 2. Determine if the user typed a 10-digit Mobile Number or a UPI ID
+    const isMobileNumber = /^\d{10}$/.test(cleanInput);
     const actionType = isMobileNumber ? 'mobile_to_multiple_upi' : 'vpa_info';
 
-    console.log(`Searching for: ${rechargeNumber} using action: ${actionType}`);
+    console.log(`Searching for: ${cleanInput} using action: ${actionType}`);
 
     try {
-      // 2. Call our new Backend Switchboard
+      // 3. Call our new Backend Switchboard
       const response = await fetch('/api/upi-tools', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           action: actionType, 
-          mobileNo: isMobileNumber ? rechargeNumber : undefined,
-          upiId: !isMobileNumber ? rechargeNumber : undefined 
+          // ⚠️ These exact names (mobileNo and upiId) are required by the backend!
+          mobileNo: isMobileNumber ? cleanInput : undefined,
+          upiId: !isMobileNumber ? cleanInput : undefined 
         })
       });
 
       const result = await response.json();
 
-      // 3. Handle the Result
+      // 4. Handle the Result
       if (result.success) {
         console.log("UPI Data Found!", result.data);
-        setUpiResult(result.data); // Save the data to React state
+        setUpiResult(result.data); // Save the data to React state to display it
       } else {
         console.error("UPI Search Failed:", result.message);
         alert(`Error: ${result.message}`);
