@@ -5,7 +5,10 @@ const SERVICE_API_MAP: Record<string, { endpoint: string; numberParam: string }>
   electricity: { endpoint: 'ElectricityBillFetch', numberParam: 'bill_number' },
   fastag:      { endpoint: 'FastagInfoFetch',      numberParam: 'VehicleNo' },
   gas:         { endpoint: 'GasPipeInfoFetch',     numberParam: 'ConsumerNo' },
-  lpg:         { endpoint: 'GasInfoFetch',         numberParam: 'ConsumerNo' },
+  
+  // ✅ FIXED: LPG now correctly routes to the Universal BBPS BillCheck endpoint!
+  lpg:         { endpoint: 'BillCheck',            numberParam: 'Accountno' },
+  
   water:       { endpoint: 'WaterInfoFetch',       numberParam: 'ConsumerNo' },
   broadband:   { endpoint: 'BroadbandInfoFetch',   numberParam: 'ConsumerNo' },
   emi:         { endpoint: 'EMIBillFetch',         numberParam: 'loan_number' },
@@ -29,7 +32,7 @@ export async function GET(request: Request) {
     }, { status: 400 });
   }
 
-  // 2. Identify the correct PlanAPI endpoint (FIXED: One clean line, no reassigning!)
+  // 2. Identify the correct PlanAPI endpoint
   const apiConfig = SERVICE_API_MAP[service] || { endpoint: 'BillCheck', numberParam: 'Accountno' };
 
   try {
