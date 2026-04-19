@@ -6,7 +6,7 @@ import {
   Mic, MapPin, Search, Coins, User, ChevronRight, Zap, Smartphone, 
   Tv, HeartHandshake, Plus, Minus, ShoppingBag, X, LogOut, Ticket, QrCode,
   Droplets, Wifi, Car, Landmark, ShieldCheck, PhoneCall, Phone, Package, Flame, BadgeCheck,
-  History, ChevronDown, CheckSquare, Square, Time
+  History, ChevronDown, CheckSquare, Square, Clock
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { Scanner } from '@yudiel/react-qr-scanner'; 
@@ -542,7 +542,7 @@ export default function ZeshuSuperApp() {
             )}
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              <div className="bg-white p-4 rounded-2xl flex items-center gap-3 shadow-sm"><Time className="text-purple-600"/><span className="font-black">Delivery in 20 minutes</span></div>
+              <div className="bg-white p-4 rounded-2xl flex items-center gap-3 shadow-sm"><Clock className="text-purple-600"/><span className="font-black">Delivery in 20 minutes</span></div>
 
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-2">Shipment of {cart.length} item</h3>
               <div className="bg-white p-4 rounded-2xl shadow-sm space-y-4">
