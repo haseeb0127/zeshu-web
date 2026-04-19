@@ -95,12 +95,15 @@ export default function ZeshuSuperApp() {
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     document.body.appendChild(script);
+    
+    // Cleaned up Supabase fetch
     const fetchProducts = async () => {
-  const { data } = await supabase.from('products').select('*').eq('in_stock', true);
-  if (data) setProducts(data);
-};
-fetchProducts();
-      .catch(() => setProducts([])); // Handle fetch error gracefully
+      const { data, error } = await supabase.from('products').select('*').eq('in_stock', true);
+      if (data) setProducts(data);
+      if (error) setProducts([]); // Handle fetch error gracefully
+    };
+    fetchProducts();
+    
     checkUser();
   }, []);
 
