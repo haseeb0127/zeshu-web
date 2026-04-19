@@ -95,9 +95,11 @@ export default function ZeshuSuperApp() {
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     document.body.appendChild(script);
-    fetch('https://zeshu-backend-api.onrender.com/api/products')
-      .then(res => res.json())
-      .then(json => setProducts(json.data || []))
+    const fetchProducts = async () => {
+  const { data } = await supabase.from('products').select('*').eq('in_stock', true);
+  if (data) setProducts(data);
+};
+fetchProducts();
       .catch(() => setProducts([])); // Handle fetch error gracefully
     checkUser();
   }, []);
