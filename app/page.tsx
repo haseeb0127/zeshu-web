@@ -322,7 +322,22 @@ export default function ZeshuSuperApp() {
 
           <section>
             <h2 className="text-xl font-black text-gray-900 tracking-tight mb-4">Grocery & Kitchen</h2>
-            {filteredProducts.length === 0 ? (
+            {<section>
+            <h2 className="text-xl font-black text-gray-900 tracking-tight mb-4">Grocery & Kitchen</h2>
+            
+            {/* 🚀 NEW: Show a loading spinner if products are still fetching */}
+            {products.length === 0 && searchQuery === '' ? (
+              <div className="flex justify-center py-10">
+                <div className="animate-spin h-8 w-8 border-4 border-purple-600 border-t-transparent rounded-full"></div>
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <p className="text-gray-400 text-sm">No products found matching "{searchQuery}"</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                {filteredProducts.map((p) => {
+                  const inCart = cart.find(c => c.item.id === p.id);
+                  return (
+                    <div key={p.id} className="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex flex-col"> ? (
               <p className="text-gray-400 text-sm">No products found matching "{searchQuery}"</p>
             ) : (
               <div className="grid grid-cols-2 gap-4">
