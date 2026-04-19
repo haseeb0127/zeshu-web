@@ -97,10 +97,23 @@ export default function ZeshuSuperApp() {
     document.body.appendChild(script);
     
     // Cleaned up Supabase fetch
-    const fetchProducts = async () => {
+   const fetchProducts = async () => {
+      // 1. INSTANT LOAD: Check if we have old products saved in the phone's memory
+      const cachedProducts = localStorage.getItem('zeshu_products');
+      if (cachedProducts) {
+        setProducts(JSON.parse(cachedProducts)); // Boom. Zero wait time.
+      }
+
+      // 2. BACKGROUND SYNC: Silently check Supabase for new items or price changes
       const { data, error } = await supabase.from('products').select('*').eq('in_stock', true);
-      if (data) setProducts(data);
-      if (error) setProducts([]); // Handle fetch error gracefully
+      
+      if (data) {
+        setProducts(data); // Update the screen with fresh data
+        localStorage.setItem('zeshu_products', JSON.stringify(data)); // Save the fresh data for tomorrow
+      }
+      if (error && !cachedProducts) {
+        setProducts([]); 
+      }
     };
     fetchProducts();
     
