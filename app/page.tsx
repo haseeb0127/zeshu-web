@@ -95,7 +95,10 @@ export default function ZeshuSuperApp() {
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     document.body.appendChild(script);
-    fetch('https://zeshu-backend-api.onrender.com/api/products').then(res => res.json()).then(json => setProducts(json.data || []));
+    fetch('https://zeshu-backend-api.onrender.com/api/products')
+      .then(res => res.json())
+      .then(json => setProducts(json.data || []))
+      .catch(() => setProducts([])); // Handle fetch error gracefully
     checkUser();
   }, []);
 
@@ -211,14 +214,12 @@ export default function ZeshuSuperApp() {
   // 🚀 --- ADVANCED CART MATH --- 🚀
   const itemTotal = cart.reduce((acc, curr) => acc + (curr.item.price * curr.qty), 0);
   
-  // NEW: Small Cart Fee & Dynamic Delivery Calculation
   const smallCartFee = (itemTotal > 0 && itemTotal < 100) ? 20 : 0;
   const deliveryCharge = (itemTotal > 0 && itemTotal < 200) ? 30 : 0; 
   
   const donationAmt = isDonating ? 1 : 0;
   const zeshuDiscount = useZeshuCoins ? Math.min(ZESHU_COINS_VAL, itemTotal) : 0; 
   
-  // Final calculation updated with small cart fee
   const finalCartTotal = itemTotal > 0 ? (itemTotal + deliveryCharge + smallCartFee + HANDLING_FEE + donationAmt + tipAmount - zeshuDiscount) : 0;
 
   // Recharge Math
@@ -256,7 +257,19 @@ export default function ZeshuSuperApp() {
       const order = await orderResponse.json();
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, amount: order.amount, currency: order.currency, name: "Zeshu Grocery", order_id: order.id,
-        handler: async function (response: any) { alert("Grocery Order Successful!"); setCart([]); setIsCartOpen(false); },
+        handler: async function (response: any) { 
+          // New Telegram Admin Pinger!
+          try {
+            await fetch('/api/confirm-grocery-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: user.id, cartItems: cart, totalAmount: finalCartTotal, paymentId: response.razorpay_payment_id, address: currentAddress })
+            });
+          } catch(e) { console.error(e) }
+          alert("Grocery Order Successful!"); 
+          setCart([]); 
+          setIsCartOpen(false); 
+        },
         theme: { color: "#9333ea" },
       };
       const rzp = new (window as any).Razorpay(options); rzp.open();
@@ -304,6 +317,7 @@ export default function ZeshuSuperApp() {
         </div>
       </header>
 
+      {/* THE HOME TAB */}
       {activeTab === 'home' ? (
         <div className="p-4 space-y-6">
           {searchQuery === '' && (
@@ -322,22 +336,13 @@ export default function ZeshuSuperApp() {
 
           <section>
             <h2 className="text-xl font-black text-gray-900 tracking-tight mb-4">Grocery & Kitchen</h2>
-            {<section>
-            <h2 className="text-xl font-black text-gray-900 tracking-tight mb-4">Grocery & Kitchen</h2>
             
-            {/* 🚀 NEW: Show a loading spinner if products are still fetching */}
+            {/* 🚀 Loading Spinner Fix */}
             {products.length === 0 && searchQuery === '' ? (
               <div className="flex justify-center py-10">
                 <div className="animate-spin h-8 w-8 border-4 border-purple-600 border-t-transparent rounded-full"></div>
               </div>
             ) : filteredProducts.length === 0 ? (
-              <p className="text-gray-400 text-sm">No products found matching "{searchQuery}"</p>
-            ) : (
-              <div className="grid grid-cols-2 gap-4">
-                {filteredProducts.map((p) => {
-                  const inCart = cart.find(c => c.item.id === p.id);
-                  return (
-                    <div key={p.id} className="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex flex-col"> ? (
               <p className="text-gray-400 text-sm">No products found matching "{searchQuery}"</p>
             ) : (
               <div className="grid grid-cols-2 gap-4">
@@ -371,6 +376,7 @@ export default function ZeshuSuperApp() {
           </section>
         </div>
       ) : (
+        /* THE RECHARGE TAB */
         <section className="p-4">
           <div className="bg-white rounded-[32px] shadow-xl border border-gray-100 overflow-hidden max-w-lg mx-auto">
             <div className="flex overflow-x-auto bg-gray-50 p-2 gap-2 border-b border-gray-100 no-scrollbar">
@@ -457,7 +463,6 @@ export default function ZeshuSuperApp() {
                   </div>
                 </div>
                 
-                {/* 80% CASHBACK NOTIFICATION */}
                 {rechargeAmount !== '' && cashbackEarned > 0 && activeService !== 'upi' && (
                   <div className="bg-green-50 border border-green-200 p-3 rounded-xl flex items-center gap-3">
                     <History size={18} className="text-green-600"/>
@@ -544,13 +549,13 @@ export default function ZeshuSuperApp() {
               <span className="text-purple-600 font-bold text-sm">Share</span>
             </div>
 
-            {/* --- 🚀 NEW: DYNAMIC UPSELL BANNERS --- */}
+            {/* --- 🚀 DYNAMIC UPSELL BANNERS --- */}
             {itemTotal > 0 && itemTotal < 100 && (
               <div className="bg-red-50 border-b border-red-100 p-2 text-center">
                 <span className="text-red-500 font-bold text-[10px] uppercase tracking-wider">Add ₹{100 - itemTotal} more to avoid the ₹20 Small Cart Fee!</span>
               </div>
             )}
-            {itemTotal > 0 && itemTotal < 200 && (
+            {itemTotal >= 100 && itemTotal < 200 && (
               <div className="bg-purple-50 border-b border-purple-100 p-3 text-center">
                 <span className="text-purple-600 font-bold text-xs">Add ₹{200 - itemTotal} more to skip the ₹30 Delivery Charge!</span>
               </div>
