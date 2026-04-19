@@ -2,60 +2,84 @@
 import React, { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
-import { BellRing, CheckCircle, Clock, Search, LogOut } from 'lucide-react';
+import { 
+  BellRing, CheckCircle, Clock, LogOut, 
+  ShoppingBag, MapPin, IndianRupee, Hash 
+} from 'lucide-react';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!, 
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function AdminDashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [audioEnabled, setAudioEnabled] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    checkAdmin();
-    fetchInitialOrders();
-
-    // 📡 THE WEBSOCKET LISTENER (Real-time updates)
-    const channel = supabase
-      .channel('realtime-orders')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
-        console.log('NEW ORDER RECEIVED!', payload.new);
-        
-        // 🔔 Play a notification sound
-        const audio = new Audio('/alert.mp3'); // Add an alert.mp3 file to your /public folder!
-        audio.play().catch(e => console.log("Audio play blocked by browser interaction rules"));
-        
-        // Add the new order to the top of the list instantly
-        setOrders(current => [payload.new, ...current]);
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, []);
-
-  const checkAdmin = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) router.push('/admin/login');
-  };
 
   const fetchInitialOrders = async () => {
     const { data, error } = await supabase
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(50); // Fetch latest 50 orders
+      .limit(50);
     
     if (data) setOrders(data);
     setLoading(false);
   };
 
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/admin/login');
+        return;
+      }
+      // Security Check: Only allow our specific admin email
+      if (session.user.email !== "admin@zeshu.in") {
+        await supabase.auth.signOut();
+        router.push('/admin/login');
+      }
+    };
+
+    checkAdmin();
+    fetchInitialOrders();
+
+    // 📡 AGGRESSIVE REAL-TIME LISTENER
+    const channel = supabase
+      .channel('realtime-orders')
+      .on(
+        'postgres_changes', 
+        { event: '*', schema: 'public', table: 'orders' }, 
+        (payload) => {
+          console.log('Change detected in Database:', payload);
+          
+          // 🔔 Trigger Sound
+          const audio = new Audio('/alert.mp3');
+          audio.play().catch(err => {
+            console.log("Audio blocked. Dashboard needs a user click to enable sound.");
+          });
+          
+          // 🔄 Refresh the UI instantly
+          fetchInitialOrders(); 
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [router]);
+
   const markAsDelivered = async (orderId: string) => {
-    const { error } = await supabase.from('orders').update({ status: 'DELIVERED' }).eq('id', orderId);
-    if (!error) {
-      setOrders(orders.map(o => o.id === orderId ? { ...o, status: 'DELIVERED' } : o));
-    } else {
-      alert("Failed to update status");
-    }
+    const { error } = await supabase
+      .from('orders')
+      .update({ status: 'DELIVERED' })
+      .eq('id', orderId);
+
+    if (error) alert("Update failed: " + error.message);
+    // Real-time listener will handle the UI update automatically!
   };
 
   const handleLogout = async () => {
@@ -63,67 +87,125 @@ export default function AdminDashboard() {
     router.push('/admin/login');
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-spin h-8 w-8 border-4 border-purple-600 border-t-transparent rounded-full"></div></div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin h-10 w-10 border-4 border-purple-600 border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
-      {/* Admin Navbar */}
-      <header className="bg-black text-white p-4 flex justify-between items-center sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <div className="bg-purple-600 p-2 rounded-lg"><BellRing size={20} className="animate-pulse" /></div>
-          <h1 className="font-black text-xl tracking-widest uppercase">Zeshu HQ</h1>
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+      {/* Top Navigation */}
+      <header className="bg-black text-white px-6 py-4 flex justify-between items-center sticky top-0 z-50 shadow-xl">
+        <div className="flex items-center gap-4">
+          <div className="bg-purple-600 p-2 rounded-xl shadow-lg shadow-purple-500/20">
+            <BellRing size={24} className={orders.some(o => o.status === 'PENDING') ? "animate-bounce" : ""} />
+          </div>
+          <div>
+            <h1 className="font-black text-xl tracking-tighter uppercase">Zeshu HQ</h1>
+            <p className="text-[10px] font-bold text-purple-400 tracking-[0.2em] uppercase leading-none">Command Center</p>
+          </div>
         </div>
-        <button onClick={handleLogout} className="bg-gray-800 p-2 rounded-lg hover:bg-gray-700 transition"><LogOut size={20} /></button>
+        
+        <div className="flex items-center gap-4">
+          {!audioEnabled && (
+            <button 
+              onClick={() => setAudioEnabled(true)} 
+              className="bg-amber-500 text-black text-[10px] font-black px-3 py-1.5 rounded-lg animate-pulse"
+            >
+              CLICK TO ENABLE AUDIO
+            </button>
+          )}
+          <button onClick={handleLogout} className="bg-zinc-800 p-2.5 rounded-xl hover:bg-zinc-700 transition-all border border-zinc-700">
+            <LogOut size={20} />
+          </button>
+        </div>
       </header>
 
       <main className="p-6 max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-black">Live Operations</h2>
-          <div className="bg-white px-4 py-2 rounded-full border border-gray-200 shadow-sm flex items-center gap-2">
-            <span className="relative flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span></span>
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Socket Connected</span>
+        {/* Connection Status Banner */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+          <div>
+            <h2 className="text-3xl font-black tracking-tight">Live Operations</h2>
+            <p className="text-slate-500 font-medium">Monitoring real-time grocery orders</p>
+          </div>
+          
+          <div className="bg-white px-5 py-2.5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+            <div className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+            </div>
+            <span className="text-xs font-black text-slate-600 uppercase tracking-widest">Socket Connected</span>
           </div>
         </div>
 
-        {/* Data Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Orders Table */}
+        <div className="bg-white rounded-[32px] shadow-sm border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="p-4 text-xs font-black text-gray-400 uppercase tracking-widest">Order ID</th>
-                  <th className="p-4 text-xs font-black text-gray-400 uppercase tracking-widest">Time</th>
-                  <th className="p-4 text-xs font-black text-gray-400 uppercase tracking-widest">Delivery Address</th>
-                  <th className="p-4 text-xs font-black text-gray-400 uppercase tracking-widest">Items</th>
-                  <th className="p-4 text-xs font-black text-gray-400 uppercase tracking-widest">Amount</th>
-                  <th className="p-4 text-xs font-black text-gray-400 uppercase tracking-widest">Status / Action</th>
+                <tr className="bg-slate-50/50 border-b border-slate-100">
+                  <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]"><div className="flex items-center gap-2"><Hash size={14}/> Order</div></th>
+                  <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]"><div className="flex items-center gap-2"><Clock size={14}/> Time</div></th>
+                  <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]"><div className="flex items-center gap-2"><MapPin size={14}/> Address</div></th>
+                  <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]"><div className="flex items-center gap-2"><ShoppingBag size={14}/> Items</div></th>
+                  <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]"><div className="flex items-center gap-2"><IndianRupee size={14}/> Amount</div></th>
+                  <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-slate-50">
                 {orders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="p-4 font-mono text-xs font-bold text-gray-500">#{order.id.split('-')[0]}</td>
-                    <td className="p-4 text-sm font-bold text-gray-700">{new Date(order.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
-                    <td className="p-4 text-sm font-bold max-w-[200px] truncate">{order.delivery_address}</td>
-                    <td className="p-4 text-xs text-gray-600">
-                      {order.items?.map((i: any, idx: number) => <div key={idx}>{i.qty}x {i.item.name}</div>)}
+                  <tr key={order.id} className={`transition-colors ${order.status === 'PENDING' ? 'bg-purple-50/30' : 'hover:bg-slate-50'}`}>
+                    <td className="p-5">
+                      <span className="font-mono text-[11px] font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-md">
+                        {order.id.split('-')[0].toUpperCase()}
+                      </span>
                     </td>
-                    <td className="p-4 font-black text-lg text-purple-600">₹{order.total_paid}</td>
-                    <td className="p-4">
+                    <td className="p-5 text-sm font-bold text-slate-700">
+                      {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td className="p-5 text-sm font-bold text-slate-800 max-w-[220px]">
+                      <div className="truncate">{order.delivery_address}</div>
+                    </td>
+                    <td className="p-5">
+                      <div className="space-y-1">
+                        {order.items?.map((i: any, idx: number) => (
+                          <div key={idx} className="text-[11px] font-medium text-slate-500 bg-white border border-slate-100 px-2 py-0.5 rounded-lg inline-block mr-1">
+                            {i.qty}x {i.item.name}
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="p-5">
+                      <span className="text-xl font-black text-purple-600">₹{order.total_paid}</span>
+                    </td>
+                    <td className="p-5">
                       {order.status === 'PENDING' ? (
-                        <button onClick={() => markAsDelivered(order.id)} className="bg-green-500 hover:bg-green-600 text-white text-xs font-black uppercase tracking-widest px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition-all">
-                          <Clock size={14} /> Mark Delivered
+                        <button 
+                          onClick={() => markAsDelivered(order.id)} 
+                          className="bg-green-500 hover:bg-green-600 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-md shadow-green-200 transition-all active:scale-95"
+                        >
+                          <CheckCircle size={14} /> Mark Delivered
                         </button>
                       ) : (
-                        <div className="text-gray-400 flex items-center gap-1 font-bold text-sm">
-                          <CheckCircle size={16} className="text-green-500" /> Delivered
+                        <div className="flex items-center gap-2 text-emerald-600 font-black text-xs uppercase tracking-widest">
+                          <CheckCircle size={16} /> Delivered
                         </div>
                       )}
                     </td>
                   </tr>
                 ))}
                 {orders.length === 0 && (
-                  <tr><td colSpan={6} className="p-8 text-center text-gray-400 font-bold">Waiting for incoming orders...</td></tr>
+                  <tr>
+                    <td colSpan={6} className="p-20 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <ShoppingBag size={48} className="text-slate-200" />
+                        <p className="text-slate-400 font-bold">Waiting for your first Zeshu order...</p>
+                      </div>
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
