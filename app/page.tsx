@@ -60,7 +60,7 @@ export default function ZeshuSuperApp() {
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeCategory, setActiveCategory] = useState('All'); // NEW: Category State
+  const [activeCategory, setActiveCategory] = useState('All'); 
   
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
@@ -359,7 +359,7 @@ export default function ZeshuSuperApp() {
       {activeTab === 'home' ? (
         <div className="p-4 space-y-6">
           
-          {/* LIVE ORDER TRACKER INJECTED HERE */}
+          {/* LIVE ORDER TRACKER */}
           {myOrders.length > 0 && myOrders[0].status !== 'DELIVERED' && (
             <section className="bg-white p-5 rounded-3xl shadow-lg border-2 border-purple-100 mb-6 animate-pulse">
               <div className="flex justify-between items-center mb-4">
@@ -408,7 +408,7 @@ export default function ZeshuSuperApp() {
           <section>
             <h2 className="text-xl font-black text-gray-900 tracking-tight mb-4">Grocery & Kitchen</h2>
             
-            {/* 🚀 CATEGORY SCROLL BAR */}
+            {/* CATEGORY SCROLL BAR */}
             {products.length > 0 && (
               <div className="flex overflow-x-auto gap-2 mb-6 no-scrollbar pb-2">
                 {productCategories.map(cat => (
@@ -439,7 +439,12 @@ export default function ZeshuSuperApp() {
                         <div className="absolute top-2 left-2 bg-white px-1.5 py-0.5 rounded shadow-sm text-[8px] font-bold text-purple-600">12 MINS</div>
                         <img src={p.image_url} className="h-full w-full object-contain" alt={p.name} />
                       </div>
-                      <div className="text-[10px] text-gray-400 mb-1 font-bold uppercase">{p.category || 'General'}</div>
+                      
+                      {/* ADDED CATEGORY AND WEIGHT DISPLAY HERE */}
+                      <div className="text-[10px] text-gray-400 mb-1 font-bold uppercase">
+                        {p.category || 'General'} • {p.weight || 'N/A'}
+                      </div>
+                      
                       <div className="text-sm font-bold text-gray-800 line-clamp-2 h-10 mb-1 leading-tight">{p.name}</div>
                       <div className="flex justify-between items-center mt-auto">
                         <span className="font-black text-base text-gray-900">₹{p.price}</span>
@@ -519,6 +524,7 @@ export default function ZeshuSuperApp() {
         </section>
       )}
 
+      {/* CART MODAL */}
       {isCartOpen && (
         <div className="fixed inset-0 bg-black/80 z-[100] flex flex-col justify-end">
           <div className="bg-gray-50 w-full h-[90vh] rounded-t-[32px] flex flex-col animate-in slide-in-from-bottom-10">
@@ -556,6 +562,7 @@ export default function ZeshuSuperApp() {
         </div>
       )}
 
+      {/* LOGIN MODAL */}
       {isAuthModalOpen && (
         <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 w-full max-w-sm relative">
@@ -576,6 +583,7 @@ export default function ZeshuSuperApp() {
         </div>
       )}
 
+      {/* FLOATING CART SUMMARY */}
       {cart.length > 0 && activeTab === 'home' && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md z-[60]">
           <div className="max-w-screen-xl mx-auto w-full flex justify-between items-center bg-purple-700 text-white p-4 rounded-2xl shadow-lg cursor-pointer" onClick={() => setIsCartOpen(true)}>

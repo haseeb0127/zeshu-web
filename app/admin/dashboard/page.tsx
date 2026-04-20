@@ -19,7 +19,18 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [selectedRiders, setSelectedRiders] = useState<{[key: string]: string}>({});
-  const [newProduct, setNewProduct] = useState({ name: '', price: '', unit: '', image_url: '', category: 'General' });
+  
+  // ✅ FIXED: Consolidated state properly
+  const [newProduct, setNewProduct] = useState({ 
+    name: '', 
+    price: '', 
+    unit: '', 
+    image_url: '', 
+    category: 'General',
+    quantity: '', 
+    weight: ''    
+  });
+  
   const router = useRouter();
 
   const fetchData = async () => {
@@ -53,12 +64,19 @@ export default function AdminDashboard() {
     await supabase.from('orders').update({ status: 'OUT_FOR_DELIVERY', assigned_rider_id: riderId }).eq('id', orderId);
   };
 
+  // ✅ FIXED: Unified addProduct function
   const addProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     await supabase.from('products').insert([{ 
-      name: newProduct.name, price: Number(newProduct.price), unit: newProduct.unit, image_url: newProduct.image_url, category: newProduct.category 
+      name: newProduct.name, 
+      price: Number(newProduct.price), 
+      unit: newProduct.unit, 
+      image_url: newProduct.image_url, 
+      category: newProduct.category,
+      quantity: Number(newProduct.quantity),
+      weight: newProduct.weight
     }]);
-    setNewProduct({ name: '', price: '', unit: '', image_url: '', category: 'General' });
+    setNewProduct({ name: '', price: '', unit: '', image_url: '', category: 'General', quantity: '', weight: '' });
   };
 
   const deleteProduct = async (id: string) => {
@@ -69,12 +87,10 @@ export default function AdminDashboard() {
     await supabase.from('products').update({ in_stock: !currentStatus }).eq('id', id);
   };
 
-  // 💰 NEW: PAYOUT CALCULATOR
   const riderPayouts = useMemo(() => {
     const payouts: Record<string, { id: string, name: string, total: number, deliveries: number }> = {};
     
     orders.forEach(order => {
-      // Only count DELIVERED and UNPAID orders
       if (order.status === 'DELIVERED' && order.payout_status !== 'PAID' && order.assigned_rider_id) {
         if (!payouts[order.assigned_rider_id]) {
           const riderName = MY_RIDERS.find(r => r.id === order.assigned_rider_id)?.name || 'Unknown Rider';
@@ -90,7 +106,7 @@ export default function AdminDashboard() {
   const markRiderPaid = async (riderId: string) => {
     if(confirm("Confirm you have transferred the money to this rider?")) {
       await supabase.from('orders').update({ payout_status: 'PAID' }).eq('assigned_rider_id', riderId).eq('status', 'DELIVERED').neq('payout_status', 'PAID');
-      fetchData(); // Refresh UI
+      fetchData(); 
     }
   };
 
@@ -156,11 +172,14 @@ export default function AdminDashboard() {
         {/* INVENTORY TAB */}
         {activeTab === 'inventory' && (
           <div className="space-y-6 animate-in fade-in">
-            <form onSubmit={addProduct} className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm grid grid-cols-2 md:grid-cols-6 gap-4 items-end">
-              <div className="col-span-2"><label className="text-[10px] font-black text-slate-400 uppercase ml-1">Name</label><input required placeholder="Milk" className="w-full mt-1 p-3 bg-slate-50 rounded-xl font-bold" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} /></div>
+            {/* ✅ FIXED: Added Stock Qty and Weight seamlessly into the form layout */}
+            <form onSubmit={addProduct} className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
+              <div className="col-span-2 md:col-span-2"><label className="text-[10px] font-black text-slate-400 uppercase ml-1">Name</label><input required placeholder="Milk" className="w-full mt-1 p-3 bg-slate-50 rounded-xl font-bold" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} /></div>
               <div><label className="text-[10px] font-black text-slate-400 uppercase ml-1">Price</label><input required type="number" placeholder="30" className="w-full mt-1 p-3 bg-slate-50 rounded-xl font-bold" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} /></div>
               <div><label className="text-[10px] font-black text-slate-400 uppercase ml-1">Category</label><input required placeholder="Dairy" className="w-full mt-1 p-3 bg-slate-50 rounded-xl font-bold" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} /></div>
-              <div className="col-span-2 md:col-span-5"><label className="text-[10px] font-black text-slate-400 uppercase ml-1">Image URL</label><input required placeholder="https://..." className="w-full mt-1 p-3 bg-slate-50 rounded-xl font-bold" value={newProduct.image_url} onChange={e => setNewProduct({...newProduct, image_url: e.target.value})} /></div>
+              <div><label className="text-[10px] font-black text-slate-400 uppercase ml-1">Stock Qty</label><input required type="number" placeholder="100" className="w-full mt-1 p-3 bg-slate-50 rounded-xl font-bold" value={newProduct.quantity} onChange={e => setNewProduct({...newProduct, quantity: e.target.value})} /></div>
+              <div><label className="text-[10px] font-black text-slate-400 uppercase ml-1">Weight</label><input required placeholder="500g" className="w-full mt-1 p-3 bg-slate-50 rounded-xl font-bold" value={newProduct.weight} onChange={e => setNewProduct({...newProduct, weight: e.target.value})} /></div>
+              <div className="col-span-2 md:col-span-3"><label className="text-[10px] font-black text-slate-400 uppercase ml-1">Image URL</label><input required placeholder="https://..." className="w-full mt-1 p-3 bg-slate-50 rounded-xl font-bold" value={newProduct.image_url} onChange={e => setNewProduct({...newProduct, image_url: e.target.value})} /></div>
               <button type="submit" className="h-[48px] bg-black text-white font-black uppercase rounded-xl flex items-center justify-center gap-2"><PackagePlus size={18}/> Add</button>
             </form>
 
@@ -170,6 +189,15 @@ export default function AdminDashboard() {
                   <div className="text-[9px] font-black text-purple-600 bg-purple-50 self-start px-2 py-1 rounded mb-2 uppercase">{p.category || 'General'}</div>
                   <img src={p.image_url} alt={p.name} className="h-24 w-full object-contain mb-2" />
                   <div className="font-bold text-sm leading-tight flex-1">{p.name}</div>
+                  
+                  {/* ✅ FIXED: Showing the Weight and Stock beautifully in the card */}
+                  <div className="flex justify-between items-center mt-2">
+                    <div className="text-[10px] font-bold text-slate-500">Weight: {p.weight || 'N/A'}</div>
+                    <div className={`text-[10px] font-bold ${p.quantity < 10 ? 'text-red-500' : 'text-emerald-600'}`}>
+                      Stock: {p.quantity || 0}
+                    </div>
+                  </div>
+
                   <div className="font-black text-lg mt-1">₹{p.price}</div>
                   <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
                     <button onClick={() => toggleStock(p.id, p.in_stock)} className={`flex-1 text-[10px] font-black uppercase py-2 rounded-lg ${p.in_stock ? 'bg-slate-100 text-slate-600' : 'bg-red-100 text-red-600'}`}>{p.in_stock ? 'In Stock' : 'Out'}</button>
