@@ -60,6 +60,7 @@ export default function ZeshuSuperApp() {
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeCategory, setActiveCategory] = useState('All'); // NEW: Category State
   
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
@@ -89,6 +90,18 @@ export default function ZeshuSuperApp() {
 
   const ZESHU_COINS_VAL = 50;
   const HANDLING_FEE = 5;
+
+  // PRODUCT CATEGORY LOGIC
+  const productCategories = useMemo(() => {
+    const cats = new Set(products.map(p => p.category || 'General'));
+    return ['All', ...Array.from(cats)];
+  }, [products]);
+
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = activeCategory === 'All' || (p.category || 'General') === activeCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   useEffect(() => {
     const script = document.createElement('script');
@@ -148,8 +161,6 @@ export default function ZeshuSuperApp() {
       );
     } else { setIsDetectingLoc(false); }
   };
-
-  const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const parseUpiData = (qrString: string) => {
     if (!qrString.startsWith('upi://pay')) { alert("Invalid QR Code."); return null; }
@@ -396,12 +407,28 @@ export default function ZeshuSuperApp() {
 
           <section>
             <h2 className="text-xl font-black text-gray-900 tracking-tight mb-4">Grocery & Kitchen</h2>
+            
+            {/* 🚀 CATEGORY SCROLL BAR */}
+            {products.length > 0 && (
+              <div className="flex overflow-x-auto gap-2 mb-6 no-scrollbar pb-2">
+                {productCategories.map(cat => (
+                  <button 
+                    key={cat} 
+                    onClick={() => setActiveCategory(cat)}
+                    className={`px-5 py-2.5 rounded-full whitespace-nowrap text-xs font-black uppercase tracking-wider transition-all ${activeCategory === cat ? 'bg-black text-white shadow-md' : 'bg-white text-gray-500 border border-gray-200'}`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
+            
             {products.length === 0 && searchQuery === '' ? (
               <div className="flex justify-center py-10">
                 <div className="animate-spin h-8 w-8 border-4 border-purple-600 border-t-transparent rounded-full"></div>
               </div>
             ) : filteredProducts.length === 0 ? (
-              <p className="text-gray-400 text-sm">No products found</p>
+              <p className="text-gray-400 text-sm">No products found in {activeCategory}</p>
             ) : (
               <div className="grid grid-cols-2 gap-4">
                 {filteredProducts.map((p) => {
@@ -412,7 +439,7 @@ export default function ZeshuSuperApp() {
                         <div className="absolute top-2 left-2 bg-white px-1.5 py-0.5 rounded shadow-sm text-[8px] font-bold text-purple-600">12 MINS</div>
                         <img src={p.image_url} className="h-full w-full object-contain" alt={p.name} />
                       </div>
-                      <div className="text-[10px] text-gray-400 mb-1">{p.unit}</div>
+                      <div className="text-[10px] text-gray-400 mb-1 font-bold uppercase">{p.category || 'General'}</div>
                       <div className="text-sm font-bold text-gray-800 line-clamp-2 h-10 mb-1 leading-tight">{p.name}</div>
                       <div className="flex justify-between items-center mt-auto">
                         <span className="font-black text-base text-gray-900">₹{p.price}</span>
@@ -492,7 +519,6 @@ export default function ZeshuSuperApp() {
         </section>
       )}
 
-      {/* FOOTER & MODALS REMAIN UNCHANGED FROM PREVIOUS CODE */}
       {isCartOpen && (
         <div className="fixed inset-0 bg-black/80 z-[100] flex flex-col justify-end">
           <div className="bg-gray-50 w-full h-[90vh] rounded-t-[32px] flex flex-col animate-in slide-in-from-bottom-10">
