@@ -30,6 +30,8 @@ const SERVICES = [
 const OPERATORS_DATA: any = {
   mobile: { 'JIO': '11', 'Airtel': '2', 'Vodafone': '23', 'Idea': '6', 'BSNL': '4' },
   electricity: { 'TSSPDCL - Telangana Southern': '474', 'TSNPDCL - Telangana Northern': '475', 'Adani Electricity - MUMBAI': '50', 'Tata Power': '116', 'B.E.S.T Mumbai': '495', 'BSES Rajdhani': '449' },
+  lpg: { 'Bharat Gas': '214', 'HP Gas': '215', 'Indane Gas': '216' },
+  gas: { 'MAHANAGAR GAS': '62', 'INDRAPRASTHA GAS': '63', 'GUJARAT GAS': '64', 'Adani Gas': '154', 'Haryana City Gas': '139', 'Maharashtra Natural Gas': '489' },
 };
 
 const BANNERS = [
@@ -174,10 +176,15 @@ export default function ZeshuSuperApp() {
       }
 
       if (opData && opData.success && opData.operator) {
-        const foundOpKey = Object.keys(OPERATORS_DATA['mobile'] || {}).find(k => k.toLowerCase() === opData.operator.toLowerCase() || k.toLowerCase().includes(opData.operator.toLowerCase()));
-        const finalOperator = foundOpKey || opData.operator;
+        // 🔥 JIO FIX: Flip the include logic so "Reliance Jio" successfully matches "JIO"
+        const foundOpKey = Object.keys(OPERATORS_DATA['mobile'] || {}).find(k => 
+           k.toLowerCase() === opData.operator.toLowerCase() || 
+           opData.operator.toLowerCase().includes(k.toLowerCase())
+        );
         
+        const finalOperator = foundOpKey || opData.operator;
         setSelectedOperator(finalOperator); 
+        
         const opCode = OPERATORS_DATA['mobile'][finalOperator];
         
         if (opCode) {
@@ -209,12 +216,14 @@ export default function ZeshuSuperApp() {
     if (!rechargeNumber || !selectedOperator) return alert(`Enter ${currentServiceObj.inputLabel} and select operator`);
     setIsLoading(true);
     try {
-      const opCode = OPERATORS_DATA[activeService][selectedOperator];
+      const opCode = OPERATORS_DATA[activeService]?.[selectedOperator];
+      if(!opCode) { alert("Invalid Operator Selection"); setIsLoading(false); return; }
+      
       const res = await fetch(`/api/fetch-plans?number=${rechargeNumber}&operator=${opCode}&service=${activeService}`);
       const text = await res.text();
       let data;
       try { data = JSON.parse(text); } catch(e) { throw new Error("Invalid response format"); }
-      if (data && data.plans) { setPlans(data.plans); setSelectedPlanCategory("All"); } 
+      if (data && data.plans) { setPlans(data.plans); setSelectedPlanCategory("All"); showToast("Offers Fetched!"); } 
       else { alert(data.message || "No plans found."); }
     } catch (err) { alert("Error fetching offers"); }
     setIsLoading(false);
@@ -224,7 +233,9 @@ export default function ZeshuSuperApp() {
     if (!rechargeNumber || !selectedOperator) return alert(`Enter ${currentServiceObj.inputLabel} and select operator`);
     setIsLoading(true); setFetchedBill(null);
     try {
-      const opCode = OPERATORS_DATA[activeService][selectedOperator];
+      const opCode = OPERATORS_DATA[activeService]?.[selectedOperator];
+      if(!opCode) { alert("Invalid Operator Selection"); setIsLoading(false); return; }
+
       const res = await fetch(`/api/fetch-bill?service=${activeService}&number=${rechargeNumber}&operatorCode=${opCode}`);
       const text = await res.text();
       let data;
@@ -275,7 +286,6 @@ export default function ZeshuSuperApp() {
     }); 
   };
 
-  // --- ADVANCED CART MATH ---
   const itemTotal = cart.reduce((acc, curr) => acc + (curr.item.price * curr.qty), 0);
   const smallCartFee = (itemTotal > 0 && itemTotal < 100) ? 20 : 0;
   const deliveryCharge = (itemTotal > 0 && itemTotal < 200) ? 30 : 0; 
@@ -300,7 +310,7 @@ export default function ZeshuSuperApp() {
           showToast("Payment Successful! Order placed."); 
           setCart([]); setIsCartOpen(false); 
         },
-        theme: { color: "#4F46E5" }, 
+        theme: { color: "#4F46E5" },
       };
       const rzp = new (window as any).Razorpay(options); rzp.open();
     } catch (error) { alert("Gateway Error"); }
