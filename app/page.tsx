@@ -1,1122 +1,669 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+/* eslint-disable @next/next/no-img-element */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  StyleSheet, Text, View, ScrollView, TouchableOpacity, 
-  Image, TextInput, Modal, SafeAreaView, StatusBar, Dimensions, Alert, Platform, ActivityIndicator
-} from 'react-native';
-import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
-import * as Location from 'expo-location'; 
-import RazorpayCheckout from 'react-native-razorpay'; 
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Picker } from '@react-native-picker/picker'; 
-import { CameraView, useCameraPermissions } from 'expo-camera'; 
+  Mic, MapPin, Search, Coins, User, ChevronRight, Zap, Smartphone, 
+  Tv, HeartHandshake, Plus, Minus, ShoppingBag, X, LogOut, Ticket, QrCode,
+  Droplets, Wifi, Car, Landmark, ShieldCheck, PhoneCall, Phone, Package, Flame, BadgeCheck,
+  History, ChevronDown, CheckSquare, Square, Clock, CheckCircle, Menu, Info
+} from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
 
-// Database Connection
-import { supabase } from './supabase'; 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-const BASE_URL = 'https://www.zeshu.in';
-
-const { width, height } = Dimensions.get('window');
-const Stack = createNativeStackNavigator();
-
-// --- MODERN UTILITY THEME ---
-const PRIMARY_COLOR = '#8A2BE2'; 
-const ACCENT_COLOR = '#00FF7F';  
-const TEXT_DARK = '#111827';
-const TEXT_MUTED = '#6B7280';
-const ZESHU_LOGO_URL = 'https://ui-avatars.com/api/?name=Z&background=8A2BE2&color=fff&rounded=true&bold=true&size=128';
-
-const FALLBACK_PRODUCTS = [
-  { id: 1, name: 'Cadbury Dairy Milk Milkinis Milk Chocolate Bar', price: 36, unit: '34 g', image_url: 'https://m.media-amazon.com/images/I/61+y5S5C-kL.jpg' },
-  { id: 2, name: 'Amul Taaza Toned Fresh Milk', price: 54, unit: '1 l', image_url: 'https://m.media-amazon.com/images/I/61+y5S5C-kL.jpg' },
-  { id: 3, name: 'Aashirvaad Shudh Chakki Atta', price: 215, unit: '5 kg', image_url: 'https://m.media-amazon.com/images/I/71rI1D8O7-L.jpg' },
-  { id: 4, name: 'Fortune Sunlite Refined Oil', price: 145, unit: '1 l', image_url: 'https://m.media-amazon.com/images/I/61KxV+R0rAL.jpg' }
+const SERVICES = [
+  { id: 'mobile', label: 'Prepaid', icon: <Smartphone size={28}/>, color: 'bg-blue-50 text-blue-600', inputLabel: 'Mobile Number' },
+  { id: 'postpaid', label: 'Postpaid', icon: <PhoneCall size={28}/>, color: 'bg-indigo-50 text-indigo-600', inputLabel: 'Mobile Number' },
+  { id: 'dth', label: 'DTH', icon: <Tv size={28}/>, color: 'bg-orange-50 text-orange-600', inputLabel: 'DTH / VC Number' },
+  { id: 'upi', label: 'UPI Tools', icon: <BadgeCheck size={28}/>, color: 'bg-sky-50 text-sky-600', inputLabel: 'UPI ID or Mobile No.' },
+  { id: 'fastag', label: 'FASTag', icon: <Car size={28}/>, color: 'bg-emerald-50 text-emerald-600', inputLabel: 'Vehicle Registration No.' },
+  { id: 'electricity', label: 'Electricity', icon: <Zap size={28}/>, color: 'bg-yellow-50 text-yellow-600', inputLabel: 'Consumer Number' },
+  { id: 'gas', label: 'Piped Gas', icon: <Flame size={28}/>, color: 'bg-red-50 text-red-600', inputLabel: 'Consumer Number' },
+  { id: 'lpg', label: 'LPG Booking', icon: <Package size={28}/>, color: 'bg-rose-50 text-rose-600', inputLabel: 'Registered Mobile / LPG ID' },
+  { id: 'water', label: 'Water Bill', icon: <Droplets size={28}/>, color: 'bg-cyan-50 text-cyan-600', inputLabel: 'Account / Consumer No.' },
+  { id: 'broadband', label: 'Broadband', icon: <Wifi size={28}/>, color: 'bg-fuchsia-50 text-fuchsia-600', inputLabel: 'Subscriber / User ID' },
 ];
 
-const PROVIDERS = {
-  Mobile: ['Airtel', 'JIO', 'Vodafone', 'BSNL'],
-  Postpaid: ['Airtel Postpaid', 'BSNL Postpaid', 'JIO Postpaid', 'Vodafone Postpaid'],
-  Electricity: ['Adani Power', 'BSES', 'Tata Power', 'TNEB', 'TSNPDCL'],
+const OPERATORS_DATA: any = {
+  mobile: { 'JIO': '11', 'Airtel': '2', 'Vodafone': '23', 'Idea': '6', 'BSNL': '4' },
+  postpaid: { 'Jio Postpaid': '491', 'Airtel Postpaid': '34', 'Vodafone Postpaid': '36', 'BSNL Postpaid': '33', 'Idea Postpaid': '35' },
+  dth: { 'TATA SKY': '28', 'AIRTEL DTH': '24', 'DISH TV': '25', 'SUN DIRECT': '27', 'VIDEOCON D2H': '29' },
+  lpg: { 'Bharat Gas': '214', 'HP Gas': '215', 'Indane Gas': '216' },
+  electricity: { 'TSSPDCL - Telangana Southern': '474', 'TSNPDCL - Telangana Northern': '475', 'Adani Electricity - MUMBAI': '50', 'Tata Power - MUMBAI': '116', 'B.E.S.T Mumbai': '495', 'BSES Rajdhani': '449', 'Torrent Power': '53', 'UPPCL': '47', 'KSEBL - KERALA': '69', 'TNEB - TAMIL NADU': '115', 'WBSEDCL - WEST BENGAL': '155', 'BESCOM - BENGALURU': '149', 'APSPDCL - ANDHRA PRADESH': '150' },
+  fastag: { 'Airtel Payments Bank': '1', 'Axis Bank': '3', 'HDFC FASTag': '10', 'ICICI Bank': '12', 'SBI Fastag': '30', 'Paytm FASTag': '22', 'IDFC FIRST Bank': '14', 'Kotak Mahindra': '21' },
+  gas: { 'MAHANAGAR GAS': '62', 'INDRAPRASTHA GAS': '63', 'GUJARAT GAS': '64', 'Adani Gas': '154', 'Haryana City Gas': '139', 'Maharashtra Natural Gas': '489' },
+  water: { 'Hyderabad Metro Water (HMWSSB)': '172', 'Delhi Jal Board': '219', 'BWSSB Bangalore': '166', 'Kerala Water Authority': '175', 'Pune Municipal Corp': '182', 'MCGM Water Mumbai': '237', 'Gurugram Water': '223' },
+  broadband: { 'Airtel Broadband': '324', 'ACT Fibernet': '314', 'Hathway': '362', 'Tikona': '68', 'Asianet': '329', 'Spectra': '399' },
+  emi: { 'Bajaj Finance Limited': '457', 'TVS Credit Services': '458', 'Cholamandalam': '466', 'Home Credit': '468', 'L&T Finance': '470', 'Hero FinCorp': '467' },
+  insurance: { 'Life Insurance Corporation (LIC)': '187', 'SBI Life Insurance': '277', 'ICICI Prudential Life': '268', 'HDFC Life': '201', 'Bajaj Allianz Life': '193', 'TATA AIA Life': '281' },
 };
 
-// Operator OP Codes for Vercel Backend Mapping
-const OPERATORS_DATA = {
-  Mobile: { 'JIO': '11', 'Airtel': '2', 'Vodafone': '23', 'BSNL': '4' },
-  Electricity: { 'TSNPDCL': '475', 'Adani Power': '50', 'BSES': '449', 'Tata Power': '116', 'TNEB': '115' },
-};
+const COMMISSION_RATES: any = { 'Airtel': 1.00, 'JIO': 0.65, 'Vodafone': 3.70, 'BSNL': 3.00 };
 
-const COMMISSION_RATES = {
-  'Airtel': 1.00, 'JIO': 0.65, 'Vodafone': 3.70, 'BSNL': 3.00,
-  'Airtel Postpaid': 1.00, 'JIO Postpaid': 0.65, 'Vodafone Postpaid': 3.70, 'BSNL Postpaid': 3.00,
-  'Adani Power': 0.50, 'BSES': 0.50, 'Tata Power': 0.50, 'TNEB': 0.50, 'TSNPDCL': 0.50
-};
+// Mock Banners for Blinkit-style feel
+const BANNERS = [
+  "https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=1440/layout-engine/2022-05/Group-33704.jpg",
+  "https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=1440/layout-engine/2022-05/Group-33703.jpg",
+];
 
-// ==========================================
-// SCREEN 1: HOME SCREEN
-// ==========================================
-function HomeScreen({ navigation }) {
-  const scrollViewRef = useRef(null); 
-
-  const [products, setProducts] = useState([]);
+export default function ZeshuSuperApp() {
+  const [activeTab, setActiveTab] = useState('home'); 
+  const [activeService, setActiveService] = useState('mobile');
+  const [products, setProducts] = useState<any[]>([]);
+  const [myOrders, setMyOrders] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState(''); 
-  const [cart, setCart] = useState([]);
-  
-  const [isLoggedIn, setIsLoggedIn] = useState(false); 
-  const [userId, setUserId] = useState(null);
+  const [cart, setCart] = useState<{item: any, qty: number}[]>([]);
+  const [user, setUser] = useState<any>(null);
   const [coinsBalance, setCoinsBalance] = useState(0);
-  
-  const [isAccountOpen, setIsAccountOpen] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [isCoinHistoryOpen, setIsCoinHistoryOpen] = useState(false); 
-  
-  const [loginStep, setLoginStep] = useState('phone'); 
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
-  const [isAuthLoading, setIsAuthLoading] = useState(false);
-
+  const [otpSent, setOtpSent] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [activeCategory, setActiveCategory] = useState('All'); 
+  
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [isCoinHistoryOpen, setIsCoinHistoryOpen] = useState(false);
   const [useZeshuCoins, setUseZeshuCoins] = useState(false);
   const [tipAmount, setTipAmount] = useState(20); 
   const [isDonating, setIsDonating] = useState(true); 
   const [currentAddress, setCurrentAddress] = useState('HotelRoom 205, 2nd floor Shree Amardeep...');
   const [isDetectingLoc, setIsDetectingLoc] = useState(false);
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
-
+  
+  const [rechargeNumber, setRechargeNumber] = useState('');
+  const [rechargeAmount, setRechargeAmount] = useState('');
+  const [selectedOperator, setSelectedOperator] = useState('');
+  const [dob, setDob] = useState('');
+  const [plans, setPlans] = useState<any[]>([]);
+  const [fetchedBill, setFetchedBill] = useState<any>(null);
+  const [upiResult, setUpiResult] = useState<any>(null);
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [selectedPlanCategory, setSelectedPlanCategory] = useState("All");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [scannedPayee, setScannedPayee] = useState(null);
-  const [scanAmount, setScanAmount] = useState('');
-  const [permission, requestPermission] = useCameraPermissions();
 
-  const [myOrders, setMyOrders] = useState([]);
+  const currentServiceObj = SERVICES.find(s => s.id === activeService) || SERVICES[0];
+  const isPlanBased = activeService === 'mobile' || activeService === 'dth'; 
 
   const ZESHU_COINS_VAL = 50;
   const HANDLING_FEE = 5;
 
+  const productCategories = useMemo(() => {
+    const cats = new Set(products.map(p => p.category || 'General'));
+    return ['All', ...Array.from(cats)];
+  }, [products]);
+
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = activeCategory === 'All' || (p.category || 'General') === activeCategory;
+    return matchesSearch && matchesCategory;
+  });
+
   useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    document.body.appendChild(script);
+    
     const fetchProducts = async () => {
-      const { data } = await supabase.from('products').select('*');
-      if (data && data.length > 0) setProducts(data);
-      else setProducts(FALLBACK_PRODUCTS);
+      const cachedProducts = localStorage.getItem('zeshu_products');
+      if (cachedProducts) setProducts(JSON.parse(cachedProducts));
+
+      const { data, error } = await supabase.from('products').select('*').eq('in_stock', true);
+      if (data) {
+        setProducts(data);
+        localStorage.setItem('zeshu_products', JSON.stringify(data));
+      }
     };
+
     fetchProducts();
     checkUser();
   }, []);
 
-  const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      setUserId(session.user.id);
-      setIsLoggedIn(true);
-      fetchCoinBalance(session.user.id);
-    }
-  };
-
-  const fetchCoinBalance = async (uid) => {
-    const { data } = await supabase.from('wallets').select('coins').eq('user_id', uid).single();
-    if (data) setCoinsBalance(data.coins);
-  };
-
-  // Real-time Tracker
   useEffect(() => {
-    if (!userId) { setMyOrders([]); return; }
-    
-    const fetchOrders = async () => {
-      const { data } = await supabase.from('orders').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1);
-      if (data) setMyOrders(data);
-    };
-    fetchOrders();
-
-    const channel = supabase.channel('customer-mobile-tracker')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${userId}` }, 
-      (payload) => setMyOrders([payload.new]))
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [userId]);
-
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handleAutoDetectLocation = async () => {
-    setIsDetectingLoc(true);
-    let { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'Allow location access for Real-time Geocoding.');
-      setIsDetectingLoc(false);
-      return;
-    }
-    try {
-      let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
-      let addressArray = await Location.reverseGeocodeAsync(location.coords);
-      if (addressArray && addressArray.length > 0) {
-        const loc = addressArray[0];
-        setCurrentAddress(`${loc.name || loc.street}, ${loc.city}, ${loc.region}`);
-      }
-    } catch (error) {
-      Alert.alert('GIS Error', 'Could not sync with Spatial Database.');
-    }
-    setIsDetectingLoc(false);
-  };
-
-  const handleProfileClick = () => {
-    if (isLoggedIn) setIsAccountOpen(true);
-    else { setShowLoginModal(true); setLoginStep('phone'); setPhoneNumber(''); setOtp(''); }
-  };
-
-  const handleSendOTP = async () => {
-    if (phoneNumber.length < 10) return Alert.alert("Invalid", "Enter 10-digit number.");
-    setIsAuthLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({ phone: `+91${phoneNumber}` });
-    setIsAuthLoading(false);
-    
-    if (!error) setLoginStep('otp');
-    else Alert.alert("Error", error.message);
-  };
-
-  const handleVerifyOTP = async () => {
-    if (otp.length < 4) return;
-    setIsAuthLoading(true);
-    const { data, error } = await supabase.auth.verifyOtp({ phone: `+91${phoneNumber}`, token: otp, type: 'sms' });
-    setIsAuthLoading(false);
-
-    if (data.session) {
-      setUserId(data.session.user.id);
-      setIsLoggedIn(true);
-      setShowLoginModal(false);
-      fetchCoinBalance(data.session.user.id);
-    } else {
-      Alert.alert("Error", error?.message || "Invalid OTP");
-    }
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setIsLoggedIn(false); setUserId(null); setCoinsBalance(0); setIsAccountOpen(false);
-    Alert.alert("Logged Out", "You have been successfully logged out.");
-  };
-
-  const addToCart = (product) => {
-    const existing = cart.find(c => c.item.id === product.id);
-    if (existing) setCart(cart.map(c => c.item.id === product.id ? { ...c, qty: c.qty + 1 } : c));
-    else setCart([...cart, { item: product, qty: 1 }]);
-  };
-
-  const removeFromCart = (productId) => {
-    const existing = cart.find(c => c.item.id === productId);
-    if (existing && existing.qty > 1) {
-      setCart(cart.map(c => c.item.id === productId ? { ...c, qty: c.qty - 1 } : c));
-    } else {
-      setCart(cart.filter(c => c.item.id !== productId));
-      if (cart.length === 1) setIsCartOpen(false);
-    }
-  };
-
-  // Fixed Scanner Parse logic to prevent crash loops
-  const parseUpiData = (qrString) => {
-    if (!qrString.startsWith('upi://pay')) return null;
-    try {
-      const paMatch = qrString.match(/pa=([^&]+)/);
-      const pnMatch = qrString.match(/pn=([^&]+)/);
-      const amMatch = qrString.match(/am=([^&]+)/);
+    if (user) {
+      const fetchMyOrders = async () => {
+        const { data } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (data) setMyOrders(data);
+      };
       
-      if(paMatch) {
-        return { 
-          payeeAddress: paMatch[1], 
-          payeeName: pnMatch ? decodeURIComponent(pnMatch[1]) : 'Merchant', 
-          amount: amMatch ? amMatch[1] : '' 
-        };
-      }
-      return null;
+      fetchMyOrders();
+
+      const orderChannel = supabase
+        .channel('customer-orders')
+        .on('postgres_changes', 
+          { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${user.id}` }, 
+          (payload) => { setMyOrders([payload.new]); }
+        ).subscribe();
+
+      return () => { supabase.removeChannel(orderChannel); };
+    }
+  }, [user]);
+
+  const handleAutoDetectLocation = () => {
+    setIsDetectingLoc(true);
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setTimeout(() => { setCurrentAddress("Current GPS Location Synced"); setIsDetectingLoc(false); }, 1000);
+        },
+        () => { alert("Location access denied."); setIsDetectingLoc(false); }
+      );
+    } else { setIsDetectingLoc(false); }
+  };
+
+  const parseUpiData = (qrString: string) => {
+    if (!qrString.startsWith('upi://pay')) { alert("Invalid QR Code."); return null; }
+    try {
+      const url = new URL(qrString);
+      const params = new URLSearchParams(url.search);
+      return { payeeAddress: params.get('pa'), payeeName: params.get('pn'), amount: params.get('am') || '' };
     } catch (error) { return null; }
   };
 
-  const itemTotal = cart.reduce((acc, curr) => acc + (curr.item.price * curr.qty), 0);
-  const smallCartCharge = (itemTotal > 0 && itemTotal < 100) ? 20 : 0;
-  const deliveryCharge = (itemTotal > 0 && itemTotal < 200) ? 30 : 0; 
-  const donationAmt = isDonating ? 1 : 0;
-  const zeshuDiscount = useZeshuCoins ? Math.min(ZESHU_COINS_VAL, itemTotal) : 0; 
-  const finalTotal = itemTotal > 0 ? (itemTotal + smallCartCharge + deliveryCharge + HANDLING_FEE + donationAmt + tipAmount - zeshuDiscount) : 0;
-
-  // 🚀 HARDENED RAZORPAY CHECKOUT
-  const handleCheckout = async () => {
-    if (finalTotal === 0) return;
-    if (!isLoggedIn || !userId) { setIsCartOpen(false); handleProfileClick(); return; }
-
-    setIsCheckingOut(true);
-    
-    try {
-      const orderResponse = await fetch(`${BASE_URL}/api/create-razorpay-order`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: finalTotal })
-      });
-      
-      const textRes = await orderResponse.text();
-      let orderData;
-      try { orderData = JSON.parse(textRes); } catch(e) { Alert.alert('Server Error', `Invalid response from backend.`); setIsCheckingOut(false); return; }
-
-      const orderId = orderData.id || (orderData.order && orderData.order.id);
-      if (!orderId) { Alert.alert('Checkout Error', `Could not fetch Order ID.`); setIsCheckingOut(false); return; }
-
-      var options = {
-        description: 'Zeshu Super App Groceries',
-        image: ZESHU_LOGO_URL,
-        currency: orderData.currency || (orderData.order && orderData.order.currency) || 'INR',
-        key: 'rzp_test_SZhZ5NLWfFtlJZ', // <--- Make sure this matches your Vercel Env
-        amount: orderData.amount || (orderData.order && orderData.order.amount) || (finalTotal * 100),
-        order_id: orderId, 
-        name: 'ZESHU SUPER APP',
-        prefill: { email: 'customer@zeshu.in', contact: '9999999999', name: 'Zeshu User' },
-        theme: { color: PRIMARY_COLOR }
-      };
-
-      RazorpayCheckout.open(options).then(async (data) => {
-        try {
-          await fetch(`${BASE_URL}/api/confirm-grocery-order`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: userId,
-              cartItems: cart,
-              totalAmount: finalTotal,
-              paymentId: data.razorpay_payment_id,
-              address: currentAddress
-            })
-          });
-        } catch (e) { console.log("Backend sync error", e); }
-
-        Alert.alert('Payment Successful!', `Your groceries are being packed!`);
-        setCart([]); 
-        setIsCartOpen(false);
-      }).catch((error) => {
-        Alert.alert('Payment Failed', error.description || error.error?.description || 'Checkout was cancelled.');
-      });
-    } catch (err) {
-      Alert.alert('Network Error', 'Could not reach Zeshu servers.');
-    } finally {
-      setIsCheckingOut(false);
-    }
-  };
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" translucent={true} />
-      
-      {/* HEADER */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity style={styles.logoContainer} onPress={() => scrollViewRef.current?.scrollTo({y: 0, animated: true})}>
-            <Image source={{ uri: ZESHU_LOGO_URL }} style={styles.logoImage} />
-            <View>
-              <Text style={[styles.logoText, {color: PRIMARY_COLOR}]}>ZESHU</Text>
-              <Text style={styles.subLogoText}>SUPER APP</Text>
-            </View>
-          </TouchableOpacity>
-          <View style={styles.headerActions}>
-            <TouchableOpacity style={[styles.userIcon, {backgroundColor: PRIMARY_COLOR, padding: 6}]} onPress={async () => {
-              if (!permission?.granted) await requestPermission();
-              setIsScannerOpen(true);
-            }}>
-              <Ionicons name="qr-code" size={18} color="white" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.coinsPill} onPress={() => setIsCoinHistoryOpen(true)}>
-              <FontAwesome5 name="coins" size={12} color="#F59E0B" />
-              <Text style={styles.coinsText}>{coinsBalance}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleProfileClick} style={styles.userIcon}>
-              <Ionicons name="person" size={20} color={isLoggedIn ? PRIMARY_COLOR : "#9CA3AF"} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.locationContainer}>
-          <TouchableOpacity style={styles.locationBox}>
-            <Text style={styles.deliveryText}>Delivery in 20 minutes</Text>
-            <View style={{flexDirection: 'row', alignItems: 'center'}}>
-              <Text style={styles.addressText} numberOfLines={1}>{currentAddress}</Text>
-              <Ionicons name="chevron-down" size={14} color={TEXT_MUTED} style={{marginLeft: 4}}/>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.autoDetectBtn} onPress={handleAutoDetectLocation}>
-            {isDetectingLoc ? <ActivityIndicator size="small" color={PRIMARY_COLOR} /> : <Text style={[styles.autoDetectText, {color: PRIMARY_COLOR}]}>Auto Detect</Text>}
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color={TEXT_MUTED} />
-          <TextInput 
-            style={styles.searchInput} 
-            placeholder="Search 'milk' or 'recharge'..." 
-            placeholderTextColor="#9CA3AF" 
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          <TouchableOpacity><Ionicons name="mic" size={22} color={PRIMARY_COLOR} /></TouchableOpacity>
-        </View>
-      </View>
-
-      <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 150 }}>
-        
-        {/* LIVE ORDER TRACKER */}
-        {myOrders.length > 0 && myOrders[0].status !== 'DELIVERED' && (
-          <View style={{ backgroundColor: '#fff', padding: 20, margin: 16, borderRadius: 24, borderWidth: 1, borderColor: '#e9d5ff', elevation: 4 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
-              <Text style={{ fontSize: 14, fontWeight: '900', color: PRIMARY_COLOR, textTransform: 'uppercase' }}>Live Tracking</Text>
-              <View style={{ backgroundColor: '#f3e8ff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}><Text style={{ fontSize: 10, fontWeight: '900', color: PRIMARY_COLOR }}>#{myOrders[0].id.split('-')[0].toUpperCase()}</Text></View>
-            </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <View style={{ width: '100%', height: 4, backgroundColor: '#f1f5f9', position: 'absolute', top: 20, zIndex: 0 }} />
-              <View style={{ alignItems: 'center', zIndex: 1 }}>
-                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: PRIMARY_COLOR, justifyContent: 'center', alignItems: 'center' }}><Ionicons name="time" size={16} color="#fff"/></View>
-                <Text style={{ fontSize: 10, fontWeight: '800', marginTop: 8, color: '#64748b' }}>PACKING</Text>
-              </View>
-              <View style={{ alignItems: 'center', zIndex: 1 }}>
-                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: myOrders[0].status === 'OUT_FOR_DELIVERY' ? PRIMARY_COLOR : '#fff', borderWidth: 2, borderColor: myOrders[0].status === 'OUT_FOR_DELIVERY' ? PRIMARY_COLOR : '#e2e8f0', justifyContent: 'center', alignItems: 'center' }}><Ionicons name="car" size={16} color={myOrders[0].status === 'OUT_FOR_DELIVERY' ? '#fff' : '#94a3b8'}/></View>
-                <Text style={{ fontSize: 10, fontWeight: '800', marginTop: 8, color: '#64748b' }}>ON THE WAY</Text>
-              </View>
-              <View style={{ alignItems: 'center', zIndex: 1 }}>
-                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', borderWidth: 2, borderColor: '#e2e8f0', justifyContent: 'center', alignItems: 'center' }}><Ionicons name="checkmark-circle" size={16} color="#94a3b8"/></View>
-                <Text style={{ fontSize: 10, fontWeight: '800', marginTop: 8, color: '#64748b' }}>ARRIVED</Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {searchQuery === '' && (
-          <View style={styles.phonePeCard}>
-            <Text style={styles.sectionTitle}>BILLS & RECHARGES</Text>
-            <View style={styles.rechargeGrid}>
-              {[
-                { n: 'Mobile', i: 'cellphone' }, { n: 'Postpaid', i: 'phone-check' }, 
-                { n: 'DTH', i: 'television-classic' }, { n: 'UPI Tools', i: 'bank-transfer' }, 
-                { n: 'FASTag', i: 'car-connected' }, { n: 'Electricity', i: 'flash' }, 
-                { n: 'Piped Gas', i: 'fire' }, { n: 'LPG Booking', i: 'gas-cylinder' }, 
-                { n: 'Water', i: 'water' }, { n: 'Broadband', i: 'wifi' }, 
-                { n: 'Loan EMI', i: 'bank' }, { n: 'Insurance', i: 'shield-check' }
-              ].map((item, idx) => (
-                <TouchableOpacity key={idx} style={styles.gridItem} onPress={() => navigation.navigate('Recharge', { service: item.n })}>
-                  <View style={styles.gridIcon}><MaterialCommunityIcons name={item.i} size={28} color={PRIMARY_COLOR} /></View>
-                  <Text style={styles.gridLabel}>{item.n}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Grocery & Kitchen</Text>
-          
-          {products.length === 0 && searchQuery === '' ? (
-            <ActivityIndicator size="large" color={PRIMARY_COLOR} style={{ marginTop: 30 }} />
-          ) : filteredProducts.length === 0 ? (
-            <Text style={{color: TEXT_MUTED, marginTop: 10}}>No products found matching "{searchQuery}"</Text>
-          ) : (
-            <View style={styles.productGrid}>
-              {filteredProducts.map((p) => {
-                const inCart = cart.find(c => c.item.id === p.id);
-                return (
-                  <View key={p.id} style={styles.productCard}>
-                    <View style={styles.imageContainer}>
-                      <View style={styles.etaBadge}><Text style={styles.etaText}>12 MINS</Text></View>
-                      <Image source={{ uri: p.image_url }} style={styles.productImage} resizeMode="contain" />
-                    </View>
-                    <Text style={styles.unitText}>{p.weight || p.unit || 'N/A'}</Text>
-                    <Text style={styles.productName} numberOfLines={2}>{p.name}</Text>
-                    <View style={styles.priceRow}>
-                      <Text style={styles.priceText}>₹{p.price}</Text>
-                      {inCart ? (
-                        <View style={[styles.qtyBox, {backgroundColor: ACCENT_COLOR}]}>
-                          <TouchableOpacity onPress={() => removeFromCart(p.id)} style={styles.qtyBtn}><Ionicons name="remove" size={16} color={TEXT_DARK} /></TouchableOpacity>
-                          <Text style={[styles.qtyText, {color: TEXT_DARK}]}>{inCart.qty}</Text>
-                          <TouchableOpacity onPress={() => addToCart(p)} style={styles.qtyBtn}><Ionicons name="add" size={16} color={TEXT_DARK} /></TouchableOpacity>
-                        </View>
-                      ) : (
-                        <TouchableOpacity onPress={() => addToCart(p)} style={[styles.addButton, {borderColor: ACCENT_COLOR, backgroundColor: `${ACCENT_COLOR}15`}]}>
-                          <Text style={[styles.addButtonText, {color: '#047857'}]}>ADD</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          )}
-        </View>
-      </ScrollView>
-
-      {/* STICKY FOOTER CART */}
-      {cart.length > 0 && (
-        <View style={styles.stickyFooter}>
-          <TouchableOpacity style={[styles.cartBar, {backgroundColor: PRIMARY_COLOR}]} onPress={() => setIsCartOpen(true)}>
-            <View style={styles.cartInfo}>
-              <Ionicons name="cart" size={24} color="white" />
-              <View style={{marginLeft: 10}}>
-                <Text style={styles.cartItemCount}>{cart.length} ITEM{cart.length > 1 ? 'S' : ''}</Text>
-                <Text style={styles.cartTotalText}>₹{finalTotal}</Text>
-              </View>
-            </View>
-            <View style={styles.viewCartBtn}>
-              <Text style={styles.viewCartText}>View cart</Text>
-              <Ionicons name="chevron-forward" size={18} color="white" />
-            </View>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* SCANNER MODAL */}
-      <Modal visible={isScannerOpen} animationType="slide" transparent={false}>
-        <SafeAreaView style={{flex: 1, backgroundColor: 'black'}}>
-          <View style={{flexDirection: 'row', justifyContent: 'space-between', padding: 16}}>
-            <Text style={{color: 'white', fontWeight: '900', fontSize: 18}}>SCAN QR</Text>
-            <TouchableOpacity onPress={() => setIsScannerOpen(false)}><Ionicons name="close" size={28} color="white"/></TouchableOpacity>
-          </View>
-          <View style={{flex: 1, overflow: 'hidden', borderRadius: 20, margin: 16}}>
-             <CameraView 
-               style={{flex: 1}} 
-               facing="back"
-               barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-               onBarcodeScanned={({ data }) => {
-                 const upiData = parseUpiData(data);
-                 if (upiData && upiData.payeeAddress) {
-                   setScannedPayee(upiData);
-                   setScanAmount(upiData.amount ? String(upiData.amount) : '');
-                   setIsScannerOpen(false);
-                 } else {
-                   setIsScannerOpen(false);
-                   Alert.alert("Invalid QR", "This does not appear to be a valid UPI QR code.");
-                 }
-               }}
-             />
-             <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-                <View style={{flex: 1, backgroundColor: 'rgba(0,0,0,0.5)'}} />
-                <View style={{flexDirection: 'row', height: 250}}>
-                  <View style={{flex: 1, backgroundColor: 'rgba(0,0,0,0.5)'}} />
-                  <View style={{width: 250, borderColor: PRIMARY_COLOR, borderWidth: 2, borderRadius: 16}} />
-                  <View style={{flex: 1, backgroundColor: 'rgba(0,0,0,0.5)'}} />
-                </View>
-                <View style={{flex: 1, backgroundColor: 'rgba(0,0,0,0.5)'}} />
-             </View>
-          </View>
-        </SafeAreaView>
-      </Modal>
-
-      {/* SCANNED PAYEE MODAL */}
-      <Modal visible={!!scannedPayee} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, {height: '50%', padding: 24}]}>
-            <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20}}>
-              <View>
-                <Text style={{fontSize: 10, color: TEXT_MUTED, fontWeight: '900', letterSpacing: 1}}>PAYING</Text>
-                <Text style={{fontSize: 24, fontWeight: '900', color: TEXT_DARK}}>{scannedPayee?.payeeName || 'Merchant'}</Text>
-                <Text style={{fontSize: 12, color: PRIMARY_COLOR, fontWeight: 'bold'}}>{scannedPayee?.payeeAddress}</Text>
-              </View>
-              <TouchableOpacity onPress={() => setScannedPayee(null)}><Ionicons name="close" size={24}/></TouchableOpacity>
-            </View>
-            <View style={{flexDirection: 'row', alignItems: 'center', borderBottomWidth: 2, borderBottomColor: '#eee', paddingBottom: 10, marginBottom: 20}}>
-              <Text style={{fontSize: 40, fontWeight: '900', color: TEXT_MUTED}}>₹</Text>
-              <TextInput 
-                style={{fontSize: 48, fontWeight: '900', color: TEXT_DARK, flex: 1, marginLeft: 10}}
-                keyboardType="numeric" value={scanAmount} onChangeText={setScanAmount} autoFocus
-              />
-            </View>
-            <TouchableOpacity 
-              style={[styles.payButton, {backgroundColor: TEXT_DARK, justifyContent: 'center', opacity: !scanAmount ? 0.5 : 1}]} 
-              disabled={!scanAmount}
-              onPress={() => { Alert.alert("Triggering Razorpay", `Amount: ₹${scanAmount}`); setScannedPayee(null); }}
-            >
-              <Text style={[styles.payButtonText, {color: 'white'}]}>Pay Securely</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* CART MODAL */}
-      <Modal visible={isCartOpen} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                <TouchableOpacity onPress={() => setIsCartOpen(false)} style={{marginRight: 10}}><Ionicons name="arrow-back" size={24} color={TEXT_DARK} /></TouchableOpacity>
-                <Text style={styles.modalTitle}>My Cart</Text>
-              </View>
-              <TouchableOpacity style={{flexDirection: 'row', alignItems: 'center'}}>
-                <Ionicons name="share-social-outline" size={20} color={PRIMARY_COLOR} />
-                <Text style={{fontWeight: 'bold', marginLeft: 4, color: PRIMARY_COLOR}}>Share</Text>
-              </TouchableOpacity>
-            </View>
-            
-            {itemTotal > 0 && itemTotal < 100 && (
-              <View style={[styles.upsellBanner, {backgroundColor: '#FEF2F2', borderBottomColor: '#FEE2E2'}]}>
-                <Text style={[styles.upsellText, {color: '#EF4444', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5}]}>Add ₹{100 - itemTotal} more to avoid the ₹20 Small Cart Fee!</Text>
-              </View>
-            )}
-            {itemTotal >= 100 && itemTotal < 200 && (
-              <View style={[styles.upsellBanner, {backgroundColor: `${PRIMARY_COLOR}15`, borderBottomColor: `${PRIMARY_COLOR}40`}]}>
-                <Text style={[styles.upsellText, {color: PRIMARY_COLOR}]}>Add ₹{200 - itemTotal} more to skip the ₹30 Delivery Charge!</Text>
-              </View>
-            )}
-
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              <View style={styles.deliveryETAHeader}>
-                <Ionicons name="time-outline" size={24} color={PRIMARY_COLOR} />
-                <View style={{marginLeft: 10}}><Text style={{fontSize: 16, fontWeight: 'bold', color: TEXT_DARK}}>Delivery in 20 minutes</Text></View>
-              </View>
-
-              <Text style={styles.shipmentText}>Shipment of {cart.length} item</Text>
-              <View style={styles.whiteBox}>
-                {cart.map((c, i) => (
-                  <View key={i} style={styles.cartRow}>
-                    <View style={{flex: 1}}>
-                      <Text style={styles.cartItemName} numberOfLines={2}>{c.item.name}</Text>
-                      <Text style={styles.unitText}>{c.item.weight || c.item.unit}</Text>
-                      <Text style={styles.cartRowPrice}>₹{c.item.price * c.qty}</Text>
-                    </View>
-                    <View style={[styles.qtyBoxSmall, {backgroundColor: ACCENT_COLOR}]}>
-                      <TouchableOpacity onPress={() => removeFromCart(c.item.id)} style={styles.qtyBtnSmall}><Ionicons name="remove" size={14} color={TEXT_DARK} /></TouchableOpacity>
-                      <Text style={[styles.qtyTextSmall, {color: TEXT_DARK}]}>{c.qty}</Text>
-                      <TouchableOpacity onPress={() => addToCart(c.item)} style={styles.qtyBtnSmall}><Ionicons name="add" size={14} color={TEXT_DARK} /></TouchableOpacity>
-                    </View>
-                  </View>
-                ))}
-              </View>
-
-              <View style={[styles.coinsToggle, useZeshuCoins && {backgroundColor: `${PRIMARY_COLOR}10`, borderColor: PRIMARY_COLOR}]}>
-                <Image source={{ uri: ZESHU_LOGO_URL }} style={{width: 32, height: 32, borderRadius: 8}} />
-                <View style={{ flex: 1, marginLeft: 15 }}>
-                  <Text style={[styles.toggleTitle, { color: TEXT_DARK }]}>Zeshu Coins Balance: {coinsBalance}</Text>
-                  <Text style={[styles.toggleSub, { color: TEXT_MUTED }]}>You can save ₹{Math.min(ZESHU_COINS_VAL, itemTotal)}</Text>
-                </View>
-                <TouchableOpacity onPress={() => setUseZeshuCoins(!useZeshuCoins)} style={{backgroundColor: useZeshuCoins ? '#FEE2E2' : `${PRIMARY_COLOR}15`, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8}}>
-                  <Text style={{fontWeight: 'bold', color: useZeshuCoins ? '#DC2626' : PRIMARY_COLOR}}>{useZeshuCoins ? 'REMOVE' : 'APPLY'}</Text>
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.shipmentText}>Bill details</Text>
-              <View style={styles.whiteBox}>
-                <View style={styles.billRow}><Text style={styles.billLabel}>Items total</Text><Text style={styles.billVal}>₹{itemTotal}</Text></View>
-                {useZeshuCoins && <View style={styles.billRow}><Text style={[styles.billLabel, {color: PRIMARY_COLOR}]}>Zeshu Coins</Text><Text style={[styles.billVal, {color: PRIMARY_COLOR}]}>-₹{zeshuDiscount}</Text></View>}
-                <View style={styles.billRow}><Text style={styles.billLabel}>Delivery charge</Text><Text style={[styles.billVal, deliveryCharge===0 && {color: PRIMARY_COLOR}]}>{deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}</Text></View>
-                <View style={styles.billRow}><Text style={styles.billLabel}>Handling charge</Text><Text style={styles.billVal}>₹{HANDLING_FEE}</Text></View>
-                {smallCartCharge > 0 && <View style={styles.billRow}><Text style={[styles.billLabel, {color: '#EF4444'}]}>Small cart charge</Text><Text style={[styles.billVal, {color: '#EF4444'}]}>₹{smallCartCharge}</Text></View>}
-                
-                <View style={[styles.billRow, { borderTopWidth: 1, borderColor: '#E5E7EB', marginTop: 10, paddingTop: 15 }]}><Text style={styles.grandLabel}>Grand total</Text><Text style={styles.grandVal}>₹{finalTotal}</Text></View>
-              </View>
-
-              <View style={styles.donationBox}>
-                <View style={{flex: 1}}>
-                  <Text style={styles.donationTitle}>Feeding India donation</Text>
-                  <Text style={styles.donationSub}>Working towards a malnutrition free India. <Text style={{color: PRIMARY_COLOR}}>Feeding India...read more</Text></Text>
-                </View>
-                <TouchableOpacity onPress={() => setIsDonating(!isDonating)} style={{alignItems: 'center'}}>
-                  <Ionicons name={isDonating ? "checkbox" : "square-outline"} size={24} color={isDonating ? PRIMARY_COLOR : "#D1D5DB"} />
-                  <Text style={{fontWeight: 'bold', marginTop: 4}}>₹1</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.tipBox}>
-                <Text style={styles.tipTitle}>Tip your delivery partner</Text>
-                <Text style={styles.tipSub}>Your kindness means a lot! 100% of your tip will go directly to your delivery partner.</Text>
-                <View style={styles.tipButtons}>
-                  {[20, 30, 50].map((amt) => (
-                    <TouchableOpacity key={amt} onPress={() => setTipAmount(tipAmount === amt ? 0 : amt)} style={[styles.tipBtn, tipAmount === amt && {borderColor: PRIMARY_COLOR, backgroundColor: `${PRIMARY_COLOR}15`}]}>
-                      <Text style={[styles.tipBtnText, tipAmount === amt && {color: PRIMARY_COLOR}]}>₹{amt}</Text>
-                    </TouchableOpacity>
-                  ))}
-                  <TouchableOpacity style={styles.tipBtn}><Text style={styles.tipBtnText}>Custom</Text></TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={styles.policyBox}>
-                <Text style={styles.policyTitle}>Cancellation Policy</Text>
-                <Text style={styles.policyText}>Orders cannot be cancelled once packed for delivery. In case of unexpected delays, a refund will be provided, if applicable.</Text>
-              </View>
-
-              <View style={styles.addressFooter}>
-                <View style={styles.addressIconBg}><Text style={{color: 'white', fontWeight: 'bold'}}>E</Text></View>
-                <View style={{flex: 1, paddingHorizontal: 10}}>
-                  <Text style={{fontSize: 12, color: TEXT_MUTED}}>Delivering to the address</Text>
-                  <Text style={styles.deliveringTo} numberOfLines={2}>{currentAddress}</Text>
-                </View>
-                <Text style={{color: PRIMARY_COLOR, fontWeight: 'bold', fontSize: 13}}>Change</Text>
-              </View>
-              <View style={{height: 80}} />
-            </ScrollView>
-
-            <View style={styles.checkoutFooter}>
-               <View>
-                 <Text style={styles.checkoutTotal}>₹{finalTotal}</Text>
-                 <Text style={{color: PRIMARY_COLOR, fontSize: 10, fontWeight: '900', letterSpacing: 1}}>TOTAL</Text>
-               </View>
-               <TouchableOpacity style={[styles.payButton, {backgroundColor: ACCENT_COLOR, opacity: isCheckingOut ? 0.7 : 1}]} onPress={handleCheckout} disabled={isCheckingOut}>
-                 {isCheckingOut ? <ActivityIndicator color={TEXT_DARK} /> : (
-                   <>
-                    <Text style={[styles.payButtonText, {color: TEXT_DARK}]}>Proceed To Pay</Text>
-                    <Ionicons name="caret-forward" size={16} color={TEXT_DARK} style={{marginLeft: 5}} />
-                   </>
-                 )}
-               </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* AUTH MODAL */}
-      <Modal visible={showLoginModal} animationType="fade" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, {height: '50%'}]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{loginStep === 'phone' ? 'Login or Sign Up' : 'Verify OTP'}</Text>
-              <TouchableOpacity onPress={() => setShowLoginModal(false)}><Ionicons name="close" size={24} color="#333" /></TouchableOpacity>
-            </View>
-            <View style={{padding: 20}}>
-              {loginStep === 'phone' ? (
-                <>
-                  <Text style={styles.formLabel}>Mobile Number</Text>
-                  <TextInput style={styles.input} placeholder="10-digit number" keyboardType="numeric" maxLength={10} value={phoneNumber} onChangeText={setPhoneNumber} />
-                  <TouchableOpacity style={[styles.payButton, {backgroundColor: PRIMARY_COLOR, marginTop: 20, justifyContent: 'center'}]} onPress={handleSendOTP} disabled={isAuthLoading}>
-                    {isAuthLoading ? <ActivityIndicator color="white" /> : <Text style={[styles.payButtonText, {color: 'white'}]}>Continue</Text>}
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.formLabel}>Enter OTP</Text>
-                  <TextInput style={[styles.input, {letterSpacing: 5, textAlign: 'center', fontSize: 24}]} placeholder="----" keyboardType="numeric" maxLength={6} value={otp} onChangeText={setOtp} secureTextEntry />
-                  <TouchableOpacity style={[styles.payButton, {backgroundColor: ACCENT_COLOR, marginTop: 20, justifyContent: 'center'}]} onPress={handleVerifyOTP} disabled={isAuthLoading}>
-                    {isAuthLoading ? <ActivityIndicator color={TEXT_DARK} /> : <Text style={[styles.payButtonText, {color: TEXT_DARK}]}>Verify Securely</Text>}
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* COIN HISTORY MODAL */}
-      <Modal visible={isCoinHistoryOpen} animationType="fade" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, {height: '60%'}]}>
-            <View style={styles.modalHeader}><Text style={styles.modalTitle}>Zeshu Coin History</Text><TouchableOpacity onPress={() => setIsCoinHistoryOpen(false)}><Ionicons name="close" size={24} color="#333" /></TouchableOpacity></View>
-            <ScrollView style={{padding: 20}}>
-              <View style={{backgroundColor: '#FFFBEB', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#FDE68A', marginBottom: 20}}><Text style={{color: '#B45309', fontWeight: 'bold', fontSize: 14, textAlign: 'center'}}>Zeshu coins can be used for recharge and bill payment!</Text></View>
-              <Text style={{fontWeight: 'bold', marginBottom: 15}}>Recent Transactions</Text>
-              <View style={{flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#eee', paddingVertical: 12}}><View><Text style={{fontWeight: 'bold'}}>Airtel Prepaid</Text><Text style={{fontSize: 12, color: TEXT_MUTED}}>Cashback Earned</Text></View><Text style={{color: '#059669', fontWeight: 'bold'}}>+12 Coins</Text></View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ACCOUNT MODAL */}
-      <Modal visible={isAccountOpen} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, {height: '75%'}]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>My Account</Text>
-              <TouchableOpacity onPress={() => setIsAccountOpen(false)}><Ionicons name="close" size={24} color="#333" /></TouchableOpacity>
-            </View>
-            <ScrollView style={{padding: 20}}>
-              {['My Orders', 'Saved Addresses', "FAQ's", 'Account Privacy', 'Log Out'].map((item, idx) => (
-                <TouchableOpacity key={idx} style={styles.accountRow} onPress={() => { if(item==='Log Out') handleLogout(); }}>
-                  <Text style={styles.accountRowText}>{item}</Text>
-                  <Ionicons name="chevron-forward" size={20} color={TEXT_MUTED} />
-                </TouchableOpacity>
-              ))}
-              
-              <View style={styles.promoBanner}>
-                <View style={{flex: 1}}>
-                  <Text style={styles.promoTitle}>Simple way to{'\n'}get groceries{'\n'}at your doorstep</Text>
-                  <Text style={styles.promoSub}>Scan the QR code and download zeshu super app</Text>
-                </View>
-                <Ionicons name="qr-code" size={60} color={PRIMARY_COLOR} />
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
-  );
-}
-
-// ==========================================
-// SCREEN 2: RECHARGE FORM
-// ==========================================
-function RechargeScreen({ route, navigation }) {
-  const { service } = route.params; 
-  const [number, setNumber] = useState('');
-  const [operator, setOperator] = useState('');
-  const [amount, setAmount] = useState('');
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [userId, setUserId] = useState(null); 
-  const [isLoading, setIsLoading] = useState(false);
-  const [plans, setPlans] = useState([]);
-  const [fetchedBill, setFetchedBill] = useState(null);
-  const [selectedPlanCategory, setSelectedPlanCategory] = useState("All");
-
-  const providersList = PROVIDERS[service] || ['Generic Provider 1', 'Generic Provider 2'];
-  const isPlanBased = service === 'Mobile' || service === 'DTH';
-  const cashbackEarned = Math.floor((parseFloat(amount) || 0) * ((COMMISSION_RATES[operator] || 1.00) / 100) * 0.80); 
-
   useEffect(() => {
-    const getUser = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data?.session) setUserId(data.session.user.id);
-    }
-    getUser();
+    if (rechargeNumber.length === 10 && activeService === 'mobile') { autoDetectAndFetchPlans(rechargeNumber); }
+    setFetchedBill(null); setUpiResult(null);
+  }, [rechargeNumber, activeService]);
 
-    if (number.length === 10 && service === 'Mobile') {
-      autoDetectAndFetchPlans(number);
-    }
-    setFetchedBill(null);
-  }, [number, service]);
-
-  const planCategories = useMemo(() => {
-    if (!plans || plans.length === 0) return ["All"];
-    return ["All", ...Array.from(new Set(plans.map(p => p.categoryName).filter(Boolean)))];
-  }, [plans]);
-
-  const filteredPlans = useMemo(() => {
-    if (selectedPlanCategory === "All") return plans;
-    return plans.filter(p => p.categoryName === selectedPlanCategory);
-  }, [plans, selectedPlanCategory]);
-
-  // 🚀 FIXED: BULLETPROOF AUTO-FETCH
-  const autoDetectAndFetchPlans = async (num) => {
-    setIsLoading(true); setPlans([]);
+  const autoDetectAndFetchPlans = async (num: string) => {
+    setIsDetecting(true); setPlans([]);
     try {
-      const opRes = await fetch(`${BASE_URL}/api/fetch-operator?number=${num}`);
-      const opText = await opRes.text();
-      let opData = {};
-      try { opData = JSON.parse(opText); } catch(e) {}
-
-      if (opData && opData.operator) {
-        // Case-insensitive operator matching to fix Vercel mismatch
-        const foundOpKey = Object.keys(OPERATORS_DATA[service] || {}).find(
-           k => k.toLowerCase() === opData.operator.toLowerCase() || k.toLowerCase().includes(opData.operator.toLowerCase())
-        );
-        const finalOperator = foundOpKey || opData.operator;
-        
-        setOperator(finalOperator); 
-        const opCode = OPERATORS_DATA[service]?.[finalOperator];
-        
+      const opRes = await fetch(`/api/fetch-operator?number=${num}`);
+      const opData = await opRes.json();
+      if (opData.operator) {
+        setSelectedOperator(opData.operator); 
+        const opCode = OPERATORS_DATA['mobile'][opData.operator];
         if (opCode) {
-          const planRes = await fetch(`${BASE_URL}/api/fetch-plans?number=${num}&operator=${opCode}`);
-          const planText = await planRes.text();
-          try {
-             const planData = JSON.parse(planText);
-             if(planData.plans) {
-                setPlans(planData.plans);
-                setSelectedPlanCategory("All");
-             }
-          } catch(e) {}
+          const planRes = await fetch(`/api/fetch-plans?number=${num}&operator=${opCode}`);
+          const planData = await planRes.json();
+          setPlans(planData.plans || []);
+          setSelectedPlanCategory("All");
         }
       }
-    } catch (err) { console.log("Fetch Error", err); }
-    setIsLoading(false);
+    } catch (err) {}
+    setIsDetecting(false);
   };
 
   const fetchOffers = async () => {
-    if (!number || !operator) return Alert.alert("Required", "Enter number and select operator");
+    if (!rechargeNumber || !selectedOperator) return alert(`Enter ${currentServiceObj.inputLabel} and select operator`);
     setIsLoading(true);
     try {
-      const opCode = OPERATORS_DATA[service]?.[operator] || '2';
-      const res = await fetch(`${BASE_URL}/api/fetch-plans?number=${number}&operator=${opCode}`);
-      const text = await res.text();
-      let data;
-      try { data = JSON.parse(text); } catch(e) { throw new Error("Invalid response format"); }
-      
-      if (data && data.plans) {
-        setPlans(data.plans);
-        setSelectedPlanCategory("All");
-      } else {
-        Alert.alert("Notice", data.message || "No plans found.");
-      }
-    } catch (err) { Alert.alert("Error", "Failed to fetch offers"); }
+      const opCode = OPERATORS_DATA[activeService][selectedOperator];
+      const res = await fetch(`/api/fetch-plans?number=${rechargeNumber}&operator=${opCode}`);
+      const data = await res.json();
+      setPlans(data.plans || []);
+      setSelectedPlanCategory("All");
+    } catch (err) { alert("Error fetching offers"); }
     setIsLoading(false);
   };
 
   const fetchBillDetails = async () => {
-    if (!number || !operator) return Alert.alert("Required", "Enter number and select operator");
+    if (!rechargeNumber || !selectedOperator) return alert(`Enter ${currentServiceObj.inputLabel} and select operator`);
     setIsLoading(true); setFetchedBill(null);
     try {
-      const opCode = OPERATORS_DATA[service]?.[operator] || '475';
-      const safeService = service.toLowerCase().replace(/\s/g, ''); 
-      const res = await fetch(`${BASE_URL}/api/fetch-bill?service=${safeService}&number=${number}&operatorCode=${opCode}`);
+      const opCode = OPERATORS_DATA[activeService][selectedOperator];
+      const res = await fetch(`/api/fetch-bill?service=${activeService}&number=${rechargeNumber}&operatorCode=${opCode}`);
       const data = await res.json();
-      // Safely convert amount to string to prevent crash
-      if (data.success && data.bill) { setFetchedBill(data.bill); setAmount(String(data.bill.DueAmount)); } 
-      else { Alert.alert("Error", data.message || "Could not fetch bill details."); }
-    } catch (err) { Alert.alert("Error", "Server error"); }
+      if (data.success && data.bill) { setFetchedBill(data.bill); setRechargeAmount(data.bill.DueAmount); } 
+      else { alert(data.message || "Could not fetch bill details."); }
+    } catch (err) { alert("Error connecting to billing server."); }
     setIsLoading(false);
   };
 
-  // 🚀 FIXED: BULLETPROOF RAZORPAY BILL CHECKOUT
-  const handleRechargeSubmit = async () => {
-    if(!number || (!operator && service !== 'UPI Tools') || !amount) { Alert.alert("Incomplete Details", "Please fill all fields."); return; }
-    if(!userId) { Alert.alert("Login Required", "Please login from home screen to continue"); return; }
-    
-    setIsCheckingOut(true);
-    
+  const handleUpiSearch = async () => {
+    if (!rechargeNumber) return alert("Please enter a UPI ID or Mobile Number.");
+    setIsLoading(true); setUpiResult(null);
+    const cleanInput = rechargeNumber.trim();
+    const isMobileNumber = /^\d{10}$/.test(cleanInput);
+    const actionType = isMobileNumber ? 'mobile_to_multiple_upi' : 'vpa_info';
     try {
-      const orderResponse = await fetch(`${BASE_URL}/api/create-razorpay-order`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: amount })
+      const response = await fetch('/api/upi-tools', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: actionType, mobileNo: isMobileNumber ? cleanInput : undefined, upiId: !isMobileNumber ? cleanInput : undefined })
       });
-      const orderText = await orderResponse.text();
-      let orderData;
-      try { orderData = JSON.parse(orderText); } catch(e) { throw new Error("Invalid backend response"); }
-      
-      const orderId = orderData.id || (orderData.order && orderData.order.id);
+      const result = await response.json();
+      if (result.success) { setUpiResult(result.data); } else { alert(`Error: ${result.message}`); }
+    } catch (error) { alert("Network error"); }
+    setIsLoading(false);
+  };
 
-      var options = { 
-        description: `${operator} ${service} Recharge`, 
-        image: ZESHU_LOGO_URL, 
-        currency: orderData.currency || 'INR', 
-        key: 'rzp_test_SZhZ5NLWfFtlJZ', // <--- MATCH YOUR KEY
-        amount: orderData.amount || (parseInt(amount) * 100), 
-        order_id: orderId, 
-        name: 'ZESHU SUPER APP', 
-        prefill: { email: 'customer@zeshu.in', contact: '9999999999', name: 'Zeshu User' }, 
-        theme: { color: PRIMARY_COLOR } 
+  const checkUser = async () => { const { data: { session } } = await supabase.auth.getSession(); if (session) { setUser(session.user); fetchCoinBalance(session.user.id); } };
+  const fetchCoinBalance = async (userId: string) => { const { data } = await supabase.from('wallets').select('coins').eq('user_id', userId).single(); if (data) setCoinsBalance(data.coins); };
+  const handleSendOtp = async () => { setIsLoading(true); const { error } = await supabase.auth.signInWithOtp({ phone: `+91${phoneNumber}` }); setIsLoading(false); if (!error) setOtpSent(true); else alert(error.message); };
+  const handleVerifyOtp = async () => { setIsLoading(true); const { data, error } = await supabase.auth.verifyOtp({ phone: `+91${phoneNumber}`, token: otp, type: 'sms' }); setIsLoading(false); if (data.session) { setUser(data.session.user); setIsAuthModalOpen(false); fetchCoinBalance(data.session.user.id); } else alert(error?.message); };
+  const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); setCoinsBalance(0); setIsAccountOpen(false); };
+  
+  const addToCart = (product: any) => setCart(prev => { const existing = prev.find(c => c.item.id === product.id); return existing ? prev.map(c => c.item.id === product.id ? { ...c, qty: c.qty + 1 } : c) : [...prev, { item: product, qty: 1 }]; });
+  const removeFromCart = (productId: any) => { const existing = cart.find(c => c.item.id === productId); if (existing && existing.qty > 1) { setCart(cart.map(c => c.item.id === productId ? { ...c, qty: c.qty - 1 } : c)); } else { setCart(cart.filter(c => c.item.id !== productId)); if (cart.length === 1) setIsCartOpen(false); } };
+
+  const itemTotal = cart.reduce((acc, curr) => acc + (curr.item.price * curr.qty), 0);
+  const smallCartFee = (itemTotal > 0 && itemTotal < 100) ? 20 : 0;
+  const deliveryCharge = (itemTotal > 0 && itemTotal < 200) ? 30 : 0; 
+  const donationAmt = isDonating ? 1 : 0;
+  const zeshuDiscount = useZeshuCoins ? Math.min(ZESHU_COINS_VAL, itemTotal) : 0; 
+  const finalCartTotal = itemTotal > 0 ? (itemTotal + deliveryCharge + smallCartFee + HANDLING_FEE + donationAmt + tipAmount - zeshuDiscount) : 0;
+
+  const baseRate = COMMISSION_RATES[selectedOperator] || 1.00; 
+  const exactProfit = (parseFloat(rechargeAmount) || 0) * (baseRate / 100);
+  const cashbackEarned = Math.floor(exactProfit * 0.80);
+
+  const handleRecharge = async () => {
+    if (!user) return setIsAuthModalOpen(true);
+    if (!rechargeNumber || !rechargeAmount) return alert("Please fill all details");
+    setIsLoading(true);
+    try {
+      const orderResponse = await fetch('/api/create-razorpay-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: rechargeAmount }) });
+      const order = await orderResponse.json();
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, amount: order.amount, currency: order.currency, name: "Zeshu Super App", order_id: order.id,
+        handler: async function (response: any) {
+          const rechargeRes = await fetch('/api/process-recharge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ operatorCode: OPERATORS_DATA[activeService]?.[selectedOperator] || 'UPI', circleCode: 13, number: rechargeNumber, amount: rechargeAmount, userId: user.id, orderId: order.id, dob }) });
+          const result = await rechargeRes.json();
+          if (result.success) { alert(`Payment successful! 🎉 You earned ₹${cashbackEarned} Cashback!`); fetchCoinBalance(user.id); } else alert(result.message);
+        },
+        theme: { color: "#9333ea" },
       };
+      const rzp = new (window as any).Razorpay(options); rzp.open();
+    } catch (error) { alert("Gateway Error"); }
+    setIsLoading(false);
+  };
 
-      RazorpayCheckout.open(options).then(async (data) => { 
-        try {
-          await fetch(`${BASE_URL}/api/process-recharge`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              operatorCode: OPERATORS_DATA[service]?.[operator] || 'UPI', 
-              circleCode: 13, number: number, amount: amount, userId: userId, orderId: orderId 
-            })
-          });
-        } catch(e) {}
-        
-        Alert.alert('Payment Successful!', `🎉 You earned ₹${cashbackEarned} Cashback in Zeshu Coins!`); 
-        navigation.goBack(); 
-      }).catch((error) => { 
-        Alert.alert('Payment Failed', error.description || error.error?.description || `Checkout cancelled.`); 
-      });
-    } catch(err) {
-      Alert.alert("Network Error", "Could not reach payment gateway.");
-    } finally {
-      setIsCheckingOut(false);
-    }
+  const handleCartCheckout = async () => {
+    if (finalCartTotal === 0) return;
+    if (!user) return setIsAuthModalOpen(true);
+    setIsLoading(true);
+    try {
+      const orderResponse = await fetch('/api/create-razorpay-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: finalCartTotal }) });
+      const order = await orderResponse.json();
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, amount: order.amount, currency: order.currency, name: "Zeshu Grocery", order_id: order.id,
+        handler: async function (response: any) { 
+          try {
+            await fetch('/api/confirm-grocery-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: user.id, cartItems: cart, totalAmount: finalCartTotal, paymentId: response.razorpay_payment_id, address: currentAddress })
+            });
+          } catch(e) { console.error(e) }
+          alert("Grocery Order Successful!"); 
+          setCart([]); 
+          setIsCartOpen(false); 
+        },
+        theme: { color: "#9333ea" },
+      };
+      const rzp = new (window as any).Razorpay(options); rzp.open();
+    } catch (error) { alert("Gateway Error"); }
+    setIsLoading(false);
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={{flexDirection: 'row', alignItems: 'center'}} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={PRIMARY_COLOR} />
-          <Text style={{fontSize: 18, fontWeight: 'bold', marginLeft: 10, color: TEXT_DARK}}>{service} Recharge</Text>
-        </TouchableOpacity>
-      </View>
+    <div className="min-h-screen bg-[#f4f6fb] font-sans antialiased text-gray-900 overflow-x-hidden">
+      
+      {/* --- BLINKIT-STYLE TOP NAVIGATION --- */}
+      <header className="sticky top-0 bg-white z-40 border-b border-gray-100 shadow-sm">
+        <div className="max-w-[1400px] mx-auto px-4 md:px-8 h-[84px] flex items-center justify-between gap-4 md:gap-8">
+          
+          {/* Logo & Location Divider */}
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 cursor-pointer border-r border-gray-200 pr-6" onClick={() => setActiveTab('home')}>
+              <div className="bg-purple-600 text-white font-black p-2 rounded-xl text-2xl tracking-tighter shadow-md">Z</div>
+              <div className="hidden md:flex flex-col">
+                <span className="text-xl font-black tracking-tight leading-none text-gray-900">ZESHU</span>
+                <span className="text-[10px] font-bold text-purple-600 tracking-widest uppercase">Super App</span>
+              </div>
+            </div>
+            
+            {/* Location Selector (Blinkit Style) */}
+            <div className="hidden md:flex flex-col cursor-pointer max-w-[200px]" onClick={handleAutoDetectLocation}>
+              <div className="font-extrabold text-sm text-gray-900">Delivery in 12 minutes</div>
+              <div className="flex items-center text-xs text-gray-500 mt-0.5 group">
+                <span className="truncate">{currentAddress}</span>
+                <ChevronDown size={14} className="ml-1 group-hover:text-gray-900 transition-colors"/>
+              </div>
+            </div>
+          </div>
 
-      <ScrollView style={{padding: 16}}>
-        <View style={styles.formContainer}>
-          <Text style={styles.formLabel}>{service} Number / ID :</Text>
-          <View style={{position: 'relative', justifyContent: 'center'}}>
-             <TextInput style={styles.input} placeholder={`Enter details`} value={number} onChangeText={setNumber} keyboardType="numeric" />
-             {isLoading && isPlanBased && <ActivityIndicator color={PRIMARY_COLOR} style={{position: 'absolute', right: 16}} />}
-          </View>
+          {/* Huge Central Search Bar */}
+          <div className="flex-1 max-w-3xl">
+            <div className="bg-gray-50 hover:bg-gray-100 transition-colors border border-gray-200 rounded-xl flex items-center px-4 py-3.5 focus-within:bg-white focus-within:border-purple-300 focus-within:shadow-[0_0_0_4px_rgba(147,51,234,0.1)]">
+              <Search size={20} className="text-gray-500" />
+              <input 
+                type="text" 
+                placeholder="Search 'milk', 'recharge', 'chips'..." 
+                className="bg-transparent border-none outline-none flex-1 ml-3 text-[15px] font-medium text-gray-800 placeholder-gray-500" 
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)} 
+              />
+              {searchQuery && <X size={18} className="text-gray-400 cursor-pointer hover:text-gray-600" onClick={() => setSearchQuery('')}/>}
+            </div>
+          </div>
 
-          {service !== 'UPI Tools' && (
+          {/* Right Actions: Login & Cart */}
+          <div className="flex items-center gap-4 shrink-0">
+            <button onClick={() => user ? setIsAccountOpen(true) : setIsAuthModalOpen(true)} className="hidden md:flex items-center gap-2 text-gray-700 hover:text-gray-900 font-bold px-2 py-2">
+              {user ? 'My Account' : 'Login'}
+            </button>
+            <button onClick={() => setIsCartOpen(true)} className="bg-[#0c831f] hover:bg-[#0a6d1a] transition-colors text-white px-4 py-3.5 rounded-xl flex items-center gap-3 shadow-md font-bold text-sm min-w-[110px] justify-center">
+              <ShoppingBag size={20} />
+              {cart.length > 0 ? (
+                <div className="flex flex-col text-left leading-tight">
+                  <span className="text-[10px] opacity-90">{cart.length} items</span>
+                  <span>₹{finalCartTotal}</span>
+                </div>
+              ) : <span>My Cart</span>}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* --- MAIN LAYOUT --- */}
+      <main className="max-w-[1400px] mx-auto w-full md:px-8 py-6 flex gap-6">
+        
+        {/* DESKTOP SIDEBAR (Blinkit Style Categories) */}
+        {activeTab === 'home' && searchQuery === '' && (
+          <aside className="hidden lg:block w-[240px] shrink-0 sticky top-[100px] h-[calc(100vh-100px)] overflow-y-auto no-scrollbar pr-4">
+            <h3 className="font-extrabold text-gray-900 mb-4 px-2">Categories</h3>
+            <div className="flex flex-col gap-1">
+              {productCategories.map(cat => (
+                <button 
+                  key={cat} 
+                  onClick={() => setActiveCategory(cat)}
+                  className={`text-left px-4 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-between group ${activeCategory === cat ? 'bg-purple-50 text-purple-700' : 'text-gray-600 hover:bg-gray-100'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activeCategory === cat ? 'bg-purple-100' : 'bg-gray-200 group-hover:bg-white'}`}>
+                       <Package size={14} className={activeCategory === cat ? 'text-purple-600' : 'text-gray-500'}/>
+                    </div>
+                    {cat}
+                  </div>
+                  {activeCategory === cat && <div className="w-1 h-5 bg-purple-600 rounded-full" />}
+                </button>
+              ))}
+            </div>
+          </aside>
+        )}
+
+        {/* CONTENT AREA */}
+        <div className="flex-1 min-w-0 pb-32">
+          
+          {/* RECHARGE / BILL PAY TAB */}
+          {activeTab === 'recharge' ? (
+             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden max-w-2xl mx-auto">
+               <div className="flex overflow-x-auto bg-gray-50 p-2 gap-2 border-b border-gray-100 no-scrollbar">
+                 {SERVICES.map((s) => (
+                   <button key={s.id} onClick={() => { setActiveService(s.id); setSelectedOperator(''); setPlans([]); setFetchedBill(null); setUpiResult(null); setRechargeNumber(''); setRechargeAmount(''); }} className={`flex items-center gap-2 px-5 py-3 rounded-xl whitespace-nowrap text-sm font-bold transition-all ${activeService === s.id ? 'bg-white shadow-sm text-purple-700' : 'text-gray-500 hover:bg-gray-200/50'}`}>
+                     {s.icon} {s.label}
+                   </button>
+                 ))}
+               </div>
+               <div className="p-8 space-y-6">
+                 <div className="space-y-5">
+                   <div>
+                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">{currentServiceObj.inputLabel}</label>
+                     <div className="relative">
+                       <input type="text" placeholder={`Enter details`} className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none font-bold text-lg transition-all shadow-sm" value={rechargeNumber} onChange={(e) => setRechargeNumber(e.target.value)} />
+                     </div>
+                   </div>
+                   
+                   {activeService !== 'upi' && (
+                     <div>
+                       <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Operator</label>
+                       <select className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none font-bold text-gray-700 transition-all shadow-sm" value={selectedOperator} onChange={(e) => setSelectedOperator(e.target.value)}>
+                         <option value="">Choose Provider</option>
+                         {Object.keys(OPERATORS_DATA[activeService] || {}).map(op => <option key={op} value={op}>{op}</option>)}
+                       </select>
+                     </div>
+                   )}
+                   
+                   {activeService === 'upi' ? (
+                     <button onClick={handleUpiSearch} disabled={isLoading} className="w-full p-4 border border-blue-200 rounded-xl text-blue-600 bg-blue-50 text-sm font-bold hover:bg-blue-100 transition-colors">
+                       {isLoading ? 'Searching...' : 'Verify UPI ID'}
+                     </button>
+                   ) : isPlanBased ? (
+                     <button onClick={fetchOffers} className="w-full p-4 border border-purple-200 rounded-xl text-purple-700 bg-purple-50 text-sm font-bold hover:bg-purple-100 transition-colors">
+                       View Offers
+                     </button>
+                   ) : (
+                     <button onClick={fetchBillDetails} disabled={isLoading} className="w-full p-4 border border-purple-200 rounded-xl text-purple-700 bg-purple-50 text-sm font-bold hover:bg-purple-100 transition-colors">
+                       {isLoading ? 'Fetching...' : 'Fetch Bill Details'}
+                     </button>
+                   )}
+                   
+                   <div className={(fetchedBill && !isPlanBased) || activeService === 'upi' ? 'opacity-60 pointer-events-none' : ''}>
+                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Amount</label>
+                     <div className="relative">
+                       <span className="absolute left-4 top-4 text-xl font-bold text-gray-400">₹</span>
+                       <input type="number" className="w-full p-4 pl-10 bg-white border border-gray-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none font-black text-2xl transition-all shadow-sm" value={rechargeAmount} onChange={(e) => setRechargeAmount(e.target.value)} readOnly={(fetchedBill && !isPlanBased) || activeService === 'upi'} />
+                     </div>
+                   </div>
+                   
+                   {activeService !== 'upi' && (
+                     <button onClick={handleRecharge} disabled={isLoading} className="w-full bg-[#0c831f] hover:bg-[#0a6d1a] text-white py-5 rounded-xl font-bold text-base shadow-md mt-4 transition-colors">
+                       {isLoading ? 'Processing...' : `Proceed to Pay ₹${rechargeAmount || 0}`}
+                     </button>
+                   )}
+                 </div>
+               </div>
+             </div>
+          ) : (
             <>
-              <Text style={styles.formLabel}>Select Operator :</Text>
-              <View style={styles.pickerContainer}>
-                <Picker selectedValue={operator} onValueChange={(val) => setOperator(val)}>
-                  <Picker.Item label="Select Operator*" value="" color="#999" />
-                  {providersList.map(op => <Picker.Item key={op} label={op} value={op} />)}
-                </Picker>
-              </View>
+              {/* HOME TAB: BANNERS & CATEGORIES */}
+              {searchQuery === '' && (
+                <div className="mb-10 space-y-8">
+                  {/* Hero Banners */}
+                  <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 px-4 md:px-0">
+                    {BANNERS.map((img, idx) => (
+                      <img key={idx} src={img} alt="Promo" className="h-[140px] md:h-[200px] rounded-xl object-cover min-w-[280px] md:min-w-[400px] cursor-pointer hover:shadow-md transition-shadow" />
+                    ))}
+                  </div>
+
+                  {/* Quick Services Grid */}
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mx-4 md:mx-0">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-lg font-extrabold text-gray-900">Utility & Recharges</h2>
+                      <span className="text-purple-600 font-bold text-sm cursor-pointer hover:underline">View All</span>
+                    </div>
+                    <div className="grid grid-cols-4 md:grid-cols-8 gap-y-8 gap-x-4">
+                      {SERVICES.slice(0, 8).map((s) => (
+                        <div key={s.id} onClick={() => { setActiveTab('recharge'); setActiveService(s.id); }} className="flex flex-col items-center gap-3 cursor-pointer group">
+                          <div className={`h-[60px] w-[60px] rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105 ${s.color}`}>{s.icon}</div>
+                          <span className="text-[11px] font-bold text-gray-700 text-center leading-tight group-hover:text-gray-900">{s.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* PRODUCTS SECTION */}
+              <div className="px-4 md:px-0">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-extrabold text-gray-900">{activeCategory === 'All' ? 'Showing All Products' : activeCategory}</h2>
+                  <span className="text-gray-500 font-medium text-sm">{filteredProducts.length} items</span>
+                </div>
+                
+                {products.length === 0 && searchQuery === '' ? (
+                  <div className="flex justify-center py-20"><div className="animate-spin h-8 w-8 border-4 border-[#0c831f] border-t-transparent rounded-full"></div></div>
+                ) : filteredProducts.length === 0 ? (
+                  <div className="bg-white p-12 rounded-2xl border border-dashed border-gray-200 text-center"><p className="text-gray-500 font-medium">No products found</p></div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    {filteredProducts.map((p) => {
+                      const inCart = cart.find(c => c.item.id === p.id);
+                      return (
+                        <div key={p.id} className="bg-white p-3 rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.05)] border border-gray-100 flex flex-col hover:shadow-lg hover:border-gray-200 transition-all duration-200 group relative">
+                          {/* Time Pill */}
+                          <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-1.5 py-0.5 rounded-md shadow-sm z-10 flex items-center gap-1 border border-gray-100">
+                            <Clock size={10} className="text-gray-700"/>
+                            <span className="text-[9px] font-extrabold text-gray-800 tracking-tight">12 MINS</span>
+                          </div>
+                          
+                          <div className="bg-white rounded-xl mb-3 flex items-center justify-center p-4 h-[140px] relative overflow-hidden border border-gray-50">
+                            <img src={p.image_url} className="h-full w-full object-contain group-hover:scale-105 transition-transform duration-500" alt={p.name} />
+                          </div>
+                          
+                          <div className="text-sm font-semibold text-gray-800 line-clamp-2 min-h-[40px] mb-1 leading-snug">{p.name}</div>
+                          <div className="text-[11px] text-gray-500 mb-3 font-medium">{p.weight || '1 unit'}</div>
+                          
+                          <div className="flex justify-between items-center mt-auto pt-1">
+                            <span className="font-extrabold text-sm text-gray-900">₹{p.price}</span>
+                            {inCart ? (
+                              <div className="flex items-center bg-[#0c831f] text-white rounded-lg px-2 py-1.5 shadow-sm min-w-[70px] justify-between">
+                                <button onClick={() => removeFromCart(p.id)} className="px-1 font-bold active:scale-90">-</button>
+                                <span className="font-bold text-sm px-2">{inCart.qty}</span>
+                                <button onClick={() => addToCart(p)} className="px-1 font-bold active:scale-90">+</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => addToCart(p)} className="px-4 py-1.5 border border-[#0c831f] text-[#0c831f] bg-green-50/50 hover:bg-green-50 rounded-lg text-xs font-bold transition-colors min-w-[70px]">ADD</button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </>
           )}
+        </div>
+      </main>
 
-          {isPlanBased ? (
-             <TouchableOpacity onPress={fetchOffers} style={[styles.payButton, {backgroundColor: '#F3E8FF', marginTop: 15, justifyContent: 'center', borderColor: '#E9D5FF', borderWidth: 2, borderStyle: 'dashed'}]}>
-               <Text style={[styles.payButtonText, {color: PRIMARY_COLOR, textTransform: 'uppercase', fontSize: 12}]}>View Best Recommended Offers</Text>
-             </TouchableOpacity>
-          ) : (
-             <TouchableOpacity onPress={fetchBillDetails} disabled={isLoading || fetchedBill !== null} style={[styles.payButton, {backgroundColor: '#F3E8FF', marginTop: 15, justifyContent: 'center', borderColor: '#E9D5FF', borderWidth: 2, borderStyle: 'dashed', opacity: (isLoading || fetchedBill !== null) ? 0.5 : 1}]}>
-               <Text style={[styles.payButtonText, {color: PRIMARY_COLOR, textTransform: 'uppercase', fontSize: 12}]}>{isLoading ? 'Fetching...' : 'Fetch Bill Details'}</Text>
-             </TouchableOpacity>
-          )}
+      {/* --- BLINKIT-STYLE SLIDE-IN CART --- */}
+      {isCartOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity" onClick={() => setIsCartOpen(false)}></div>
+          <div className="fixed top-0 right-0 h-full w-full md:w-[400px] bg-[#f4f6fb] z-50 shadow-2xl animate-in slide-in-from-right flex flex-col">
+            
+            <div className="bg-white px-5 py-4 flex justify-between items-center shadow-sm z-10">
+              <h2 className="text-xl font-extrabold text-gray-900">My Cart</h2>
+              <button onClick={() => setIsCartOpen(false)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"><X size={20} className="text-gray-600"/></button>
+            </div>
 
-          {fetchedBill && !isPlanBased && (
-             <View style={{ backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', borderWidth: 1, padding: 16, borderRadius: 16, marginTop: 16 }}>
-               <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#D1FAE5', paddingBottom: 8, marginBottom: 8 }}><Text style={{ fontSize: 10, fontWeight: '900', color: '#059669', textTransform: 'uppercase' }}>Customer Name</Text><Text style={{ fontSize: 13, fontWeight: 'bold' }}>{fetchedBill.Name || 'N/A'}</Text></View>
-               <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#D1FAE5', paddingBottom: 8, marginBottom: 8 }}><Text style={{ fontSize: 10, fontWeight: '900', color: '#059669', textTransform: 'uppercase' }}>Due Date</Text><Text style={{ fontSize: 13, fontWeight: 'bold', color: '#DC2626' }}>{fetchedBill.DueDate || 'N/A'}</Text></View>
-               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ fontSize: 11, fontWeight: '900', color: '#047857', textTransform: 'uppercase' }}>Total Due</Text><Text style={{ fontSize: 20, fontWeight: '900' }}>₹{fetchedBill.DueAmount || '0'}</Text></View>
-             </View>
-          )}
+            {cart.length === 0 ? (
+               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                 <ShoppingBag size={80} className="text-gray-300 mb-4"/>
+                 <h3 className="text-lg font-bold text-gray-900 mb-2">Your cart is empty</h3>
+                 <p className="text-sm text-gray-500">Looks like you haven't added anything to your cart yet.</p>
+                 <button onClick={() => setIsCartOpen(false)} className="mt-8 bg-[#0c831f] text-white px-6 py-3 rounded-xl font-bold">Start Shopping</button>
+               </div>
+            ) : (
+              <>
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
+                  
+                  <div className="bg-white p-4 rounded-2xl flex items-center gap-4 shadow-sm border border-gray-100">
+                    <div className="bg-blue-50 p-3 rounded-xl"><Clock className="text-blue-600" size={24}/></div>
+                    <div>
+                      <div className="font-extrabold text-gray-900 text-sm">Delivery in 12 minutes</div>
+                      <div className="text-xs text-gray-500 font-medium mt-0.5">Shipment of {cart.length} item{cart.length > 1 ? 's' : ''}</div>
+                    </div>
+                  </div>
 
-          {isPlanBased && plans.length > 0 && (
-             <View style={{marginTop: 16}}>
-               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom: 10}}>
-                 {planCategories.map((cat) => (
-                   <TouchableOpacity key={cat} onPress={() => setSelectedPlanCategory(cat)} style={{backgroundColor: selectedPlanCategory === cat ? PRIMARY_COLOR : '#F3F4F6', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, marginRight: 8}}>
-                     <Text style={{color: selectedPlanCategory === cat ? 'white' : TEXT_MUTED, fontSize: 10, fontWeight: '900', textTransform: 'uppercase'}}>{cat}</Text>
-                   </TouchableOpacity>
-                 ))}
-               </ScrollView>
-               <View style={{height: 250, backgroundColor: '#F9FAFB', borderRadius: 16, borderWidth: 1, borderColor: '#eee', padding: 8}}>
-                 <ScrollView nestedScrollEnabled={true}>
-                   {filteredPlans.map((plan, idx) => (
-                     <TouchableOpacity key={idx} onPress={() => setAmount(String(plan.amount))} style={{backgroundColor: 'white', padding: 12, borderRadius: 12, marginBottom: 8, elevation: 1, borderColor: amount == plan.amount ? PRIMARY_COLOR : 'transparent', borderWidth: 2}}>
-                       <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4}}>
-                         <Text style={{fontWeight: '900', color: PRIMARY_COLOR, fontSize: 18}}>₹{plan.amount}</Text>
-                         <View style={{backgroundColor: '#F3E8FF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6}}><Text style={{fontSize: 9, fontWeight: '900', color: PRIMARY_COLOR}}>{plan.validity}</Text></View>
-                       </View>
-                       <Text style={{fontSize: 11, color: TEXT_MUTED}}>{plan.desc}</Text>
-                     </TouchableOpacity>
-                   ))}
-                 </ScrollView>
-               </View>
-             </View>
-          )}
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    {cart.map((c, i) => (
+                      <div key={i} className="p-4 flex gap-4 border-b border-gray-50 last:border-0">
+                        <img src={c.item.image_url} className="w-16 h-16 object-contain rounded-lg border border-gray-100 p-1" alt={c.item.name}/>
+                        <div className="flex-1 flex flex-col justify-between py-1">
+                          <div className="text-sm font-medium text-gray-800 leading-snug line-clamp-2">{c.item.name}</div>
+                          <div className="text-xs text-gray-500">{c.item.weight || c.item.unit}</div>
+                          <div className="flex justify-between items-end mt-2">
+                            <span className="font-extrabold text-gray-900">₹{c.item.price * c.qty}</span>
+                            <div className="flex items-center bg-[#0c831f] text-white rounded-lg px-2 py-1 shadow-sm">
+                              <button onClick={() => removeFromCart(c.item.id)} className="px-2 font-bold">-</button>
+                              <span className="px-2 font-bold text-sm">{c.qty}</span>
+                              <button onClick={() => addToCart(c.item)} className="px-2 font-bold">+</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
 
-          <View style={{opacity: (fetchedBill && !isPlanBased) ? 0.5 : 1}}>
-             <Text style={styles.formLabel}>Amount (₹) :</Text>
-             <TextInput style={styles.input} placeholder="0.00" keyboardType="numeric" value={amount} onChangeText={setAmount} editable={!(fetchedBill && !isPlanBased)} />
-          </View>
+                  <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                    <h3 className="font-extrabold text-gray-900 mb-4 text-sm">Bill Details</h3>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between text-gray-600"><span className="flex items-center gap-2"><Square size={14}/> Items total</span><span>₹{itemTotal}</span></div>
+                      <div className="flex justify-between text-gray-600"><span className="flex items-center gap-2"><Car size={14}/> Delivery charge</span><span className="text-[#0c831f] font-bold">{deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}</span></div>
+                      <div className="flex justify-between text-gray-600"><span className="flex items-center gap-2"><Info size={14}/> Handling fee</span><span>₹{HANDLING_FEE}</span></div>
+                      {smallCartFee > 0 && <div className="flex justify-between text-gray-600"><span className="flex items-center gap-2 text-red-500"><AlertCircle size={14}/> Small cart fee</span><span className="text-red-500">₹{smallCartFee}</span></div>}
+                      {useZeshuCoins && <div className="flex justify-between text-purple-600 font-bold"><span className="flex items-center gap-2"><Coins size={14}/> Zeshu Coins applied</span><span>-₹{zeshuDiscount}</span></div>}
+                      
+                      <div className="border-t border-gray-100 pt-3 mt-3 flex justify-between font-extrabold text-gray-900 text-base">
+                        <span>Grand total</span>
+                        <span>₹{finalCartTotal}</span>
+                      </div>
+                    </div>
+                  </div>
 
-          {amount !== '' && cashbackEarned > 0 && (
-             <View style={{backgroundColor: '#F0FDF4', padding: 12, borderRadius: 8, marginTop: 15, borderWidth: 1, borderColor: '#86EFAC', flexDirection: 'row', alignItems: 'center'}}>
-               <FontAwesome5 name="gift" size={16} color="#059669" />
-               <Text style={{color: '#065F46', fontWeight: 'bold', marginLeft: 10}}>You will get ₹{cashbackEarned} Cashback!</Text>
-             </View>
-          )}
+                </div>
 
-          <TouchableOpacity style={[styles.payButton, {backgroundColor: ACCENT_COLOR, marginTop: 30, justifyContent: 'center'}]} onPress={handleRechargeSubmit} disabled={isCheckingOut}>
-             {isCheckingOut ? <ActivityIndicator color={TEXT_DARK} /> : <Text style={[styles.payButtonText, {color: TEXT_DARK}]}>Proceed to Pay ₹{amount || 0}</Text>}
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+                <div className="bg-white p-4 border-t border-gray-100 shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
+                  <div className="flex items-center gap-3 mb-3">
+                    <MapPin className="text-[#0c831f] shrink-0" size={24}/>
+                    <div className="flex-1 overflow-hidden">
+                      <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Delivering to</div>
+                      <div className="text-sm font-extrabold text-gray-900 truncate">{currentAddress}</div>
+                    </div>
+                  </div>
+                  <button onClick={handleCartCheckout} className="w-full bg-[#0c831f] hover:bg-[#0a6d1a] transition-colors text-white font-bold py-4 rounded-xl flex justify-between px-6 items-center">
+                    <div className="flex flex-col text-left">
+                      <span className="text-lg leading-none">₹{finalCartTotal}</span>
+                      <span className="text-[10px] uppercase tracking-wider opacity-90 font-medium mt-0.5">Total</span>
+                    </div>
+                    <span className="flex items-center gap-2 text-base">Proceed to Pay <ChevronRight size={18}/></span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* LOGIN MODAL */}
+      {isAuthModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-sm relative shadow-2xl">
+            <button onClick={() => setIsAuthModalOpen(false)} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"><X size={20} /></button>
+            <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mb-6 mx-auto"><Smartphone size={28} className="text-purple-600"/></div>
+            <h2 className="text-2xl font-extrabold mb-2 text-center text-gray-900">Sign In</h2>
+            <p className="text-center text-sm text-gray-500 mb-6 font-medium">To securely access your Zeshu account</p>
+            {!otpSent ? (
+              <div className="space-y-4">
+                <input type="tel" maxLength={10} value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-center text-lg focus:border-purple-500 focus:bg-white outline-none transition-all" placeholder="Enter Mobile Number" />
+                <button onClick={handleSendOtp} disabled={isLoading} className="w-full bg-[#0c831f] hover:bg-[#0a6d1a] text-white font-bold py-4 rounded-xl transition-colors">{isLoading ? 'Sending...' : 'Continue'}</button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <input type="number" value={otp} onChange={(e) => setOtp(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-center text-2xl font-black tracking-[0.5em] focus:border-purple-500 focus:bg-white outline-none transition-all" placeholder="------" />
+                <button onClick={handleVerifyOtp} disabled={isLoading} className="w-full bg-[#0c831f] hover:bg-[#0a6d1a] text-white font-bold py-4 rounded-xl transition-colors">{isLoading ? 'Verifying...' : 'Verify OTP'}</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* FLOATING CART SUMMARY (Mobile Only) */}
+      {cart.length > 0 && activeTab === 'home' && !isCartOpen && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md z-[40] border-t border-gray-100">
+          <button onClick={() => setIsCartOpen(true)} className="w-full bg-[#0c831f] text-white px-5 py-3.5 rounded-xl flex items-center justify-between shadow-lg font-bold">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-1.5 rounded-lg"><ShoppingBag size={18} className="text-white"/></div>
+              <div className="flex flex-col text-left">
+                <span className="text-[10px] uppercase tracking-wider opacity-90">{cart.length} Items</span>
+                <span className="text-base leading-none">₹{finalCartTotal}</span>
+              </div>
+            </div>
+            <span className="flex items-center gap-1 text-sm">View Cart <ChevronRight size={18} /></span>
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
-
-export default function App() {
-  return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen name="Recharge" component={RechargeScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
-  header: { backgroundColor: 'white', padding: 16, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  logoContainer: { flexDirection: 'row', alignItems: 'center' },
-  logoImage: { width: 36, height: 36, borderRadius: 8, marginRight: 8 },
-  logoText: { fontSize: 16, fontWeight: '900' },
-  subLogoText: { fontSize: 9, fontWeight: 'bold', color: TEXT_MUTED },
-  
-  locationContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
-  locationBox: { flex: 1 },
-  deliveryText: { fontWeight: '900', fontSize: 18, color: TEXT_DARK },
-  addressText: { fontSize: 12, color: TEXT_MUTED, marginTop: 2 },
-  autoDetectBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#eee', backgroundColor: '#fff', justifyContent: 'center' },
-  autoDetectText: { fontSize: 11, fontWeight: 'bold' },
-  
-  headerActions: { flexDirection: 'row', alignItems: 'center' },
-  coinsPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: '#FFF7ED' },
-  coinsText: { fontSize: 13, fontWeight: 'bold', marginLeft: 6, color: '#B45309' },
-  userIcon: { backgroundColor: '#F3F4F6', padding: 8, borderRadius: 100, marginLeft: 10 },
-  searchBar: { backgroundColor: '#F3F4F6', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 12, borderRadius: 12 },
-  searchInput: { flex: 1, marginLeft: 10, fontSize: 14, color: TEXT_DARK },
-  
-  phonePeCard: { backgroundColor: 'white', marginHorizontal: 16, marginTop: 16, borderRadius: 16, padding: 16, elevation: 1 },
-  sectionTitle: { fontSize: 14, fontWeight: '900', marginBottom: 15, color: TEXT_DARK, textTransform: 'uppercase', letterSpacing: 0.5 },
-  rechargeGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-  gridItem: { alignItems: 'center', width: '25%', marginBottom: 20 },
-  gridIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
-  gridLabel: { fontSize: 10, fontWeight: '600', color: '#4B5563', textAlign: 'center' },
-  
-  section: { padding: 16 },
-  productGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  productCard: { backgroundColor: 'white', width: '47%', padding: 12, borderRadius: 12, marginBottom: 15, elevation: 1 },
-  imageContainer: { height: 110, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 8, marginBottom: 10 },
-  productImage: { width: '70%', height: '70%' },
-  etaBadge: { position: 'absolute', top: 4, left: 4, backgroundColor: 'white', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, elevation: 1 },
-  etaText: { fontSize: 8, fontWeight: 'bold', color: PRIMARY_COLOR },
-  productName: { fontSize: 12, fontWeight: '600', height: 32, color: TEXT_DARK },
-  unitText: { fontSize: 10, color: TEXT_MUTED, marginBottom: 4 },
-  priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
-  priceText: { fontWeight: 'bold', color: TEXT_DARK, fontSize: 14 },
-  addButton: { borderWidth: 1, paddingHorizontal: 16, paddingVertical: 6, borderRadius: 6 },
-  addButtonText: { fontWeight: '900', fontSize: 12 },
-  qtyBox: { flexDirection: 'row', alignItems: 'center', borderRadius: 6, padding: 4 },
-  qtyText: { marginHorizontal: 10, fontWeight: 'bold' },
-  
-  stickyFooter: { position: 'absolute', bottom: 20, left: 16, right: 16 },
-  cartBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderRadius: 12, elevation: 4 },
-  cartInfo: { flexDirection: 'row', alignItems: 'center' },
-  cartTotalText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-  cartItemCount: { color: 'white', fontSize: 11, opacity: 0.9, fontWeight: 'bold' },
-  viewCartText: { color: 'white', fontWeight: 'bold', marginRight: 5, fontSize: 14 },
-  
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#F9FAFB', borderTopLeftRadius: 20, borderTopRightRadius: 20, height: '92%' },
-  modalHeader: { padding: 20, backgroundColor: 'white', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#eee' },
-  modalTitle: { fontSize: 18, fontWeight: '900', color: TEXT_DARK },
-  
-  deliveryETAHeader: { backgroundColor: 'white', padding: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  shipmentText: { fontSize: 13, fontWeight: 'bold', color: TEXT_MUTED, marginHorizontal: 16, marginBottom: 8, marginTop: 10 },
-  
-  whiteBox: { backgroundColor: 'white', padding: 16, marginHorizontal: 16, borderRadius: 16, marginBottom: 16 },
-  cartRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
-  cartItemName: { fontSize: 13, fontWeight: '500', color: TEXT_DARK },
-  cartRowPrice: { fontWeight: 'bold', fontSize: 14, color: TEXT_DARK, marginTop: 4 },
-  qtyBoxSmall: { flexDirection: 'row', alignItems: 'center', borderRadius: 6, padding: 4, marginLeft: 16 },
-  qtyBtnSmall: { paddingHorizontal: 6, paddingVertical: 2 }, 
-  qtyTextSmall: { marginHorizontal: 10, fontWeight: 'bold', fontSize: 12 },
-  
-  donationBox: { backgroundColor: 'white', padding: 16, marginHorizontal: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  donationTitle: { fontWeight: 'bold', fontSize: 14, color: TEXT_DARK },
-  donationSub: { fontSize: 11, color: TEXT_MUTED, marginTop: 4, lineHeight: 16 },
-  
-  tipBox: { backgroundColor: 'white', padding: 16, marginHorizontal: 16, borderRadius: 16, marginBottom: 16 },
-  tipTitle: { fontWeight: 'bold', fontSize: 14, color: TEXT_DARK },
-  tipSub: { fontSize: 11, color: TEXT_MUTED, marginTop: 4, marginBottom: 12 },
-  tipButtons: { flexDirection: 'row', justifyContent: 'space-between' },
-  tipBtn: { borderWidth: 1, borderColor: '#eee', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20 },
-  tipBtnText: { fontWeight: 'bold', color: TEXT_DARK },
-  
-  billRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  billLabel: { color: TEXT_MUTED, fontSize: 13 },
-  billVal: { fontWeight: '600', fontSize: 13, color: TEXT_DARK },
-  grandLabel: { fontSize: 16, fontWeight: '900', color: TEXT_DARK },
-  grandVal: { fontSize: 16, fontWeight: '900', color: TEXT_DARK },
-  
-  policyBox: { marginHorizontal: 16, marginBottom: 16 },
-  policyTitle: { fontWeight: 'bold', fontSize: 12, color: TEXT_DARK, marginBottom: 4 },
-  policyText: { fontSize: 10, color: TEXT_MUTED, lineHeight: 14 },
-  
-  addressFooter: { flexDirection: 'row', backgroundColor: 'white', padding: 16, marginHorizontal: 16, borderRadius: 16, alignItems: 'center' },
-  addressIconBg: { backgroundColor: '#111827', width: 30, height: 30, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  deliveringTo: { fontSize: 13, fontWeight: 'bold', color: TEXT_DARK, marginTop: 2 },
-  
-  checkoutFooter: { backgroundColor: 'white', padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee', paddingBottom: Platform.OS === 'ios' ? 30 : 16 },
-  checkoutTotal: { fontSize: 20, fontWeight: '900', color: TEXT_DARK },
-  payButton: { flexDirection: 'row', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, alignItems: 'center' },
-  payButtonText: { fontWeight: '900', fontSize: 16 },
-
-  accountRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  accountRowText: { fontSize: 16, fontWeight: '600', color: TEXT_DARK },
-  promoBanner: { backgroundColor: `${PRIMARY_COLOR}10`, padding: 20, borderRadius: 16, marginTop: 30, flexDirection: 'row', alignItems: 'center' },
-  promoTitle: { fontSize: 18, fontWeight: '900', color: PRIMARY_COLOR, lineHeight: 24 },
-  promoSub: { fontSize: 11, color: TEXT_MUTED, marginTop: 8 },
-
-  formContainer: { backgroundColor: 'white', padding: 20, borderRadius: 16, elevation: 2 },
-  formLabel: { fontSize: 14, fontWeight: 'bold', color: '#374151', marginBottom: 8, marginTop: 15 },
-  input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, padding: 15, fontSize: 16, backgroundColor: '#F9FAFB' },
-  pickerContainer: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, overflow: 'hidden', backgroundColor: '#F9FAFB' },
-  
-  upsellBanner: { padding: 12, alignItems: 'center', borderBottomWidth: 1 },
-  upsellText: { fontWeight: 'bold', fontSize: 12 },
-
-  coinsToggle: { backgroundColor: 'white', padding: 16, marginHorizontal: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: '#eee' },
-  toggleTitle: { fontWeight: 'bold', fontSize: 14 },
-  toggleSub: { fontSize: 11, marginTop: 2 },
-});
