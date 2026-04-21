@@ -3,7 +3,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { 
-  LogOut, Send, PackagePlus, Trash2, Store, IndianRupee, Wallet, CheckCircle2
+  LogOut, Send, PackagePlus, Trash2, Store, IndianRupee, Wallet, CheckCircle2, Image as ImageIcon, PlusCircle
 } from 'lucide-react';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
@@ -13,31 +13,34 @@ const MY_RIDERS = [
 ];
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'orders' | 'inventory' | 'payouts'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'inventory' | 'payouts' | 'banners'>('orders');
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [banners, setBanners] = useState<any[]>([]); // 🚀 Added Banners State
   const [loading, setLoading] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [selectedRiders, setSelectedRiders] = useState<{[key: string]: string}>({});
   
-  // ✅ FIXED: Consolidated state properly
+  // Consolidated product state
   const [newProduct, setNewProduct] = useState({ 
-    name: '', 
-    price: '', 
-    unit: '', 
-    image_url: '', 
-    category: 'General',
-    quantity: '', 
-    weight: ''    
+    name: '', price: '', unit: '', image_url: '', category: 'General', quantity: '', weight: ''    
   });
+
+  // Banner states
+  const [newImageUrl, setNewImageUrl] = useState('');
+  const [isBannerLoading, setIsBannerLoading] = useState(false);
   
   const router = useRouter();
 
   const fetchData = async () => {
     const { data: orderData } = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(100);
     const { data: productData } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+    const { data: bannerData } = await supabase.from('banners').select('*').order('created_at', { ascending: false });
+    
     if (orderData) setOrders(orderData);
     if (productData) setProducts(productData);
+    if (bannerData) setBanners(bannerData);
+    
     setLoading(false);
   };
 
@@ -53,6 +56,7 @@ export default function AdminDashboard() {
           fetchData(); 
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'banners' }, () => fetchData())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -64,7 +68,6 @@ export default function AdminDashboard() {
     await supabase.from('orders').update({ status: 'OUT_FOR_DELIVERY', assigned_rider_id: riderId }).eq('id', orderId);
   };
 
-  // ✅ FIXED: Unified addProduct function
   const addProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     await supabase.from('products').insert([{ 
@@ -85,6 +88,27 @@ export default function AdminDashboard() {
 
   const toggleStock = async (id: string, currentStatus: boolean) => {
     await supabase.from('products').update({ in_stock: !currentStatus }).eq('id', id);
+  };
+
+  // 🚀 Banner Management Functions
+  const handleAddBanner = async () => {
+    if (!newImageUrl) return;
+    setIsBannerLoading(true);
+    const { error } = await supabase.from('banners').insert([{ image_url: newImageUrl }]);
+    setIsBannerLoading(false);
+    if (!error) {
+      setNewImageUrl('');
+      fetchData();
+      alert("Banner Added!");
+    } else {
+      alert("Error adding banner");
+    }
+  };
+
+  const handleDeleteBanner = async (id: string) => {
+    if(!confirm("Delete this banner?")) return;
+    await supabase.from('banners').delete().eq('id', id);
+    fetchData();
   };
 
   const riderPayouts = useMemo(() => {
@@ -126,14 +150,15 @@ export default function AdminDashboard() {
       </header>
 
       <div className="max-w-7xl mx-auto px-6 pt-6">
-        <div className="flex gap-4 border-b border-slate-200 pb-px">
-          {['orders', 'inventory', 'payouts'].map((tab) => (
-            <button key={tab} onClick={() => setActiveTab(tab as any)} className={`pb-4 px-2 text-sm font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === tab ? 'border-purple-600 text-purple-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>{tab}</button>
+        <div className="flex gap-4 border-b border-slate-200 pb-px overflow-x-auto no-scrollbar">
+          {['orders', 'inventory', 'payouts', 'banners'].map((tab) => (
+            <button key={tab} onClick={() => setActiveTab(tab as any)} className={`pb-4 px-2 text-sm font-black uppercase tracking-widest border-b-2 transition-all whitespace-nowrap ${activeTab === tab ? 'border-purple-600 text-purple-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>{tab}</button>
           ))}
         </div>
       </div>
 
       <main className="p-6 max-w-7xl mx-auto">
+        
         {/* ORDERS TAB */}
         {activeTab === 'orders' && (
            <div className="bg-white rounded-[32px] shadow-sm border border-slate-200 overflow-hidden animate-in fade-in">
@@ -172,7 +197,6 @@ export default function AdminDashboard() {
         {/* INVENTORY TAB */}
         {activeTab === 'inventory' && (
           <div className="space-y-6 animate-in fade-in">
-            {/* ✅ FIXED: Added Stock Qty and Weight seamlessly into the form layout */}
             <form onSubmit={addProduct} className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
               <div className="col-span-2 md:col-span-2"><label className="text-[10px] font-black text-slate-400 uppercase ml-1">Name</label><input required placeholder="Milk" className="w-full mt-1 p-3 bg-slate-50 rounded-xl font-bold" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} /></div>
               <div><label className="text-[10px] font-black text-slate-400 uppercase ml-1">Price</label><input required type="number" placeholder="30" className="w-full mt-1 p-3 bg-slate-50 rounded-xl font-bold" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} /></div>
@@ -190,7 +214,6 @@ export default function AdminDashboard() {
                   <img src={p.image_url} alt={p.name} className="h-24 w-full object-contain mb-2" />
                   <div className="font-bold text-sm leading-tight flex-1">{p.name}</div>
                   
-                  {/* ✅ FIXED: Showing the Weight and Stock beautifully in the card */}
                   <div className="flex justify-between items-center mt-2">
                     <div className="text-[10px] font-bold text-slate-500">Weight: {p.weight || 'N/A'}</div>
                     <div className={`text-[10px] font-bold ${p.quantity < 10 ? 'text-red-500' : 'text-emerald-600'}`}>
@@ -236,6 +259,54 @@ export default function AdminDashboard() {
             )}
           </div>
         )}
+
+        {/* 🚀 BANNERS TAB */}
+        {activeTab === 'banners' && (
+          <div className="space-y-6 animate-in fade-in">
+            <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-200">
+              <h2 className="text-lg font-bold mb-4">Add New Promotional Banner</h2>
+              <div className="flex gap-4">
+                <input 
+                  type="text" 
+                  placeholder="Paste Image URL (e.g. https://.../promo.jpg)" 
+                  value={newImageUrl} 
+                  onChange={(e) => setNewImageUrl(e.target.value)}
+                  className="flex-1 p-4 bg-slate-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-600/20 outline-none font-medium"
+                />
+                <button onClick={handleAddBanner} disabled={isBannerLoading} className="bg-purple-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-purple-700 transition-colors flex items-center gap-2">
+                  <PlusCircle size={20}/> {isBannerLoading ? 'Adding...' : 'Add Banner'}
+                </button>
+              </div>
+              {newImageUrl && (
+                <div className="mt-4">
+                  <p className="text-sm font-bold text-gray-500 mb-2">Preview:</p>
+                  <img src={newImageUrl} alt="Preview" className="h-32 rounded-xl object-cover border border-gray-200" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-200">
+              <h2 className="text-lg font-bold mb-6">Live Banners ({banners.length})</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {banners.map((banner) => (
+                  <div key={banner.id} className="border border-gray-200 rounded-2xl overflow-hidden group relative">
+                    <img src={banner.image_url} alt="Banner" className="w-full h-40 object-cover" />
+                    <button onClick={() => handleDeleteBanner(banner.id)} className="absolute top-3 right-3 bg-white/90 p-2 rounded-lg text-red-600 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50">
+                      <Trash2 size={18}/>
+                    </button>
+                  </div>
+                ))}
+                {banners.length === 0 && (
+                  <div className="col-span-2 text-center py-10 text-gray-500 flex flex-col items-center">
+                    <ImageIcon size={40} className="mb-3 text-gray-300" />
+                    <p>No banners live. The App will use defaults.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
       </main>
     </div>
   );
