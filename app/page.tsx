@@ -164,24 +164,47 @@ export default function ZeshuSuperApp() {
   const autoDetectAndFetchPlans = async (num: string) => {
     setIsDetecting(true); setPlans([]);
     try {
-      // ✅ Added &service=${activeService}
       const opRes = await fetch(`/api/fetch-operator?number=${num}&service=${activeService}`);
       const opText = await opRes.text();
+      
       let opData: any = {};
-      try { opData = JSON.parse(opText); } catch(e) {}
-      if (opData && opData.operator) {
+      try { 
+        opData = JSON.parse(opText); 
+      } catch(e) {
+        showToast("Backend error: Check Vercel logs.");
+        setIsDetecting(false);
+        return;
+      }
+
+      if (opData && opData.success && opData.operator) {
         const foundOpKey = Object.keys(OPERATORS_DATA['mobile'] || {}).find(k => k.toLowerCase() === opData.operator.toLowerCase() || k.toLowerCase().includes(opData.operator.toLowerCase()));
         const finalOperator = foundOpKey || opData.operator;
+        
         setSelectedOperator(finalOperator); 
         const opCode = OPERATORS_DATA['mobile'][finalOperator];
+        
         if (opCode) {
-          // ✅ Added &service=${activeService}
           const planRes = await fetch(`/api/fetch-plans?number=${num}&operator=${opCode}&service=${activeService}`);
           const planText = await planRes.text();
-          try { const planData = JSON.parse(planText); if(planData.plans) { setPlans(planData.plans); setSelectedPlanCategory("All"); } } catch(e) {}
+          try { 
+             const planData = JSON.parse(planText); 
+             if(planData.plans && planData.plans.length > 0) { 
+                setPlans(planData.plans); 
+                setSelectedPlanCategory("All"); 
+                showToast(`Auto-detected ${finalOperator}!`);
+             } else {
+                showToast(planData.message || "No plans found for this operator.");
+             }
+          } catch(e) {
+             showToast("Error parsing plan data.");
+          }
         }
+      } else {
+        showToast(opData.message || "Could not detect operator. Please select manually.");
       }
-    } catch (err) {}
+    } catch (err) { 
+      showToast("Network error. Is your local server running?");
+    }
     setIsDetecting(false);
   };
 
@@ -190,7 +213,6 @@ export default function ZeshuSuperApp() {
     setIsLoading(true);
     try {
       const opCode = OPERATORS_DATA[activeService][selectedOperator];
-      // ✅ Added &service=${activeService}
       const res = await fetch(`/api/fetch-plans?number=${rechargeNumber}&operator=${opCode}&service=${activeService}`);
       const text = await res.text();
       let data;
@@ -248,7 +270,7 @@ export default function ZeshuSuperApp() {
           showToast("Payment Successful! Order placed."); 
           setCart([]); setIsCartOpen(false); 
         },
-        theme: { color: "#4F46E5" }, // Premium Indigo Theme for Razorpay
+        theme: { color: "#4F46E5" },
       };
       const rzp = new (window as any).Razorpay(options); rzp.open();
     } catch (error) { alert("Gateway Error"); }
@@ -383,9 +405,52 @@ export default function ZeshuSuperApp() {
                      </div>
                    )}
                    
-                   <button disabled={isLoading} className="w-full p-4 border-2 border-dashed border-[#C7D2FE] rounded-2xl text-[#4F46E5] bg-[#EEF2FF] hover:bg-[#E0E7FF] text-sm font-bold transition-all active:scale-[0.98] flex justify-center items-center gap-2">
+                   <button disabled={isLoading} onClick={activeService === 'upi' ? handleUpiSearch : isPlanBased ? fetchOffers : fetchBillDetails} className="w-full p-4 border-2 border-dashed border-[#C7D2FE] rounded-2xl text-[#4F46E5] bg-[#EEF2FF] hover:bg-[#E0E7FF] text-sm font-bold transition-all active:scale-[0.98] flex justify-center items-center gap-2">
                      {isLoading ? <div className="animate-spin h-5 w-5 border-2 border-[#4F46E5] border-t-transparent rounded-full"></div> : activeService === 'upi' ? 'Verify UPI ID' : isPlanBased ? 'View Recommended Offers' : 'Fetch Bill Details'}
                    </button>
+                   
+                   {fetchedBill && !isPlanBased && (
+                     <div className="bg-[#ECFDF5] border border-[#A7F3D0] p-6 rounded-2xl shadow-sm">
+                       <div className="flex justify-between border-b border-[#D1FAE5] pb-3 mb-3"><span className="text-xs font-bold text-[#059669] uppercase">Customer Name</span><span className="font-bold text-[#111827]">{fetchedBill.Name || 'N/A'}</span></div>
+                       <div className="flex justify-between border-b border-[#D1FAE5] pb-3 mb-3"><span className="text-xs font-bold text-[#059669] uppercase">Due Date</span><span className="font-bold text-[#DC2626]">{fetchedBill.DueDate || 'N/A'}</span></div>
+                       <div className="flex justify-between"><span className="text-xs font-bold text-[#047857] uppercase">Total Due</span><span className="font-black text-xl text-[#111827]">₹{fetchedBill.DueAmount || '0'}</span></div>
+                     </div>
+                   )}
+
+                   {isPlanBased && plans.length > 0 && (
+                     <div className="mt-4">
+                       <div className="flex overflow-x-auto no-scrollbar gap-2 mb-4">
+                         {planCategories.map((cat) => (
+                           <button key={cat} onClick={() => setSelectedPlanCategory(cat)} className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${selectedPlanCategory === cat ? 'bg-[#4F46E5] text-white shadow-md' : 'bg-[#F3F4F6] text-[#6B7280] hover:bg-[#E5E7EB]'}`}>{cat}</button>
+                         ))}
+                       </div>
+                       <div className="h-[280px] bg-[#F8F9FC] rounded-2xl border border-gray-100 overflow-y-auto p-2 space-y-2">
+                         {filteredPlans.map((plan, idx) => (
+                           <div key={idx} onClick={() => setRechargeAmount(String(plan.amount))} className={`bg-white p-4 rounded-[16px] cursor-pointer transition-all border-2 ${rechargeAmount === String(plan.amount) ? 'border-[#4F46E5] shadow-md scale-[1.02]' : 'border-transparent hover:border-gray-200 shadow-sm'}`}>
+                             <div className="flex justify-between items-start mb-2">
+                               <span className="font-black text-xl text-[#4F46E5]">₹{plan.amount}</span>
+                               <span className="bg-[#EEF2FF] text-[#4F46E5] text-[10px] font-black px-2.5 py-1 rounded-lg">{plan.validity}</span>
+                             </div>
+                             <p className="text-xs text-[#6B7280] leading-relaxed font-medium">{plan.desc}</p>
+                           </div>
+                         ))}
+                       </div>
+                     </div>
+                   )}
+
+                   <div className={(fetchedBill && !isPlanBased) || activeService === 'upi' ? 'opacity-60 pointer-events-none' : ''}>
+                     <label className="text-xs font-bold text-[#6B7280] uppercase tracking-wider mb-2 block">Amount</label>
+                     <div className="relative">
+                       <span className="absolute left-4 top-4 text-xl font-bold text-gray-400">₹</span>
+                       <input type="number" className="w-full p-4 pl-10 bg-white border border-gray-200 rounded-xl focus:border-[#4F46E5] focus:ring-2 focus:ring-[#4F46E5]/20 outline-none font-black text-2xl transition-all shadow-sm" value={rechargeAmount} onChange={(e) => setRechargeAmount(e.target.value)} readOnly={(fetchedBill && !isPlanBased) || activeService === 'upi'} />
+                     </div>
+                   </div>
+
+                   {activeService !== 'upi' && (
+                     <button onClick={handleCartCheckout} disabled={isLoading} className="w-full bg-gradient-to-r from-[#059669] to-[#047857] hover:to-[#065F46] text-white py-5 rounded-2xl font-black text-lg shadow-[0_8px_20px_-6px_rgba(5,150,105,0.4)] mt-4 transition-all active:scale-[0.98]">
+                       {isLoading ? 'Processing...' : `Proceed to Pay ₹${rechargeAmount || 0}`}
+                     </button>
+                   )}
                  </div>
                </div>
              </div>
@@ -484,7 +549,7 @@ export default function ZeshuSuperApp() {
         </div>
       </main>
 
-      {/* --- WORLD-CLASS CART DRAWER (WITH FULL FEATURES) --- */}
+      {/* --- WORLD-CLASS CART DRAWER --- */}
       {isCartOpen && (
         <>
           <div className="fixed inset-0 bg-[#111827]/40 backdrop-blur-sm z-[60] transition-opacity animate-in fade-in duration-400" onClick={() => setIsCartOpen(false)}></div>
