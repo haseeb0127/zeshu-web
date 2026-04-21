@@ -7,7 +7,7 @@ import {
   Mic, MapPin, Search, Coins, User, ChevronRight, Zap, Smartphone, 
   Tv, HeartHandshake, Plus, Minus, ShoppingBag, X, LogOut, Ticket, QrCode,
   Droplets, Wifi, Car, Landmark, ShieldCheck, PhoneCall, Phone, Package, Flame, BadgeCheck,
-  History, ChevronDown, CheckSquare, Square, Clock, CheckCircle, Menu, Info, AlertCircle
+  History, ChevronDown, CheckSquare, Square, Clock, CheckCircle, Menu, Info, AlertCircle, BookUser
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -35,7 +35,7 @@ const OPERATORS_DATA: any = {
   gas: { 'MAHANAGAR GAS': '62', 'INDRAPRASTHA GAS': '63', 'GUJARAT GAS': '64', 'Adani Gas': '154' },
 };
 
-const BANNERS = [
+const FALLBACK_BANNERS = [
   "https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=1440/layout-engine/2022-05/Group-33704.jpg",
   "https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=1440/layout-engine/2022-05/Group-33703.jpg",
 ];
@@ -44,6 +44,7 @@ export default function ZeshuSuperApp() {
   const [activeTab, setActiveTab] = useState('home'); 
   const [activeService, setActiveService] = useState('mobile');
   const [products, setProducts] = useState<any[]>([]);
+  const [banners, setBanners] = useState<string[]>(FALLBACK_BANNERS); // 🚀 DYNAMIC BANNERS
   const [myOrders, setMyOrders] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState(''); 
   const [cart, setCart] = useState<{item: any, qty: number}[]>([]);
@@ -102,13 +103,19 @@ export default function ZeshuSuperApp() {
   }, []);
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchAppContent = async () => {
+      // Products
       const cachedProducts = localStorage.getItem('zeshu_products');
       if (cachedProducts) setProducts(JSON.parse(cachedProducts));
-      const { data } = await supabase.from('products').select('*');
-      if (data) { setProducts(data); localStorage.setItem('zeshu_products', JSON.stringify(data)); }
+      const { data: pData } = await supabase.from('products').select('*');
+      if (pData) { setProducts(pData); localStorage.setItem('zeshu_products', JSON.stringify(pData)); }
+      
+      // Banners 🚀
+      const { data: bData } = await supabase.from('banners').select('*').order('created_at', { ascending: false });
+      if (bData && bData.length > 0) { setBanners(bData.map((b: any) => b.image_url)); }
     };
-    fetchProducts();
+    
+    fetchAppContent();
     checkUser();
     setTimeout(() => { setCurrentAddress('HotelRoom 205, 2nd floor Shree Amardeep...'); setIsDetectingLoc(false); }, 1500);
   }, []);
@@ -135,6 +142,25 @@ export default function ZeshuSuperApp() {
         () => { alert("Location access denied."); setIsDetectingLoc(false); }
       );
     } else { setIsDetectingLoc(false); }
+  };
+
+  // 🚀 Native Web Contact Picker Integration
+  const handleContactPicker = async () => {
+    if ('contacts' in navigator && 'ContactsManager' in window) {
+      try {
+        const props = ['name', 'tel'];
+        const contacts: any = await (navigator as any).contacts.select(props, { multiple: false });
+        if (contacts.length > 0 && contacts[0].tel && contacts[0].tel.length > 0) {
+          const phone = contacts[0].tel[0].replace(/\D/g, '').slice(-10);
+          setRechargeNumber(phone);
+          showToast(`Selected contact: ${contacts[0].name || phone}`);
+        }
+      } catch (ex) {
+        showToast("Contact selection cancelled.");
+      }
+    } else {
+      showToast("Contact Search is only supported on Android Chrome Mobile.");
+    }
   };
 
   useEffect(() => {
@@ -223,11 +249,6 @@ export default function ZeshuSuperApp() {
     setIsLoading(false);
   };
 
-  const planCategories = useMemo(() => {
-    if (!plans || plans.length === 0) return ["All"];
-    return ["All", ...Array.from(new Set(plans.map((p: any) => p.categoryName).filter(Boolean)))];
-  }, [plans]);
-
   return (
     <div className="min-h-screen bg-[#F8F9FC] font-sans antialiased text-[#111827] overflow-x-hidden">
       <div className={`fixed bottom-24 left-1/2 -translate-x-1/2 z-[150] transition-all duration-500 ${toastMessage ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-95 pointer-events-none'}`}>
@@ -235,33 +256,40 @@ export default function ZeshuSuperApp() {
       </div>
 
       <header className={`fixed top-0 w-full z-40 transition-all duration-500 ${isScrolled ? 'bg-white/80 backdrop-blur-2xl shadow-sm border-b border-gray-200/40' : 'bg-white border-b border-gray-100'}`}>
-        <div className="max-w-[1400px] mx-auto px-4 md:px-8 h-[88px] flex items-center justify-between gap-4 md:gap-8">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3 cursor-pointer border-r border-gray-200/60 pr-6 active:scale-[0.97] transition-transform" onClick={() => setActiveTab('home')}>
-              <div className="bg-gradient-to-br from-[#6366F1] to-[#4F46E5] text-white font-black p-2.5 rounded-2xl text-2xl tracking-tighter">Z</div>
+        {/* 🚀 FIXED: Mobile Responsive Header */}
+        <div className="max-w-[1400px] mx-auto px-4 md:px-8 h-[72px] md:h-[88px] flex items-center justify-between gap-3 md:gap-8">
+          
+          <div className="flex items-center gap-3 md:gap-6 shrink-0">
+            <div className="flex items-center gap-2 md:gap-3 cursor-pointer md:border-r border-gray-200/60 md:pr-6 active:scale-[0.97] transition-transform" onClick={() => setActiveTab('home')}>
+              <div className="bg-gradient-to-br from-[#6366F1] to-[#4F46E5] text-white font-black p-2 md:p-2.5 rounded-xl md:rounded-2xl text-xl md:text-2xl tracking-tighter">Z</div>
               <div className="hidden md:flex flex-col"><span className="text-[22px] font-black tracking-tighter leading-none">ZESHU</span><span className="text-[10px] font-extrabold text-[#6366F1] tracking-[0.2em] uppercase mt-0.5">Super App</span></div>
             </div>
-            <div className="hidden md:flex flex-col cursor-pointer max-w-[220px] group active:scale-[0.97] transition-transform" onClick={handleAutoDetectLocation}>
+            <div className="hidden lg:flex flex-col cursor-pointer max-w-[220px] group active:scale-[0.97] transition-transform" onClick={handleAutoDetectLocation}>
               <div className="font-black text-[15px] flex items-center gap-1.5">Delivery in 12 min <Zap size={14} className="text-[#F59E0B] fill-[#F59E0B]"/></div>
               <div className="flex items-center text-xs text-[#6B7280] mt-0.5 font-medium truncate">{currentAddress}<ChevronDown size={14} className="ml-1"/></div>
             </div>
           </div>
+
           <div className="flex-1 max-w-3xl">
-            <div className="bg-[#F3F4F6] hover:bg-[#E5E7EB] transition-all rounded-[20px] flex items-center px-5 py-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#6366F1]/20">
-              <Search size={22} className="text-[#9CA3AF]" /><input type="text" placeholder="Search products or services..." className="bg-transparent border-none outline-none flex-1 ml-3 text-[16px] font-medium" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            <div className="bg-[#F3F4F6] hover:bg-[#E5E7EB] transition-all rounded-[14px] md:rounded-[20px] flex items-center px-3 py-2.5 md:px-5 md:py-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#6366F1]/20">
+              <Search className="text-[#9CA3AF] w-[18px] h-[18px] md:w-[22px] md:h-[22px]" />
+              <input type="text" placeholder="Search..." className="bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
               {searchQuery && <X size={14} className="cursor-pointer" onClick={() => setSearchQuery('')}/>}
             </div>
           </div>
-          <div className="flex items-center gap-5 shrink-0">
+
+          <div className="flex items-center gap-3 md:gap-5 shrink-0">
             <button onClick={() => user ? setIsAccountOpen(true) : setIsAuthModalOpen(true)} className="hidden md:flex items-center gap-2 text-[#4B5563] font-extrabold text-sm active:scale-95"><User size={20}/>{user ? 'Account' : 'Login'}</button>
-            <button onClick={() => setIsCartOpen(true)} className="bg-gradient-to-b from-[#059669] to-[#047857] text-white px-5 py-3.5 rounded-[20px] flex items-center gap-3 font-bold text-sm min-w-[120px] justify-center active:scale-[0.96]">
-              <ShoppingBag size={22} /> {cart.length > 0 ? `₹${finalCartTotal}` : 'My Cart'}
+            <button onClick={() => setIsCartOpen(true)} className="bg-gradient-to-b from-[#059669] to-[#047857] text-white p-2.5 md:px-5 md:py-3.5 rounded-[14px] md:rounded-[20px] flex items-center gap-2 md:gap-3 font-bold text-sm min-w-0 md:min-w-[120px] justify-center active:scale-[0.96]">
+              <ShoppingBag className="w-[18px] h-[18px] md:w-[22px] md:h-[22px]" /> 
+              <span className="hidden md:inline-flex">{cart.length > 0 ? `₹${finalCartTotal}` : 'My Cart'}</span>
             </button>
           </div>
+
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto w-full md:px-8 py-8 pt-[120px] flex gap-8">
+      <main className="max-w-[1400px] mx-auto w-full md:px-8 py-8 pt-[90px] md:pt-[120px] flex gap-8">
         {activeTab === 'home' && searchQuery === '' && (
           <aside className="hidden lg:block w-[260px] shrink-0 sticky top-[120px] h-[calc(100vh-120px)] overflow-y-auto no-scrollbar pr-4">
             <h3 className="font-black text-[#111827] mb-5 px-3 tracking-tight text-lg">Shop by Category</h3>
@@ -285,10 +313,20 @@ export default function ZeshuSuperApp() {
                    </button>
                  ))}
                </div>
-               <div className="p-8 space-y-5">
+               <div className="p-5 md:p-8 space-y-5">
                  <div>
                    <label className="text-xs font-bold text-[#6B7280] uppercase tracking-wider mb-2 block">{currentServiceObj.inputLabel}</label>
-                   <input type="text" placeholder="Enter details" className="w-full p-4 bg-[#F8F9FC] border border-gray-200 rounded-2xl focus:border-[#6366F1] font-bold text-lg outline-none" value={rechargeNumber} onChange={(e) => setRechargeNumber(e.target.value)} />
+                   
+                   {/* 🚀 CONTACT PICKER INJECTION */}
+                   <div className="relative flex items-center">
+                     <input type="text" placeholder="Enter details" className="w-full p-4 pr-14 bg-[#F8F9FC] border border-gray-200 rounded-2xl focus:border-[#6366F1] font-bold text-lg outline-none" value={rechargeNumber} onChange={(e) => setRechargeNumber(e.target.value)} />
+                     {activeService === 'mobile' && (
+                       <button onClick={handleContactPicker} className="absolute right-3 p-2.5 bg-[#EEF2FF] text-[#4F46E5] rounded-xl hover:bg-[#E0E7FF] transition-colors active:scale-95" title="Search Contact">
+                         <BookUser size={20} />
+                       </button>
+                     )}
+                   </div>
+
                  </div>
                  {activeService !== 'upi' && (
                    <div>
@@ -324,16 +362,16 @@ export default function ZeshuSuperApp() {
             <>
               {searchQuery === '' && (
                 <div className="mb-12 space-y-10 animate-in fade-in duration-700">
-                  <div className="flex gap-5 overflow-x-auto no-scrollbar pb-4 px-4 md:px-0 snap-x">
-                    {BANNERS.map((img, idx) => (<img key={idx} src={img} alt="Promo" className="h-[200px] md:h-[240px] rounded-[28px] object-cover min-w-[320px] md:min-w-[480px] cursor-pointer shadow-lg hover:-translate-y-1.5 transition-all snap-center border border-gray-100/50" />))}
+                  <div className="flex gap-4 md:gap-5 overflow-x-auto no-scrollbar pb-4 px-4 md:px-0 snap-x">
+                    {banners.map((img, idx) => (<img key={idx} src={img} alt="Promo" className="h-[140px] md:h-[240px] rounded-[16px] md:rounded-[28px] object-cover min-w-[280px] md:min-w-[480px] cursor-pointer shadow-lg hover:-translate-y-1.5 transition-all snap-center border border-gray-100/50" />))}
                   </div>
-                  <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100 mx-4 md:mx-0">
-                    <div className="flex items-center justify-between mb-8"><h2 className="text-2xl font-black tracking-tight">Utility & Recharges</h2><span className="text-[#4F46E5] font-extrabold text-sm cursor-pointer hover:bg-[#E0E7FF] bg-[#EEF2FF] px-4 py-2 rounded-xl">Explore All</span></div>
-                    <div className="grid grid-cols-4 md:grid-cols-8 gap-y-10 gap-x-4">
+                  <div className="bg-white p-6 md:p-10 rounded-[24px] md:rounded-[32px] shadow-sm border border-gray-100 mx-4 md:mx-0">
+                    <div className="flex items-center justify-between mb-8"><h2 className="text-xl md:text-2xl font-black tracking-tight">Utility & Recharges</h2><span className="text-[#4F46E5] font-extrabold text-xs md:text-sm cursor-pointer hover:bg-[#E0E7FF] bg-[#EEF2FF] px-3 py-1.5 md:px-4 md:py-2 rounded-xl">Explore All</span></div>
+                    <div className="grid grid-cols-4 md:grid-cols-8 gap-y-8 md:gap-y-10 gap-x-2 md:gap-x-4">
                       {SERVICES.map((s) => (
-                        <div key={s.id} onClick={() => { setActiveTab('recharge'); setActiveService(s.id); }} className="flex flex-col items-center gap-3.5 cursor-pointer group active:scale-95 transition-transform">
-                          <div className={`h-[72px] w-[72px] rounded-[24px] flex items-center justify-center transition-all ${s.color}`}>{s.icon}</div>
-                          <span className="text-[11px] font-black text-[#6B7280] text-center leading-tight group-hover:text-[#111827]">{s.label}</span>
+                        <div key={s.id} onClick={() => { setActiveTab('recharge'); setActiveService(s.id); }} className="flex flex-col items-center gap-2.5 md:gap-3.5 cursor-pointer group active:scale-95 transition-transform">
+                          <div className={`h-[60px] w-[60px] md:h-[72px] md:w-[72px] rounded-[20px] md:rounded-[24px] flex items-center justify-center transition-all ${s.color}`}>{s.icon}</div>
+                          <span className="text-[10px] md:text-[11px] font-black text-[#6B7280] text-center leading-tight group-hover:text-[#111827]">{s.label}</span>
                         </div>
                       ))}
                     </div>
@@ -341,22 +379,22 @@ export default function ZeshuSuperApp() {
                 </div>
               )}
               <div className="px-4 md:px-0">
-                <div className="flex justify-between items-end mb-8 border-b pb-5"><h2 className="text-3xl font-black tracking-tighter">{activeCategory} Items</h2><span className="text-[#6B7280] font-bold text-sm bg-gray-100 px-3 py-1 rounded-xl">{filteredProducts.length} items</span></div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                <div className="flex justify-between items-end mb-6 md:mb-8 border-b pb-4 md:pb-5"><h2 className="text-2xl md:text-3xl font-black tracking-tighter">{activeCategory} Items</h2><span className="text-[#6B7280] font-bold text-xs md:text-sm bg-gray-100 px-3 py-1 rounded-xl">{filteredProducts.length} items</span></div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
                   {filteredProducts.map((p) => {
                     const inCart = cart.find(c => c.item.id === p.id);
                     return (
-                      <div key={p.id} className="bg-white p-4 rounded-[28px] shadow-sm border border-gray-100 flex flex-col hover:shadow-xl hover:-translate-y-1.5 transition-all group relative">
-                        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-2 py-1 rounded-lg shadow-sm z-10 flex items-center gap-1.5 border border-gray-50"><Clock size={10} className="text-[#4F46E5]"/><span className="text-[10px] font-black">12 MINS</span></div>
-                        <div className="bg-[#F8F9FC] rounded-[20px] mb-4 flex items-center justify-center p-5 aspect-square relative overflow-hidden group-hover:bg-[#F3F4F6] transition-colors"><img src={p.image_url} className="h-full w-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" alt={p.name} /></div>
-                        <div className="text-[15px] font-bold text-[#1F2937] line-clamp-2 min-h-[44px] mb-1 leading-snug tracking-tight group-hover:text-[#4F46E5]">{p.name}</div>
-                        <div className="text-[13px] text-[#6B7280] mb-5 font-semibold">{p.weight || '1 unit'}</div>
-                        <div className="flex justify-between items-center mt-auto pt-3 border-t">
-                          <span className="font-black text-lg">₹{p.price}</span>
+                      <div key={p.id} className="bg-white p-3 md:p-4 rounded-[20px] md:rounded-[28px] shadow-sm border border-gray-100 flex flex-col hover:shadow-xl hover:-translate-y-1.5 transition-all group relative">
+                        <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-1.5 py-0.5 rounded-md shadow-sm z-10 flex items-center gap-1 border border-gray-50"><Clock size={10} className="text-[#4F46E5]"/><span className="text-[9px] font-black">12 MINS</span></div>
+                        <div className="bg-[#F8F9FC] rounded-[16px] mb-3 flex items-center justify-center p-4 aspect-square relative overflow-hidden group-hover:bg-[#F3F4F6] transition-colors"><img src={p.image_url} className="h-full w-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" alt={p.name} /></div>
+                        <div className="text-[13px] md:text-[15px] font-bold text-[#1F2937] line-clamp-2 min-h-[38px] md:min-h-[44px] mb-1 leading-snug tracking-tight group-hover:text-[#4F46E5]">{p.name}</div>
+                        <div className="text-[11px] md:text-[13px] text-[#6B7280] mb-4 font-semibold">{p.weight || '1 unit'}</div>
+                        <div className="flex justify-between items-center mt-auto pt-2 md:pt-3 border-t">
+                          <span className="font-black text-base md:text-lg">₹{p.price}</span>
                           {inCart ? (
-                            <div className="flex items-center bg-[#059669] text-white rounded-[14px] shadow-lg min-w-[84px] justify-between overflow-hidden h-[36px]"><button onClick={() => removeFromCart(p.id)} className="flex-1 active:bg-black/20">-</button><span className="font-black text-sm">{inCart.qty}</span><button onClick={() => addToCart(p)} className="flex-1 active:bg-black/20">+</button></div>
+                            <div className="flex items-center bg-[#059669] text-white rounded-xl shadow-lg min-w-[70px] md:min-w-[84px] justify-between overflow-hidden h-[30px] md:h-[36px]"><button onClick={() => removeFromCart(p.id)} className="flex-1 active:bg-black/20">-</button><span className="font-black text-xs md:text-sm">{inCart.qty}</span><button onClick={() => addToCart(p)} className="flex-1 active:bg-black/20">+</button></div>
                           ) : (
-                            <button onClick={() => addToCart(p)} className="px-6 h-[36px] border border-[#059669] text-[#059669] bg-[#ECFDF5] rounded-[14px] text-[13px] font-black active:scale-95 shadow-sm min-w-[84px]">ADD</button>
+                            <button onClick={() => addToCart(p)} className="px-4 md:px-6 h-[30px] md:h-[36px] border border-[#059669] text-[#059669] bg-[#ECFDF5] rounded-xl text-[11px] md:text-[13px] font-black active:scale-95 shadow-sm min-w-[70px] md:min-w-[84px]">ADD</button>
                           )}
                         </div>
                       </div>
