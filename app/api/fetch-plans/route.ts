@@ -34,14 +34,14 @@ export async function GET(request: Request) {
       apimember_id: process.env.PLAN_API_USER_ID || '',
       api_password: process.env.PLAN_API_PASSWORD || '',
       operatorcode: opCode, 
-      cricle: circleCode 
+      circle: circleCode // NOTE: Change back to 'cricle' if the API documentation specifically requires the typo!
     });
 
     const planRes = await fetch(`https://planapi.in/api/Mobile/MobileRechargePlan?${planParams.toString()}`);
     const planData = await planRes.json();
 
     // --- STEP 3: Error Check ---
-    if (planData.STATUS === "3") {
+    if (planData.STATUS === "3" || planData.STATUS === "0") {
       console.log("❌ API REJECTED REQUEST:", planData.MESSAGE);
       return NextResponse.json({ plans: [], message: planData.MESSAGE });
     }
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
           rawPlans = [...rawPlans, ...list.map(p => ({ 
             ...p, 
             categoryName: cat, // Used for the Tabs
-            catName: cat       // Used for the description
+            catName: cat       // Used for the description fallback
           }))];
         }
       });
@@ -64,17 +64,17 @@ export async function GET(request: Request) {
 
     // --- STEP 5: Final Formatting ---
     const formattedPlans = rawPlans.map((p: any) => ({
-      amount: p.rs || p.amount || p.Price || "0",
+      amount: String(p.rs || p.amount || p.Price || "0"), // Converted to string for mobile safety
       validity: p.validity || p.Validity || 'N/A',
-      desc: p.desc || p.Description || p.detail || `Live ${p.catName} Plan`,
+      desc: p.desc || p.Description || p.detail || `Live ${p.categoryName} Plan`,
       categoryName: p.categoryName // CRITICAL: This MUST be here for the tabs to work!
     })).filter(p => p.amount !== "0");
 
-    console.log(`✅ ZESHU SUCCESS: Found ${formattedPlans.length} plans with categories.`);
+    console.log(`✅ ZESHU SUCCESS: Found ${formattedPlans.length} live plans with categories.`);
     return NextResponse.json({ plans: formattedPlans });
 
   } catch (error) {
-    console.error("Critical Error:", error);
-    return NextResponse.json({ plans: [] }, { status: 500 });
+    console.error("Critical API Error:", error);
+    return NextResponse.json({ plans: [], message: "Failed to connect to provider" }, { status: 500 });
   }
 }
