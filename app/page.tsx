@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+import Script from 'next/script';
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Mic, MapPin, Search, Coins, User, ChevronRight, Zap, Smartphone, 
@@ -104,10 +105,6 @@ export default function ZeshuSuperApp() {
   }, []);
 
   useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    document.body.appendChild(script);
-    
     const fetchProducts = async () => {
       const cachedProducts = localStorage.getItem('zeshu_products');
       if (cachedProducts) setProducts(JSON.parse(cachedProducts));
@@ -223,6 +220,39 @@ export default function ZeshuSuperApp() {
     setIsLoading(false);
   };
 
+  const fetchBillDetails = async () => {
+    if (!rechargeNumber || !selectedOperator) return alert(`Enter ${currentServiceObj.inputLabel} and select operator`);
+    setIsLoading(true); setFetchedBill(null);
+    try {
+      const opCode = OPERATORS_DATA[activeService][selectedOperator];
+      const res = await fetch(`/api/fetch-bill?service=${activeService}&number=${rechargeNumber}&operatorCode=${opCode}`);
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch(e) { throw new Error("Invalid format"); }
+      
+      if (data.success && data.bill) { setFetchedBill(data.bill); setRechargeAmount(data.bill.DueAmount); showToast("Bill Details Fetched!"); } 
+      else { alert(data.message || "Could not fetch bill details."); }
+    } catch (err) { alert("Error connecting to billing server."); }
+    setIsLoading(false);
+  };
+
+  const handleUpiSearch = async () => {
+    if (!rechargeNumber) return alert("Please enter a UPI ID or Mobile Number.");
+    setIsLoading(true); setUpiResult(null);
+    const cleanInput = rechargeNumber.trim();
+    const isMobileNumber = /^\d{10}$/.test(cleanInput);
+    const actionType = isMobileNumber ? 'mobile_to_multiple_upi' : 'vpa_info';
+    try {
+      const response = await fetch('/api/upi-tools', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: actionType, mobileNo: isMobileNumber ? cleanInput : undefined, upiId: !isMobileNumber ? cleanInput : undefined })
+      });
+      const result = await response.json();
+      if (result.success) { setUpiResult(result.data); showToast("UPI Network Checked"); } else { alert(`Error: ${result.message}`); }
+    } catch (error) { alert("Network error"); }
+    setIsLoading(false);
+  };
+
   const checkUser = async () => { const { data: { session } } = await supabase.auth.getSession(); if (session) { setUser(session.user); fetchCoinBalance(session.user.id); } };
   const fetchCoinBalance = async (userId: string) => { const { data } = await supabase.from('wallets').select('coins').eq('user_id', userId).single(); if (data) setCoinsBalance(data.coins); };
   const handleSendOtp = async () => { setIsLoading(true); const { error } = await supabase.auth.signInWithOtp({ phone: `+91${phoneNumber}` }); setIsLoading(false); if (!error) setOtpSent(true); else alert(error.message); };
@@ -270,7 +300,7 @@ export default function ZeshuSuperApp() {
           showToast("Payment Successful! Order placed."); 
           setCart([]); setIsCartOpen(false); 
         },
-        theme: { color: "#4F46E5" },
+        theme: { color: "#4F46E5" }, 
       };
       const rzp = new (window as any).Razorpay(options); rzp.open();
     } catch (error) { alert("Gateway Error"); }
@@ -795,6 +825,13 @@ export default function ZeshuSuperApp() {
           </div>
         </div>
       )}
+      
+      {/* ADD THIS RIGHT BEFORE THE FINAL </div> */}
+      <Script 
+        id="razorpay-checkout-js" 
+        src="https://checkout.razorpay.com/v1/checkout.js" 
+        strategy="lazyOnload" 
+      />
     </div>
   );
 }
