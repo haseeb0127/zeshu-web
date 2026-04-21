@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const operatorCode = searchParams.get('operator');
-  const circleCode = searchParams.get('circle') || '92'; // Default circle if missing
+  const circleCode = searchParams.get('circle') || '92'; 
   const service = searchParams.get('service') || 'mobile';
 
   if (!operatorCode) {
@@ -23,15 +23,18 @@ export async function GET(request: Request) {
       });
 
       const res = await fetch(`https://planapi.in/api/Mobile/DthPlans?${dthParams.toString()}`);
-      const data = await res.json();
+      const text = await res.text();
+      
+      let data: any = {};
+      try { data = JSON.parse(text); } catch (e) { return NextResponse.json({ plans: [], message: "Invalid API response" }); }
 
-      if (data.STATUS === "3" || !data.RDATA) {
+      // 🔥 FIX: We only block if ERROR is not "0" (0 is success in PlanAPI)
+      if (data.ERROR !== "0" || !data.RDATA) {
         return NextResponse.json({ plans: [], message: data.MESSAGE || "No DTH plans available" });
       }
 
       let formattedDthPlans: any[] = [];
       
-      // Flatten the deeply nested DTH JSON structure
       Object.keys(data.RDATA).forEach(category => {
         const categoryData = data.RDATA[category];
         if (Array.isArray(categoryData)) {
@@ -41,7 +44,7 @@ export async function GET(request: Request) {
                 if (detail.PricingList && Array.isArray(detail.PricingList)) {
                   detail.PricingList.forEach((priceItem: any) => {
                     formattedDthPlans.push({
-                      amount: String(priceItem.Amount).replace(/[^0-9.]/g, ''), // Strip "₹" symbol
+                      amount: String(priceItem.Amount).replace(/[^0-9.]/g, ''), 
                       validity: priceItem.Month || 'N/A',
                       desc: `${detail.PlanName} | ${detail.Channels} | ${pack.Language}`,
                       categoryName: category
@@ -62,13 +65,17 @@ export async function GET(request: Request) {
         apimember_id: apiUserId,
         api_password: apiPassword,
         operatorcode: operatorCode, 
-        cricle: circleCode // Leaving the API's typo 'cricle' intact as per their docs
+        cricle: circleCode 
       });
 
       const res = await fetch(`https://planapi.in/api/Mobile/MobileRechargePlan?${mobileParams.toString()}`);
-      const data = await res.json();
+      const text = await res.text();
+      
+      let data: any = {};
+      try { data = JSON.parse(text); } catch (e) { return NextResponse.json({ plans: [], message: "Invalid API response" }); }
 
-      if (data.STATUS === "3" || data.STATUS === "0" || !data.RDATA) {
+      // 🔥 THE FIX IS HERE: Removing data.STATUS === "0" because 0 means SUCCESS in PlanAPI!
+      if (data.ERROR !== "0" || !data.RDATA) {
         return NextResponse.json({ plans: [], message: data.MESSAGE || "No mobile plans available" });
       }
 
