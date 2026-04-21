@@ -164,7 +164,8 @@ export default function ZeshuSuperApp() {
   const autoDetectAndFetchPlans = async (num: string) => {
     setIsDetecting(true); setPlans([]);
     try {
-      const opRes = await fetch(`/api/fetch-operator?number=${num}`);
+      // ✅ Added &service=${activeService}
+      const opRes = await fetch(`/api/fetch-operator?number=${num}&service=${activeService}`);
       const opText = await opRes.text();
       let opData: any = {};
       try { opData = JSON.parse(opText); } catch(e) {}
@@ -174,13 +175,30 @@ export default function ZeshuSuperApp() {
         setSelectedOperator(finalOperator); 
         const opCode = OPERATORS_DATA['mobile'][finalOperator];
         if (opCode) {
-          const planRes = await fetch(`/api/fetch-plans?number=${num}&operator=${opCode}`);
+          // ✅ Added &service=${activeService}
+          const planRes = await fetch(`/api/fetch-plans?number=${num}&operator=${opCode}&service=${activeService}`);
           const planText = await planRes.text();
           try { const planData = JSON.parse(planText); if(planData.plans) { setPlans(planData.plans); setSelectedPlanCategory("All"); } } catch(e) {}
         }
       }
     } catch (err) {}
     setIsDetecting(false);
+  };
+
+  const fetchOffers = async () => {
+    if (!rechargeNumber || !selectedOperator) return alert(`Enter ${currentServiceObj.inputLabel} and select operator`);
+    setIsLoading(true);
+    try {
+      const opCode = OPERATORS_DATA[activeService][selectedOperator];
+      // ✅ Added &service=${activeService}
+      const res = await fetch(`/api/fetch-plans?number=${rechargeNumber}&operator=${opCode}&service=${activeService}`);
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch(e) { throw new Error("Invalid response format"); }
+      if (data && data.plans) { setPlans(data.plans); setSelectedPlanCategory("All"); } 
+      else { alert(data.message || "No plans found."); }
+    } catch (err) { alert("Error fetching offers"); }
+    setIsLoading(false);
   };
 
   const checkUser = async () => { const { data: { session } } = await supabase.auth.getSession(); if (session) { setUser(session.user); fetchCoinBalance(session.user.id); } };

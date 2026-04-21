@@ -2,79 +2,98 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  let number = searchParams.get('number') || '';
+  const operatorCode = searchParams.get('operator');
+  const circleCode = searchParams.get('circle') || '92'; // Default circle if missing
+  const service = searchParams.get('service') || 'mobile';
 
-  // 1. STRIKE THE 91: Clean the number to 10 digits
-  const cleanNumber = number.replace(/\D/g, '').slice(-10);
-
-  if (cleanNumber.length !== 10) {
-    return NextResponse.json({ plans: [], message: "Please enter a valid 10-digit number" });
+  if (!operatorCode) {
+    return NextResponse.json({ plans: [], message: "Missing operator code" }, { status: 400 });
   }
 
   try {
-    // --- STEP 1: HLR Check (To get the official Numeric Codes) ---
-    const hlrParams = new URLSearchParams({
-      ApiUserID: process.env.PLAN_API_USER_ID || '',
-      ApiPassword: process.env.PLAN_API_PASSWORD || '',
-      Mobileno: cleanNumber
-    });
-    
-    const hlrRes = await fetch(`https://planapi.in/api/Mobile/OperatorFetchNew?${hlrParams.toString()}`);
-    const hlrData = await hlrRes.json();
+    const apiUserId = process.env.PLAN_API_USER_ID || '';
+    const apiPassword = process.env.PLAN_API_PASSWORD || '';
 
-    const opCode = hlrData.OpCode || "";
-    const circleCode = hlrData.CircleCode || "92";
+    if (service === 'dth') {
+      // --- FETCH DTH PLANS ---
+      const dthParams = new URLSearchParams({
+        apimember_id: apiUserId,
+        api_password: apiPassword,
+        operatorcode: operatorCode
+      });
 
-    if (!opCode) {
-        return NextResponse.json({ plans: [], message: "Could not identify operator code" });
-    }
+      const res = await fetch(`https://planapi.in/api/Mobile/DthPlans?${dthParams.toString()}`);
+      const data = await res.json();
 
-    // --- STEP 2: Fetch Live Plans using Numeric Keys ---
-    const planParams = new URLSearchParams({
-      apimember_id: process.env.PLAN_API_USER_ID || '',
-      api_password: process.env.PLAN_API_PASSWORD || '',
-      operatorcode: opCode, 
-      circle: circleCode // NOTE: Change back to 'cricle' if the API documentation specifically requires the typo!
-    });
+      if (data.STATUS === "3" || !data.RDATA) {
+        return NextResponse.json({ plans: [], message: data.MESSAGE || "No DTH plans available" });
+      }
 
-    const planRes = await fetch(`https://planapi.in/api/Mobile/MobileRechargePlan?${planParams.toString()}`);
-    const planData = await planRes.json();
-
-    // --- STEP 3: Error Check ---
-    if (planData.STATUS === "3" || planData.STATUS === "0") {
-      console.log("❌ API REJECTED REQUEST:", planData.MESSAGE);
-      return NextResponse.json({ plans: [], message: planData.MESSAGE });
-    }
-
-    // --- STEP 4: The Logic Fix (Merging everything into one clean array) ---
-    let rawPlans: any[] = [];
-    if (planData.RDATA && typeof planData.RDATA === 'object') {
-      Object.keys(planData.RDATA).forEach((cat) => {
-        const list = planData.RDATA[cat];
-        if (Array.isArray(list)) {
-          // We attach BOTH names just to be 100% safe
-          rawPlans = [...rawPlans, ...list.map(p => ({ 
-            ...p, 
-            categoryName: cat, // Used for the Tabs
-            catName: cat       // Used for the description fallback
-          }))];
+      let formattedDthPlans: any[] = [];
+      
+      // Flatten the deeply nested DTH JSON structure
+      Object.keys(data.RDATA).forEach(category => {
+        const categoryData = data.RDATA[category];
+        if (Array.isArray(categoryData)) {
+          categoryData.forEach((pack: any) => {
+            if (pack.Details && Array.isArray(pack.Details)) {
+              pack.Details.forEach((detail: any) => {
+                if (detail.PricingList && Array.isArray(detail.PricingList)) {
+                  detail.PricingList.forEach((priceItem: any) => {
+                    formattedDthPlans.push({
+                      amount: String(priceItem.Amount).replace(/[^0-9.]/g, ''), // Strip "₹" symbol
+                      validity: priceItem.Month || 'N/A',
+                      desc: `${detail.PlanName} | ${detail.Channels} | ${pack.Language}`,
+                      categoryName: category
+                    });
+                  });
+                }
+              });
+            }
+          });
         }
       });
+
+      return NextResponse.json({ plans: formattedDthPlans });
+
+    } else {
+      // --- FETCH MOBILE PLANS ---
+      const mobileParams = new URLSearchParams({
+        apimember_id: apiUserId,
+        api_password: apiPassword,
+        operatorcode: operatorCode, 
+        cricle: circleCode // Leaving the API's typo 'cricle' intact as per their docs
+      });
+
+      const res = await fetch(`https://planapi.in/api/Mobile/MobileRechargePlan?${mobileParams.toString()}`);
+      const data = await res.json();
+
+      if (data.STATUS === "3" || data.STATUS === "0" || !data.RDATA) {
+        return NextResponse.json({ plans: [], message: data.MESSAGE || "No mobile plans available" });
+      }
+
+      let rawPlans: any[] = [];
+      if (data.RDATA && typeof data.RDATA === 'object') {
+        Object.keys(data.RDATA).forEach((cat) => {
+          const list = data.RDATA[cat];
+          if (Array.isArray(list)) {
+            rawPlans = [...rawPlans, ...list.map(p => ({ ...p, categoryName: cat }))];
+          }
+        });
+      }
+
+      const formattedMobilePlans = rawPlans.map((p: any) => ({
+        amount: String(p.rs || p.amount || p.Price || "0"),
+        validity: p.validity || p.Validity || 'N/A',
+        desc: p.desc || p.Description || p.detail || `Live ${p.categoryName} Plan`,
+        categoryName: p.categoryName
+      })).filter(p => p.amount !== "0");
+
+      return NextResponse.json({ plans: formattedMobilePlans });
     }
 
-    // --- STEP 5: Final Formatting ---
-    const formattedPlans = rawPlans.map((p: any) => ({
-      amount: String(p.rs || p.amount || p.Price || "0"), // Converted to string for mobile safety
-      validity: p.validity || p.Validity || 'N/A',
-      desc: p.desc || p.Description || p.detail || `Live ${p.categoryName} Plan`,
-      categoryName: p.categoryName // CRITICAL: This MUST be here for the tabs to work!
-    })).filter(p => p.amount !== "0");
-
-    console.log(`✅ ZESHU SUCCESS: Found ${formattedPlans.length} live plans with categories.`);
-    return NextResponse.json({ plans: formattedPlans });
-
   } catch (error) {
-    console.error("Critical API Error:", error);
+    console.error("Plan Fetch Error:", error);
     return NextResponse.json({ plans: [], message: "Failed to connect to provider" }, { status: 500 });
   }
 }

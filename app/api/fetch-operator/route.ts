@@ -2,45 +2,51 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const number = searchParams.get('number');
+  const number = searchParams.get('number') || '';
+  const service = searchParams.get('service') || 'mobile'; // Default to mobile
 
-  if (!number || number.length !== 10) {
-    return NextResponse.json({ operator: null, message: "Invalid number" }, { status: 400 });
-  }
+  // Clean the input
+  const cleanNumber = number.replace(/\D/g, '');
 
   try {
-    // 1. SAFELY ENCODE the password so special characters (@, #, &) don't break the URL
-    const queryParams = new URLSearchParams({
-      ApiUserID: process.env.PLAN_API_USER_ID || '',
-      ApiPassword: process.env.PLAN_API_PASSWORD || '',
-      Mobileno: number
-    });
+    if (service === 'dth') {
+      // --- DTH OPERATOR FETCH ---
+      const dthParams = new URLSearchParams({
+        apimember_id: process.env.PLAN_API_USER_ID || '',
+        api_password: process.env.PLAN_API_PASSWORD || '',
+        dth_number: cleanNumber
+      });
+      
+      const res = await fetch(`https://planapi.in/api/Mobile/DthOperatorFetch?${dthParams.toString()}`);
+      const data = await res.json();
 
-    const url = `https://planapi.in/api/Mobile/OperatorFetchNew?${queryParams.toString()}`;
-    
-    const res = await fetch(url);
-    const data = await res.json();
+      if (data.ERROR === "0" && data.DthOpCode) {
+        return NextResponse.json({ success: true, operator: data.DthName, opCode: data.DthOpCode });
+      } else {
+        return NextResponse.json({ success: false, message: data.Message || "DTH Operator not found" });
+      }
+    } else {
+      // --- MOBILE OPERATOR FETCH (HLR) ---
+      const mobileNumber = cleanNumber.slice(-10);
+      if (mobileNumber.length !== 10) return NextResponse.json({ success: false, message: "Invalid mobile number" });
 
-    console.log("PlanAPI HLR Response:", data);
+      const hlrParams = new URLSearchParams({
+        ApiUserID: process.env.PLAN_API_USER_ID || '',
+        ApiPassword: process.env.PLAN_API_PASSWORD || '',
+        Mobileno: mobileNumber
+      });
+      
+      const res = await fetch(`https://planapi.in/api/Mobile/OperatorFetchNew?${hlrParams.toString()}`);
+      const data = await res.json();
 
-    if (data.ERROR !== "0" || data.STATUS !== "1") {
-      console.log("PlanAPI failed to find operator:", data.Message);
-      return NextResponse.json({ operator: null });
+      if (data.OpCode) {
+        return NextResponse.json({ success: true, operator: data.Operator, opCode: data.OpCode, circleCode: data.CircleCode });
+      } else {
+        return NextResponse.json({ success: false, message: "Mobile Operator not found" });
+      }
     }
-
-    const rawOperator = (data.Operator || "").toUpperCase();
-    let matchedOperator = "";
-
-    if (rawOperator.includes("JIO")) matchedOperator = "JIO";
-    else if (rawOperator.includes("AIRTEL")) matchedOperator = "Airtel";
-    else if (rawOperator.includes("VODA") || rawOperator.includes("VI")) matchedOperator = "Vodafone";
-    else if (rawOperator.includes("IDEA")) matchedOperator = "Idea";
-    else if (rawOperator.includes("BSNL")) matchedOperator = "BSNL";
-
-    return NextResponse.json({ operator: matchedOperator, circle: data.Circle });
-
   } catch (error) {
-    console.error("HLR Fetch Error:", error);
-    return NextResponse.json({ operator: null }, { status: 500 });
+    console.error("Operator Fetch Error:", error);
+    return NextResponse.json({ success: false, message: "Server connection failed" }, { status: 500 });
   }
 }
