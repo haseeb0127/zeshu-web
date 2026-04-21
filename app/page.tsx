@@ -43,6 +43,8 @@ export default function ZeshuSuperApp() {
   const [myOrders, setMyOrders] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState(''); 
   const [cart, setCart] = useState<{item: any, qty: number}[]>([]);
+  
+  // Auth & User States
   const [user, setUser] = useState<any>(null);
   const [coinsBalance, setCoinsBalance] = useState(0);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -52,12 +54,19 @@ export default function ZeshuSuperApp() {
   const [isLoading, setIsLoading] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All'); 
   
+  // App Modals & Features
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [isCoinHistoryOpen, setIsCoinHistoryOpen] = useState(false);
   const [useZeshuCoins, setUseZeshuCoins] = useState(false);
+  const [tipAmount, setTipAmount] = useState(20); 
+  const [isDonating, setIsDonating] = useState(true); 
+  
+  // Location States
   const [currentAddress, setCurrentAddress] = useState('Fetching precise location...');
   const [isDetectingLoc, setIsDetectingLoc] = useState(true);
   
+  // Recharge States
   const [rechargeNumber, setRechargeNumber] = useState('');
   const [rechargeAmount, setRechargeAmount] = useState('');
   const [selectedOperator, setSelectedOperator] = useState('');
@@ -67,6 +76,7 @@ export default function ZeshuSuperApp() {
   const [isDetecting, setIsDetecting] = useState(false);
   const [selectedPlanCategory, setSelectedPlanCategory] = useState("All");
   
+  // UI Enhancements
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -195,11 +205,14 @@ export default function ZeshuSuperApp() {
     }); 
   };
 
+  // --- ADVANCED CART MATH ---
   const itemTotal = cart.reduce((acc, curr) => acc + (curr.item.price * curr.qty), 0);
   const smallCartFee = (itemTotal > 0 && itemTotal < 100) ? 20 : 0;
   const deliveryCharge = (itemTotal > 0 && itemTotal < 200) ? 30 : 0; 
+  const donationAmt = isDonating ? 1 : 0;
   const zeshuDiscount = useZeshuCoins ? Math.min(ZESHU_COINS_VAL, itemTotal) : 0; 
-  const finalCartTotal = itemTotal > 0 ? (itemTotal + deliveryCharge + smallCartFee + HANDLING_FEE - zeshuDiscount) : 0;
+  
+  const finalCartTotal = itemTotal > 0 ? (itemTotal + deliveryCharge + smallCartFee + HANDLING_FEE + donationAmt + tipAmount - zeshuDiscount) : 0;
 
   const handleCartCheckout = async () => {
     if (finalCartTotal === 0) return;
@@ -236,7 +249,7 @@ export default function ZeshuSuperApp() {
       </div>
 
       {/* --- WORLD CLASS STICKY HEADER --- */}
-      <header className={`fixed top-0 w-full z-40 transition-all duration-500 ${isScrolled ? 'bg-white/80 backdrop-blur-2xl shadow-[0_4px_30px_-10px_rgba(0,0,0,0.05)] border-b border-gray-200/40' : 'bg-white border-b border-gray-100'}`}>
+      <header className={`fixed top-0 w-full z-40 transition-all duration-500 ${isScrolled ? 'bg-white/80 backdrop-blur-2xl shadow-[0_4px_30px_-10px_rgba(0,0,0,0.05)] border-b border-gray-200/40' : 'bg-white border-b border-gray-100/80'}`}>
         <div className="max-w-[1400px] mx-auto px-4 md:px-8 h-[88px] flex items-center justify-between gap-4 md:gap-8">
           
           {/* Logo & Location */}
@@ -453,11 +466,11 @@ export default function ZeshuSuperApp() {
         </div>
       </main>
 
-      {/* --- WORLD-CLASS CART DRAWER --- */}
+      {/* --- WORLD-CLASS CART DRAWER (WITH FULL FEATURES) --- */}
       {isCartOpen && (
         <>
           <div className="fixed inset-0 bg-[#111827]/40 backdrop-blur-sm z-[60] transition-opacity animate-in fade-in duration-400" onClick={() => setIsCartOpen(false)}></div>
-          <div className="fixed top-0 right-0 h-full w-full md:w-[440px] bg-[#F8F9FC] z-[70] shadow-[[-20px_0_60px_rgba(0,0,0,0.1)]] animate-in slide-in-from-right duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col">
+          <div className="fixed top-0 right-0 h-full w-full md:w-[460px] bg-[#F8F9FC] z-[70] shadow-[[-20px_0_60px_rgba(0,0,0,0.1)]] animate-in slide-in-from-right duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col">
             
             <div className="bg-white px-6 py-5 flex justify-between items-center shadow-sm z-10 border-b border-gray-100">
               <h2 className="text-2xl font-black text-[#111827] tracking-tighter">My Cart</h2>
@@ -478,6 +491,7 @@ export default function ZeshuSuperApp() {
               <>
                 <div className="flex-1 overflow-y-auto p-5 space-y-5 no-scrollbar">
                   
+                  {/* Delivery ETA */}
                   <div className="bg-white p-5 rounded-[24px] flex items-center gap-4 shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-gray-100 animate-in slide-in-from-bottom-4 duration-500">
                     <div className="bg-[#EEF2FF] p-4 rounded-2xl"><Clock className="text-[#4F46E5]" size={26}/></div>
                     <div>
@@ -486,6 +500,7 @@ export default function ZeshuSuperApp() {
                     </div>
                   </div>
 
+                  {/* Cart Items */}
                   <div className="bg-white rounded-[24px] shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-gray-100 overflow-hidden animate-in slide-in-from-bottom-6 duration-500 delay-75">
                     {cart.map((c, i) => (
                       <div key={i} className="p-5 flex gap-5 border-b border-gray-50 last:border-0 hover:bg-[#F8F9FC]/50 transition-colors">
@@ -508,6 +523,48 @@ export default function ZeshuSuperApp() {
                     ))}
                   </div>
 
+                  {/* Zeshu Coins Panel */}
+                  <div className="bg-white p-5 rounded-[24px] shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-gray-100 animate-in slide-in-from-bottom-8 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                       <div className="bg-[#FEF3C7] p-3 rounded-2xl"><Coins className="text-[#D97706]" size={24}/></div>
+                       <div>
+                         <div className="font-black text-[#111827] text-base tracking-tight">Zeshu Coins</div>
+                         <div className="text-xs text-[#6B7280] font-bold mt-0.5">Balance: {coinsBalance}</div>
+                       </div>
+                    </div>
+                    <button onClick={() => setUseZeshuCoins(!useZeshuCoins)} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-colors active:scale-95 ${useZeshuCoins ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-[#EEF2FF] text-[#4F46E5] border border-[#E0E7FF]'}`}>
+                      {useZeshuCoins ? 'Remove' : 'Apply'}
+                    </button>
+                  </div>
+
+                  {/* Donation Panel */}
+                  <div className="bg-white p-5 rounded-[24px] shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-gray-100 flex items-center justify-between animate-in slide-in-from-bottom-8">
+                    <div className="flex items-center gap-4">
+                       <button onClick={() => setIsDonating(!isDonating)} className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors shadow-inner ${isDonating ? 'bg-[#059669] text-white border-transparent' : 'bg-gray-50 border border-gray-300'}`}>
+                          {isDonating && <CheckCircle size={16}/>}
+                       </button>
+                       <div>
+                         <div className="font-bold text-[#111827] text-[15px]">Feeding India Donation</div>
+                         <div className="text-xs text-[#6B7280] font-medium mt-0.5">Working towards a malnutrition free India</div>
+                       </div>
+                    </div>
+                    <span className="font-black text-[#111827] text-lg">₹1</span>
+                  </div>
+
+                  {/* Delivery Tip Panel */}
+                  <div className="bg-white p-6 rounded-[24px] shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-gray-100 animate-in slide-in-from-bottom-8">
+                    <div className="font-black text-[#111827] text-base mb-1 tracking-tight">Tip your delivery partner</div>
+                    <div className="text-xs text-[#6B7280] font-medium mb-5">100% of your tip goes directly to them</div>
+                    <div className="flex gap-3">
+                       {[20, 30, 50].map(amt => (
+                          <button key={amt} onClick={() => setTipAmount(tipAmount === amt ? 0 : amt)} className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all border shadow-sm active:scale-95 ${tipAmount === amt ? 'bg-[#EEF2FF] border-[#4F46E5] text-[#4F46E5]' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                             ₹{amt}
+                          </button>
+                       ))}
+                    </div>
+                  </div>
+
+                  {/* Bill Details */}
                   <div className="bg-white p-6 rounded-[24px] shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-gray-100 animate-in slide-in-from-bottom-8 duration-500 delay-150">
                     <h3 className="font-black text-[#111827] mb-5 text-lg tracking-tight">Bill Details</h3>
                     <div className="space-y-4 text-[15px]">
@@ -515,12 +572,24 @@ export default function ZeshuSuperApp() {
                       <div className="flex justify-between text-[#4B5563] font-medium"><span className="flex items-center gap-2.5"><Car size={16} className="text-[#9CA3AF]"/> Delivery charge</span><span className="text-[#059669] font-black">{deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}</span></div>
                       <div className="flex justify-between text-[#4B5563] font-medium"><span className="flex items-center gap-2.5"><Info size={16} className="text-[#9CA3AF]"/> Handling fee</span><span className="font-bold text-[#111827]">₹{HANDLING_FEE}</span></div>
                       
+                      {smallCartFee > 0 && <div className="flex justify-between text-red-500 font-medium"><span className="flex items-center gap-2.5"><AlertCircle size={16}/> Small cart fee</span><span className="font-bold">₹{smallCartFee}</span></div>}
+                      {isDonating && <div className="flex justify-between text-[#4B5563] font-medium"><span className="flex items-center gap-2.5"><HeartHandshake size={16} className="text-[#9CA3AF]"/> Feeding India</span><span className="font-bold text-[#111827]">₹1</span></div>}
+                      {tipAmount > 0 && <div className="flex justify-between text-[#4B5563] font-medium"><span className="flex items-center gap-2.5"><Coins size={16} className="text-[#9CA3AF]"/> Delivery Tip</span><span className="font-bold text-[#111827]">₹{tipAmount}</span></div>}
+                      {useZeshuCoins && <div className="flex justify-between text-[#4F46E5] font-medium"><span className="flex items-center gap-2.5"><Ticket size={16}/> Zeshu Coins</span><span className="font-bold">-₹{zeshuDiscount}</span></div>}
+                      
                       <div className="border-t border-dashed border-gray-200 pt-5 mt-5 flex justify-between items-center">
                         <span className="font-black text-[#111827] text-xl tracking-tight">Grand total</span>
                         <span className="font-black text-[#111827] text-2xl tracking-tighter">₹{finalCartTotal}</span>
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Cancellation Policy */}
+                  <div className="px-4 animate-in slide-in-from-bottom-8">
+                    <div className="font-bold text-[#111827] text-sm mb-1.5">Cancellation Policy</div>
+                    <div className="text-[11px] text-[#6B7280] leading-relaxed font-medium">Orders cannot be cancelled once packed for delivery. In case of unexpected delays, a refund will be provided, if applicable.</div>
+                  </div>
+
                   <div className="h-10"></div>
                 </div>
 
@@ -544,6 +613,78 @@ export default function ZeshuSuperApp() {
             )}
           </div>
         </>
+      )}
+
+      {/* --- FLOATING CART SUMMARY (MOBILE ONLY) --- */}
+      {cart.length > 0 && activeTab === 'home' && !isCartOpen && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-xl z-[40] border-t border-gray-200/50 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] animate-in slide-in-from-bottom-10">
+          <button onClick={() => setIsCartOpen(true)} className="w-full bg-gradient-to-r from-[#059669] to-[#047857] text-white px-5 py-3.5 rounded-[20px] flex items-center justify-between shadow-lg shadow-green-600/30 font-bold active:scale-[0.98] transition-transform">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-xl"><ShoppingBag size={20} className="text-white drop-shadow-sm"/></div>
+              <div className="flex flex-col text-left">
+                <span className="text-[10px] uppercase tracking-widest opacity-90 font-extrabold">{cart.length} Items</span>
+                <span className="text-lg leading-none font-black tracking-tight">₹{finalCartTotal}</span>
+              </div>
+            </div>
+            <span className="flex items-center gap-1.5 text-sm font-black tracking-wide">View Cart <ChevronRight size={18} strokeWidth={3}/></span>
+          </button>
+        </div>
+      )}
+
+      {/* --- PREMIUM ACCOUNT MODAL --- */}
+      {isAccountOpen && (
+        <div className="fixed inset-0 bg-[#111827]/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 transition-opacity animate-in fade-in duration-300">
+          <div className="bg-white rounded-[32px] w-full max-w-sm relative shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] animate-in zoom-in-95 overflow-hidden">
+             <div className="bg-[#F8F9FC] p-6 border-b border-gray-100 flex justify-between items-center">
+                <h2 className="text-xl font-black text-[#111827] tracking-tight">My Account</h2>
+                <button onClick={() => setIsAccountOpen(false)} className="p-2.5 bg-white rounded-full hover:bg-gray-100 active:scale-90 transition-colors shadow-sm"><X size={18} className="text-gray-500"/></button>
+             </div>
+             <div className="p-4 space-y-1">
+                {['My Orders', 'Saved Addresses', 'Zeshu Coins', 'FAQ & Support', 'Log Out'].map(item => (
+                   <button key={item} onClick={() => { if(item==='Log Out') handleLogout(); if(item==='Zeshu Coins') { setIsAccountOpen(false); setIsCoinHistoryOpen(true); } }} className="w-full flex items-center justify-between p-4 hover:bg-[#F8F9FC] rounded-2xl transition-colors active:scale-95 group">
+                      <span className={`font-bold text-base ${item === 'Log Out' ? 'text-red-500' : 'text-[#1F2937]'}`}>{item}</span>
+                      <ChevronRight size={18} className={`${item === 'Log Out' ? 'text-red-400' : 'text-gray-400 group-hover:text-[#4F46E5]'}`}/>
+                   </button>
+                ))}
+             </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- PREMIUM COIN HISTORY MODAL --- */}
+      {isCoinHistoryOpen && (
+        <div className="fixed inset-0 bg-[#111827]/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 transition-opacity animate-in fade-in duration-300">
+          <div className="bg-white rounded-[32px] w-full max-w-sm relative shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] animate-in zoom-in-95 overflow-hidden flex flex-col max-h-[80vh]">
+             <div className="bg-[#F8F9FC] p-6 border-b border-gray-100 flex justify-between items-center">
+                <h2 className="text-xl font-black text-[#111827] tracking-tight">Coin History</h2>
+                <button onClick={() => setIsCoinHistoryOpen(false)} className="p-2.5 bg-white rounded-full hover:bg-gray-100 active:scale-90 transition-colors shadow-sm"><X size={18} className="text-gray-500"/></button>
+             </div>
+             <div className="p-6 overflow-y-auto flex-1 no-scrollbar">
+                <div className="bg-gradient-to-br from-[#FEF3C7] to-[#FEF08A] p-6 rounded-[24px] border border-[#FDE68A] flex flex-col items-center justify-center mb-8 shadow-inner">
+                   <Coins size={36} className="text-[#D97706] mb-3 drop-shadow-sm"/>
+                   <span className="text-4xl font-black text-[#B45309] tracking-tighter">{coinsBalance}</span>
+                   <span className="text-xs font-black uppercase tracking-widest text-[#D97706] mt-1">Total Available</span>
+                </div>
+                <h3 className="font-extrabold text-[#111827] mb-5 tracking-tight text-lg">Recent Transactions</h3>
+                <div className="space-y-5">
+                   <div className="flex justify-between items-center pb-5 border-b border-gray-100">
+                      <div>
+                         <div className="font-bold text-[#1F2937] text-sm">Airtel Prepaid Recharge</div>
+                         <div className="text-xs text-gray-500 font-medium mt-0.5">Cashback Earned</div>
+                      </div>
+                      <span className="font-black text-[#10B981] bg-[#D1FAE5] px-3 py-1 rounded-lg">+12 Coins</span>
+                   </div>
+                   <div className="flex justify-between items-center pb-5 border-b border-gray-100">
+                      <div>
+                         <div className="font-bold text-[#1F2937] text-sm">Grocery Order</div>
+                         <div className="text-xs text-gray-500 font-medium mt-0.5">Coins Redeemed</div>
+                      </div>
+                      <span className="font-black text-red-500 bg-red-50 px-3 py-1 rounded-lg">-50 Coins</span>
+                   </div>
+                </div>
+             </div>
+          </div>
+        </div>
       )}
 
       {/* --- PREMIUM AUTH MODAL --- */}
