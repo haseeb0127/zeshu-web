@@ -1,77 +1,74 @@
 import { NextResponse } from 'next/server';
 
-// 🚀 ZESHU SMART WATERFALL ENGINE
+// 🚀 ZESHU 3-TIER SMART WATERFALL ENGINE (SIMULATION MODE)
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const query = searchParams.get('q');
-  const lat = searchParams.get('lat') || '18.7989'; // Default Jagtial Lat
-  const lng = searchParams.get('lng') || '78.9117'; // Default Jagtial Lng
+  const query = searchParams.get('q')?.toLowerCase() || '';
 
   if (!query) {
     return NextResponse.json({ success: false, message: "Search query required" }, { status: 400 });
   }
 
   try {
-    // 1️⃣ PING MEDPAY FOR LOCAL INVENTORY
-    // Note: Replace with actual MedPay production endpoint and auth headers
-    const medpayRes = await fetch(`https://api.medpay.in/v1/network/search?keyword=${query}&lat=${lat}&lng=${lng}&radius=5`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${process.env.MEDPAY_API_KEY}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    // 🧪 SIMULATION LOGIC: Routing based on keywords
 
-    const localData = await medpayRes.json();
-
-    // 2️⃣ THE SPLIT DECISION
-    if (localData.status === 'success' && localData.inventory && localData.inventory.length > 0) {
-      
-      // 🎉 LOCAL STOCK FOUND! Route to Zeshu Native Cart
-      const bestPharmacy = localData.inventory[0]; // Grab the closest pharmacy with stock
-      
+    // TIER 1: INSTANT LOCAL (MedPay)
+    if (query.includes('dolo') || query.includes('paracetamol') || query.includes('calpol')) {
       return NextResponse.json({
         success: true,
         routing_type: 'local',
         fulfillment: {
           provider: 'Zeshu Quick',
-          eta: '30-45 mins',
-          badgeColor: '#10B981', // Emerald Green
+          eta: '15-30 Mins', 
+          badgeColor: 'emerald', 
         },
-        products: localData.inventory.map((item: any) => ({
-          id: item.sku_id,
-          name: item.name,
-          price: item.mrp,
-          discount_price: item.selling_price,
-          requires_rx: item.requires_prescription,
-          pharmacy_id: bestPharmacy.pharmacy_id
-        }))
+        products: [
+          { id: 'SKU-DOLO-650', name: 'Dolo 650mg Tablet (15 Tab)', price: 33, discount_price: 30, requires_rx: false },
+          { id: 'SKU-DOLO-250', name: 'Dolo 250mg Suspension (60ml)', price: 45, discount_price: 40, requires_rx: false }
+        ]
       });
-
-    } else {
-      
-      // ⚠️ LOCAL STOCK FAILED. Trigger Affiliate Fallback
-      // Encode the query to inject into the Apollo search URL
-      const apolloDeepLink = `https://www.apollo247.com/search?q=${encodeURIComponent(query)}&utm_source=zeshu_app&utm_campaign=fallback`;
-      
+    } 
+    
+    // TIER 2: EXPRESS FALLBACK (Tata 1mg)
+    else if (query.includes('vicks') || query.includes('eno') || query.includes('protein') || query.includes('spray')) {
+      const tata1mgLink = `https://www.1mg.com/search/all?name=${encodeURIComponent(query)}&utm_source=zeshu_app`;
+      return NextResponse.json({
+        success: true,
+        routing_type: 'express',
+        fulfillment: {
+          provider: 'Tata 1mg',
+          eta: '2-4 Hours',
+          badgeColor: 'blue', 
+        },
+        fallback_action: {
+          message: 'Sourced via Tata 1mg - Arriving Today.',
+          link: tata1mgLink
+        },
+        products: [] 
+      });
+    } 
+    
+    // TIER 3: HARD-TO-FIND FALLBACK (Apollo 24|7)
+    else {
+      const apolloDeepLink = `https://www.apollo247.com/search?q=${encodeURIComponent(query)}&utm_source=zeshu_app`;
       return NextResponse.json({
         success: true,
         routing_type: 'affiliate',
         fulfillment: {
           provider: 'Apollo 24|7',
           eta: '1-2 Days',
-          badgeColor: '#F59E0B', // Warning Amber
+          badgeColor: 'amber', 
         },
         fallback_action: {
-          message: 'Currently out of stock locally. Redirecting to our national partner.',
+          message: 'Rare Item - Redirecting to our national partner.',
           link: apolloDeepLink
         },
-        products: [] // Empty because Apollo handles the UI
+        products: [] 
       });
     }
 
   } catch (error: any) {
-    console.error("MedPay Loop Crashed:", error);
+    console.error("Waterfall Loop Crashed:", error);
     return NextResponse.json({ success: false, message: "Medicine network offline" }, { status: 500 });
   }
 }
