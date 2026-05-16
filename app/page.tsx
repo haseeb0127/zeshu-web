@@ -7,7 +7,7 @@ import {
   Mic, MapPin, Search, Coins, User, ChevronRight, Zap, Smartphone, 
   Tv, HeartHandshake, Plus, Minus, ShoppingBag, X, LogOut, Ticket, QrCode,
   Droplets, Wifi, Car, Landmark, ShieldCheck, PhoneCall, Phone, Package, Flame, BadgeCheck,
-  History, ChevronDown, CheckSquare, Square, Clock, CheckCircle, Menu, Info, AlertCircle, BookUser, MessageCircle, Crown, Timer
+  History, ChevronDown, CheckSquare, Square, Clock, CheckCircle, Menu, Info, AlertCircle, BookUser, Truck
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -15,7 +15,6 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// --- 🎨 WORLD-CLASS COLOR PALETTE APPLIED TO SERVICES ---
 const SERVICES = [
   { id: 'mobile', label: 'Prepaid', icon: <Smartphone size={28} strokeWidth={1.5}/>, color: 'bg-[#EEF2FF] text-[#4F46E5] group-hover:bg-[#4F46E5] group-hover:text-white', inputLabel: 'Mobile Number' },
   { id: 'electricity', label: 'Electricity', icon: <Zap size={28} strokeWidth={1.5}/>, color: 'bg-[#FEF3C7] text-[#D97706] group-hover:bg-[#F59E0B] group-hover:text-white', inputLabel: 'Consumer Number' },
@@ -41,13 +40,6 @@ const FALLBACK_BANNERS = [
   "https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=1440/layout-engine/2022-05/Group-33703.jpg",
 ];
 
-// 🚀 FLASH DEALS DATA
-const FLASH_DEALS = [
-  { id: 'fd1', name: 'Lays Magic Masala (Party Pack)', price: 85, discount_price: 65, image_url: 'https://m.media-amazon.com/images/I/71O156m1YEL.jpg', weight: '160g' },
-  { id: 'fd2', name: 'Amul Butter', price: 56, discount_price: 49, image_url: 'https://m.media-amazon.com/images/I/61bMszq-24L.jpg', weight: '100g' },
-  { id: 'fd3', name: 'Boat Bassheads 100', price: 999, discount_price: 349, image_url: 'https://m.media-amazon.com/images/I/719elVA3FvL.jpg', weight: '1 Unit' },
-];
-
 export default function ZeshuSuperApp() {
   const [activeTab, setActiveTab] = useState('home'); 
   const [activeService, setActiveService] = useState('mobile');
@@ -68,11 +60,13 @@ export default function ZeshuSuperApp() {
   
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [isCoinHistoryOpen, setIsCoinHistoryOpen] = useState(false);
   const [useZeshuCoins, setUseZeshuCoins] = useState(false);
   const [tipAmount, setTipAmount] = useState(20); 
   const [isDonating, setIsDonating] = useState(true); 
-  const [hasZeshuPass, setHasZeshuPass] = useState(false); 
-  const [apolloWebViewUrl, setApolloWebViewUrl] = useState<string | null>(null);
+  
+  // 🚀 DYNAMIC IN-APP BROWSER STATE
+  const [externalWebView, setExternalWebView] = useState<{url: string, provider: string, colorClass: string, bgClass: string, textClass: string} | null>(null);
   
   const [currentAddress, setCurrentAddress] = useState('Fetching precise location...');
   const [isDetectingLoc, setIsDetectingLoc] = useState(true);
@@ -99,7 +93,6 @@ export default function ZeshuSuperApp() {
 
   const productCategories = useMemo(() => {
     const cats = new Set(products.map(p => p.category || 'General'));
-    ['Electronics', 'Beauty', 'Pet Supplies', 'Baby Care', 'Food Delivery'].forEach(c => cats.add(c));
     return ['All', ...Array.from(cats)];
   }, [products]);
 
@@ -131,45 +124,28 @@ export default function ZeshuSuperApp() {
     setTimeout(() => { setCurrentAddress('HotelRoom 205, 2nd floor Shree Amardeep...'); setIsDetectingLoc(false); }, 1500);
   }, []);
 
-  const checkUser = async () => { const { data: { session } } = await supabase.auth.getSession(); if (session) { setUser(session.user); fetchCoinBalance(session.user.id); } };
-  const fetchCoinBalance = async (userId: string) => { const { data } = await supabase.from('wallets').select('coins').eq('user_id', userId).single(); if (data) setCoinsBalance(data.coins); };
-  const handleSendOtp = async () => { setIsLoading(true); const { error } = await supabase.auth.signInWithOtp({ phone: `+91${phoneNumber}` }); setIsLoading(false); if (!error) setOtpSent(true); else alert(error.message); };
-  const handleVerifyOtp = async () => { setIsLoading(true); const { data, error } = await supabase.auth.verifyOtp({ phone: `+91${phoneNumber}`, token: otp, type: 'sms' }); setIsLoading(false); if (data.session) { setUser(data.session.user); setIsAuthModalOpen(false); fetchCoinBalance(data.session.user.id); showToast("Welcome back!"); } else alert(error?.message); };
-  
-  const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); };
-  const handleAutoDetectLocation = () => { setIsDetectingLoc(true); if ("geolocation" in navigator) { navigator.geolocation.getCurrentPosition((position) => { setTimeout(() => { setCurrentAddress("Current GPS Location Synced"); setIsDetectingLoc(false); showToast("Location updated!"); }, 1000); }, () => { alert("Location access denied."); setIsDetectingLoc(false); }); } else { setIsDetectingLoc(false); } };
-  const handleMedicineSearch = async () => { if (!medSearchQuery) return; setIsLoading(true); setMedResults(null); try { const res = await fetch(`/api/med-search?q=${medSearchQuery}&lat=18.7989&lng=78.9117`); const data = await res.json(); if (data.success) { setMedResults(data); } else { showToast(data.message || "Failed to search network."); } } catch (err) { showToast("Failed to search medical network."); } setIsLoading(false); };
-  const addToCart = (product: any) => { setCart(prev => { const existing = prev.find(c => c.item.id === product.id); return existing ? prev.map(c => c.item.id === product.id ? { ...c, qty: c.qty + 1 } : c) : [...prev, { item: product, qty: 1 }]; }); showToast(`${product.name} added`); };
-  const removeFromCart = (productId: any) => { setCart(prev => { const existing = prev.find(c => c.item.id === productId); if (existing && existing.qty > 1) { return prev.map(c => c.item.id === productId ? { ...c, qty: c.qty - 1 } : c); } else { const newCart = prev.filter(c => c.item.id !== productId); if (newCart.length === 0) setIsCartOpen(false); return newCart; } }); };
-
-  const itemTotal = cart.reduce((acc, curr) => acc + (curr.item.price * curr.qty), 0);
-  const smallCartFee = (itemTotal > 0 && itemTotal < 199) ? 29 : 0; 
-  const deliveryCharge = hasZeshuPass ? 0 : (itemTotal > 0 && itemTotal < 299) ? 30 : 0; 
-  const donationAmt = isDonating ? 1 : 0;
-  const zeshuDiscount = useZeshuCoins ? Math.min(ZESHU_COINS_VAL, itemTotal) : 0; 
-  const passFee = hasZeshuPass ? 99 : 0; 
-  
-  const finalCartTotal = itemTotal > 0 ? (itemTotal + deliveryCharge + smallCartFee + HANDLING_FEE + donationAmt + tipAmount + passFee - zeshuDiscount) : 0;
-
-  const handleCartCheckout = async () => {
-    if (finalCartTotal === 0) return;
-    if (!user) return setIsAuthModalOpen(true);
-    setIsLoading(true);
-    try {
-      const orderResponse = await fetch('/api/create-razorpay-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: finalCartTotal }) });
-      const orderData = await orderResponse.json();
-      const orderId = orderData.id || orderData.order?.id;
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, amount: orderData.amount || (finalCartTotal * 100), currency: orderData.currency || 'INR', name: "Zeshu Super App", order_id: orderId,
-        handler: async function (response: any) { 
-          await fetch('/api/confirm-grocery-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user.id, cartItems: cart, totalAmount: finalCartTotal, paymentId: response.razorpay_payment_id, address: currentAddress }) });
-          showToast("Order placed!"); setCart([]); setIsCartOpen(false); 
-        },
-        theme: { color: "#4F46E5" },
+  useEffect(() => {
+    if (user) {
+      const fetchMyOrders = async () => {
+        const { data } = await supabase.from('orders').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1);
+        if (data) setMyOrders(data);
       };
-      const rzp = new (window as any).Razorpay(options); rzp.open();
-    } catch (error) { alert("Gateway Error"); }
-    setIsLoading(false);
+      fetchMyOrders();
+      const orderChannel = supabase.channel('customer-orders').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${user.id}` }, (payload) => { setMyOrders([payload.new]); }).subscribe();
+      return () => { supabase.removeChannel(orderChannel); };
+    }
+  }, [user]);
+
+  const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); };
+
+  const handleAutoDetectLocation = () => {
+    setIsDetectingLoc(true);
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => { setTimeout(() => { setCurrentAddress("Current GPS Location Synced"); setIsDetectingLoc(false); showToast("Location updated!"); }, 1000); },
+        () => { alert("Location access denied."); setIsDetectingLoc(false); }
+      );
+    } else { setIsDetectingLoc(false); }
   };
 
   const handleContactPicker = async () => {
@@ -188,6 +164,52 @@ export default function ZeshuSuperApp() {
     } else {
       showToast("Contact Search is only supported on Android Chrome Mobile.");
     }
+  };
+
+  // 🚀 MEDPAY 3-TIER WATERFALL SEARCH
+  const handleMedicineSearch = async () => {
+    if (!medSearchQuery) return;
+    setIsLoading(true);
+    setMedResults(null);
+    try {
+      const res = await fetch(`/api/med-search?q=${medSearchQuery}&lat=18.7989&lng=78.9117`);
+      const data = await res.json();
+      
+      if (data.success) {
+        setMedResults(data);
+      } else {
+        showToast(data.message || "Failed to search medical network.");
+      }
+    } catch (err) {
+      showToast("Failed to search medical network.");
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    if (rechargeNumber.length === 10 && activeService === 'mobile') { autoDetectAndFetchPlans(rechargeNumber); }
+    setFetchedBill(null);
+  }, [rechargeNumber, activeService]);
+
+  const autoDetectAndFetchPlans = async (num: string) => {
+    setIsDetecting(true); setPlans([]);
+    try {
+      const opRes = await fetch(`/api/fetch-operator?number=${num}&service=${activeService}`);
+      const opData = await opRes.json();
+      if (opData && opData.success && opData.operator) {
+        const opNameFromAPI = opData.operator.toLowerCase();
+        const foundOpKey = Object.keys(OPERATORS_DATA['mobile']).find(k => opNameFromAPI.includes(k.toLowerCase()) || k.toLowerCase().includes(opNameFromAPI));
+        const finalOperator = foundOpKey || opData.operator;
+        setSelectedOperator(finalOperator); 
+        const opCode = OPERATORS_DATA['mobile'][finalOperator];
+        if (opCode) {
+          const planRes = await fetch(`/api/fetch-plans?number=${num}&operator=${opCode}&service=${activeService}`);
+          const planData = await planRes.json();
+          if(planData.plans && planData.plans.length > 0) { setPlans(planData.plans); setSelectedPlanCategory("All"); showToast(`Auto-detected ${finalOperator}`); }
+        }
+      }
+    } catch (err) {}
+    setIsDetecting(false);
   };
 
   const fetchOffers = async () => {
@@ -214,30 +236,51 @@ export default function ZeshuSuperApp() {
     setIsLoading(false);
   };
 
-  const handleUpiSearch = async () => {
-    // Placeholder for future UPI implementation
+  const checkUser = async () => { const { data: { session } } = await supabase.auth.getSession(); if (session) { setUser(session.user); fetchCoinBalance(session.user.id); } };
+  const fetchCoinBalance = async (userId: string) => { const { data } = await supabase.from('wallets').select('coins').eq('user_id', userId).single(); if (data) setCoinsBalance(data.coins); };
+  const handleSendOtp = async () => { setIsLoading(true); const { error } = await supabase.auth.signInWithOtp({ phone: `+91${phoneNumber}` }); setIsLoading(false); if (!error) setOtpSent(true); else alert(error.message); };
+  const handleVerifyOtp = async () => { setIsLoading(true); const { data, error } = await supabase.auth.verifyOtp({ phone: `+91${phoneNumber}`, token: otp, type: 'sms' }); setIsLoading(false); if (data.session) { setUser(data.session.user); setIsAuthModalOpen(false); fetchCoinBalance(data.session.user.id); showToast("Welcome back!"); } else alert(error?.message); };
+  const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); setCoinsBalance(0); setIsAccountOpen(false); showToast("Logged out."); };
+  
+  const addToCart = (product: any) => { setCart(prev => { const existing = prev.find(c => c.item.id === product.id); return existing ? prev.map(c => c.item.id === product.id ? { ...c, qty: c.qty + 1 } : c) : [...prev, { item: product, qty: 1 }]; }); showToast(`${product.name} added`); };
+  const removeFromCart = (productId: any) => { setCart(prev => { const existing = prev.find(c => c.item.id === productId); if (existing && existing.qty > 1) { return prev.map(c => c.item.id === productId ? { ...c, qty: c.qty - 1 } : c); } else { const newCart = prev.filter(c => c.item.id !== productId); if (newCart.length === 0) setIsCartOpen(false); return newCart; } }); };
+
+  const itemTotal = cart.reduce((acc, curr) => acc + (curr.item.price * curr.qty), 0);
+  const smallCartFee = (itemTotal > 0 && itemTotal < 100) ? 20 : 0;
+  const deliveryCharge = (itemTotal > 0 && itemTotal < 200) ? 30 : 0; 
+  const donationAmt = isDonating ? 1 : 0;
+  const zeshuDiscount = useZeshuCoins ? Math.min(ZESHU_COINS_VAL, itemTotal) : 0; 
+  const finalCartTotal = itemTotal > 0 ? (itemTotal + deliveryCharge + smallCartFee + HANDLING_FEE + donationAmt + tipAmount - zeshuDiscount) : 0;
+
+  const handleCartCheckout = async () => {
+    if (finalCartTotal === 0) return;
+    if (!user) return setIsAuthModalOpen(true);
+    setIsLoading(true);
+    try {
+      const orderResponse = await fetch('/api/create-razorpay-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: finalCartTotal }) });
+      const orderData = await orderResponse.json();
+      const orderId = orderData.id || orderData.order?.id;
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, amount: orderData.amount || (finalCartTotal * 100), currency: orderData.currency || 'INR', name: "Zeshu Super App", order_id: orderId,
+        handler: async function (response: any) { 
+          await fetch('/api/confirm-grocery-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user.id, cartItems: cart, totalAmount: finalCartTotal, paymentId: response.razorpay_payment_id, address: currentAddress }) });
+          showToast("Order placed!"); setCart([]); setIsCartOpen(false); 
+        },
+        theme: { color: "#4F46E5" },
+      };
+      const rzp = new (window as any).Razorpay(options); rzp.open();
+    } catch (error) { alert("Gateway Error"); }
+    setIsLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FC] font-sans antialiased text-[#111827] overflow-x-hidden selection:bg-[#E0E7FF] selection:text-[#3730A3]">
-      
-      {/* --- LIVE TOAST NOTIFICATION --- */}
-      <div className={`fixed bottom-24 left-1/2 -translate-x-1/2 z-[150] transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] ${toastMessage ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-95 pointer-events-none'}`}>
-        <div className="bg-[#1F2937]/95 backdrop-blur-xl text-white px-6 py-3.5 rounded-full font-bold text-sm shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] flex items-center gap-2.5 border border-white/10">
-          <CheckCircle size={18} className="text-[#10B981]"/>{toastMessage}
-        </div>
+    <div className="min-h-screen bg-[#F8F9FC] font-sans antialiased text-[#111827] overflow-x-hidden">
+      <div className={`fixed bottom-24 left-1/2 -translate-x-1/2 z-[150] transition-all duration-500 ${toastMessage ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-95 pointer-events-none'}`}>
+        <div className="bg-[#1F2937]/95 backdrop-blur-xl text-white px-6 py-3.5 rounded-full font-bold text-sm shadow-2xl flex items-center gap-2.5 border border-white/10"><CheckCircle size={18} className="text-[#10B981]"/>{toastMessage}</div>
       </div>
 
-      {/* --- WHATSAPP SUPPORT WIDGET --- */}
-      <a href="https://wa.me/919999999999" target="_blank" rel="noopener noreferrer" className="fixed bottom-6 right-6 z-[100] bg-[#25D366] text-white p-4 rounded-full shadow-[0_10px_30px_-5px_rgba(37,211,102,0.5)] hover:scale-110 hover:-translate-y-2 transition-all group flex items-center gap-0 hover:gap-3 overflow-hidden">
-        <MessageCircle size={32} />
-        <span className="max-w-0 opacity-0 group-hover:max-w-[100px] group-hover:opacity-100 transition-all duration-300 font-black whitespace-nowrap">Live Help</span>
-      </a>
-
-      {/* --- IN-FILE HEADER --- */}
       <header className={`fixed top-0 w-full z-40 transition-all duration-500 ${isScrolled ? 'bg-white/90 backdrop-blur-2xl shadow-sm border-b border-gray-200/40' : 'bg-white border-b border-gray-100'}`}>
         <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 md:py-0 md:h-[88px] flex flex-col md:flex-row items-center justify-between gap-3 md:gap-8">
-          
           <div className="flex items-center justify-between w-full md:w-auto gap-4">
             <div className="flex items-center gap-4 md:gap-6">
               <div className="flex items-center gap-2 md:gap-3 cursor-pointer md:border-r border-gray-200/60 md:pr-6 active:scale-[0.97] transition-transform" onClick={() => setActiveTab('home')}>
@@ -246,55 +289,40 @@ export default function ZeshuSuperApp() {
               </div>
               <div className="flex flex-col cursor-pointer max-w-[160px] md:max-w-[220px] group active:scale-[0.97] transition-transform" onClick={handleAutoDetectLocation}>
                 <div className="font-black text-[13px] md:text-[15px] flex items-center gap-1.5">Delivery in 12 min <Zap size={14} className="text-[#F59E0B] fill-[#F59E0B]"/></div>
-                <div className="flex items-center text-[10px] md:text-xs text-[#6B7280] mt-0.5 font-medium truncate">
-                  {isDetectingLoc ? <div className="h-1.5 w-16 bg-gray-200 animate-pulse rounded-full"></div> : currentAddress}
-                  <ChevronDown size={14} className="ml-1"/>
-                </div>
+                <div className="flex items-center text-[10px] md:text-xs text-[#6B7280] mt-0.5 font-medium truncate">{currentAddress}<ChevronDown size={14} className="ml-1"/></div>
               </div>
             </div>
-            
-            <div className="md:hidden flex items-center gap-3">
-              <button onClick={() => user ? setIsAccountOpen(true) : setIsAuthModalOpen(true)} className="p-2.5 bg-gray-100 rounded-full active:scale-95 transition-transform text-gray-700 border border-gray-200">
-                <User size={20} />
-              </button>
+            <div className="md:hidden flex items-center">
               <button onClick={() => setIsCartOpen(true)} className="relative p-2.5 bg-gray-100 rounded-full active:scale-95 transition-transform border border-gray-200">
                 <ShoppingBag size={20} className="text-gray-700" />
                 {cart.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full text-[10px] font-black w-5 h-5 flex items-center justify-center border-2 border-white">{cart.length}</span>}
               </button>
             </div>
           </div>
-
           <div className="w-full md:flex-1 max-w-3xl order-last md:order-none mt-1 md:mt-0">
-            <div className="bg-[#F3F4F6] hover:bg-[#E5E7EB] transition-all rounded-[14px] md:rounded-[20px] flex items-center px-4 py-3 md:py-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#6366F1]/20 cursor-text">
+            <div className="bg-[#F3F4F6] hover:bg-[#E5E7EB] transition-all rounded-[14px] md:rounded-[20px] flex items-center px-4 py-3 md:py-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#6366F1]/20">
               <Search className="text-[#9CA3AF] w-[18px] h-[18px] md:w-[22px] md:h-[22px]" />
-              <input type="text" placeholder="Search 'protein powder', 'midnight snacks'..." className="bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-              {searchQuery ? <X size={16} className="cursor-pointer text-gray-500" onClick={() => setSearchQuery('')}/> : <Mic size={18} className="text-[#6366F1] cursor-pointer hover:scale-110 transition-transform" title="Voice Search"/>}
+              <input type="text" placeholder="Search products or services..." className="bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              {searchQuery && <X size={16} className="cursor-pointer text-gray-500" onClick={() => setSearchQuery('')}/>}
             </div>
           </div>
-
-          <div className="hidden md:flex items-center gap-5 shrink-0 z-50">
-            <button onClick={() => user ? setIsAccountOpen(true) : setIsAuthModalOpen(true)} className="flex items-center gap-2 text-[#4B5563] font-extrabold text-sm active:scale-95 hover:text-indigo-600 transition-colors cursor-pointer">
-              <User size={20}/>{user ? 'Account' : 'Login'}
-            </button>
-            <button onClick={() => setIsCartOpen(true)} className="bg-gradient-to-b from-[#059669] to-[#047857] text-white px-5 py-3.5 rounded-[20px] flex items-center gap-3 font-bold text-sm min-w-[120px] justify-center active:scale-[0.96] shadow-lg shadow-green-600/20 cursor-pointer">
+          <div className="hidden md:flex items-center gap-5 shrink-0">
+            <button onClick={() => user ? setIsAccountOpen(true) : setIsAuthModalOpen(true)} className="flex items-center gap-2 text-[#4B5563] font-extrabold text-sm active:scale-95"><User size={20}/>{user ? 'Account' : 'Login'}</button>
+            <button onClick={() => setIsCartOpen(true)} className="bg-gradient-to-b from-[#059669] to-[#047857] text-white px-5 py-3.5 rounded-[20px] flex items-center gap-3 font-bold text-sm min-w-[120px] justify-center active:scale-[0.96]">
               <ShoppingBag size={22} /> {cart.length > 0 ? `₹${finalCartTotal}` : 'My Cart'}
             </button>
           </div>
-
         </div>
       </header>
 
       <main className="max-w-[1400px] mx-auto w-full md:px-8 py-8 pt-[130px] md:pt-[120px] flex gap-8">
-        
-        {/* DESKTOP SIDEBAR */}
         {activeTab === 'home' && searchQuery === '' && (
           <aside className="hidden lg:block w-[260px] shrink-0 sticky top-[120px] h-[calc(100vh-120px)] overflow-y-auto no-scrollbar pr-4">
-            <h3 className="font-black text-[#111827] mb-5 px-3 tracking-tight text-lg">Explore Zeshu</h3>
+            <h3 className="font-black text-[#111827] mb-5 px-3 tracking-tight text-lg">Shop by Category</h3>
             <div className="flex flex-col gap-1.5">
               {productCategories.map(cat => (
                 <button key={cat} onClick={() => setActiveCategory(cat)} className={`text-left px-4 py-3.5 rounded-[18px] font-extrabold text-sm transition-all flex items-center gap-3.5 active:scale-[0.97] ${activeCategory === cat ? 'bg-[#EEF2FF] text-[#4F46E5] shadow-[inset_4px_0_0_0_#4F46E5]' : 'text-[#6B7280] hover:bg-white border border-transparent hover:border-gray-200/60'}`}>
-                  {cat === 'Food Delivery' ? <Flame size={16} className="text-orange-500"/> : cat === 'Electronics' ? <Zap size={16} className="text-blue-500"/> : <Package size={16} />}
-                  {cat}
+                  <Package size={16} />{cat}
                 </button>
               ))}
             </div>
@@ -304,8 +332,6 @@ export default function ZeshuSuperApp() {
         <div className="flex-1 min-w-0 pb-32">
           {activeTab === 'recharge' ? (
              <div className="bg-white rounded-[32px] shadow-xl border border-gray-100 max-w-2xl mx-auto overflow-hidden animate-in slide-in-from-bottom-4">
-               
-               {/* RECHARGE SERVICES NAV */}
                <div className="flex overflow-x-auto bg-[#F8F9FC] p-3 gap-2 border-b border-gray-100 no-scrollbar">
                  {SERVICES.map((s) => (
                    <button key={s.id} onClick={() => { setActiveService(s.id); setSelectedOperator(''); setPlans([]); setFetchedBill(null); setRechargeNumber(''); setRechargeAmount(''); setMedResults(null); setMedSearchQuery(''); }} className={`flex items-center gap-2 px-5 py-3 rounded-[16px] whitespace-nowrap text-sm font-bold transition-all active:scale-95 ${activeService === s.id ? 'bg-white shadow-md text-[#111827]' : 'text-[#6B7280] hover:bg-[#E5E7EB]'}`}>
@@ -315,6 +341,8 @@ export default function ZeshuSuperApp() {
                </div>
                
                <div className="p-5 md:p-8 space-y-5">
+                 
+                 {/* 🚀 PHARMACY UI CONDITIONAL (3-TIER WATERFALL) */}
                  {activeService === 'pharmacy' ? (
                    <div className="space-y-5">
                      <div>
@@ -326,33 +354,46 @@ export default function ZeshuSuperApp() {
                      <button disabled={isLoading} onClick={handleMedicineSearch} className="w-full p-4 border-2 border-dashed border-[#A7F3D0] rounded-2xl text-[#059669] bg-[#ECFDF5] hover:bg-[#D1FAE5] text-sm font-bold transition-all active:scale-[0.98] flex justify-center items-center gap-2">
                        {isLoading ? <div className="animate-spin h-5 w-5 border-2 border-[#059669] border-t-transparent rounded-full"></div> : 'Search Smart Network'}
                      </button>
-                     
+
+                     {/* 🟩 TIER 1: LOCAL RESULTS */}
                      {medResults && medResults.routing_type === 'local' && (
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 animate-in fade-in">
                           <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-black text-xl">Available Locally!</h3>
-                            <span className="bg-emerald-100 text-emerald-700 text-xs font-black px-3 py-1 rounded-lg">{medResults.fulfillment.eta}</span>
+                            <h3 className="font-black text-xl text-gray-900">Available Locally!</h3>
+                            <span className="bg-emerald-100 text-emerald-700 text-xs font-black px-3 py-1 rounded-lg flex items-center gap-1"><Truck size={14}/> {medResults.fulfillment.eta}</span>
                           </div>
                           {medResults.products.map((med: any) => (
-                            <div key={med.id} className="flex justify-between items-center py-3 border-b last:border-0">
+                            <div key={med.id} className="flex justify-between items-center py-3 border-b border-gray-100 last:border-0">
                               <div>
                                 <p className="font-bold text-gray-900">{med.name}</p>
                                 {med.requires_rx && <p className="text-[10px] text-red-500 font-bold mt-1">💊 Rx Required</p>}
                               </div>
                               <div className="flex items-center gap-4">
                                 <span className="font-black text-lg">₹{med.discount_price}</span>
-                                <button onClick={() => addToCart({id: med.id, name: med.name, price: med.discount_price, image_url: 'https://cdn-icons-png.flaticon.com/512/2950/2950660.png', category: 'Pharmacy'})} className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold active:scale-95 text-xs">ADD</button>
+                                <button onClick={() => addToCart({id: med.id, name: med.name, price: med.discount_price, image_url: 'https://cdn-icons-png.flaticon.com/512/2950/2950660.png', category: 'Pharmacy'})} className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold active:scale-95 text-xs shadow-sm">ADD</button>
                               </div>
                             </div>
                           ))}
                         </div>
                      )}
 
-                     {medResults && (medResults.routing_type === 'affiliate' || medResults.routing_type === 'express') && (
+                     {/* 🟦 TIER 2: EXPRESS FALLBACK */}
+                     {medResults && medResults.routing_type === 'express' && (
+                        <div className="bg-blue-50 p-6 rounded-2xl border border-blue-200 text-center animate-in fade-in">
+                          <h3 className="font-black text-xl text-blue-900 mb-2">Express Delivery Available</h3>
+                          <p className="text-sm text-blue-700 mb-6 font-medium">{medResults.fallback_action.message}</p>
+                          <button onClick={() => setExternalWebView({url: medResults.fallback_action.link, provider: medResults.fulfillment.provider, colorClass: 'text-blue-600', bgClass: 'bg-blue-100', textClass: 'text-blue-900'})} className="bg-blue-600 text-white px-8 py-4 rounded-xl font-black shadow-lg hover:bg-blue-700 transition-all w-full flex items-center justify-center gap-2">
+                            <Truck size={18}/> Sourced via {medResults.fulfillment.provider} ({medResults.fulfillment.eta})
+                          </button>
+                        </div>
+                     )}
+
+                     {/* 🟧 TIER 3: AFFILIATE FALLBACK */}
+                     {medResults && medResults.routing_type === 'affiliate' && (
                         <div className="bg-amber-50 p-6 rounded-2xl border border-amber-200 text-center animate-in fade-in">
                           <h3 className="font-black text-xl text-amber-900 mb-2">Out of Local Stock</h3>
                           <p className="text-sm text-amber-700 mb-6 font-medium">{medResults.fallback_action.message}</p>
-                          <button onClick={() => setApolloWebViewUrl(medResults.fallback_action.link)} className="bg-amber-500 text-white px-8 py-4 rounded-xl font-black shadow-lg hover:bg-amber-600 transition-all w-full">
+                          <button onClick={() => setExternalWebView({url: medResults.fallback_action.link, provider: medResults.fulfillment.provider, colorClass: 'text-amber-600', bgClass: 'bg-amber-100', textClass: 'text-amber-900'})} className="bg-amber-500 text-white px-8 py-4 rounded-xl font-black shadow-lg hover:bg-amber-600 transition-all w-full">
                             Buy via {medResults.fulfillment.provider} (Delivery {medResults.fulfillment.eta})
                           </button>
                         </div>
@@ -360,10 +401,11 @@ export default function ZeshuSuperApp() {
                    </div>
                  ) : (
                    <>
-                    <div>
+                     <div>
                        <label className="text-xs font-bold text-[#6B7280] uppercase tracking-wider mb-2 block">{currentServiceObj.inputLabel}</label>
                        <div className="relative flex items-center">
                          <input type="text" placeholder="Enter details" className="w-full p-4 pr-14 bg-[#F8F9FC] border border-gray-200 rounded-2xl focus:border-[#6366F1] font-bold text-lg outline-none" value={rechargeNumber} onChange={(e) => setRechargeNumber(e.target.value)} />
+                         {/* 🚀 CONTACT PICKER IN RECHARGE */}
                          {activeService === 'mobile' && (
                            <button onClick={handleContactPicker} className="absolute right-3 p-2 bg-[#EEF2FF] text-[#4F46E5] rounded-xl hover:bg-[#E0E7FF] transition-colors active:scale-95 shadow-sm border border-[#E0E7FF]" title="Search Contact">
                              <BookUser size={20} />
@@ -371,7 +413,6 @@ export default function ZeshuSuperApp() {
                          )}
                        </div>
                      </div>
-
                      {activeService !== 'upi' && (
                        <div>
                          <label className="text-xs font-bold text-[#6B7280] uppercase tracking-wider mb-2 block">Operator</label>
@@ -381,13 +422,12 @@ export default function ZeshuSuperApp() {
                          </select>
                        </div>
                      )}
-
                      <button disabled={isLoading} onClick={activeService === 'upi' ? handleUpiSearch : isPlanBased ? fetchOffers : fetchBillDetails} className="w-full p-4 border-2 border-dashed border-[#C7D2FE] rounded-2xl text-[#4F46E5] bg-[#EEF2FF] hover:bg-[#E0E7FF] text-sm font-bold active:scale-[0.98]">
                        {isLoading ? 'Fetching...' : 'Fetch Details'}
                      </button>
                      
                      {fetchedBill && !isPlanBased && (
-                       <div className="bg-[#ECFDF5] border border-[#A7F3D0] p-6 rounded-2xl shadow-sm mt-4">
+                       <div className="bg-[#ECFDF5] border border-[#A7F3D0] p-6 rounded-2xl shadow-sm">
                          <div className="flex justify-between border-b border-[#D1FAE5] pb-3 mb-3"><span className="text-xs font-bold text-[#059669] uppercase">Customer Name</span><span className="font-bold text-[#111827]">{fetchedBill.Name || 'N/A'}</span></div>
                          <div className="flex justify-between border-b border-[#D1FAE5] pb-3 mb-3"><span className="text-xs font-bold text-[#059669] uppercase">Due Date</span><span className="font-bold text-[#DC2626]">{fetchedBill.DueDate || 'N/A'}</span></div>
                          <div className="flex justify-between"><span className="text-xs font-bold text-[#047857] uppercase">Total Due</span><span className="font-black text-xl text-[#111827]">₹{fetchedBill.DueAmount || '0'}</span></div>
@@ -396,8 +436,13 @@ export default function ZeshuSuperApp() {
 
                      {isPlanBased && plans.length > 0 && (
                        <div className="mt-4">
+                         <div className="flex overflow-x-auto no-scrollbar gap-2 mb-4">
+                           {planCategories.map((cat) => (
+                             <button key={cat} onClick={() => setSelectedPlanCategory(cat)} className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${selectedPlanCategory === cat ? 'bg-[#4F46E5] text-white shadow-md' : 'bg-[#F3F4F6] text-[#6B7280] hover:bg-[#E5E7EB]'}`}>{cat}</button>
+                           ))}
+                         </div>
                          <div className="h-[280px] bg-[#F8F9FC] rounded-2xl border border-gray-100 overflow-y-auto p-2 space-y-2">
-                           {plans.map((plan, idx) => (
+                           {filteredPlans.map((plan, idx) => (
                              <div key={idx} onClick={() => setRechargeAmount(String(plan.amount))} className={`bg-white p-4 rounded-[16px] cursor-pointer transition-all border-2 ${rechargeAmount === String(plan.amount) ? 'border-[#4F46E5] shadow-md scale-[1.02]' : 'border-transparent hover:border-gray-200 shadow-sm'}`}>
                                <div className="flex justify-between items-start mb-2">
                                  <span className="font-black text-xl text-[#4F46E5]">₹{plan.amount}</span>
@@ -410,7 +455,7 @@ export default function ZeshuSuperApp() {
                        </div>
                      )}
 
-                     <div className={(fetchedBill && !isPlanBased) || activeService === 'upi' ? 'opacity-60 pointer-events-none mt-4' : 'mt-4'}>
+                     <div className={(fetchedBill && !isPlanBased) || activeService === 'upi' ? 'opacity-60 pointer-events-none' : ''}>
                        <label className="text-xs font-bold text-[#6B7280] uppercase tracking-wider mb-2 block">Amount</label>
                        <div className="relative">
                          <span className="absolute left-4 top-4 text-xl font-bold text-gray-400">₹</span>
@@ -418,7 +463,11 @@ export default function ZeshuSuperApp() {
                        </div>
                      </div>
 
-                     <button onClick={handleCartCheckout} className="w-full bg-gradient-to-r from-[#059669] to-[#047857] text-white py-5 rounded-2xl font-black text-lg mt-4 active:scale-[0.98]">Proceed to Pay</button>
+                     {activeService !== 'upi' && (
+                       <button onClick={handleCartCheckout} disabled={isLoading} className="w-full bg-gradient-to-r from-[#059669] to-[#047857] hover:to-[#065F46] text-white py-5 rounded-2xl font-black text-lg shadow-[0_8px_20px_-6px_rgba(5,150,105,0.4)] mt-4 transition-all active:scale-[0.98]">
+                         {isLoading ? 'Processing...' : `Proceed to Pay ₹${rechargeAmount || 0}`}
+                       </button>
+                     )}
                    </>
                  )}
                </div>
@@ -427,32 +476,9 @@ export default function ZeshuSuperApp() {
             <>
               {searchQuery === '' && (
                 <div className="mb-12 space-y-10 animate-in fade-in duration-700">
-                  
-                  {/* BANNERS */}
                   <div className="flex gap-4 md:gap-5 overflow-x-auto no-scrollbar pb-4 px-4 md:px-0 snap-x">
                     {banners.map((img, idx) => (<img key={idx} src={img} alt="Promo" className="h-[140px] md:h-[240px] rounded-[16px] md:rounded-[28px] object-cover min-w-[280px] md:min-w-[480px] cursor-pointer shadow-lg hover:-translate-y-1.5 transition-all snap-center border border-gray-100/50" />))}
                   </div>
-
-                  {/* FLASH DEALS WIDGET */}
-                  <div className="px-4 md:px-0">
-                    <div className="flex items-center gap-3 mb-5">
-                      <Timer className="text-red-500 animate-pulse" size={24} />
-                      <h2 className="text-2xl font-black tracking-tight text-red-600">10-Minute Midnight Deals</h2>
-                    </div>
-                    <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 snap-x">
-                      {FLASH_DEALS.map(deal => (
-                        <div key={deal.id} className="min-w-[160px] md:min-w-[200px] bg-red-50 p-4 rounded-2xl border border-red-100 snap-start flex flex-col relative overflow-hidden">
-                          <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl">SALE</div>
-                          <img src={deal.image_url} className="h-24 object-contain mix-blend-multiply mb-3" />
-                          <div className="font-bold text-sm line-clamp-2 leading-tight mb-1">{deal.name}</div>
-                          <div className="flex items-center gap-2 mb-3"><span className="font-black text-lg text-red-600">₹{deal.discount_price}</span><span className="text-xs text-gray-400 line-through">₹{deal.price}</span></div>
-                          <button onClick={() => addToCart({id: deal.id, name: deal.name, price: deal.discount_price, image_url: deal.image_url})} className="w-full bg-white border border-red-200 text-red-600 font-black py-2 rounded-xl text-xs hover:bg-red-50 active:scale-95">ADD NOW</button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* IN-FILE SERVICE GRID */}
                   <div className="bg-white p-6 md:p-10 rounded-[24px] md:rounded-[32px] shadow-sm border border-gray-100 mx-4 md:mx-0">
                     <div className="flex items-center justify-between mb-8"><h2 className="text-xl md:text-2xl font-black tracking-tight">Utility & Recharges</h2><span className="text-[#4F46E5] font-extrabold text-xs md:text-sm cursor-pointer hover:bg-[#E0E7FF] bg-[#EEF2FF] px-3 py-1.5 md:px-4 md:py-2 rounded-xl">Explore All</span></div>
                     <div className="grid grid-cols-4 md:grid-cols-8 gap-y-8 md:gap-y-10 gap-x-2 md:gap-x-4">
@@ -464,50 +490,37 @@ export default function ZeshuSuperApp() {
                       ))}
                     </div>
                   </div>
-                  
                 </div>
               )}
-
-              {/* PRODUCTS GRID */}
               <div className="px-4 md:px-0">
                 <div className="flex justify-between items-end mb-6 md:mb-8 border-b pb-4 md:pb-5"><h2 className="text-2xl md:text-3xl font-black tracking-tighter">{activeCategory} Items</h2><span className="text-[#6B7280] font-bold text-xs md:text-sm bg-gray-100 px-3 py-1 rounded-xl">{filteredProducts.length} items</span></div>
-                
-                {filteredProducts.length === 0 ? (
-                  <div className="bg-white p-12 md:p-20 rounded-[32px] border-2 border-dashed border-gray-200 text-center flex flex-col items-center justify-center gap-4">
-                     <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center"><Search size={32} className="text-gray-300"/></div>
-                     <h3 className="text-xl font-black">No matches found</h3>
-                     <p className="text-gray-500 text-sm">We are expanding our catalog daily! Try searching for something else.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-                    {filteredProducts.map((p) => {
-                      const inCart = cart.find(c => c.item.id === p.id);
-                      return (
-                        <div key={p.id} className="bg-white p-3 md:p-4 rounded-[20px] md:rounded-[28px] shadow-sm border border-gray-100 flex flex-col hover:shadow-xl hover:-translate-y-1.5 transition-all group relative">
-                          <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-1.5 py-0.5 rounded-md shadow-sm z-10 flex items-center gap-1"><Clock size={10} className="text-[#4F46E5]"/><span className="text-[9px] font-black">12 MINS</span></div>
-                          <div className="bg-[#F8F9FC] rounded-[16px] mb-3 flex items-center justify-center p-4 aspect-square relative overflow-hidden group-hover:bg-[#F3F4F6] transition-colors"><img src={p.image_url} className="h-full w-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" alt={p.name} /></div>
-                          <div className="text-[13px] md:text-[15px] font-bold text-[#1F2937] line-clamp-2 min-h-[38px] md:min-h-[44px] mb-1 leading-snug tracking-tight group-hover:text-[#4F46E5]">{p.name}</div>
-                          <div className="text-[11px] md:text-[13px] text-[#6B7280] mb-4 font-semibold">{p.weight || '1 unit'}</div>
-                          <div className="flex justify-between items-center mt-auto pt-2 md:pt-3 border-t">
-                            <span className="font-black text-base md:text-lg">₹{p.price}</span>
-                            {inCart ? (
-                              <div className="flex items-center bg-[#059669] text-white rounded-[12px] shadow-lg min-w-[70px] justify-between overflow-hidden h-[30px] md:h-[36px]"><button onClick={() => removeFromCart(p.id)} className="flex-1 active:bg-black/20">-</button><span className="font-black text-xs">{inCart.qty}</span><button onClick={() => addToCart(p)} className="flex-1 active:bg-black/20">+</button></div>
-                            ) : (
-                              <button onClick={() => addToCart(p)} className="px-4 md:px-6 h-[30px] md:h-[36px] border border-[#059669] text-[#059669] bg-[#ECFDF5] rounded-xl text-[11px] font-black active:scale-95 shadow-sm min-w-[70px]">ADD</button>
-                            )}
-                          </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+                  {filteredProducts.map((p) => {
+                    const inCart = cart.find(c => c.item.id === p.id);
+                    return (
+                      <div key={p.id} className="bg-white p-3 md:p-4 rounded-[20px] md:rounded-[28px] shadow-sm border border-gray-100 flex flex-col hover:shadow-xl hover:-translate-y-1.5 transition-all group relative">
+                        <div className="absolute top-3 left-3 md:top-4 md:left-4 bg-white/90 backdrop-blur-md px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-sm z-10 flex items-center gap-1 md:gap-1.5 border border-gray-50"><Clock size={10} className="text-[#4F46E5]"/><span className="text-[9px] md:text-[10px] font-black">12 MINS</span></div>
+                        <div className="bg-[#F8F9FC] rounded-[16px] mb-3 flex items-center justify-center p-4 aspect-square relative overflow-hidden group-hover:bg-[#F3F4F6] transition-colors"><img src={p.image_url} className="h-full w-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" alt={p.name} /></div>
+                        <div className="text-[13px] md:text-[15px] font-bold text-[#1F2937] line-clamp-2 min-h-[38px] md:min-h-[44px] mb-1 leading-snug tracking-tight group-hover:text-[#4F46E5]">{p.name}</div>
+                        <div className="text-[11px] md:text-[13px] text-[#6B7280] mb-4 font-semibold">{p.weight || '1 unit'}</div>
+                        <div className="flex justify-between items-center mt-auto pt-2 md:pt-3 border-t">
+                          <span className="font-black text-base md:text-lg">₹{p.price}</span>
+                          {inCart ? (
+                            <div className="flex items-center bg-[#059669] text-white rounded-xl shadow-lg min-w-[70px] md:min-w-[84px] justify-between overflow-hidden h-[30px] md:h-[36px]"><button onClick={() => removeFromCart(p.id)} className="flex-1 active:bg-black/20">-</button><span className="font-black text-xs md:text-sm">{inCart.qty}</span><button onClick={() => addToCart(p)} className="flex-1 active:bg-black/20">+</button></div>
+                          ) : (
+                            <button onClick={() => addToCart(p)} className="px-4 md:px-6 h-[30px] md:h-[36px] border border-[#059669] text-[#059669] bg-[#ECFDF5] rounded-xl text-[11px] md:text-[13px] font-black active:scale-95 shadow-sm min-w-[70px] md:min-w-[84px]">ADD</button>
+                          )}
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </>
           )}
         </div>
       </main>
 
-      {/* --- IN-FILE CART DRAWER --- */}
       {isCartOpen && (
         <>
           <div className="fixed inset-0 bg-[#111827]/40 backdrop-blur-sm z-[60]" onClick={() => setIsCartOpen(false)}></div>
@@ -516,20 +529,7 @@ export default function ZeshuSuperApp() {
               <h2 className="text-2xl font-black tracking-tighter">My Cart</h2>
               <button onClick={() => setIsCartOpen(false)} className="p-2.5 bg-[#F3F4F6] rounded-full active:scale-90"><X size={20}/></button>
             </div>
-            
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
-              
-              {/* 🚀 SUBSCRIPTION UPSELL (ZESHU PASS) */}
-              {!hasZeshuPass && itemTotal > 0 && (
-                <div className="bg-gradient-to-r from-indigo-900 to-purple-900 p-5 rounded-[24px] text-white flex items-center justify-between shadow-xl">
-                   <div>
-                     <div className="flex items-center gap-2 mb-1"><Crown size={20} className="text-yellow-400"/><h3 className="font-black text-lg">Zeshu Pass</h3></div>
-                     <p className="text-xs text-indigo-200 font-medium max-w-[200px]">Get Free Delivery on this order! Join for just ₹99/month.</p>
-                   </div>
-                   <button onClick={() => setHasZeshuPass(true)} className="bg-white text-indigo-900 font-black px-4 py-2 rounded-xl text-xs active:scale-95">JOIN NOW</button>
-                </div>
-              )}
-
               {cart.map((c, i) => (
                 <div key={i} className="bg-white p-4 rounded-2xl flex items-center gap-4 shadow-sm">
                   <img src={c.item.image_url} className="w-16 h-16 object-contain" alt="cart item"/>
@@ -537,17 +537,15 @@ export default function ZeshuSuperApp() {
                   <div className="flex items-center bg-[#059669] text-white rounded-lg px-2"><button onClick={() => removeFromCart(c.item.id)} className="px-2">-</button><span className="px-2">{c.qty}</span><button onClick={() => addToCart(c.item)} className="px-2">+</button></div>
                 </div>
               ))}
-              
               <div className="bg-white p-6 rounded-[24px] shadow-sm space-y-4">
                 <div className="flex justify-between text-[#4B5563]"><span>Items total</span><span className="font-bold">₹{itemTotal}</span></div>
-                <div className="flex justify-between text-[#059669]"><span>Delivery charge</span><span className="font-black">{deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}</span></div>
-                {hasZeshuPass && <div className="flex justify-between text-indigo-600 font-bold"><span>Zeshu Pass (1 Month)</span><span>₹99</span></div>}
-                {smallCartFee > 0 && <div className="flex justify-between text-red-500 text-xs"><span>Small cart fee (Add ₹{199-itemTotal} to remove)</span><span>₹{smallCartFee}</span></div>}
+                <div className="flex justify-between text-[#059669]"><span>Delivery charge</span><span className="font-black">FREE</span></div>
+                {useZeshuCoins && <div className="flex justify-between text-[#4F46E5]"><span>Zeshu Coins Applied</span><span className="font-black">-₹{zeshuDiscount}</span></div>}
                 <div className="border-t pt-4 flex justify-between font-black text-xl"><span>Grand total</span><span>₹{finalCartTotal}</span></div>
               </div>
             </div>
             <div className="bg-white p-6 border-t shadow-2xl">
-              <button onClick={handleCartCheckout} className="w-full bg-gradient-to-r from-[#059669] to-[#047857] text-white font-bold py-4 rounded-2xl flex justify-between px-6 items-center shadow-lg shadow-green-600/30">
+              <button onClick={handleCartCheckout} className="w-full bg-gradient-to-r from-[#059669] to-[#047857] text-white font-bold py-4 rounded-2xl flex justify-between px-6 items-center">
                 <span>Proceed to Pay</span><span>₹{finalCartTotal}</span>
               </button>
             </div>
@@ -555,38 +553,48 @@ export default function ZeshuSuperApp() {
         </>
       )}
 
-      {/* --- SIGN IN / AUTH MODAL --- */}
       {isAuthModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[32px] p-8 w-full max-w-sm relative shadow-2xl animate-in zoom-in-95 duration-200">
-            <button onClick={() => setIsAuthModalOpen(false)} className="absolute top-5 right-5 text-gray-400 hover:text-red-500"><X size={20}/></button>
-            <h2 className="text-2xl font-black text-center mb-6 text-gray-900">Sign In</h2>
+          <div className="bg-white rounded-[32px] p-8 w-full max-w-sm relative shadow-2xl">
+            <button onClick={() => setIsAuthModalOpen(false)} className="absolute top-5 right-5 text-gray-400"><X size={20}/></button>
+            <h2 className="text-2xl font-black text-center mb-6">Sign In</h2>
             {!otpSent ? (
               <div className="space-y-4">
-                <input type="tel" maxLength={10} value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="w-full p-4 bg-[#F8F9FC] border border-gray-200 rounded-2xl font-bold text-lg outline-none focus:border-[#6366F1]" placeholder="Mobile Number" />
-                <button onClick={handleSendOtp} className="w-full bg-[#111827] hover:bg-black text-white font-bold py-4 rounded-2xl active:scale-95 transition-transform">Get OTP</button>
+                <input type="tel" maxLength={10} value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="w-full p-4 bg-[#F8F9FC] border rounded-2xl font-bold text-lg outline-none focus:border-[#6366F1]" placeholder="Mobile Number" />
+                <button onClick={handleSendOtp} className="w-full bg-[#111827] text-white font-bold py-4 rounded-2xl active:scale-95 transition-transform">Get OTP</button>
               </div>
             ) : (
               <div className="space-y-4">
-                <input type="number" value={otp} onChange={(e) => setOtp(e.target.value)} className="w-full p-4 bg-[#F8F9FC] border border-gray-200 rounded-2xl text-center text-3xl font-black tracking-widest outline-none focus:border-[#6366F1]" placeholder="------" />
-                <button onClick={handleVerifyOtp} className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-bold py-4 rounded-2xl active:scale-95 transition-transform">Verify OTP</button>
+                <input type="number" value={otp} onChange={(e) => setOtp(e.target.value)} className="w-full p-4 bg-[#F8F9FC] border rounded-2xl text-center text-3xl font-black tracking-widest outline-none focus:border-[#6366F1]" placeholder="------" />
+                <button onClick={handleVerifyOtp} className="w-full bg-[#4F46E5] text-white font-bold py-4 rounded-2xl active:scale-95 transition-transform">Verify OTP</button>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* --- IN-APP BROWSER --- */}
-      {apolloWebViewUrl && (
+      {/* --- 🚀 DYNAMIC IN-APP BROWSER (3-TIER WATERFALL) --- */}
+      {externalWebView && (
         <div className="fixed inset-0 z-[200] bg-[#F8F9FC] flex flex-col animate-in slide-in-from-bottom-10 duration-300">
           <div className="bg-white px-5 py-4 flex justify-between items-center shadow-sm z-10 border-b border-gray-200">
             <div className="flex items-center gap-3">
-               <div className="bg-amber-100 p-2 rounded-lg"><HeartHandshake className="text-amber-600" size={20} /></div>
-               <div><h3 className="font-black leading-tight">Partner Delivery</h3><p className="text-[10px] font-bold text-emerald-600 uppercase">Trusted Zeshu Partner</p></div>
+               <div className={`${externalWebView.bgClass} p-2 rounded-lg`}><HeartHandshake className={externalWebView.colorClass} size={20} /></div>
+               <div>
+                 <h3 className={`font-black ${externalWebView.textClass} leading-tight`}>{externalWebView.provider}</h3>
+                 <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Trusted Zeshu Partner</p>
+               </div>
             </div>
-            <button onClick={() => setApolloWebViewUrl(null)} className="p-2.5 bg-gray-100 rounded-full active:scale-90"><X size={20} /></button>
+            <button onClick={() => setExternalWebView(null)} className="p-2.5 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 hover:text-red-500 transition-colors active:scale-90">
+              <X size={20} className="stroke-[3px]" />
+            </button>
           </div>
-          <iframe src={apolloWebViewUrl} className="flex-1 w-full border-none bg-white"/>
+          <div className="flex-1 w-full relative bg-gray-50 flex items-center justify-center">
+             <div className="absolute flex flex-col items-center animate-pulse text-gray-400">
+                <div className={`animate-spin h-8 w-8 border-4 border-t-transparent rounded-full mb-3 ${externalWebView.colorClass.replace('text-', 'border-')}`}></div>
+                <p className="font-bold text-sm">Connecting securely...</p>
+             </div>
+             <iframe src={externalWebView.url} className="absolute inset-0 w-full h-full border-none z-10" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" title={`${externalWebView.provider} Store`}/>
+          </div>
         </div>
       )}
 
