@@ -603,6 +603,26 @@ export default function ZeshuSuperApp() {
                 </div>
               ))}
               <div className="bg-white p-6 rounded-[24px] shadow-sm space-y-4">
+                
+                {/* 🚀 NEW: COIN APPLY BUTTON */}
+                {coinsBalance > 0 && (
+                  <div className="bg-[#EEF2FF] border border-[#C7D2FE] p-3 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Coins size={20} className="text-[#4F46E5]"/>
+                      <div>
+                        <p className="font-black text-sm text-[#4F46E5]">Zeshu Coins</p>
+                        <p className="text-[10px] text-[#6366F1] font-bold">Balance: {coinsBalance}</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setUseZeshuCoins(!useZeshuCoins)} 
+                      className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all active:scale-95 ${useZeshuCoins ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-[#4F46E5] text-white hover:bg-[#4338CA]'}`}
+                    >
+                      {useZeshuCoins ? 'REMOVE' : 'APPLY'}
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex justify-between text-[#4B5563]"><span>Items total</span><span className="font-bold">₹{itemTotal}</span></div>
                 <div className="flex justify-between text-[#059669]"><span>Delivery charge</span><span className="font-black">{deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}</span></div>
                 {hasZeshuPass && <div className="flex justify-between text-indigo-600 font-bold"><span>Zeshu Pass (1 Month)</span><span>₹99</span></div>}
@@ -722,3 +742,8 @@ export default function ZeshuSuperApp() {
           </div>
         </>
       )}
+
+      <Script id="razorpay-checkout-js" src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+    </div>
+  );
+}
