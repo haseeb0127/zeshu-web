@@ -74,7 +74,8 @@ export default function ZeshuSuperApp() {
   const [isDonating, setIsDonating] = useState(true); 
   
   // 🚀 ZESHU PASS SUBSCRIPTION STATE
-  const [hasZeshuPass, setHasZeshuPass] = useState(false);
+  const [isTrackingOpen, setIsTrackingOpen] = useState(false);
+  const [trackingStep, setTrackingStep] = useState(1);
 
   const [externalWebView, setExternalWebView] = useState<{url: string, provider: string, colorClass: string, bgClass: string, textClass: string} | null>(null);
   
@@ -283,7 +284,11 @@ export default function ZeshuSuperApp() {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, amount: orderData.amount || (finalCartTotal * 100), currency: orderData.currency || 'INR', name: "Zeshu Super App", order_id: orderId,
         handler: async function (response: any) { 
           await fetch('/api/confirm-grocery-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user.id, cartItems: cart, totalAmount: finalCartTotal, paymentId: response.razorpay_payment_id, address: currentAddress }) });
-          showToast("Order placed!"); setCart([]); setIsCartOpen(false); 
+          showToast("Order placed!"); 
+          setCart([]); 
+          setIsCartOpen(false); 
+          setIsTrackingOpen(true); // 🚀 THIS OPENS THE LIVE MAP!
+          setTrackingStep(1);
         },
         theme: { color: "#4F46E5" },
       };
@@ -558,6 +563,68 @@ export default function ZeshuSuperApp() {
         </div>
       </main>
 
+{/* --- 🚀 LIVE ORDER TRACKING SCREEN --- */}
+      {isTrackingOpen && (
+        <div className="fixed inset-0 bg-[#F8F9FC] z-[120] animate-in slide-in-from-bottom-full duration-500 flex flex-col">
+          <div className="bg-white px-6 py-5 flex justify-between items-center shadow-sm z-10 relative">
+            <div>
+              <h2 className="text-xl font-black tracking-tighter text-gray-900">Arriving in 12 mins</h2>
+              <p className="text-xs font-bold text-gray-500">Order #ZSH-{Math.floor(Math.random() * 100000)}</p>
+            </div>
+            <button onClick={() => setIsTrackingOpen(false)} className="p-2.5 bg-gray-100 rounded-full active:scale-90"><X size={20}/></button>
+          </div>
+
+          <div className="flex-1 relative bg-[#E5E7EB] overflow-hidden">
+            {/* Fake GPS Map Grid */}
+            <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#4F46E5 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+            
+            {/* Live Rider Pin */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center animate-bounce">
+              <div className="bg-white p-2 rounded-full shadow-xl border-2 border-indigo-600"><Truck size={24} className="text-indigo-600"/></div>
+              <div className="w-16 h-3 bg-black/20 rounded-full blur-sm mt-1"></div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-t-[32px] -mt-6 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] p-6 md:p-8 space-y-6">
+            {/* Status Stepper */}
+            <div className="flex items-center justify-between relative px-2">
+              <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-100 -z-10 -translate-y-1/2"></div>
+              <div className={`absolute top-1/2 left-0 h-1 bg-green-500 -z-10 -translate-y-1/2 transition-all duration-1000 ${trackingStep === 1 ? 'w-0' : trackingStep === 2 ? 'w-1/2' : 'w-full'}`}></div>
+              
+              <div className="flex flex-col items-center gap-2">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-colors ${trackingStep >= 1 ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'}`}>1</div>
+                <span className="text-[10px] font-black text-gray-500">Accepted</span>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-colors ${trackingStep >= 2 ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'}`}>2</div>
+                <span className="text-[10px] font-black text-gray-500">Picked Up</span>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-colors ${trackingStep >= 3 ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'}`}>3</div>
+                <span className="text-[10px] font-black text-gray-500">Delivered</span>
+              </div>
+            </div>
+
+            {/* Rider Details */}
+            <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-indigo-200 rounded-full flex items-center justify-center"><User size={24} className="text-indigo-600"/></div>
+                <div>
+                  <h4 className="font-black text-indigo-900">Rahul K.</h4>
+                  <p className="text-xs font-bold text-indigo-600">Your Delivery Partner</p>
+                </div>
+              </div>
+              <a href="tel:+919999999999" className="h-10 w-10 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform"><PhoneCall size={18}/></a>
+            </div>
+
+            {/* Developer Testing Button (Delete this later!) */}
+            <button onClick={() => setTrackingStep(prev => prev < 3 ? prev + 1 : 1)} className="w-full py-3 border-2 border-dashed border-gray-300 text-gray-400 rounded-xl text-xs font-black uppercase tracking-widest hover:border-indigo-400 hover:text-indigo-600">
+              [Simulate Next Step]
+            </button>
+          </div>
+        </div>
+      )}
+      
       {isCartOpen && (
         <>
           <div className="fixed inset-0 bg-[#111827]/40 backdrop-blur-sm z-[60]" onClick={() => setIsCartOpen(false)}></div>
