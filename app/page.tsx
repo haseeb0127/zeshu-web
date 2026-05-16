@@ -249,25 +249,9 @@ export default function ZeshuSuperApp() {
 
   const checkUser = async () => { const { data: { session } } = await supabase.auth.getSession(); if (session) { setUser(session.user); fetchCoinBalance(session.user.id); } };
   
-  // 🚀 WALLET API INTEGRATION (Hits backend instead of standard DB select)
-  const fetchCoinBalance = async (userId: string) => {
-    try {
-      const res = await fetch('/api/wallet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId })
-      });
-      const data = await res.json();
-      
-      if (data.success) {
-        setCoinsBalance(data.coins);
-        if (data.isNewUser) {
-          showToast("🎉 Welcome! You received 50 Zeshu Coins!");
-        }
-      }
-    } catch (err) {
-      console.error("Failed to fetch wallet");
-    }
+  const fetchCoinBalance = async (userId: string) => { 
+    const { data } = await supabase.from('wallets').select('zeshu_coins').eq('user_id', userId).single(); 
+    if (data) setCoinsBalance(data.zeshu_coins || 0); 
   };
 
   const handleSendOtp = async () => { setIsLoading(true); const { error } = await supabase.auth.signInWithOtp({ phone: `+91${phoneNumber}` }); setIsLoading(false); if (!error) setOtpSent(true); else alert(error.message); };
