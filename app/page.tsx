@@ -108,6 +108,7 @@ export default function ZeshuSuperApp() {
   }, [products]);
 
   const filteredProducts = products.filter(p => {
+    if (!p || !p.name) return false; // 🚀 PREVENTS CRASHES FROM BLANK DB ROWS
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = activeCategory === 'All' || (p.category || 'General') === activeCategory;
     return matchesSearch && matchesCategory;
@@ -305,7 +306,7 @@ export default function ZeshuSuperApp() {
         <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 md:py-0 md:h-[88px] flex flex-col md:flex-row items-center justify-between gap-3 md:gap-8">
           <div className="flex items-center justify-between w-full md:w-auto gap-4">
             <div className="flex items-center gap-4 md:gap-6">
-              <div className="flex items-center gap-2 md:gap-3 cursor-pointer md:border-r border-gray-200/60 md:pr-6 active:scale-[0.97] transition-transform" onClick={() => setActiveTab('home')}>
+              <div className="flex items-center gap-2 md:gap-3 cursor-pointer md:border-r border-gray-200/60 md:pr-6 active:scale-[0.97] transition-transform" onClick={() => { setActiveTab('home'); setIsTrackingOpen(true); }}>
                 <div className="bg-gradient-to-br from-[#6366F1] to-[#4F46E5] text-white font-black p-2 md:p-2.5 rounded-xl md:rounded-2xl text-xl md:text-2xl tracking-tighter shadow-sm">Z</div>
                 <div className="hidden md:flex flex-col"><span className="text-[22px] font-black tracking-tighter leading-none">ZESHU</span><span className="text-[10px] font-extrabold text-[#6366F1] tracking-[0.2em] uppercase mt-0.5">Super App</span></div>
               </div>
@@ -533,28 +534,41 @@ export default function ZeshuSuperApp() {
                 </div>
               )}
               <div className="px-4 md:px-0">
-                <div className="flex justify-between items-end mb-6 md:mb-8 border-b pb-4 md:pb-5"><h2 className="text-2xl md:text-3xl font-black tracking-tighter">{activeCategory} Items</h2><span className="text-[#6B7280] font-bold text-xs md:text-sm bg-gray-100 px-3 py-1 rounded-xl">{filteredProducts.length} items</span></div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-                  {filteredProducts.map((p) => {
-                    const inCart = cart.find(c => c.item.id === p.id);
-                    return (
-                      <div key={p.id} className="bg-white p-3 md:p-4 rounded-[20px] md:rounded-[28px] shadow-sm border border-gray-100 flex flex-col hover:shadow-xl hover:-translate-y-1.5 transition-all group relative">
-                        <div className="absolute top-3 left-3 md:top-4 md:left-4 bg-white/90 backdrop-blur-md px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-sm z-10 flex items-center gap-1 md:gap-1.5 border border-gray-50"><Clock size={10} className="text-[#4F46E5]"/><span className="text-[9px] md:text-[10px] font-black">12 MINS</span></div>
-                        <div className="bg-[#F8F9FC] rounded-[16px] mb-3 flex items-center justify-center p-4 aspect-square relative overflow-hidden group-hover:bg-[#F3F4F6] transition-colors"><img src={p.image_url} className="h-full w-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" alt={p.name} /></div>
-                        <div className="text-[13px] md:text-[15px] font-bold text-[#1F2937] line-clamp-2 min-h-[38px] md:min-h-[44px] mb-1 leading-snug tracking-tight group-hover:text-[#4F46E5]">{p.name}</div>
-                        <div className="text-[11px] md:text-[13px] text-[#6B7280] mb-4 font-semibold">{p.weight || '1 unit'}</div>
-                        <div className="flex justify-between items-center mt-auto pt-2 md:pt-3 border-t">
-                          <span className="font-black text-base md:text-lg">₹{p.price}</span>
-                          {inCart ? (
-                            <div className="flex items-center bg-[#059669] text-white rounded-xl shadow-lg min-w-[70px] md:min-w-[84px] justify-between overflow-hidden h-[30px] md:h-[36px]"><button onClick={() => removeFromCart(p.id)} className="flex-1 active:bg-black/20">-</button><span className="font-black text-xs md:text-sm">{inCart.qty}</span><button onClick={() => addToCart(p)} className="flex-1 active:bg-black/20">+</button></div>
-                          ) : (
-                            <button onClick={() => addToCart(p)} className="px-4 md:px-6 h-[30px] md:h-[36px] border border-[#059669] text-[#059669] bg-[#ECFDF5] rounded-xl text-[11px] md:text-[13px] font-black active:scale-95 shadow-sm min-w-[70px] md:min-w-[84px]">ADD</button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="flex justify-between items-end mb-6 md:mb-8 border-b pb-4 md:pb-5">
+                  <h2 className="text-2xl md:text-3xl font-black tracking-tighter">{activeCategory} Items</h2>
+                  <span className="text-[#6B7280] font-bold text-xs md:text-sm bg-gray-100 px-3 py-1 rounded-xl">{filteredProducts.length} items</span>
                 </div>
+                
+                {/* 🚀 RESTORED: NO RESULTS UI */}
+                {filteredProducts.length === 0 ? (
+                  <div className="bg-white p-12 md:p-20 rounded-[32px] border-2 border-dashed border-gray-200 text-center flex flex-col items-center justify-center gap-4">
+                     <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center"><Search size={32} className="text-gray-300"/></div>
+                     <h3 className="text-xl font-black">No matches found</h3>
+                     <p className="text-gray-500 text-sm">We are expanding our catalog daily! Try searching for something else.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+                    {filteredProducts.map((p) => {
+                      const inCart = cart.find(c => c.item.id === p.id);
+                      return (
+                        <div key={p.id} className="bg-white p-3 md:p-4 rounded-[20px] md:rounded-[28px] shadow-sm border border-gray-100 flex flex-col hover:shadow-xl hover:-translate-y-1.5 transition-all group relative">
+                          <div className="absolute top-3 left-3 md:top-4 md:left-4 bg-white/90 backdrop-blur-md px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-sm z-10 flex items-center gap-1 md:gap-1.5 border border-gray-50"><Clock size={10} className="text-[#4F46E5]"/><span className="text-[9px] md:text-[10px] font-black">12 MINS</span></div>
+                          <div className="bg-[#F8F9FC] rounded-[16px] mb-3 flex items-center justify-center p-4 aspect-square relative overflow-hidden group-hover:bg-[#F3F4F6] transition-colors"><img src={p.image_url || 'https://via.placeholder.com/150'} className="h-full w-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" alt={p.name} /></div>
+                          <div className="text-[13px] md:text-[15px] font-bold text-[#1F2937] line-clamp-2 min-h-[38px] md:min-h-[44px] mb-1 leading-snug tracking-tight group-hover:text-[#4F46E5]">{p.name}</div>
+                          <div className="text-[11px] md:text-[13px] text-[#6B7280] mb-4 font-semibold">{p.weight || '1 unit'}</div>
+                          <div className="flex justify-between items-center mt-auto pt-2 md:pt-3 border-t">
+                            <span className="font-black text-base md:text-lg">₹{p.price || 0}</span>
+                            {inCart ? (
+                              <div className="flex items-center bg-[#059669] text-white rounded-xl shadow-lg min-w-[70px] md:min-w-[84px] justify-between overflow-hidden h-[30px] md:h-[36px]"><button onClick={() => removeFromCart(p.id)} className="flex-1 active:bg-black/20">-</button><span className="font-black text-xs md:text-sm">{inCart.qty}</span><button onClick={() => addToCart(p)} className="flex-1 active:bg-black/20">+</button></div>
+                            ) : (
+                              <button onClick={() => addToCart(p)} className="px-4 md:px-6 h-[30px] md:h-[36px] border border-[#059669] text-[#059669] bg-[#ECFDF5] rounded-xl text-[11px] md:text-[13px] font-black active:scale-95 shadow-sm min-w-[70px] md:min-w-[84px]">ADD</button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </>
           )}
