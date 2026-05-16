@@ -7,7 +7,8 @@ import {
   Mic, MapPin, Search, Coins, User, ChevronRight, Zap, Smartphone, 
   Tv, HeartHandshake, Plus, Minus, ShoppingBag, X, LogOut, Ticket, QrCode,
   Droplets, Wifi, Car, Landmark, ShieldCheck, PhoneCall, Phone, Package, Flame, BadgeCheck,
-  History, ChevronDown, CheckSquare, Square, Clock, CheckCircle, Menu, Info, AlertCircle, BookUser, Truck
+  History, ChevronDown, CheckSquare, Square, Clock, CheckCircle, Menu, Info, AlertCircle, BookUser, Truck,
+  Timer, Crown // Added missing icons for new UI
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -40,6 +41,13 @@ const FALLBACK_BANNERS = [
   "https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=1440/layout-engine/2022-05/Group-33703.jpg",
 ];
 
+// 🚀 FLASH DEALS DATA
+const FLASH_DEALS = [
+  { id: 'fd1', name: 'Lays Magic Masala (Party Pack)', price: 85, discount_price: 65, image_url: 'https://m.media-amazon.com/images/I/71O156m1YEL.jpg', weight: '160g' },
+  { id: 'fd2', name: 'Amul Butter', price: 56, discount_price: 49, image_url: 'https://m.media-amazon.com/images/I/61bMszq-24L.jpg', weight: '100g' },
+  { id: 'fd3', name: 'Boat Bassheads 100', price: 999, discount_price: 349, image_url: 'https://m.media-amazon.com/images/I/719elVA3FvL.jpg', weight: '1 Unit' },
+];
+
 export default function ZeshuSuperApp() {
   const [activeTab, setActiveTab] = useState('home'); 
   const [activeService, setActiveService] = useState('mobile');
@@ -65,7 +73,9 @@ export default function ZeshuSuperApp() {
   const [tipAmount, setTipAmount] = useState(20); 
   const [isDonating, setIsDonating] = useState(true); 
   
-  // 🚀 DYNAMIC IN-APP BROWSER STATE
+  // 🚀 ZESHU PASS SUBSCRIPTION STATE
+  const [hasZeshuPass, setHasZeshuPass] = useState(false);
+
   const [externalWebView, setExternalWebView] = useState<{url: string, provider: string, colorClass: string, bgClass: string, textClass: string} | null>(null);
   
   const [currentAddress, setCurrentAddress] = useState('Fetching precise location...');
@@ -91,8 +101,10 @@ export default function ZeshuSuperApp() {
   const ZESHU_COINS_VAL = 50;
   const HANDLING_FEE = 5;
 
+  // 🚀 DYNAMIC CATEGORIES INJECTED
   const productCategories = useMemo(() => {
     const cats = new Set(products.map(p => p.category || 'General'));
+    ['Electronics', 'Beauty', 'Pet Supplies', 'Baby Care', 'Food Delivery'].forEach(c => cats.add(c));
     return ['All', ...Array.from(cats)];
   }, [products]);
 
@@ -166,7 +178,6 @@ export default function ZeshuSuperApp() {
     }
   };
 
-  // 🚀 MEDPAY 3-TIER WATERFALL SEARCH
   const handleMedicineSearch = async () => {
     if (!medSearchQuery) return;
     setIsLoading(true);
@@ -237,7 +248,28 @@ export default function ZeshuSuperApp() {
   };
 
   const checkUser = async () => { const { data: { session } } = await supabase.auth.getSession(); if (session) { setUser(session.user); fetchCoinBalance(session.user.id); } };
-  const fetchCoinBalance = async (userId: string) => { const { data } = await supabase.from('wallets').select('coins').eq('user_id', userId).single(); if (data) setCoinsBalance(data.coins); };
+  
+  // 🚀 WALLET API INTEGRATION (Hits backend instead of standard DB select)
+  const fetchCoinBalance = async (userId: string) => {
+    try {
+      const res = await fetch('/api/wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setCoinsBalance(data.coins);
+        if (data.isNewUser) {
+          showToast("🎉 Welcome! You received 50 Zeshu Coins!");
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch wallet");
+    }
+  };
+
   const handleSendOtp = async () => { setIsLoading(true); const { error } = await supabase.auth.signInWithOtp({ phone: `+91${phoneNumber}` }); setIsLoading(false); if (!error) setOtpSent(true); else alert(error.message); };
   const handleVerifyOtp = async () => { setIsLoading(true); const { data, error } = await supabase.auth.verifyOtp({ phone: `+91${phoneNumber}`, token: otp, type: 'sms' }); setIsLoading(false); if (data.session) { setUser(data.session.user); setIsAuthModalOpen(false); fetchCoinBalance(data.session.user.id); showToast("Welcome back!"); } else alert(error?.message); };
   const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); setCoinsBalance(0); setIsAccountOpen(false); showToast("Logged out."); };
@@ -245,12 +277,15 @@ export default function ZeshuSuperApp() {
   const addToCart = (product: any) => { setCart(prev => { const existing = prev.find(c => c.item.id === product.id); return existing ? prev.map(c => c.item.id === product.id ? { ...c, qty: c.qty + 1 } : c) : [...prev, { item: product, qty: 1 }]; }); showToast(`${product.name} added`); };
   const removeFromCart = (productId: any) => { setCart(prev => { const existing = prev.find(c => c.item.id === productId); if (existing && existing.qty > 1) { return prev.map(c => c.item.id === productId ? { ...c, qty: c.qty - 1 } : c); } else { const newCart = prev.filter(c => c.item.id !== productId); if (newCart.length === 0) setIsCartOpen(false); return newCart; } }); };
 
+  // 🚀 ZESHU PASS CART MATH
   const itemTotal = cart.reduce((acc, curr) => acc + (curr.item.price * curr.qty), 0);
-  const smallCartFee = (itemTotal > 0 && itemTotal < 100) ? 20 : 0;
-  const deliveryCharge = (itemTotal > 0 && itemTotal < 200) ? 30 : 0; 
+  const smallCartFee = (itemTotal > 0 && itemTotal < 199) ? 29 : 0; 
+  const deliveryCharge = hasZeshuPass ? 0 : (itemTotal > 0 && itemTotal < 299) ? 30 : 0; 
   const donationAmt = isDonating ? 1 : 0;
   const zeshuDiscount = useZeshuCoins ? Math.min(ZESHU_COINS_VAL, itemTotal) : 0; 
-  const finalCartTotal = itemTotal > 0 ? (itemTotal + deliveryCharge + smallCartFee + HANDLING_FEE + donationAmt + tipAmount - zeshuDiscount) : 0;
+  const passFee = hasZeshuPass ? 99 : 0; 
+  
+  const finalCartTotal = itemTotal > 0 ? (itemTotal + deliveryCharge + smallCartFee + HANDLING_FEE + donationAmt + tipAmount + passFee - zeshuDiscount) : 0;
 
   const handleCartCheckout = async () => {
     if (finalCartTotal === 0) return;
@@ -292,7 +327,8 @@ export default function ZeshuSuperApp() {
                 <div className="flex items-center text-[10px] md:text-xs text-[#6B7280] mt-0.5 font-medium truncate">{currentAddress}<ChevronDown size={14} className="ml-1"/></div>
               </div>
             </div>
-            <div className="md:hidden flex items-center">
+            <div className="md:hidden flex items-center gap-3">
+              <button onClick={() => user ? setIsAccountOpen(true) : setIsAuthModalOpen(true)} className="p-2.5 bg-gray-100 rounded-full active:scale-95 transition-transform text-gray-700 border border-gray-200"><User size={20} /></button>
               <button onClick={() => setIsCartOpen(true)} className="relative p-2.5 bg-gray-100 rounded-full active:scale-95 transition-transform border border-gray-200">
                 <ShoppingBag size={20} className="text-gray-700" />
                 {cart.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full text-[10px] font-black w-5 h-5 flex items-center justify-center border-2 border-white">{cart.length}</span>}
@@ -302,8 +338,9 @@ export default function ZeshuSuperApp() {
           <div className="w-full md:flex-1 max-w-3xl order-last md:order-none mt-1 md:mt-0">
             <div className="bg-[#F3F4F6] hover:bg-[#E5E7EB] transition-all rounded-[14px] md:rounded-[20px] flex items-center px-4 py-3 md:py-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#6366F1]/20">
               <Search className="text-[#9CA3AF] w-[18px] h-[18px] md:w-[22px] md:h-[22px]" />
-              <input type="text" placeholder="Search products or services..." className="bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-              {searchQuery && <X size={16} className="cursor-pointer text-gray-500" onClick={() => setSearchQuery('')}/>}
+              {/* 🚀 AI SEARCH PLACEHOLDER UPDATE */}
+              <input type="text" placeholder="Search 'protein powder', 'midnight snacks'..." className="bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              {searchQuery ? <X size={16} className="cursor-pointer text-gray-500" onClick={() => setSearchQuery('')}/> : <Mic size={18} className="text-[#6366F1] cursor-pointer" title="Voice Search"/>}
             </div>
           </div>
           <div className="hidden md:flex items-center gap-5 shrink-0">
@@ -322,7 +359,8 @@ export default function ZeshuSuperApp() {
             <div className="flex flex-col gap-1.5">
               {productCategories.map(cat => (
                 <button key={cat} onClick={() => setActiveCategory(cat)} className={`text-left px-4 py-3.5 rounded-[18px] font-extrabold text-sm transition-all flex items-center gap-3.5 active:scale-[0.97] ${activeCategory === cat ? 'bg-[#EEF2FF] text-[#4F46E5] shadow-[inset_4px_0_0_0_#4F46E5]' : 'text-[#6B7280] hover:bg-white border border-transparent hover:border-gray-200/60'}`}>
-                  <Package size={16} />{cat}
+                  {cat === 'Food Delivery' ? <Flame size={16} className="text-orange-500"/> : cat === 'Electronics' ? <Zap size={16} className="text-blue-500"/> : <Package size={16} />}
+                  {cat}
                 </button>
               ))}
             </div>
@@ -342,20 +380,18 @@ export default function ZeshuSuperApp() {
                
                <div className="p-5 md:p-8 space-y-5">
                  
-                 {/* 🚀 PHARMACY UI CONDITIONAL (3-TIER WATERFALL) */}
                  {activeService === 'pharmacy' ? (
                    <div className="space-y-5">
                      <div>
                        <label className="text-xs font-bold text-[#6B7280] uppercase tracking-wider mb-2 block">{currentServiceObj.inputLabel}</label>
                        <div className="relative flex items-center">
-                         <input type="text" placeholder="e.g. Paracetamol, Dolo 650, Vicks" className="w-full p-4 bg-[#F8F9FC] border border-gray-200/80 rounded-2xl focus:border-[#059669] focus:bg-white focus:ring-4 focus:ring-[#059669]/10 outline-none font-bold text-lg transition-all" value={medSearchQuery} onChange={(e) => setMedSearchQuery(e.target.value)} />
+                         <input type="text" placeholder="e.g. Paracetamol, Dolo 650" className="w-full p-4 bg-[#F8F9FC] border border-gray-200/80 rounded-2xl focus:border-[#059669] focus:bg-white focus:ring-4 focus:ring-[#059669]/10 outline-none font-bold text-lg transition-all" value={medSearchQuery} onChange={(e) => setMedSearchQuery(e.target.value)} />
                        </div>
                      </div>
                      <button disabled={isLoading} onClick={handleMedicineSearch} className="w-full p-4 border-2 border-dashed border-[#A7F3D0] rounded-2xl text-[#059669] bg-[#ECFDF5] hover:bg-[#D1FAE5] text-sm font-bold transition-all active:scale-[0.98] flex justify-center items-center gap-2">
-                       {isLoading ? <div className="animate-spin h-5 w-5 border-2 border-[#059669] border-t-transparent rounded-full"></div> : 'Search Smart Network'}
+                       {isLoading ? <div className="animate-spin h-5 w-5 border-2 border-[#059669] border-t-transparent rounded-full"></div> : 'Search Local Pharmacies'}
                      </button>
 
-                     {/* 🟩 TIER 1: LOCAL RESULTS */}
                      {medResults && medResults.routing_type === 'local' && (
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 animate-in fade-in">
                           <div className="flex justify-between items-center mb-4">
@@ -377,7 +413,6 @@ export default function ZeshuSuperApp() {
                         </div>
                      )}
 
-                     {/* 🟦 TIER 2: EXPRESS FALLBACK */}
                      {medResults && medResults.routing_type === 'express' && (
                         <div className="bg-blue-50 p-6 rounded-2xl border border-blue-200 text-center animate-in fade-in">
                           <h3 className="font-black text-xl text-blue-900 mb-2">Express Delivery Available</h3>
@@ -388,7 +423,6 @@ export default function ZeshuSuperApp() {
                         </div>
                      )}
 
-                     {/* 🟧 TIER 3: AFFILIATE FALLBACK */}
                      {medResults && medResults.routing_type === 'affiliate' && (
                         <div className="bg-amber-50 p-6 rounded-2xl border border-amber-200 text-center animate-in fade-in">
                           <h3 className="font-black text-xl text-amber-900 mb-2">Out of Local Stock</h3>
@@ -405,7 +439,6 @@ export default function ZeshuSuperApp() {
                        <label className="text-xs font-bold text-[#6B7280] uppercase tracking-wider mb-2 block">{currentServiceObj.inputLabel}</label>
                        <div className="relative flex items-center">
                          <input type="text" placeholder="Enter details" className="w-full p-4 pr-14 bg-[#F8F9FC] border border-gray-200 rounded-2xl focus:border-[#6366F1] font-bold text-lg outline-none" value={rechargeNumber} onChange={(e) => setRechargeNumber(e.target.value)} />
-                         {/* 🚀 CONTACT PICKER IN RECHARGE */}
                          {activeService === 'mobile' && (
                            <button onClick={handleContactPicker} className="absolute right-3 p-2 bg-[#EEF2FF] text-[#4F46E5] rounded-xl hover:bg-[#E0E7FF] transition-colors active:scale-95 shadow-sm border border-[#E0E7FF]" title="Search Contact">
                              <BookUser size={20} />
@@ -479,6 +512,26 @@ export default function ZeshuSuperApp() {
                   <div className="flex gap-4 md:gap-5 overflow-x-auto no-scrollbar pb-4 px-4 md:px-0 snap-x">
                     {banners.map((img, idx) => (<img key={idx} src={img} alt="Promo" className="h-[140px] md:h-[240px] rounded-[16px] md:rounded-[28px] object-cover min-w-[280px] md:min-w-[480px] cursor-pointer shadow-lg hover:-translate-y-1.5 transition-all snap-center border border-gray-100/50" />))}
                   </div>
+
+                  {/* 🚀 FLASH DEALS WIDGET */}
+                  <div className="px-4 md:px-0">
+                    <div className="flex items-center gap-3 mb-5">
+                      <Timer className="text-red-500 animate-pulse" size={24} />
+                      <h2 className="text-2xl font-black tracking-tight text-red-600">10-Minute Midnight Deals</h2>
+                    </div>
+                    <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 snap-x">
+                      {FLASH_DEALS.map(deal => (
+                        <div key={deal.id} className="min-w-[160px] md:min-w-[200px] bg-red-50 p-4 rounded-2xl border border-red-100 snap-start flex flex-col relative overflow-hidden">
+                          <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl">SALE</div>
+                          <img src={deal.image_url} className="h-24 object-contain mix-blend-multiply mb-3" />
+                          <div className="font-bold text-sm line-clamp-2 leading-tight mb-1">{deal.name}</div>
+                          <div className="flex items-center gap-2 mb-3"><span className="font-black text-lg text-red-600">₹{deal.discount_price}</span><span className="text-xs text-gray-400 line-through">₹{deal.price}</span></div>
+                          <button onClick={() => addToCart({id: deal.id, name: deal.name, price: deal.discount_price, image_url: deal.image_url})} className="w-full bg-white border border-red-200 text-red-600 font-black py-2 rounded-xl text-xs hover:bg-red-50 active:scale-95">ADD NOW</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="bg-white p-6 md:p-10 rounded-[24px] md:rounded-[32px] shadow-sm border border-gray-100 mx-4 md:mx-0">
                     <div className="flex items-center justify-between mb-8"><h2 className="text-xl md:text-2xl font-black tracking-tight">Utility & Recharges</h2><span className="text-[#4F46E5] font-extrabold text-xs md:text-sm cursor-pointer hover:bg-[#E0E7FF] bg-[#EEF2FF] px-3 py-1.5 md:px-4 md:py-2 rounded-xl">Explore All</span></div>
                     <div className="grid grid-cols-4 md:grid-cols-8 gap-y-8 md:gap-y-10 gap-x-2 md:gap-x-4">
@@ -530,6 +583,18 @@ export default function ZeshuSuperApp() {
               <button onClick={() => setIsCartOpen(false)} className="p-2.5 bg-[#F3F4F6] rounded-full active:scale-90"><X size={20}/></button>
             </div>
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
+              
+              {/* 🚀 SUBSCRIPTION UPSELL (ZESHU PASS) */}
+              {!hasZeshuPass && itemTotal > 0 && (
+                <div className="bg-gradient-to-r from-indigo-900 to-purple-900 p-5 rounded-[24px] text-white flex items-center justify-between shadow-xl">
+                   <div>
+                     <div className="flex items-center gap-2 mb-1"><Crown size={20} className="text-yellow-400"/><h3 className="font-black text-lg">Zeshu Pass</h3></div>
+                     <p className="text-xs text-indigo-200 font-medium max-w-[200px]">Get Free Delivery! Join for just ₹99/month.</p>
+                   </div>
+                   <button onClick={() => setHasZeshuPass(true)} className="bg-white text-indigo-900 font-black px-4 py-2 rounded-xl text-xs active:scale-95">JOIN NOW</button>
+                </div>
+              )}
+
               {cart.map((c, i) => (
                 <div key={i} className="bg-white p-4 rounded-2xl flex items-center gap-4 shadow-sm">
                   <img src={c.item.image_url} className="w-16 h-16 object-contain" alt="cart item"/>
@@ -539,7 +604,9 @@ export default function ZeshuSuperApp() {
               ))}
               <div className="bg-white p-6 rounded-[24px] shadow-sm space-y-4">
                 <div className="flex justify-between text-[#4B5563]"><span>Items total</span><span className="font-bold">₹{itemTotal}</span></div>
-                <div className="flex justify-between text-[#059669]"><span>Delivery charge</span><span className="font-black">FREE</span></div>
+                <div className="flex justify-between text-[#059669]"><span>Delivery charge</span><span className="font-black">{deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}</span></div>
+                {hasZeshuPass && <div className="flex justify-between text-indigo-600 font-bold"><span>Zeshu Pass (1 Month)</span><span>₹99</span></div>}
+                {smallCartFee > 0 && <div className="flex justify-between text-red-500 text-xs"><span>Small cart fee (Add ₹{199-itemTotal} to remove)</span><span>₹{smallCartFee}</span></div>}
                 {useZeshuCoins && <div className="flex justify-between text-[#4F46E5]"><span>Zeshu Coins Applied</span><span className="font-black">-₹{zeshuDiscount}</span></div>}
                 <div className="border-t pt-4 flex justify-between font-black text-xl"><span>Grand total</span><span>₹{finalCartTotal}</span></div>
               </div>
@@ -573,7 +640,6 @@ export default function ZeshuSuperApp() {
         </div>
       )}
 
-      {/* --- 🚀 DYNAMIC IN-APP BROWSER (3-TIER WATERFALL) --- */}
       {externalWebView && (
         <div className="fixed inset-0 z-[200] bg-[#F8F9FC] flex flex-col animate-in slide-in-from-bottom-10 duration-300">
           <div className="bg-white px-5 py-4 flex justify-between items-center shadow-sm z-10 border-b border-gray-200">
