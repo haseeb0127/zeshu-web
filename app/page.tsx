@@ -72,11 +72,9 @@ export default function ZeshuSuperApp() {
   const [useZeshuCoins, setUseZeshuCoins] = useState(false);
   const [tipAmount, setTipAmount] = useState(20); 
   const [isDonating, setIsDonating] = useState(true); 
-  
-  // 🚀 ZESHU PASS SUBSCRIPTION STATE
+  const [hasZeshuPass, setHasZeshuPass] = useState(false);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [trackingStep, setTrackingStep] = useState(1);
-
   const [externalWebView, setExternalWebView] = useState<{url: string, provider: string, colorClass: string, bgClass: string, textClass: string} | null>(null);
   
   const [currentAddress, setCurrentAddress] = useState('Fetching precise location...');
@@ -624,7 +622,7 @@ export default function ZeshuSuperApp() {
           </div>
         </div>
       )}
-      
+
       {isCartOpen && (
         <>
           <div className="fixed inset-0 bg-[#111827]/40 backdrop-blur-sm z-[60]" onClick={() => setIsCartOpen(false)}></div>
