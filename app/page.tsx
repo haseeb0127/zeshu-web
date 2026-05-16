@@ -664,7 +664,61 @@ export default function ZeshuSuperApp() {
         </div>
       )}
 
-      <Script id="razorpay-checkout-js" src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
-    </div>
-  );
-}
+      {/* --- ACCOUNT DRAWER --- */}
+      {isAccountOpen && (
+        <>
+          <div className="fixed inset-0 bg-[#111827]/40 backdrop-blur-sm z-[60]" onClick={() => setIsAccountOpen(false)}></div>
+          <div className="fixed top-0 right-0 h-full w-full md:w-[400px] bg-[#F8F9FC] z-[70] shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col">
+            <div className="bg-white px-6 py-5 flex justify-between items-center border-b">
+              <h2 className="text-2xl font-black tracking-tighter">My Account</h2>
+              <button onClick={() => setIsAccountOpen(false)} className="p-2.5 bg-[#F3F4F6] rounded-full active:scale-90"><X size={20}/></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              
+              {/* Profile & Wallet Card */}
+              <div className="bg-gradient-to-br from-[#4F46E5] to-[#4338CA] p-6 rounded-[24px] text-white shadow-lg">
+                 <div className="flex items-center gap-4 mb-6">
+                   <div className="h-16 w-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md border border-white/30">
+                     <User size={32} className="text-white"/>
+                   </div>
+                   <div>
+                     <p className="text-indigo-100 text-sm font-bold uppercase tracking-wider">Logged In As</p>
+                     <p className="font-black text-xl">{user?.phone || 'User'}</p>
+                   </div>
+                 </div>
+                 <div className="bg-white/10 rounded-xl p-4 flex items-center justify-between border border-white/20">
+                   <div className="flex items-center gap-2">
+                     <Coins className="text-yellow-400" size={24} />
+                     <span className="font-bold text-sm">Zeshu Coins</span>
+                   </div>
+                   <span className="font-black text-2xl">{coinsBalance}</span>
+                 </div>
+              </div>
+
+              {/* Menu Links */}
+              <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden">
+                 <button className="w-full flex items-center justify-between p-5 border-b border-gray-50 hover:bg-gray-50 transition-colors active:bg-gray-100">
+                   <div className="flex items-center gap-3"><History className="text-gray-500" size={20}/><span className="font-bold text-gray-700">Order History</span></div>
+                   <ChevronRight size={18} className="text-gray-400"/>
+                 </button>
+                 <button className="w-full flex items-center justify-between p-5 border-b border-gray-50 hover:bg-gray-50 transition-colors active:bg-gray-100">
+                   <div className="flex items-center gap-3"><MapPin className="text-gray-500" size={20}/><span className="font-bold text-gray-700">Saved Addresses</span></div>
+                   <ChevronRight size={18} className="text-gray-400"/>
+                 </button>
+                 <button className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors active:bg-gray-100">
+                   <div className="flex items-center gap-3"><Info className="text-gray-500" size={20}/><span className="font-bold text-gray-700">Help & Support</span></div>
+                   <ChevronRight size={18} className="text-gray-400"/>
+                 </button>
+              </div>
+
+            </div>
+            
+            {/* Logout Button */}
+            <div className="bg-white p-6 border-t shadow-2xl">
+              <button onClick={handleLogout} className="w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-4 rounded-2xl flex justify-center items-center gap-2 transition-colors active:scale-95">
+                <LogOut size={20} /> Logout
+              </button>
+            </div>
+          </div>
+        </>
+      )}
