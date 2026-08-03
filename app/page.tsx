@@ -74,7 +74,6 @@ export default function ZeshuSuperApp() {
   const [hasZeshuPass, setHasZeshuPass] = useState(false);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [trackingStep, setTrackingStep] = useState(1);
-  const [externalWebView, setExternalWebView] = useState<{url: string, provider: string, colorClass: string, bgClass: string, textClass: string} | null>(null);
   
   const [currentAddress, setCurrentAddress] = useState('Fetching precise location...');
   const [isDetectingLoc, setIsDetectingLoc] = useState(true);
@@ -96,7 +95,8 @@ export default function ZeshuSuperApp() {
   const currentServiceObj = SERVICES.find(s => s.id === activeService) || SERVICES[0];
   const isPlanBased = activeService === 'mobile' || activeService === 'dth'; 
 
-  const ZESHU_COINS_VAL = 50;
+  // 🚀 ZESHU COINS EXACT MATH LOGIC
+  const ZESHU_COINS_VAL = 50; // Maximum limit allowed per transaction
   const HANDLING_FEE = 5;
 
   const productCategories = useMemo(() => {
@@ -221,8 +221,6 @@ export default function ZeshuSuperApp() {
     setIsDetecting(false);
   };
 
-  const handleUpiSearch = () => { showToast("UPI Service is currently under maintenance") }
-
   const fetchOffers = async () => {
     if (!rechargeNumber || !selectedOperator) return alert(`Enter details`);
     setIsLoading(true);
@@ -260,11 +258,16 @@ export default function ZeshuSuperApp() {
   const addToCart = (product: any) => { setCart(prev => { const existing = prev.find(c => c.item.id === product.id); return existing ? prev.map(c => c.item.id === product.id ? { ...c, qty: c.qty + 1 } : c) : [...prev, { item: product, qty: 1 }]; }); showToast(`${product.name} added`); };
   const removeFromCart = (productId: any) => { setCart(prev => { const existing = prev.find(c => c.item.id === productId); if (existing && existing.qty > 1) { return prev.map(c => c.item.id === productId ? { ...c, qty: c.qty - 1 } : c); } else { const newCart = prev.filter(c => c.item.id !== productId); if (newCart.length === 0) setIsCartOpen(false); return newCart; } }); };
 
+  // 🚀 UPDATED COIN DEDUCTION MATH
   const itemTotal = cart.reduce((acc, curr) => acc + (curr.item.price * curr.qty), 0);
   const smallCartFee = (itemTotal > 0 && itemTotal < 199) ? 29 : 0; 
   const deliveryCharge = hasZeshuPass ? 0 : (itemTotal > 0 && itemTotal < 299) ? 30 : 0; 
   const donationAmt = isDonating ? 1 : 0;
-  const zeshuDiscount = useZeshuCoins ? Math.min(ZESHU_COINS_VAL, itemTotal) : 0; 
+  
+  // Calculate exactly how many coins can be used without going below 0
+  const maxCoinsToUse = Math.min(coinsBalance, ZESHU_COINS_VAL);
+  const zeshuDiscount = useZeshuCoins ? Math.min(maxCoinsToUse, itemTotal) : 0; 
+  
   const passFee = hasZeshuPass ? 99 : 0; 
   const finalCartTotal = itemTotal > 0 ? (itemTotal + deliveryCharge + smallCartFee + HANDLING_FEE + donationAmt + tipAmount + passFee - zeshuDiscount) : 0;
 
@@ -279,7 +282,17 @@ export default function ZeshuSuperApp() {
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, amount: orderData.amount || (finalCartTotal * 100), currency: orderData.currency || 'INR', name: "Zeshu Super App", order_id: orderId,
         handler: async function (response: any) { 
+          // Process Grocery Order in DB
           await fetch('/api/confirm-grocery-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user.id, cartItems: cart, totalAmount: finalCartTotal, paymentId: response.razorpay_payment_id, address: currentAddress }) });
+          
+          // 🚀 UPDATE WALLET IN DATABASE (DEDUCT COINS USED)
+          if (useZeshuCoins && zeshuDiscount > 0) {
+            const newBalance = coinsBalance - zeshuDiscount;
+            await supabase.from('wallets').update({ zeshu_coins: newBalance }).eq('user_id', user.id);
+            setCoinsBalance(newBalance);
+            setUseZeshuCoins(false);
+          }
+
           showToast("Order placed!"); setCart([]); setIsCartOpen(false); setIsTrackingOpen(true); setTrackingStep(1);
         },
         theme: { color: "#4F46E5" },
@@ -290,8 +303,8 @@ export default function ZeshuSuperApp() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FC] font-sans antialiased text-[#111827] overflow-x-hidden">
-      <div className={`fixed bottom-24 left-1/2 -translate-x-1/2 z-[150] transition-all duration-500 ${toastMessage ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-95 pointer-events-none'}`}>
+    <div className="min-h-screen bg-[#F8F9FC] font-sans antialiased text-[#111827] overflow-x-hidden relative">
+      <div className={`fixed bottom-32 left-1/2 -translate-x-1/2 z-[150] transition-all duration-500 ${toastMessage ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-95 pointer-events-none'}`}>
         <div className="bg-[#1F2937]/95 backdrop-blur-xl text-white px-6 py-3.5 rounded-full font-bold text-sm shadow-2xl flex items-center gap-2.5 border border-white/10"><CheckCircle size={18} className="text-[#10B981]"/>{toastMessage}</div>
       </div>
 
@@ -309,7 +322,6 @@ export default function ZeshuSuperApp() {
               </div>
             </div>
 
-            {/* 🚀 MOBILE HEADER ICONS (INCLUDING THE SCAN BUTTON AND CART ICON) */}
             <div className="md:hidden flex items-center gap-2">
               <Link href="/scanner" className="p-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full active:scale-95 shadow-md flex items-center justify-center">
                 <QrCode size={18} className="animate-pulse" />
@@ -330,7 +342,6 @@ export default function ZeshuSuperApp() {
             </div>
           </div>
 
-          {/* 🚀 DESKTOP HEADER ICONS */}
           <div className="hidden md:flex items-center gap-4 shrink-0">
             <Link href="/scanner" className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2.5 rounded-full font-black text-sm transition-all active:scale-95 shadow-[0_0_15px_rgba(79,70,229,0.4)]">
               <QrCode size={18} className="animate-pulse" /><span>Scan & Pay</span>
@@ -425,7 +436,7 @@ export default function ZeshuSuperApp() {
                          </select>
                        </div>
                      )}
-                     <button disabled={isLoading} onClick={activeService === 'upi' ? handleUpiSearch : isPlanBased ? fetchOffers : fetchBillDetails} className="w-full p-4 border-2 border-dashed border-[#C7D2FE] rounded-2xl text-[#4F46E5] bg-[#EEF2FF] hover:bg-[#E0E7FF] text-sm font-bold active:scale-[0.98]">
+                     <button disabled={isLoading} onClick={activeService === 'upi' ? () => {} : isPlanBased ? fetchOffers : fetchBillDetails} className="w-full p-4 border-2 border-dashed border-[#C7D2FE] rounded-2xl text-[#4F46E5] bg-[#EEF2FF] hover:bg-[#E0E7FF] text-sm font-bold active:scale-[0.98]">
                        {isLoading ? 'Fetching...' : 'Fetch Details'}
                      </button>
                      
@@ -534,6 +545,25 @@ export default function ZeshuSuperApp() {
         </div>
       </main>
 
+      {/* 🚀 NEW FLOATING CART WINDOW WITH SMOOTH ROUNDED EDGES */}
+      {!isCartOpen && cart.length > 0 && activeTab === 'home' && (
+        <div 
+          onClick={() => setIsCartOpen(true)}
+          className="fixed bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-[420px] bg-gradient-to-r from-[#059669] to-[#047857] text-white p-4 rounded-full shadow-2xl z-[90] flex items-center justify-between cursor-pointer animate-in slide-in-from-bottom-10 active:scale-[0.98] transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <div className="bg-white/20 p-2.5 rounded-full"><ShoppingBag size={20} className="text-white" /></div>
+            <div className="flex flex-col">
+              <span className="text-sm font-black leading-tight tracking-wide">{cart.length} ITEM{cart.length > 1 ? 'S' : ''}</span>
+              <span className="text-[10px] font-bold text-emerald-100 leading-tight">View cart & checkout</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 font-black text-lg">
+            ₹{finalCartTotal} <ChevronRight size={20} className="text-white ml-1 opacity-80" />
+          </div>
+        </div>
+      )}
+
       {/* --- LIVE ORDER TRACKING SCREEN --- */}
       {isTrackingOpen && (
         <div className="fixed inset-0 bg-[#F8F9FC] z-[120] animate-in slide-in-from-bottom-full duration-500 flex flex-col">
@@ -572,11 +602,11 @@ export default function ZeshuSuperApp() {
         </div>
       )}
 
-      {/* --- CART DRAWER --- */}
+      {/* --- CART DRAWER WITH SMOOTH EDGES --- */}
       {isCartOpen && (
         <>
           <div className="fixed inset-0 bg-[#111827]/40 backdrop-blur-sm z-[60]" onClick={() => setIsCartOpen(false)}></div>
-          <div className="fixed top-0 right-0 h-full w-full md:w-[460px] bg-[#F8F9FC] z-[70] shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col">
+          <div className="fixed top-0 right-0 h-full w-full md:w-[460px] bg-[#F8F9FC] z-[70] shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col md:rounded-l-[32px] overflow-hidden">
             <div className="bg-white px-6 py-5 flex justify-between items-center border-b">
               <h2 className="text-2xl font-black tracking-tighter">My Cart</h2>
               <button onClick={() => setIsCartOpen(false)} className="p-2.5 bg-[#F3F4F6] rounded-full active:scale-90"><X size={20}/></button>
@@ -630,7 +660,7 @@ export default function ZeshuSuperApp() {
         </>
       )}
 
-      {/* --- AUTH MODAL --- */}
+      {/* --- AUTH MODAL WITH SMOOTH EDGES --- */}
       {isAuthModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-[32px] p-8 w-full max-w-sm relative shadow-2xl">
@@ -651,11 +681,11 @@ export default function ZeshuSuperApp() {
         </div>
       )}
 
-      {/* --- ACCOUNT DRAWER --- */}
+      {/* --- ACCOUNT DRAWER WITH SMOOTH EDGES --- */}
       {isAccountOpen && (
         <>
           <div className="fixed inset-0 bg-[#111827]/40 backdrop-blur-sm z-[60]" onClick={() => setIsAccountOpen(false)}></div>
-          <div className="fixed top-0 right-0 h-full w-full md:w-[400px] bg-[#F8F9FC] z-[70] shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col">
+          <div className="fixed top-0 right-0 h-full w-full md:w-[400px] bg-[#F8F9FC] z-[70] shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col md:rounded-l-[32px] overflow-hidden">
             <div className="bg-white px-6 py-5 flex justify-between items-center border-b">
               <h2 className="text-2xl font-black tracking-tighter">My Account</h2>
               <button onClick={() => setIsAccountOpen(false)} className="p-2.5 bg-[#F3F4F6] rounded-full active:scale-90"><X size={20}/></button>
