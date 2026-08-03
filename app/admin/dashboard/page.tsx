@@ -16,17 +16,14 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'orders' | 'inventory' | 'payouts' | 'banners'>('orders');
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
-  const [banners, setBanners] = useState<any[]>([]); // 🚀 Added Banners State
+  const [banners, setBanners] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [selectedRiders, setSelectedRiders] = useState<{[key: string]: string}>({});
   
-  // Consolidated product state
   const [newProduct, setNewProduct] = useState({ 
     name: '', price: '', unit: '', image_url: '', category: 'General', quantity: '', weight: ''    
   });
-
-  // Banner states
   const [newImageUrl, setNewImageUrl] = useState('');
   const [isBannerLoading, setIsBannerLoading] = useState(false);
   
@@ -49,8 +46,8 @@ export default function AdminDashboard() {
     const channel = supabase
       .channel('admin-hq-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const audio = new Audio('/alert.mp3');
+          if (payload.eventType === 'INSERT' && audioEnabled) {
+            const audio = new Audio('https://assets.mixkit.co/active-storage/sfx/2869/2869-preview.mp3');
             audio.play().catch(() => console.log("Sound blocked!"));
           }
           fetchData(); 
@@ -60,7 +57,7 @@ export default function AdminDashboard() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [audioEnabled]);
 
   const assignToRider = async (orderId: string) => {
     const riderId = selectedRiders[orderId];
@@ -71,38 +68,25 @@ export default function AdminDashboard() {
   const addProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     await supabase.from('products').insert([{ 
-      name: newProduct.name, 
-      price: Number(newProduct.price), 
-      unit: newProduct.unit, 
-      image_url: newProduct.image_url, 
-      category: newProduct.category,
-      quantity: Number(newProduct.quantity),
-      weight: newProduct.weight
+      name: newProduct.name, price: Number(newProduct.price), unit: newProduct.unit, image_url: newProduct.image_url, category: newProduct.category, quantity: Number(newProduct.quantity), weight: newProduct.weight
     }]);
     setNewProduct({ name: '', price: '', unit: '', image_url: '', category: 'General', quantity: '', weight: '' });
   };
 
   const deleteProduct = async (id: string) => {
-    if(confirm("Are you sure you want to delete this?")) await supabase.from('products').delete().eq('id', id);
+    if(confirm("Are you sure?")) await supabase.from('products').delete().eq('id', id);
   };
 
   const toggleStock = async (id: string, currentStatus: boolean) => {
     await supabase.from('products').update({ in_stock: !currentStatus }).eq('id', id);
   };
 
-  // 🚀 Banner Management Functions
   const handleAddBanner = async () => {
     if (!newImageUrl) return;
     setIsBannerLoading(true);
     const { error } = await supabase.from('banners').insert([{ image_url: newImageUrl }]);
     setIsBannerLoading(false);
-    if (!error) {
-      setNewImageUrl('');
-      fetchData();
-      alert("Banner Added!");
-    } else {
-      alert("Error adding banner");
-    }
+    if (!error) { setNewImageUrl(''); fetchData(); alert("Banner Added!"); } else { alert("Error adding banner"); }
   };
 
   const handleDeleteBanner = async (id: string) => {
@@ -113,14 +97,13 @@ export default function AdminDashboard() {
 
   const riderPayouts = useMemo(() => {
     const payouts: Record<string, { id: string, name: string, total: number, deliveries: number }> = {};
-    
     orders.forEach(order => {
       if (order.status === 'DELIVERED' && order.payout_status !== 'PAID' && order.assigned_rider_id) {
         if (!payouts[order.assigned_rider_id]) {
           const riderName = MY_RIDERS.find(r => r.id === order.assigned_rider_id)?.name || 'Unknown Rider';
           payouts[order.assigned_rider_id] = { id: order.assigned_rider_id, name: riderName, total: 0, deliveries: 0 };
         }
-        payouts[order.assigned_rider_id].total += (Number(order.delivery_fee) || 30);
+        payouts[order.assigned_rider_id].total += 30; // Flat ₹30 fee
         payouts[order.assigned_rider_id].deliveries += 1;
       }
     });
@@ -128,7 +111,7 @@ export default function AdminDashboard() {
   }, [orders]);
 
   const markRiderPaid = async (riderId: string) => {
-    if(confirm("Confirm you have transferred the money to this rider?")) {
+    if(confirm("Confirm you paid this rider?")) {
       await supabase.from('orders').update({ payout_status: 'PAID' }).eq('assigned_rider_id', riderId).eq('status', 'DELIVERED').neq('payout_status', 'PAID');
       fetchData(); 
     }
@@ -145,7 +128,7 @@ export default function AdminDashboard() {
         </div>
         <div className="flex items-center gap-4">
           <button onClick={() => setAudioEnabled(!audioEnabled)} className={`${audioEnabled ? 'bg-green-500' : 'bg-amber-500'} text-black text-[10px] font-black px-3 py-1.5 rounded-lg transition-all`}>{audioEnabled ? 'AUDIO LIVE 🔊' : 'ENABLE AUDIO 🔈'}</button>
-          <button onClick={() => { supabase.auth.signOut(); router.push('/admin/login'); }} className="bg-zinc-800 p-2.5 rounded-xl"><LogOut size={20} color="white" /></button>
+          <button onClick={() => router.push('/')} className="bg-zinc-800 p-2.5 rounded-xl"><LogOut size={20} color="white" /></button>
         </div>
       </header>
 
@@ -158,8 +141,6 @@ export default function AdminDashboard() {
       </div>
 
       <main className="p-6 max-w-7xl mx-auto">
-        
-        {/* ORDERS TAB */}
         {activeTab === 'orders' && (
            <div className="bg-white rounded-[32px] shadow-sm border border-slate-200 overflow-hidden animate-in fade-in">
              <table className="w-full text-left border-collapse">
@@ -171,15 +152,18 @@ export default function AdminDashboard() {
                  </tr>
                </thead>
                <tbody className="divide-y divide-slate-50">
-                 {orders.map((order) => (
+                 {orders.map((order) => {
+                   let items = [];
+                   try { items = typeof order.cart_items === 'string' ? JSON.parse(order.cart_items) : order.cart_items || []; } catch(e) {}
+                   return (
                    <tr key={order.id} className={order.status === 'PENDING' ? 'bg-purple-50/30' : 'hover:bg-slate-50'}>
                      <td className="p-5">
                        <div className="font-mono text-xs font-bold">#{order.id.split('-')[0].toUpperCase()}</div>
-                       <div className="text-xs text-slate-500 mt-1">{order.items?.map((i:any) => `${i.qty}x ${i.item.name}`).join(', ')}</div>
+                       <div className="text-xs text-slate-500 mt-1">{items.map((i:any) => `${i.qty}x ${i.item?.name}`).join(', ')}</div>
                      </td>
-                     <td className="p-5 font-black text-xs">{order.status}</td>
+                     <td className="p-5 font-black text-xs">{order.status || 'PENDING'}</td>
                      <td className="p-5">
-                       {order.status === 'PENDING' && (
+                       {(order.status === 'PENDING' || !order.status) && (
                          <div className="flex gap-2">
                            <select onChange={(e) => setSelectedRiders({...selectedRiders, [order.id]: e.target.value})} className="border p-2 rounded-xl text-xs font-bold bg-white"><option value="">Assign Rider...</option>{MY_RIDERS.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}</select>
                            <button onClick={() => assignToRider(order.id)} className="bg-purple-600 text-white p-2 rounded-xl"><Send size={16}/></button>
@@ -188,13 +172,12 @@ export default function AdminDashboard() {
                        {order.status === 'DELIVERED' && <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${order.payout_status === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>{order.payout_status || 'UNPAID'}</span>}
                      </td>
                    </tr>
-                 ))}
+                 )})}
                </tbody>
              </table>
            </div>
         )}
 
-        {/* INVENTORY TAB */}
         {activeTab === 'inventory' && (
           <div className="space-y-6 animate-in fade-in">
             <form onSubmit={addProduct} className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
@@ -213,14 +196,10 @@ export default function AdminDashboard() {
                   <div className="text-[9px] font-black text-purple-600 bg-purple-50 self-start px-2 py-1 rounded mb-2 uppercase">{p.category || 'General'}</div>
                   <img src={p.image_url} alt={p.name} className="h-24 w-full object-contain mb-2" />
                   <div className="font-bold text-sm leading-tight flex-1">{p.name}</div>
-                  
                   <div className="flex justify-between items-center mt-2">
                     <div className="text-[10px] font-bold text-slate-500">Weight: {p.weight || 'N/A'}</div>
-                    <div className={`text-[10px] font-bold ${p.quantity < 10 ? 'text-red-500' : 'text-emerald-600'}`}>
-                      Stock: {p.quantity || 0}
-                    </div>
+                    <div className={`text-[10px] font-bold ${p.quantity < 10 ? 'text-red-500' : 'text-emerald-600'}`}>Stock: {p.quantity || 0}</div>
                   </div>
-
                   <div className="font-black text-lg mt-1">₹{p.price}</div>
                   <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
                     <button onClick={() => toggleStock(p.id, p.in_stock)} className={`flex-1 text-[10px] font-black uppercase py-2 rounded-lg ${p.in_stock ? 'bg-slate-100 text-slate-600' : 'bg-red-100 text-red-600'}`}>{p.in_stock ? 'In Stock' : 'Out'}</button>
@@ -232,7 +211,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* PAYOUTS TAB */}
         {activeTab === 'payouts' && (
           <div className="space-y-4 animate-in fade-in">
             {riderPayouts.length === 0 ? (
@@ -260,29 +238,16 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* 🚀 BANNERS TAB */}
         {activeTab === 'banners' && (
           <div className="space-y-6 animate-in fade-in">
             <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-200">
               <h2 className="text-lg font-bold mb-4">Add New Promotional Banner</h2>
               <div className="flex gap-4">
-                <input 
-                  type="text" 
-                  placeholder="Paste Image URL (e.g. https://.../promo.jpg)" 
-                  value={newImageUrl} 
-                  onChange={(e) => setNewImageUrl(e.target.value)}
-                  className="flex-1 p-4 bg-slate-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-600/20 outline-none font-medium"
-                />
+                <input type="text" placeholder="Paste Image URL" value={newImageUrl} onChange={(e) => setNewImageUrl(e.target.value)} className="flex-1 p-4 bg-slate-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-600/20 outline-none font-medium"/>
                 <button onClick={handleAddBanner} disabled={isBannerLoading} className="bg-purple-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-purple-700 transition-colors flex items-center gap-2">
                   <PlusCircle size={20}/> {isBannerLoading ? 'Adding...' : 'Add Banner'}
                 </button>
               </div>
-              {newImageUrl && (
-                <div className="mt-4">
-                  <p className="text-sm font-bold text-gray-500 mb-2">Preview:</p>
-                  <img src={newImageUrl} alt="Preview" className="h-32 rounded-xl object-cover border border-gray-200" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                </div>
-              )}
             </div>
 
             <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-200">
@@ -291,17 +256,9 @@ export default function AdminDashboard() {
                 {banners.map((banner) => (
                   <div key={banner.id} className="border border-gray-200 rounded-2xl overflow-hidden group relative">
                     <img src={banner.image_url} alt="Banner" className="w-full h-40 object-cover" />
-                    <button onClick={() => handleDeleteBanner(banner.id)} className="absolute top-3 right-3 bg-white/90 p-2 rounded-lg text-red-600 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50">
-                      <Trash2 size={18}/>
-                    </button>
+                    <button onClick={() => handleDeleteBanner(banner.id)} className="absolute top-3 right-3 bg-white/90 p-2 rounded-lg text-red-600 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"><Trash2 size={18}/></button>
                   </div>
                 ))}
-                {banners.length === 0 && (
-                  <div className="col-span-2 text-center py-10 text-gray-500 flex flex-col items-center">
-                    <ImageIcon size={40} className="mb-3 text-gray-300" />
-                    <p>No banners live. The App will use defaults.</p>
-                  </div>
-                )}
               </div>
             </div>
           </div>
