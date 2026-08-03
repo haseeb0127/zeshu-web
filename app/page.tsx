@@ -1,14 +1,15 @@
-/* eslint-disable @next/next/no-img-element */
+// /* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import Script from 'next/script';
 import React, { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { 
   Mic, MapPin, Search, Coins, User, ChevronRight, Zap, Smartphone, 
   Tv, HeartHandshake, Plus, Minus, ShoppingBag, X, LogOut, Ticket, QrCode,
   Droplets, Wifi, Car, Landmark, ShieldCheck, PhoneCall, Phone, Package, Flame, BadgeCheck,
   History, ChevronDown, CheckSquare, Square, Clock, CheckCircle, Menu, Info, AlertCircle, BookUser, Truck,
-  Timer, Crown // Added missing icons for new UI
+  Timer, Crown 
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -108,11 +109,18 @@ export default function ZeshuSuperApp() {
   }, [products]);
 
   const filteredProducts = products.filter(p => {
-    if (!p || !p.name) return false; // 🚀 PREVENTS CRASHES FROM BLANK DB ROWS
+    if (!p || !p.name) return false; 
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = activeCategory === 'All' || (p.category || 'General') === activeCategory;
     return matchesSearch && matchesCategory;
   });
+
+  const planCategories = useMemo(() => {
+    const cats = new Set(plans.map(p => p.category || 'All'));
+    return ['All', ...Array.from(cats)];
+  }, [plans]);
+
+  const filteredPlans = plans.filter(p => selectedPlanCategory === 'All' || p.category === selectedPlanCategory);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -223,6 +231,8 @@ export default function ZeshuSuperApp() {
     setIsDetecting(false);
   };
 
+  const handleUpiSearch = () => { showToast("UPI Service is currently under maintenance") }
+
   const fetchOffers = async () => {
     if (!rechargeNumber || !selectedOperator) return alert(`Enter details`);
     setIsLoading(true);
@@ -315,7 +325,15 @@ export default function ZeshuSuperApp() {
                 <div className="flex items-center text-[10px] md:text-xs text-[#6B7280] mt-0.5 font-medium truncate">{currentAddress}<ChevronDown size={14} className="ml-1"/></div>
               </div>
             </div>
+            
+            {/* 🚀 MOBILE MENU WITH SCAN BUTTON */}
             <div className="md:hidden flex items-center gap-3">
+              <Link 
+                href="/scanner" 
+                className="flex items-center justify-center p-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full active:scale-95 transition-transform shadow-md"
+              >
+                <QrCode size={20} className="animate-pulse" />
+              </Link>
               <button onClick={() => user ? setIsAccountOpen(true) : setIsAuthModalOpen(true)} className="p-2.5 bg-gray-100 rounded-full active:scale-95 transition-transform text-gray-700 border border-gray-200"><User size={20} /></button>
               <button onClick={() => setIsCartOpen(true)} className="relative p-2.5 bg-gray-100 rounded-full active:scale-95 transition-transform border border-gray-200">
                 <ShoppingBag size={20} className="text-gray-700" />
@@ -326,12 +344,21 @@ export default function ZeshuSuperApp() {
           <div className="w-full md:flex-1 max-w-3xl order-last md:order-none mt-1 md:mt-0">
             <div className="bg-[#F3F4F6] hover:bg-[#E5E7EB] transition-all rounded-[14px] md:rounded-[20px] flex items-center px-4 py-3 md:py-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#6366F1]/20">
               <Search className="text-[#9CA3AF] w-[18px] h-[18px] md:w-[22px] md:h-[22px]" />
-              {/* 🚀 AI SEARCH PLACEHOLDER UPDATE */}
               <input type="text" placeholder="Search 'protein powder', 'midnight snacks'..." className="bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
               {searchQuery ? <X size={16} className="cursor-pointer text-gray-500" onClick={() => setSearchQuery('')}/> : <Mic size={18} className="text-[#6366F1] cursor-pointer" title="Voice Search"/>}
             </div>
           </div>
+
+          {/* 🚀 DESKTOP MENU WITH SCAN BUTTON INJECTED HERE */}
           <div className="hidden md:flex items-center gap-5 shrink-0">
+            <Link 
+              href="/scanner" 
+              className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2.5 rounded-full font-black text-sm transition-all active:scale-95 shadow-[0_0_15px_rgba(79,70,229,0.4)] hover:shadow-[0_0_25px_rgba(79,70,229,0.6)]"
+            >
+              <QrCode size={18} className="animate-pulse" />
+              <span>Scan & Pay</span>
+            </Link>
+
             <button onClick={() => user ? setIsAccountOpen(true) : setIsAuthModalOpen(true)} className="flex items-center gap-2 text-[#4B5563] font-extrabold text-sm active:scale-95"><User size={20}/>{user ? 'Account' : 'Login'}</button>
             <button onClick={() => setIsCartOpen(true)} className="bg-gradient-to-b from-[#059669] to-[#047857] text-white px-5 py-3.5 rounded-[20px] flex items-center gap-3 font-bold text-sm min-w-[120px] justify-center active:scale-[0.96]">
               <ShoppingBag size={22} /> {cart.length > 0 ? `₹${finalCartTotal}` : 'My Cart'}
