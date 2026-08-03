@@ -42,7 +42,6 @@ const FALLBACK_BANNERS = [
   "https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=1440/layout-engine/2022-05/Group-33703.jpg",
 ];
 
-// 🚀 FLASH DEALS DATA
 const FLASH_DEALS = [
   { id: 'fd1', name: 'Lays Magic Masala (Party Pack)', price: 85, discount_price: 65, image_url: 'https://m.media-amazon.com/images/I/71O156m1YEL.jpg', weight: '160g' },
   { id: 'fd2', name: 'Amul Butter', price: 56, discount_price: 49, image_url: 'https://m.media-amazon.com/images/I/61bMszq-24L.jpg', weight: '100g' },
@@ -69,7 +68,6 @@ export default function ZeshuSuperApp() {
   
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
-  const [isCoinHistoryOpen, setIsCoinHistoryOpen] = useState(false);
   const [useZeshuCoins, setUseZeshuCoins] = useState(false);
   const [tipAmount, setTipAmount] = useState(20); 
   const [isDonating, setIsDonating] = useState(true); 
@@ -113,6 +111,13 @@ export default function ZeshuSuperApp() {
     const matchesCategory = activeCategory === 'All' || (p.category || 'General') === activeCategory;
     return matchesSearch && matchesCategory;
   });
+
+  const planCategories = useMemo(() => {
+    const cats = new Set(plans.map(p => p.category || 'All'));
+    return ['All', ...Array.from(cats)];
+  }, [plans]);
+
+  const filteredPlans = plans.filter(p => selectedPlanCategory === 'All' || p.category === selectedPlanCategory);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -216,6 +221,8 @@ export default function ZeshuSuperApp() {
     setIsDetecting(false);
   };
 
+  const handleUpiSearch = () => { showToast("UPI Service is currently under maintenance") }
+
   const fetchOffers = async () => {
     if (!rechargeNumber || !selectedOperator) return alert(`Enter details`);
     setIsLoading(true);
@@ -301,16 +308,20 @@ export default function ZeshuSuperApp() {
                 <div className="flex items-center text-[10px] md:text-xs text-[#6B7280] mt-0.5 font-medium truncate">{currentAddress}<ChevronDown size={14} className="ml-1"/></div>
               </div>
             </div>
-            {/* MOBILE SCAN & PAY BUTTON MOVED HERE */}
-            <div className="md:hidden flex items-center gap-3">
-              <Link href="/scanner" className="flex items-center justify-center p-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full active:scale-95 transition-transform shadow-md"><QrCode size={20} className="animate-pulse" /></Link>
-              <button onClick={() => user ? setIsAccountOpen(true) : setIsAuthModalOpen(true)} className="p-2.5 bg-gray-100 rounded-full active:scale-95 transition-transform text-gray-700 border border-gray-200"><User size={20} /></button>
-              <button onClick={() => setIsCartOpen(true)} className="relative p-2.5 bg-gray-100 rounded-full active:scale-95 transition-transform border border-gray-200">
-                <ShoppingBag size={20} className="text-gray-700" />
-                {cart.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full text-[10px] font-black w-5 h-5 flex items-center justify-center border-2 border-white">{cart.length}</span>}
+
+            {/* 🚀 MOBILE HEADER ICONS (INCLUDING THE SCAN BUTTON AND CART ICON) */}
+            <div className="md:hidden flex items-center gap-2">
+              <Link href="/scanner" className="p-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full active:scale-95 shadow-md flex items-center justify-center">
+                <QrCode size={18} className="animate-pulse" />
+              </Link>
+              <button onClick={() => user ? setIsAccountOpen(true) : setIsAuthModalOpen(true)} className="p-2 bg-gray-100 rounded-full active:scale-95 text-gray-700 border border-gray-200"><User size={18} /></button>
+              <button onClick={() => setIsCartOpen(true)} className="relative p-2 bg-gray-100 rounded-full active:scale-95 border border-gray-200">
+                <ShoppingBag size={18} className="text-gray-700" />
+                {cart.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full text-[9px] font-black w-4 h-4 flex items-center justify-center border border-white">{cart.length}</span>}
               </button>
             </div>
           </div>
+
           <div className="w-full md:flex-1 max-w-3xl order-last md:order-none mt-1 md:mt-0">
             <div className="bg-[#F3F4F6] hover:bg-[#E5E7EB] transition-all rounded-[14px] md:rounded-[20px] flex items-center px-4 py-3 md:py-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#6366F1]/20">
               <Search className="text-[#9CA3AF] w-[18px] h-[18px] md:w-[22px] md:h-[22px]" />
@@ -318,9 +329,10 @@ export default function ZeshuSuperApp() {
               {searchQuery ? <X size={16} className="cursor-pointer text-gray-500" onClick={() => setSearchQuery('')}/> : <Mic size={18} className="text-[#6366F1] cursor-pointer" title="Voice Search"/>}
             </div>
           </div>
-          {/* DESKTOP SCAN & PAY BUTTON MOVED HERE */}
-          <div className="hidden md:flex items-center gap-5 shrink-0">
-            <Link href="/scanner" className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2.5 rounded-full font-black text-sm transition-all active:scale-95 shadow-[0_0_15px_rgba(79,70,229,0.4)] hover:shadow-[0_0_25px_rgba(79,70,229,0.6)]">
+
+          {/* 🚀 DESKTOP HEADER ICONS */}
+          <div className="hidden md:flex items-center gap-4 shrink-0">
+            <Link href="/scanner" className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2.5 rounded-full font-black text-sm transition-all active:scale-95 shadow-[0_0_15px_rgba(79,70,229,0.4)]">
               <QrCode size={18} className="animate-pulse" /><span>Scan & Pay</span>
             </Link>
             <button onClick={() => user ? setIsAccountOpen(true) : setIsAuthModalOpen(true)} className="flex items-center gap-2 text-[#4B5563] font-extrabold text-sm active:scale-95"><User size={20}/>{user ? 'Account' : 'Login'}</button>
@@ -331,7 +343,6 @@ export default function ZeshuSuperApp() {
         </div>
       </header>
 
-      {/* KEEPING ALL OTHER MAIN COMPONENTS IDENTICAL AS REQUESTED */}
       <main className="max-w-[1400px] mx-auto w-full md:px-8 py-8 pt-[130px] md:pt-[120px] flex gap-8">
         {activeTab === 'home' && searchQuery === '' && (
           <aside className="hidden lg:block w-[260px] shrink-0 sticky top-[120px] h-[calc(100vh-120px)] overflow-y-auto no-scrollbar pr-4">
@@ -414,7 +425,7 @@ export default function ZeshuSuperApp() {
                          </select>
                        </div>
                      )}
-                     <button disabled={isLoading} onClick={activeService === 'upi' ? () => {} : isPlanBased ? fetchOffers : fetchBillDetails} className="w-full p-4 border-2 border-dashed border-[#C7D2FE] rounded-2xl text-[#4F46E5] bg-[#EEF2FF] hover:bg-[#E0E7FF] text-sm font-bold active:scale-[0.98]">
+                     <button disabled={isLoading} onClick={activeService === 'upi' ? handleUpiSearch : isPlanBased ? fetchOffers : fetchBillDetails} className="w-full p-4 border-2 border-dashed border-[#C7D2FE] rounded-2xl text-[#4F46E5] bg-[#EEF2FF] hover:bg-[#E0E7FF] text-sm font-bold active:scale-[0.98]">
                        {isLoading ? 'Fetching...' : 'Fetch Details'}
                      </button>
                      
@@ -523,7 +534,7 @@ export default function ZeshuSuperApp() {
         </div>
       </main>
 
-      {/* KEEPING MODALS / DRAWERS EXACTLY AS THEY WERE */}
+      {/* --- LIVE ORDER TRACKING SCREEN --- */}
       {isTrackingOpen && (
         <div className="fixed inset-0 bg-[#F8F9FC] z-[120] animate-in slide-in-from-bottom-full duration-500 flex flex-col">
           <div className="bg-white px-6 py-5 flex justify-between items-center shadow-sm z-10 relative">
@@ -561,6 +572,7 @@ export default function ZeshuSuperApp() {
         </div>
       )}
 
+      {/* --- CART DRAWER --- */}
       {isCartOpen && (
         <>
           <div className="fixed inset-0 bg-[#111827]/40 backdrop-blur-sm z-[60]" onClick={() => setIsCartOpen(false)}></div>
@@ -570,6 +582,15 @@ export default function ZeshuSuperApp() {
               <button onClick={() => setIsCartOpen(false)} className="p-2.5 bg-[#F3F4F6] rounded-full active:scale-90"><X size={20}/></button>
             </div>
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
+              {!hasZeshuPass && itemTotal > 0 && (
+                <div className="bg-gradient-to-r from-indigo-900 to-purple-900 p-5 rounded-[24px] text-white flex items-center justify-between shadow-xl">
+                   <div>
+                     <div className="flex items-center gap-2 mb-1"><Crown size={20} className="text-yellow-400"/><h3 className="font-black text-lg">Zeshu Pass</h3></div>
+                     <p className="text-xs text-indigo-200 font-medium max-w-[200px]">Get Free Delivery! Join for just ₹99/month.</p>
+                   </div>
+                   <button onClick={() => setHasZeshuPass(true)} className="bg-white text-indigo-900 font-black px-4 py-2 rounded-xl text-xs active:scale-95">JOIN NOW</button>
+                </div>
+              )}
               {cart.map((c, i) => (
                 <div key={i} className="bg-white p-4 rounded-2xl flex items-center gap-4 shadow-sm">
                   <img src={c.item.image_url} className="w-16 h-16 object-contain" alt="cart item"/>
@@ -578,7 +599,25 @@ export default function ZeshuSuperApp() {
                 </div>
               ))}
               <div className="bg-white p-6 rounded-[24px] shadow-sm space-y-4">
+                {coinsBalance > 0 && (
+                  <div className="bg-[#EEF2FF] border border-[#C7D2FE] p-3 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Coins size={20} className="text-[#4F46E5]"/>
+                      <div>
+                        <p className="font-black text-sm text-[#4F46E5]">Zeshu Coins</p>
+                        <p className="text-[10px] text-[#6366F1] font-bold">Balance: {coinsBalance}</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setUseZeshuCoins(!useZeshuCoins)} className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all active:scale-95 ${useZeshuCoins ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-[#4F46E5] text-white hover:bg-[#4338CA]'}`}>
+                      {useZeshuCoins ? 'REMOVE' : 'APPLY'}
+                    </button>
+                  </div>
+                )}
                 <div className="flex justify-between text-[#4B5563]"><span>Items total</span><span className="font-bold">₹{itemTotal}</span></div>
+                <div className="flex justify-between text-[#059669]"><span>Delivery charge</span><span className="font-black">{deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}</span></div>
+                {hasZeshuPass && <div className="flex justify-between text-indigo-600 font-bold"><span>Zeshu Pass (1 Month)</span><span>₹99</span></div>}
+                {smallCartFee > 0 && <div className="flex justify-between text-red-500 text-xs"><span>Small cart fee</span><span>₹{smallCartFee}</span></div>}
+                {useZeshuCoins && <div className="flex justify-between text-[#4F46E5]"><span>Zeshu Coins Applied</span><span className="font-black">-₹{zeshuDiscount}</span></div>}
                 <div className="border-t pt-4 flex justify-between font-black text-xl"><span>Grand total</span><span>₹{finalCartTotal}</span></div>
               </div>
             </div>
@@ -591,6 +630,7 @@ export default function ZeshuSuperApp() {
         </>
       )}
 
+      {/* --- AUTH MODAL --- */}
       {isAuthModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-[32px] p-8 w-full max-w-sm relative shadow-2xl">
@@ -609,6 +649,39 @@ export default function ZeshuSuperApp() {
             )}
           </div>
         </div>
+      )}
+
+      {/* --- ACCOUNT DRAWER --- */}
+      {isAccountOpen && (
+        <>
+          <div className="fixed inset-0 bg-[#111827]/40 backdrop-blur-sm z-[60]" onClick={() => setIsAccountOpen(false)}></div>
+          <div className="fixed top-0 right-0 h-full w-full md:w-[400px] bg-[#F8F9FC] z-[70] shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col">
+            <div className="bg-white px-6 py-5 flex justify-between items-center border-b">
+              <h2 className="text-2xl font-black tracking-tighter">My Account</h2>
+              <button onClick={() => setIsAccountOpen(false)} className="p-2.5 bg-[#F3F4F6] rounded-full active:scale-90"><X size={20}/></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="bg-gradient-to-br from-[#4F46E5] to-[#4338CA] p-6 rounded-[24px] text-white shadow-lg">
+                 <div className="flex items-center gap-4 mb-6">
+                   <div className="h-16 w-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md border border-white/30"><User size={32} className="text-white"/></div>
+                   <div>
+                     <p className="text-indigo-100 text-sm font-bold uppercase tracking-wider">Logged In As</p>
+                     <p className="font-black text-xl">{user?.phone || 'User'}</p>
+                   </div>
+                 </div>
+                 <div className="bg-white/10 rounded-xl p-4 flex items-center justify-between border border-white/20">
+                   <div className="flex items-center gap-2"><Coins className="text-yellow-400" size={24} /><span className="font-bold text-sm">Zeshu Coins</span></div>
+                   <span className="font-black text-2xl">{coinsBalance}</span>
+                 </div>
+              </div>
+            </div>
+            <div className="bg-white p-6 border-t shadow-2xl">
+              <button onClick={handleLogout} className="w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-4 rounded-2xl flex justify-center items-center gap-2 transition-colors active:scale-95">
+                <LogOut size={20} /> Logout
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       <Script id="razorpay-checkout-js" src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
