@@ -1,4 +1,8 @@
-"use client";
+export default function VendorDashboard() {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [shiftStarted, setShiftStarted] = useState(false); // <-- ADD THIS
+  // "use client";
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { Package, Truck, CheckCircle, Clock, MapPin, BellRing, Phone, IndianRupee } from 'lucide-react';
@@ -6,11 +10,43 @@ import { Package, Truck, CheckCircle, Clock, MapPin, BellRing, Phone, IndianRupe
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
-
+const playNotificationSound = () => {
+    if (!shiftStarted) return; // Don't play if shift hasn't started
+    try {
+      const audio = new Audio('https://assets.mixkit.co/active-storage/sfx/2869/2869-preview.mp3');
+      audio.play().catch((e) => console.log("Audio play blocked:", e));
+    } catch (e) {
+      console.log("Audio error:", e);
+    }
+  };
 export default function VendorDashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+// --- ADD THIS BLOCK ---
+  if (!shiftStarted) {
+    return (
+      <div className="min-h-screen bg-[#0F172A] flex flex-col items-center justify-center p-6 text-center">
+        <BellRing size={64} className="text-indigo-500 mb-6 animate-bounce" />
+        <h1 className="text-3xl font-black text-white mb-2">Vendor Terminal</h1>
+        <p className="text-slate-400 mb-8 max-w-md">You must start your shift to enable loud audio notifications for incoming orders.</p>
+        <button 
+          onClick={() => {
+            // This silent audio play unlocks the browser's audio engine
+            new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA').play().catch(()=>{});
+            setShiftStarted(true);
+          }} 
+          className="bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-black text-xl py-5 px-10 rounded-2xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+        >
+          Start Shift & Enable Audio
+        </button>
+      </div>
+    );
+  }
+  // --- END ADDED BLOCK ---
 
+  return (
+    <div className="min-h-screen bg-[#0F172A] text-gray-100 font-sans selection:bg-indigo-500/30">
+    // ... rest of your existing return code ...
   const playNotificationSound = () => {
     try {
       const audio = new Audio('https://assets.mixkit.co/active-storage/sfx/2869/2869-preview.mp3');
