@@ -134,6 +134,10 @@ export default function ZeshuSuperApp() {
   const [fetchedBill, setFetchedBill] = useState<any>(null);
   const [isDetecting, setIsDetecting] = useState(false);
   const [selectedPlanCategory, setSelectedPlanCategory] = useState("All");
+  const [planDiscovery, setPlanDiscovery] = useState<any>(null);
+  const [planDiscoveryError, setPlanDiscoveryError] = useState('');
+  const [planDiscoveryLoading, setPlanDiscoveryLoading] = useState(false);
+  const [planSort, setPlanSort] = useState<'recommended' | 'low' | 'high'>('recommended');
 
   const [medSearchQuery, setMedSearchQuery] = useState('');
   const [medResults, setMedResults] = useState<any>(null);
@@ -202,14 +206,29 @@ export default function ZeshuSuperApp() {
 
   // Provider fulfillment is not connected for any utility service yet. Keep every
   // entry point honest and prevent the UI from progressing to a charge path.
+  // Plan discovery is read-only. Every recharge/utility fulfillment path remains disabled.
   const unavailableService = true;
 
-  const planCategories = useMemo(() => {
-    const cats = new Set(plans.map(p => p.category || 'All'));
-    return ['All', ...Array.from(cats)];
-  }, [plans]);
+  const planCategories = useMemo<string[]>(() => {
+    const cats = new Set<string>((planDiscovery?.plans || plans).map((p: any) => String(p.category || 'All')));
+    return ['All', 'Unlimited', 'Data', 'Talktime', 'SMS', 'Long Validity', 'Special Offers', ...Array.from(cats)].filter((value, index, all) => all.indexOf(value) === index);
+  }, [planDiscovery, plans]);
 
-  const filteredPlans = plans.filter(p => selectedPlanCategory === 'All' || p.category === selectedPlanCategory);
+  const filteredPlans = useMemo(() => {
+    const source = planDiscovery?.plans || plans;
+    const matchesCategory = (plan: any) => {
+      if (selectedPlanCategory === 'All' || selectedPlanCategory === 'Special Offers') return true;
+      const haystack = `${plan.category || ''} ${plan.description || ''} ${plan.validity || ''}`.toLowerCase();
+      if (selectedPlanCategory === 'Unlimited') return /unlimited|truly unlimited/.test(haystack);
+      if (selectedPlanCategory === 'Data') return /data|internet|gb|mb/.test(haystack);
+      if (selectedPlanCategory === 'Talktime') return /talk ?time|top ?up|topup|voice/.test(haystack);
+      if (selectedPlanCategory === 'SMS') return /sms|message/.test(haystack);
+      if (selectedPlanCategory === 'Long Validity') return /annual|yearly|365|long validity/.test(haystack) || /(?:18[0-9]|[2-9][0-9]{2,})\s*days?/.test(haystack);
+      return String(plan.category || '').toLowerCase() === selectedPlanCategory.toLowerCase();
+    };
+    const filtered = source.filter(matchesCategory);
+    return [...filtered].sort((a: any, b: any) => planSort === 'low' ? Number(a.amount) - Number(b.amount) : planSort === 'high' ? Number(b.amount) - Number(a.amount) : 0);
+  }, [planDiscovery, plans, selectedPlanCategory, planSort]);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -571,51 +590,27 @@ export default function ZeshuSuperApp() {
   };
 
   useEffect(() => {
-    if (rechargeNumber.length === 10 && activeService === 'mobile') { autoDetectAndFetchPlans(rechargeNumber); }
+    if (activeService !== 'mobile') {
+      setPlanDiscovery(null);
+      setPlanDiscoveryError('');
+    }
     setFetchedBill(null);
-  }, [rechargeNumber, activeService]);
+  }, [activeService]);
 
   const autoDetectAndFetchPlans = async (num: string) => {
-    setIsDetecting(true); setPlans([]);
+    if (!/^[6-9]\d{9}$/.test(num)) { setPlanDiscoveryError('Enter a valid 10-digit Indian mobile number.'); return; }
+    setPlanDiscoveryLoading(true); setPlanDiscoveryError(''); setPlanDiscovery(null); setPlans([]); setSelectedPlanCategory('All');
     try {
-      const authHeaders = await getUtilityAuthHeaders();
-      if (!authHeaders) { setIsDetecting(false); return; }
-      const opRes = await fetch(`/api/fetch-operator?number=${num}&service=${activeService}`, { headers: authHeaders });
-      const opData = await opRes.json();
-      if (opData && opData.success && opData.operator) {
-        const opNameFromAPI = opData.operator.toLowerCase();
-        const foundOpKey = Object.keys(OPERATORS_DATA['mobile']).find(k => opNameFromAPI.includes(k.toLowerCase()) || k.toLowerCase().includes(opNameFromAPI));
-        const finalOperator = foundOpKey || opData.operator;
-        setSelectedOperator(finalOperator); 
-        const opCode = OPERATORS_DATA['mobile'][finalOperator];
-        if (opCode) {
-          const planRes = await fetch(`/api/fetch-plans?number=${num}&operator=${opCode}&service=${activeService}`, { headers: authHeaders });
-          const planData = await planRes.json();
-          if(planData.plans && planData.plans.length > 0) { setPlans(planData.plans); setSelectedPlanCategory("All"); showToast(`Auto-detected ${finalOperator}`); }
-        }
-      }
-    } catch (err) {
-      if (process.env.NODE_ENV === 'development') console.error('Automatic operator/plan lookup failed:', err instanceof Error ? err.message : 'unknown error');
-    }
-    setIsDetecting(false);
+      const response = await fetch('/api/recharge/plans', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mobile: num }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Recharge plans are temporarily unavailable.');
+      setPlanDiscovery(data); setSelectedOperator(data.operator || ''); setPlans(data.plans || []); showToast(`Plans found for ${data.operator}`);
+    } catch (error) {
+      setPlanDiscoveryError(error instanceof Error ? error.message : 'Recharge plans are temporarily unavailable.');
+    } finally { setPlanDiscoveryLoading(false); }
   };
 
-  const fetchOffers = async () => {
-    if (!rechargeNumber || !selectedOperator) return showToast("Enter the required details.");
-    setIsLoading(true);
-    try {
-      const authHeaders = await getUtilityAuthHeaders();
-      if (!authHeaders) { setIsLoading(false); return; }
-      const opCode = OPERATORS_DATA[activeService][selectedOperator];
-      const res = await fetch(`/api/fetch-plans?number=${rechargeNumber}&operator=${opCode}&service=${activeService}`, { headers: authHeaders });
-      const data = await res.json();
-      if (data && data.plans) { setPlans(data.plans); setSelectedPlanCategory("All"); } 
-    } catch (err) {
-      if (process.env.NODE_ENV === 'development') console.error('Plan lookup failed:', err instanceof Error ? err.message : 'unknown error');
-      showToast('Unable to fetch plans right now. Please try again.');
-    }
-    setIsLoading(false);
-  };
+  const fetchOffers = async () => autoDetectAndFetchPlans(rechargeNumber);
 
   const fetchBillDetails = async () => {
     if (!rechargeNumber || !selectedOperator) return showToast("Enter the required details.");
@@ -991,7 +986,7 @@ export default function ZeshuSuperApp() {
                </div>
                
                <div className="p-5 md:p-8 space-y-5">
-                 {unavailableService ? (
+                 {unavailableService && activeService !== 'mobile' ? (
                    <div className="rounded-3xl border border-[#cfe7d8] bg-[#f4fbf6] p-6 text-center md:p-10">
                      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e1f3e7] text-[#087443]"><Info size={24}/></div>
                      <h2 className="text-xl font-black text-[#183524]">{currentServiceObj.label} is not available yet</h2>
@@ -1036,7 +1031,7 @@ export default function ZeshuSuperApp() {
                      <div>
                        <label className="text-xs font-bold text-[#6B7280] uppercase tracking-wider mb-2 block">{currentServiceObj.inputLabel}</label>
                        <div className="relative flex items-center">
-                         <input type="text" placeholder="Enter details" className="w-full p-4 pr-14 bg-[#F8F9FC] border border-gray-200 rounded-2xl focus:border-[#6366F1] font-bold text-lg outline-none" value={rechargeNumber} onChange={(e) => setRechargeNumber(e.target.value)} />
+                         <input type="tel" inputMode="numeric" maxLength={10} placeholder="10-digit mobile number" className="w-full p-4 pr-14 bg-[#F8F9FC] border border-gray-200 rounded-2xl focus:border-[#6366F1] font-bold text-lg outline-none" value={rechargeNumber} onChange={(e) => setRechargeNumber(e.target.value.replace(/\D/g, '').slice(0, 10))} />
                          {activeService === 'mobile' && (
                            <button onClick={handleContactPicker} className="absolute right-3 p-2 bg-[#EEF2FF] text-[#4F46E5] rounded-xl hover:bg-[#E0E7FF] transition-colors active:scale-95 shadow-sm border border-[#E0E7FF]" title="Search Contact">
                              <BookUser size={20} />
@@ -1044,7 +1039,7 @@ export default function ZeshuSuperApp() {
                          )}
                        </div>
                      </div>
-                     {activeService !== 'upi' && (
+                     {activeService !== 'upi' && activeService !== 'mobile' && (
                        <div>
                          <label className="text-xs font-bold text-[#6B7280] uppercase tracking-wider mb-2 block">Operator</label>
                          <select className="w-full p-4 bg-[#F8F9FC] border border-gray-200 rounded-2xl focus:border-[#6366F1] font-bold text-[#374151] outline-none" value={selectedOperator} onChange={(e) => setSelectedOperator(e.target.value)}>
@@ -1053,9 +1048,11 @@ export default function ZeshuSuperApp() {
                          </select>
                        </div>
                      )}
-                     <button disabled={isLoading} onClick={activeService === 'upi' ? () => {} : isPlanBased ? fetchOffers : fetchBillDetails} className="w-full p-4 border-2 border-dashed border-[#C7D2FE] rounded-2xl text-[#4F46E5] bg-[#EEF2FF] hover:bg-[#E0E7FF] text-sm font-bold active:scale-[0.98]">
-                       {isLoading ? 'Fetching...' : 'Fetch Details'}
+                     <button disabled={isLoading || (activeService === 'mobile' && planDiscoveryLoading)} onClick={activeService === 'upi' ? () => {} : isPlanBased ? fetchOffers : fetchBillDetails} className="w-full p-4 border-2 border-dashed border-[#C7D2FE] rounded-2xl text-[#4F46E5] bg-[#EEF2FF] hover:bg-[#E0E7FF] text-sm font-bold active:scale-[0.98]" aria-live="polite">
+                       {planDiscoveryLoading ? 'Finding the best plans for you...' : isLoading ? 'Fetching...' : activeService === 'mobile' ? 'View Plans' : 'Fetch Details'}
                      </button>
+                     {activeService === 'mobile' && planDiscoveryError && <div role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{planDiscoveryError}</div>}
+                     {activeService === 'mobile' && planDiscovery && <div className="space-y-4" aria-live="polite"><div className="rounded-2xl bg-[#F4FBF6] p-4"><p className="text-xs font-black uppercase tracking-wider text-[#087443]">Detected network</p><p className="mt-1 font-black text-slate-900">{planDiscovery.operator}</p><p className="text-sm font-bold text-slate-600">{planDiscovery.circle}</p></div><div className="flex flex-wrap gap-2">{planCategories.map((category) => <button type="button" key={category} onClick={() => setSelectedPlanCategory(category)} className={`rounded-full px-3 py-2 text-xs font-black ${selectedPlanCategory === category ? 'bg-[#087443] text-white' : 'bg-slate-100 text-slate-600'}`}>{category}</button>)}</div><label className="flex items-center justify-between gap-3 text-xs font-black text-slate-600">Sort plans<select value={planSort} onChange={(event) => setPlanSort(event.target.value as typeof planSort)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 font-bold"><option value="recommended">Recommended</option><option value="low">Price: Low to High</option><option value="high">Price: High to Low</option></select></label>{planDiscovery.specialOffers?.length > 0 && (selectedPlanCategory === 'All' || selectedPlanCategory === 'Special Offers') && <div className="space-y-2"><p className="text-sm font-black text-amber-700">Special offer for this number</p>{planDiscovery.specialOffers.map((offer: any) => <div key={offer.id} className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><div className="flex items-center justify-between gap-3"><p className="font-black">₹{offer.amount}</p><button type="button" onClick={() => setRechargeAmount(String(offer.amount))} className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-black text-white">Use this plan</button></div><p className="mt-1 text-xs text-amber-900">{offer.description}</p></div>)}</div>}{filteredPlans.length === 0 && selectedPlanCategory !== 'Special Offers' ? <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No matching plans were returned.</p> : <div className="space-y-2">{filteredPlans.map((plan: any) => <div key={plan.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-lg font-black text-slate-900">₹{plan.amount}</p><p className="text-xs font-black text-[#087443]">{plan.category}</p></div><button type="button" onClick={() => setRechargeAmount(String(plan.amount))} className="rounded-lg bg-[#087443] px-3 py-2 text-xs font-black text-white">Use this plan</button></div><p className="mt-2 text-sm font-bold text-slate-700">{plan.validity}</p><p className="mt-1 text-xs leading-5 text-slate-500">{plan.description}</p></div>)}</div>}</div>}
                      
                      {fetchedBill && !isPlanBased && (
                        <div className="bg-[#ECFDF5] border border-[#A7F3D0] p-6 rounded-2xl shadow-sm">
@@ -1074,8 +1071,8 @@ export default function ZeshuSuperApp() {
                      </div>
 
                      {activeService !== 'upi' && (
-                       <button onClick={handleRechargeCheckout} disabled={isLoading || !rechargeAmount} className="w-full bg-gradient-to-r from-[#059669] to-[#047857] hover:to-[#065F46] text-white py-5 rounded-2xl font-black text-lg shadow-[0_8px_20px_-6px_rgba(5,150,105,0.4)] mt-4 transition-all active:scale-[0.98] disabled:opacity-50">
-                         {isLoading ? 'Processing...' : 'Recharge fulfillment unavailable'}
+                       <button type="button" onClick={() => showToast('Recharge fulfillment is not available yet.')} disabled={isLoading || !rechargeAmount || activeService === 'mobile'} className="w-full bg-gradient-to-r from-[#059669] to-[#047857] hover:to-[#065F46] text-white py-5 rounded-2xl font-black text-lg shadow-[0_8px_20px_-6px_rgba(5,150,105,0.4)] mt-4 transition-all active:scale-[0.98] disabled:opacity-50">
+                         Recharge fulfillment unavailable
                        </button>
                      )}
                    </>
