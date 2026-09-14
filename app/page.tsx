@@ -81,6 +81,42 @@ const ORDER_STATUS_LABELS: Record<string, string> = {
   OUT_FOR_DELIVERY: 'Out for delivery', DELIVERED: 'Delivered', CANCELLED: 'Cancelled',
 };
 const ACTIVE_ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'PICKED_UP', 'OUT_FOR_DELIVERY'];
+const PRIMARY_PLAN_FILTERS = ['All', 'Popular', 'Unlimited', 'Data', 'Talktime', 'Entertainment', 'Annual', 'Special Offers'] as const;
+
+function planText(plan: any) {
+  return `${plan?.category || ''} ${plan?.description || ''} ${plan?.validity || ''}`.toLowerCase();
+}
+
+function validityDays(value: unknown) {
+  const text = String(value || '').toLowerCase();
+  if (/active plan|calendar\s*month/.test(text)) return 30;
+  const match = text.match(/(\d+)\s*(?:day|days)/);
+  return match ? Number(match[1]) : 0;
+}
+
+function matchesPlanFilter(plan: any, filter: string) {
+  const text = planText(plan);
+  if (filter === 'All') return true;
+  if (filter === 'Special Offers') return false;
+  if (filter === 'Popular') return /popular|recommended/.test(text);
+  if (filter === 'Unlimited') return /unlimited|5g\s*unlimited/.test(text);
+  if (filter === 'Data') return /data|internet|\bgb\b|\bmb\b|data pack/.test(text);
+  if (filter === 'Talktime') return /talk\s*time|top\s*-?\s*up|topup|voice/.test(text);
+  if (filter === 'Entertainment') return /entertainment|ott|netflix|jiohotstar|sonyliv|zee5|prime|fancode/.test(text);
+  if (filter === 'Annual') return /annual|yearly|365\s*days|336\s*days|long validity/.test(text) || validityDays(plan?.validity) >= 180;
+  return String(plan?.category || '').toLowerCase() === filter.toLowerCase();
+}
+
+function dedupePlans(plans: any[]) {
+  const grouped = new Map<string, any>();
+  plans.forEach((plan) => {
+    const key = `${Number(plan.amount)}|${String(plan.validity || '').trim().toLowerCase()}|${String(plan.description || '').trim().toLowerCase()}`;
+    const existing = grouped.get(key);
+    if (!existing) grouped.set(key, { ...plan, categories: [plan.category].filter(Boolean) });
+    else if (plan.category && !existing.categories.includes(plan.category)) existing.categories.push(plan.category);
+  });
+  return Array.from(grouped.values()).map((plan) => ({ ...plan, category: plan.categories.join(' · ') || plan.category }));
+}
 
 export default function ZeshuSuperApp() {
   const [activeTab, setActiveTab] = useState('home'); 
@@ -137,7 +173,12 @@ export default function ZeshuSuperApp() {
   const [planDiscovery, setPlanDiscovery] = useState<any>(null);
   const [planDiscoveryError, setPlanDiscoveryError] = useState('');
   const [planDiscoveryLoading, setPlanDiscoveryLoading] = useState(false);
-  const [planSort, setPlanSort] = useState<'recommended' | 'low' | 'high'>('recommended');
+  const [planSort, setPlanSort] = useState<'recommended' | 'low' | 'high' | 'validity'>('recommended');
+  const [planSearch, setPlanSearch] = useState('');
+  const [showMorePlanCategories, setShowMorePlanCategories] = useState(false);
+  const [planVisibleCount, setPlanVisibleCount] = useState(20);
+  const [expandedPlanIds, setExpandedPlanIds] = useState<Set<string>>(new Set());
+  const [planSelectionMessage, setPlanSelectionMessage] = useState('');
 
   const [medSearchQuery, setMedSearchQuery] = useState('');
   const [medResults, setMedResults] = useState<any>(null);
@@ -210,25 +251,23 @@ export default function ZeshuSuperApp() {
   const unavailableService = true;
 
   const planCategories = useMemo<string[]>(() => {
-    const cats = new Set<string>((planDiscovery?.plans || plans).map((p: any) => String(p.category || 'All')));
-    return ['All', 'Unlimited', 'Data', 'Talktime', 'SMS', 'Long Validity', 'Special Offers', ...Array.from(cats)].filter((value, index, all) => all.indexOf(value) === index);
+    const primary = new Set<string>(PRIMARY_PLAN_FILTERS);
+    return Array.from(new Set<string>((planDiscovery?.plans || plans).map((p: any) => String(p.category || '').trim()).filter(Boolean))).filter((category) => !primary.has(category));
   }, [planDiscovery, plans]);
 
   const filteredPlans = useMemo(() => {
     const source = planDiscovery?.plans || plans;
-    const matchesCategory = (plan: any) => {
-      if (selectedPlanCategory === 'All' || selectedPlanCategory === 'Special Offers') return true;
-      const haystack = `${plan.category || ''} ${plan.description || ''} ${plan.validity || ''}`.toLowerCase();
-      if (selectedPlanCategory === 'Unlimited') return /unlimited|truly unlimited/.test(haystack);
-      if (selectedPlanCategory === 'Data') return /data|internet|gb|mb/.test(haystack);
-      if (selectedPlanCategory === 'Talktime') return /talk ?time|top ?up|topup|voice/.test(haystack);
-      if (selectedPlanCategory === 'SMS') return /sms|message/.test(haystack);
-      if (selectedPlanCategory === 'Long Validity') return /annual|yearly|365|long validity/.test(haystack) || /(?:18[0-9]|[2-9][0-9]{2,})\s*days?/.test(haystack);
-      return String(plan.category || '').toLowerCase() === selectedPlanCategory.toLowerCase();
-    };
-    const filtered = source.filter(matchesCategory);
-    return [...filtered].sort((a: any, b: any) => planSort === 'low' ? Number(a.amount) - Number(b.amount) : planSort === 'high' ? Number(b.amount) - Number(a.amount) : 0);
-  }, [planDiscovery, plans, selectedPlanCategory, planSort]);
+    const query = planSearch.trim().toLowerCase();
+    const filtered = source.filter((plan: any) => matchesPlanFilter(plan, selectedPlanCategory) && (!query || `${plan.category || ''} ${plan.amount || ''} ${plan.validity || ''} ${plan.description || ''}`.toLowerCase().includes(query)));
+    const visible = selectedPlanCategory === 'All' ? dedupePlans(filtered) : filtered;
+    return [...visible].sort((a: any, b: any) => planSort === 'low' ? Number(a.amount) - Number(b.amount) : planSort === 'high' ? Number(b.amount) - Number(a.amount) : planSort === 'validity' ? validityDays(b.validity) - validityDays(a.validity) : 0);
+  }, [planDiscovery, plans, selectedPlanCategory, planSort, planSearch]);
+
+  const visiblePlans = filteredPlans.slice(0, planVisibleCount);
+  useEffect(() => {
+    setPlanVisibleCount(20);
+    setExpandedPlanIds(new Set());
+  }, [selectedPlanCategory, planSort, planSearch]);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -599,7 +638,7 @@ export default function ZeshuSuperApp() {
 
   const autoDetectAndFetchPlans = async (num: string) => {
     if (!/^[6-9]\d{9}$/.test(num)) { setPlanDiscoveryError('Enter a valid 10-digit Indian mobile number.'); return; }
-    setPlanDiscoveryLoading(true); setPlanDiscoveryError(''); setPlanDiscovery(null); setPlans([]); setSelectedPlanCategory('All');
+    setPlanDiscoveryLoading(true); setPlanDiscoveryError(''); setPlanDiscovery(null); setPlans([]); setSelectedPlanCategory('All'); setPlanSearch(''); setPlanVisibleCount(20); setPlanSelectionMessage('');
     try {
       const response = await fetch('/api/recharge/plans', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mobile: num }) });
       const data = await response.json();
@@ -1052,7 +1091,17 @@ export default function ZeshuSuperApp() {
                        {planDiscoveryLoading ? 'Finding the best plans for you...' : isLoading ? 'Fetching...' : activeService === 'mobile' ? 'View Plans' : 'Fetch Details'}
                      </button>
                      {activeService === 'mobile' && planDiscoveryError && <div role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{planDiscoveryError}</div>}
-                     {activeService === 'mobile' && planDiscovery && <div className="space-y-4" aria-live="polite"><div className="rounded-2xl bg-[#F4FBF6] p-4"><p className="text-xs font-black uppercase tracking-wider text-[#087443]">Detected network</p><p className="mt-1 font-black text-slate-900">{planDiscovery.operator}</p><p className="text-sm font-bold text-slate-600">{planDiscovery.circle}</p></div><div className="flex flex-wrap gap-2">{planCategories.map((category) => <button type="button" key={category} onClick={() => setSelectedPlanCategory(category)} className={`rounded-full px-3 py-2 text-xs font-black ${selectedPlanCategory === category ? 'bg-[#087443] text-white' : 'bg-slate-100 text-slate-600'}`}>{category}</button>)}</div><label className="flex items-center justify-between gap-3 text-xs font-black text-slate-600">Sort plans<select value={planSort} onChange={(event) => setPlanSort(event.target.value as typeof planSort)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 font-bold"><option value="recommended">Recommended</option><option value="low">Price: Low to High</option><option value="high">Price: High to Low</option></select></label>{planDiscovery.specialOffers?.length > 0 && (selectedPlanCategory === 'All' || selectedPlanCategory === 'Special Offers') && <div className="space-y-2"><p className="text-sm font-black text-amber-700">Special offer for this number</p>{planDiscovery.specialOffers.map((offer: any) => <div key={offer.id} className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><div className="flex items-center justify-between gap-3"><p className="font-black">₹{offer.amount}</p><button type="button" onClick={() => setRechargeAmount(String(offer.amount))} className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-black text-white">Use this plan</button></div><p className="mt-1 text-xs text-amber-900">{offer.description}</p></div>)}</div>}{filteredPlans.length === 0 && selectedPlanCategory !== 'Special Offers' ? <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No matching plans were returned.</p> : <div className="space-y-2">{filteredPlans.map((plan: any) => <div key={plan.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-lg font-black text-slate-900">₹{plan.amount}</p><p className="text-xs font-black text-[#087443]">{plan.category}</p></div><button type="button" onClick={() => setRechargeAmount(String(plan.amount))} className="rounded-lg bg-[#087443] px-3 py-2 text-xs font-black text-white">Use this plan</button></div><p className="mt-2 text-sm font-bold text-slate-700">{plan.validity}</p><p className="mt-1 text-xs leading-5 text-slate-500">{plan.description}</p></div>)}</div>}</div>}
+                     {activeService === 'mobile' && planDiscovery && <div className="space-y-4" aria-live="polite">
+                       <div className="rounded-2xl bg-[#F4FBF6] p-4"><p className="text-xs font-black uppercase tracking-wider text-[#087443]">Detected network</p><p className="mt-1 font-black text-slate-900">{planDiscovery.operator}</p><p className="text-sm font-bold text-slate-600">{planDiscovery.circle}</p></div>
+                       <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">{PRIMARY_PLAN_FILTERS.map((category) => <button type="button" key={category} onClick={() => setSelectedPlanCategory(category)} className={`shrink-0 rounded-full px-3 py-2 text-xs font-black ${selectedPlanCategory === category ? 'bg-[#087443] text-white' : 'bg-slate-100 text-slate-600'}`}>{category}</button>)}<button type="button" onClick={() => setShowMorePlanCategories((current) => !current)} className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700">More {showMorePlanCategories ? '−' : '+'}</button></div>
+                       {showMorePlanCategories && <div className="flex flex-wrap gap-2 rounded-xl bg-slate-50 p-3">{planCategories.length === 0 ? <span className="text-xs text-slate-500">No additional provider categories.</span> : planCategories.map((category) => <button type="button" key={category} onClick={() => setSelectedPlanCategory(category)} className={`rounded-full px-3 py-2 text-xs font-black ${selectedPlanCategory === category ? 'bg-[#087443] text-white' : 'bg-white text-slate-600'}`}>{category}</button>)}</div>}
+                       <div className="flex flex-col gap-2 sm:flex-row"><label className="sr-only" htmlFor="plan-search">Search plans</label><input id="plan-search" value={planSearch} onChange={(event) => setPlanSearch(event.target.value)} placeholder="Search plans, OTT, data, validity..." className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold outline-none focus:border-[#087443]" /><label className="sr-only" htmlFor="plan-sort">Sort plans</label><select id="plan-sort" value={planSort} onChange={(event) => setPlanSort(event.target.value as typeof planSort)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold"><option value="recommended">Recommended</option><option value="low">Price: Low to High</option><option value="high">Price: High to Low</option><option value="validity">Validity: Longest first</option></select></div>
+                       {planSelectionMessage && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm font-black text-emerald-700">{planSelectionMessage}</p>}
+                       {planDiscovery.specialOffers?.length > 0 && (selectedPlanCategory === 'All' || selectedPlanCategory === 'Special Offers') && <div className="space-y-2"><p className="text-sm font-black text-amber-700">Special offer for this number</p>{planDiscovery.specialOffers.map((offer: any) => <div key={offer.id} className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><div className="flex items-center justify-between gap-3"><p className="font-black">₹{offer.amount}</p><button type="button" onClick={() => { setRechargeAmount(String(offer.amount)); setPlanSelectionMessage(`₹${offer.amount} plan selected`); }} className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-black text-white">Use this plan</button></div><p className="mt-1 text-xs text-amber-900">{offer.description}</p></div>)}</div>}
+                       {visiblePlans.length === 0 && selectedPlanCategory !== 'Special Offers' && <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No matching plans were returned.</p>}
+                       <div className="space-y-2">{visiblePlans.map((plan: any) => { const expanded = expandedPlanIds.has(plan.id); return <div key={plan.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-lg font-black text-slate-900">₹{plan.amount}</p><p className="text-sm font-black text-slate-700">{plan.validity}</p><p className="mt-1 text-xs font-black text-[#087443]">{plan.category}</p></div><button type="button" onClick={() => { setRechargeAmount(String(plan.amount)); setPlanSelectionMessage(`₹${plan.amount} plan selected`); }} className="shrink-0 rounded-lg bg-[#087443] px-3 py-2 text-xs font-black text-white">Use this plan</button></div><p className={`mt-2 text-sm leading-5 text-slate-600 ${expanded ? '' : 'line-clamp-3'}`}>{plan.description}</p>{plan.description?.length > 180 && <button type="button" onClick={() => setExpandedPlanIds((current) => { const next = new Set(current); expanded ? next.delete(plan.id) : next.add(plan.id); return next; })} className="mt-2 text-xs font-black text-[#087443]">{expanded ? 'Show less' : 'View details'}</button>}</div>; })}</div>
+                       {visiblePlans.length < filteredPlans.length && <button type="button" onClick={() => setPlanVisibleCount((count) => count + 20)} className="w-full rounded-xl border border-[#087443] px-4 py-3 text-sm font-black text-[#087443]">Show more plans</button>}
+                     </div>}
                      
                      {fetchedBill && !isPlanBased && (
                        <div className="bg-[#ECFDF5] border border-[#A7F3D0] p-6 rounded-2xl shadow-sm">
