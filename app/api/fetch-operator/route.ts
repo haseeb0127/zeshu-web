@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server';
+import { authenticateProviderRequest, authRequiredResponse, rateLimitResponse } from '@/app/lib/provider-security';
 
 export async function GET(request: Request) {
+  const user = await authenticateProviderRequest(request);
+  if (!user) return authRequiredResponse();
+  const limited = rateLimitResponse(user.id, 'fetch-operator');
+  if (limited) return limited;
   const { searchParams } = new URL(request.url);
   const number = searchParams.get('number') || '';
   const service = searchParams.get('service') || 'mobile'; // Default to mobile
+  if (!['mobile', 'dth'].includes(service) || number.length > 40) return NextResponse.json({ success: false, message: 'Invalid operator lookup request' }, { status: 400 });
 
   // Clean the input
   const cleanNumber = number.replace(/\D/g, '');
@@ -23,7 +29,7 @@ export async function GET(request: Request) {
       if (data.ERROR === "0" && data.DthOpCode) {
         return NextResponse.json({ success: true, operator: data.DthName, opCode: data.DthOpCode });
       } else {
-        return NextResponse.json({ success: false, message: data.Message || "DTH Operator not found" });
+        return NextResponse.json({ success: false, message: "DTH operator could not be found." });
       }
     } else {
       // --- MOBILE OPERATOR FETCH (HLR) ---
@@ -46,7 +52,7 @@ export async function GET(request: Request) {
       }
     }
   } catch (error) {
-    console.error("Operator Fetch Error:", error);
+    if (process.env.NODE_ENV === 'development') console.error("Operator provider request failed:", error instanceof Error ? error.message : 'unknown error');
     return NextResponse.json({ success: false, message: "Server connection failed" }, { status: 500 });
   }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { authenticateProviderRequest, authRequiredResponse, rateLimitResponse } from '@/app/lib/provider-security';
 
 // 🚀 THE SWITCHBOARD
 const SERVICE_API_MAP: Record<string, { endpoint: string; numberParam: string }> = {
@@ -16,12 +17,17 @@ const SERVICE_API_MAP: Record<string, { endpoint: string; numberParam: string }>
 };
 
 export async function GET(request: Request) {
+  const user = await authenticateProviderRequest(request);
+  if (!user) return authRequiredResponse();
+  const limited = rateLimitResponse(user.id, 'fetch-bill');
+  if (limited) return limited;
   const { searchParams } = new URL(request.url);
   const service = searchParams.get('service');
   const number = searchParams.get('number');
   const operatorCode = searchParams.get('operatorCode');
 
-  if (!service || !number || !operatorCode) {
+  const validIdentifier = (value: string, maxLength: number) => /^[A-Za-z0-9][A-Za-z0-9._/-]{0,79}$/.test(value) && value.length <= maxLength;
+  if (!service || !SERVICE_API_MAP[service] || !number || !operatorCode || !validIdentifier(number, 80) || !validIdentifier(operatorCode, 40)) {
     return NextResponse.json({ success: false, message: "Missing required fields." }, { status: 400 });
   }
 
@@ -48,7 +54,7 @@ export async function GET(request: Request) {
       // If PlanAPI sends a 404 HTML page, this safely catches it!
       return NextResponse.json({ 
         success: false, 
-        message: `API HTML Error. Raw Data: ${rawText.substring(0, 100)}` 
+        message: "Unable to fetch bill details right now. Please try again." 
       }, { status: 400 });
     }
 
@@ -56,22 +62,20 @@ export async function GET(request: Request) {
       return NextResponse.json({ 
         success: true, 
         bill: data.BILLDEATILS || data.DATA || null,
-        message: data.MESSAGE 
+        message: "Bill details fetched successfully." 
       });
     } else {
       // This will capture the EXACT PlanAPI complaint ("Invalid Operator", etc.)
       return NextResponse.json({ 
         success: false, 
-        message: `PlanAPI Refused: ${data.MESSAGE} (You sent Code: ${operatorCode})` 
+        message: "Unable to fetch bill details right now. Please try again." 
       }, { status: 400 });
     }
 
   } catch (error: any) {
     // 🚨 If the Vercel server drops connection, show the real crash reason
-    return NextResponse.json({ 
-      success: false, 
-      message: `CRASH REPORT: ${error.message || "Unknown Network Error"}` 
-    }, { status: 500 });
+    if (process.env.NODE_ENV === 'development') console.error('Bill provider request failed:', error?.message || 'unknown error');
+    return NextResponse.json({ success: false, message: "Unable to fetch bill details right now. Please try again." }, { status: 500 });
   }
 }
 export const dynamic = 'force-dynamic';

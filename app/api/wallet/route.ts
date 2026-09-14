@@ -1,78 +1,23 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+export const dynamic = 'force-dynamic';
 
-export const dynamic = "force-dynamic";
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-export async function POST(request: Request) {
-  try {
-    const { userId } = await request.json();
+export async function GET(request: Request) {
+  const authorization = request.headers.get('authorization');
+  if (!authorization?.startsWith('Bearer ')) return NextResponse.json({ success: false, message: 'Authentication required' }, { status: 401 });
 
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, message: "User ID required" },
-        { status: 400 }
-      );
-    }
+  const authClient = createClient(url, anonKey, { global: { headers: { Authorization: authorization } } });
+  const { data: { user } } = await authClient.auth.getUser();
+  if (!user) return NextResponse.json({ success: false, message: 'Invalid session' }, { status: 401 });
 
-    const { data: wallet, error } = await supabase
-      .from("wallets")
-      .select("coins,zeshu_coins")
-      .eq("user_id", userId)
-      .maybeSingle();
+  const serviceClient = createClient(url, serviceRoleKey);
+  const { data: wallet, error } = await serviceClient.from('wallets').select('coins,zeshu_coins').eq('user_id', user.id).maybeSingle();
+  if (error) return NextResponse.json({ success: false, message: 'Wallet lookup failed' }, { status: 500 });
 
-    if (error) {
-      console.error("Wallet lookup error:", error);
-
-      return NextResponse.json(
-        { success: false, message: "Wallet lookup failed" },
-        { status: 500 }
-      );
-    }
-
-    if (wallet) {
-      return NextResponse.json({
-        success: true,
-        balance: Number(wallet.coins || 0),
-        coins: Number(wallet.zeshu_coins || 0),
-      });
-    }
-
-    const { data: newWallet, error: insertError } = await supabase
-      .from("wallets")
-      .insert({
-        user_id: userId,
-        coins: 0,
-        zeshu_coins: 50,
-      })
-      .select("coins,zeshu_coins")
-      .single();
-
-    if (insertError || !newWallet) {
-      console.error("Wallet creation error:", insertError);
-
-      return NextResponse.json(
-        { success: false, message: "Failed to create wallet" },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      balance: Number(newWallet.coins || 0),
-      coins: Number(newWallet.zeshu_coins || 0),
-      isNewUser: true,
-    });
-  } catch (error) {
-    console.error("Wallet API error:", error);
-
-    return NextResponse.json(
-      { success: false, message: "Internal Server Error" },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({ success: true, balance: Number(wallet?.coins || 0), coins: Number(wallet?.zeshu_coins || 0) });
 }

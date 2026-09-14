@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
+import { authenticateProviderRequest, authRequiredResponse, rateLimitResponse } from '@/app/lib/provider-security';
 
 export async function GET(request: Request) {
+  const user = await authenticateProviderRequest(request);
+  if (!user) return authRequiredResponse();
+  const limited = rateLimitResponse(user.id, 'fetch-plans');
+  if (limited) return limited;
   const { searchParams } = new URL(request.url);
   const operatorCode = searchParams.get('operator');
   const circleCode = searchParams.get('circle') || '92'; 
   const service = searchParams.get('service') || 'mobile';
 
-  if (!operatorCode) {
+  if (!operatorCode || operatorCode.length > 40 || circleCode.length > 20 || !['mobile', 'dth'].includes(service)) {
     return NextResponse.json({ plans: [], message: "Missing operator code" }, { status: 400 });
   }
 
@@ -30,7 +35,7 @@ export async function GET(request: Request) {
 
       // 🔥 FIX: We only block if ERROR is not "0" (0 is success in PlanAPI)
       if (data.ERROR !== "0" || !data.RDATA) {
-        return NextResponse.json({ plans: [], message: data.MESSAGE || "No DTH plans available" });
+        return NextResponse.json({ plans: [], message: "No DTH plans are available right now." });
       }
 
       let formattedDthPlans: any[] = [];
@@ -76,7 +81,7 @@ export async function GET(request: Request) {
 
       // 🔥 THE FIX IS HERE: Removing data.STATUS === "0" because 0 means SUCCESS in PlanAPI!
       if (data.ERROR !== "0" || !data.RDATA) {
-        return NextResponse.json({ plans: [], message: data.MESSAGE || "No mobile plans available" });
+        return NextResponse.json({ plans: [], message: "No mobile plans are available right now." });
       }
 
       let rawPlans: any[] = [];
@@ -100,7 +105,7 @@ export async function GET(request: Request) {
     }
 
   } catch (error) {
-    console.error("Plan Fetch Error:", error);
+    if (process.env.NODE_ENV === 'development') console.error("Plan provider request failed:", error instanceof Error ? error.message : 'unknown error');
     return NextResponse.json({ plans: [], message: "Failed to connect to provider" }, { status: 500 });
   }
 }

@@ -1,10 +1,8 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import Confetti from 'react-confetti';
-import { QrCode, X, IndianRupee, Gift, CheckCircle2, ShieldCheck, Image as ImageIcon, Camera } from 'lucide-react';
+import { QrCode, X, IndianRupee, ShieldCheck, Image as ImageIcon, Camera } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Script from 'next/script'; // Import Script for Razorpay
 
 export default function ScannerPage() {
   const router = useRouter();
@@ -12,16 +10,9 @@ export default function ScannerPage() {
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [merchantName, setMerchantName] = useState('Local Kirana Store');
   const [amount, setAmount] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [cashbackWon, setCashbackWon] = useState<number | null>(null);
-  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
   const [cameraError, setCameraError] = useState<string | null>(null);
   
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
-
-  useEffect(() => {
-    setWindowSize({ width: window.innerWidth, height: window.innerHeight });
-  }, []);
 
   useEffect(() => {
     if (!isScanning) return;
@@ -99,7 +90,11 @@ export default function ScannerPage() {
   };
 
   // 🚀 INTEGRATED RAZORPAY PAYMENT LOGIC
+  /* Disabled until a verified scanner payment flow exists.
   const processPayment = async () => {
+    alert('QR merchant payments are unavailable because merchant settlement is not configured. No payment has been started.');
+    return;
+
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
       alert("Please enter a valid amount");
       return;
@@ -155,10 +150,10 @@ export default function ScannerPage() {
       alert("Payment Gateway Error"); 
     }
   };
+  */
 
   return (
     <div className="min-h-screen bg-[#0F172A] text-white flex flex-col font-sans selection:bg-indigo-500/30">
-      {cashbackWon !== null && <Confetti width={windowSize.width} height={windowSize.height} recycle={false} numberOfPieces={500} />}
 
       <header className="p-4 flex items-center justify-between border-b border-slate-800">
         <button onClick={() => router.push('/')} className="p-2 bg-slate-800 rounded-full active:scale-95 transition-transform">
@@ -175,7 +170,7 @@ export default function ScannerPage() {
         {isScanning && (
           <div className="w-full max-w-md flex flex-col items-center">
             <h2 className="text-2xl font-black mb-1 tracking-tight text-center">Scan any Shop QR</h2>
-            <p className="text-slate-400 text-sm mb-6 text-center">Pay with Zeshu & win instant cashback</p>
+            <p className="text-slate-400 text-sm mb-6 text-center">Merchant QR payments are not available yet.</p>
             
             <div className="w-full aspect-square bg-slate-900 rounded-3xl overflow-hidden border-2 border-indigo-500/50 shadow-[0_0_40px_rgba(99,102,241,0.2)] relative flex items-center justify-center">
               <div id="reader" className="w-full h-full object-cover"></div>
@@ -183,9 +178,7 @@ export default function ScannerPage() {
                 <div className="absolute inset-0 bg-slate-900/95 p-6 flex flex-col items-center justify-center text-center z-20">
                   <Camera size={40} className="text-amber-400 mb-3 animate-bounce" />
                   <p className="text-sm font-bold text-slate-200 mb-4">{cameraError}</p>
-                  <button onClick={() => handleSuccessfulScan("upi://pay?pa=shop@ybl&pn=Zeshu%20Mart&am=100")} className="bg-indigo-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl active:scale-95 transition-all shadow-lg shadow-indigo-500/30">
-                    Simulate Successful Scan
-                  </button>
+                  <label className="bg-indigo-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl active:scale-95 transition-all shadow-lg shadow-indigo-500/30 cursor-pointer">Upload a QR image<input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" /></label>
                 </div>
               )}
               {!cameraError && (
@@ -202,7 +195,7 @@ export default function ScannerPage() {
           </div>
         )}
 
-        {!isScanning && !cashbackWon && (
+        {!isScanning && (
           <div className="w-full max-w-md flex flex-col items-center animate-in fade-in zoom-in duration-300">
             <div className="w-20 h-20 bg-indigo-500/20 rounded-full flex items-center justify-center mb-4 border border-indigo-500/30">
               <span className="text-3xl font-black text-indigo-400">{merchantName.charAt(0)}</span>
@@ -218,13 +211,14 @@ export default function ScannerPage() {
               </div>
             </div>
 
-            <button onClick={processPayment} disabled={isProcessing || !amount} className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-black py-5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] text-lg shadow-lg shadow-indigo-500/20">
+            <button type="button" disabled className="w-full rounded-2xl bg-slate-800 py-5 text-lg font-black text-slate-500">Payments unavailable</button>{/*
               {isProcessing ? (<><div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div> Opening Secure Gateway...</>) : (`Pay ₹${amount || '0'} with Zeshu`)}
             </button>
-            <button onClick={() => setIsScanning(true)} className="mt-4 text-xs text-slate-400 font-bold hover:text-white">Scan Different QR</button>
+            */}<button onClick={() => setIsScanning(true)} className="mt-4 text-xs text-slate-400 font-bold hover:text-white">Scan Different QR</button>
           </div>
         )}
 
+        {/* Scanner payment success UI intentionally disabled until verified payment flow exists.
         {cashbackWon !== null && (
           <div className="w-full max-w-md flex flex-col items-center text-center animate-in slide-in-from-bottom-10 fade-in duration-500">
             <div className="w-24 h-24 bg-emerald-500/20 rounded-full flex items-center justify-center mb-6 border-4 border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.3)]">
@@ -247,14 +241,13 @@ export default function ScannerPage() {
             <button onClick={() => router.push('/')} className="mt-10 w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-2xl active:scale-95 transition-all">Back to Home</button>
           </div>
         )}
+        */}
       </main>
 
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes scan { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(220px); } }
       `}} />
 
-      {/* REQUIRED FOR RAZORPAY TO LOAD IN THE SCANNER PAGE */}
-      <Script id="razorpay-checkout-js" src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
     </div>
   );
 }

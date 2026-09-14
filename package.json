@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.103.0",
+    "@supabase/supabase-js": "^2.116.0",
     "@yudiel/react-qr-scanner": "^2.5.1",
     "autoprefixer": "^10.5.0",
     "html5-qrcode": "^2.3.8",

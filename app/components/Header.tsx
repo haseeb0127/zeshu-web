@@ -79,7 +79,7 @@ export default function Header({
           <div className="bg-[#F3F4F6] hover:bg-[#E5E7EB] transition-all rounded-[14px] md:rounded-[20px] flex items-center px-4 py-3 md:py-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#6366F1]/20 cursor-text">
             <Search className="text-[#9CA3AF] w-[18px] h-[18px] md:w-[22px] md:h-[22px]" />
             <input type="text" placeholder="Search 'protein powder', 'midnight snacks'..." className="bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-            {searchQuery ? <X size={16} className="cursor-pointer text-gray-500" onClick={() => setSearchQuery('')}/> : <Mic size={18} className="text-[#6366F1] cursor-pointer hover:scale-110 transition-transform" title="Voice Search"/>}
+            {searchQuery ? <X size={16} className="cursor-pointer text-gray-500" onClick={() => setSearchQuery('')}/> : <Mic size={18} className="text-[#6366F1] cursor-pointer hover:scale-110 transition-transform"/>}
           </div>
         </div>
 

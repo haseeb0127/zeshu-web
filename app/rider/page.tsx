@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import {
   MapPin,
   Power,
@@ -11,52 +10,128 @@ import {
   Navigation,
   LogOut,
 } from "lucide-react";
+import { riderSupabase } from "../lib/browser-supabase";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabase = riderSupabase();
 
 export default function RiderDashboard() {
+  const [authState, setAuthState] = useState<"checking" | "login" | "blocked" | "dashboard">("checking");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [authMessage, setAuthMessage] = useState("");
+  const [authError, setAuthError] = useState("");
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [riderId, setRiderId] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(false);
+  const [isAdminSuspended, setIsAdminSuspended] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [historyOrders, setHistoryOrders] = useState<any[]>([]);
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [availabilityUpdating, setAvailabilityUpdating] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [error, setError] = useState("");
-
+  const [ordersError, setOrdersError] = useState("");
   useEffect(() => {
-    loadRider();
+    void loadRider();
   }, []);
 
   const loadRider = async () => {
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-    if (!session?.user) {
-      setError("Please login as a rider.");
+    if (authError || !user) {
+      setSessionUserId(null);
+      setRiderId(null);
+      setIsOnline(false);
+      setIsAdminSuspended(false);
+      setAuthState("login");
       return;
     }
 
-    setSessionUserId(session.user.id);
+    setSessionUserId(user.id);
 
     const { data, error } = await supabase
       .from("riders")
-      .select("id,is_active")
-      .eq("user_id", session.user.id)
+      .select("id,is_active,admin_suspended")
+      .eq("user_id", user.id)
       .maybeSingle();
 
-    if (error || !data) {
-      setError("Rider account not found.");
+    if (error) {
+      console.error("Rider profile verification failed:", error);
+      setAuthMessage("We could not verify your rider profile. Please try again.");
+      setAuthState("blocked");
+      return;
+    }
+
+    if (!data) {
+      setAuthMessage("This account is not registered as a Zeshu rider.");
+      setAuthState("blocked");
       return;
     }
 
     setRiderId(data.id);
     setIsOnline(Boolean(data.is_active));
+    setIsAdminSuspended(Boolean(data.admin_suspended));
+    setAuthState("dashboard");
+  };
+
+  const normalizedIndiaPhone = () => {
+    const digits = phoneNumber.replace(/\D/g, "");
+    return digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
+  };
+
+  const sendOtp = async () => {
+    const phone = normalizedIndiaPhone();
+    if (!/^\d{10}$/.test(phone)) {
+      setAuthError("Enter a valid 10-digit Indian mobile number.");
+      return;
+    }
+
+    setAuthSubmitting(true);
+    setAuthError("");
+    setAuthMessage("");
+    const { error } = await supabase.auth.signInWithOtp({ phone: `+91${phone}` });
+    setAuthSubmitting(false);
+
+    if (error) {
+      console.error("Rider OTP delivery failed:", error);
+      setAuthError("We could not send an OTP. Check the number and try again.");
+      return;
+    }
+
+    setPhoneNumber(phone);
+    setOtpSent(true);
+    setAuthMessage("OTP sent. Enter the 6-digit code to continue.");
+  };
+
+  const verifyOtp = async () => {
+    const phone = normalizedIndiaPhone();
+    if (!/^\d{10}$/.test(phone) || !/^\d{6}$/.test(otp)) {
+      setAuthError("Enter your 10-digit mobile number and the 6-digit OTP.");
+      return;
+    }
+
+    setAuthSubmitting(true);
+    setAuthError("");
+    const { data, error } = await supabase.auth.verifyOtp({
+      phone: `+91${phone}`,
+      token: otp,
+      type: "sms",
+    });
+    setAuthSubmitting(false);
+
+    if (error || !data.session || !data.user) {
+      console.error("Rider OTP verification failed:", error);
+      setAuthError("The OTP could not be verified. Please try again.");
+      return;
+    }
+
+    setAuthState("checking");
+    await loadRider();
   };
 
   useEffect(() => {
@@ -96,9 +171,14 @@ export default function RiderDashboard() {
       .eq("rider_id", riderId)
       .order("created_at", { ascending: false });
 
-    if (!error && data) {
+    if (error) {
+      if (process.env.NODE_ENV === "development") console.error("Rider orders refresh failed:", error.message);
+      setOrdersError("Deliveries could not be refreshed. Please try again.");
+    } else if (data) {
+      setOrdersError("");
       const active = data.filter(
         (o) =>
+          o.status === "READY_FOR_PICKUP" ||
           o.status === "OUT_FOR_DELIVERY" ||
           o.status === "PICKED_UP" ||
           o.status === "picked_up"
@@ -110,49 +190,63 @@ export default function RiderDashboard() {
 
       setOrders(active);
       setHistoryOrders(delivered);
-      setTotalEarnings(delivered.length * 30);
+      setTotalEarnings(delivered.reduce((total, order) => total + Number(order.delivery_fee || 0), 0));
     }
 
     setLoading(false);
   };
 
   const toggleOnline = async () => {
-    if (!sessionUserId || !riderId) return;
+    if (availabilityUpdating || !sessionUserId || !riderId) return;
 
     const next = !isOnline;
+    if (next && isAdminSuspended) {
+      alert("Your rider account has been suspended by admin.");
+      return;
+    }
+    setAvailabilityUpdating(true);
 
-    const { error } = await supabase
-      .from("riders")
-      .update({ is_active: next })
-      .eq("id", riderId)
-      .eq("user_id", sessionUserId);
+    const { data, error } = await supabase.rpc("rider_set_availability", {
+      p_is_active: next,
+    });
 
     if (error) {
-      alert("Could not update rider status.");
+      console.error("Rider availability update failed:", error);
+      alert(
+        error.message?.includes("rider is administratively suspended")
+          ? "Your rider account has been suspended by admin."
+          : "Could not update rider status."
+      );
+      setAvailabilityUpdating(false);
       return;
     }
 
-    setIsOnline(next);
+    setIsOnline(typeof data?.is_active === "boolean" ? data.is_active : next);
+    setAvailabilityUpdating(false);
   };
 
-  const markDelivered = async (orderId: string) => {
+  const advanceOrder = async (order: any) => {
     if (!riderId) return;
-
-    if (!confirm("Are you at the customer's location?")) return;
-
+    const nextStatus = order.status === 'READY_FOR_PICKUP' ? 'PICKED_UP' : order.status === 'PICKED_UP' ? 'OUT_FOR_DELIVERY' : order.status === 'OUT_FOR_DELIVERY' ? 'DELIVERED' : null;
+    if (!nextStatus) return;
+    const action = nextStatus === 'PICKED_UP' ? 'confirm pickup' : nextStatus === 'OUT_FOR_DELIVERY' ? 'start delivery' : 'complete delivery';
+    if (!confirm(`Are you ready to ${action}?`)) return;
+    setLoading(true);
     const { error } = await supabase
-      .from("orders")
-      .update({ status: "DELIVERED" })
-      .eq("id", orderId)
-      .eq("rider_id", riderId);
+      .rpc('advance_rider_order_status', { p_order_id: order.id, p_next_status: nextStatus });
 
     if (error) {
+      console.error('Rider status transition failed:', error);
       alert("Could not update delivery status.");
+      setLoading(false);
       return;
     }
 
-    fetchMyOrders();
+    await fetchMyOrders();
+    setLoading(false);
   };
+
+  const actionLabel = (status: string) => status === 'READY_FOR_PICKUP' ? 'Confirm Pickup' : status === 'PICKED_UP' ? 'Start Delivery' : status === 'OUT_FOR_DELIVERY' ? 'Complete Delivery' : null;
 
   const openGoogleMaps = (address: string) => {
     if (!address) return;
@@ -166,24 +260,63 @@ export default function RiderDashboard() {
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
-    window.location.href = "/";
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Rider sign-out failed:", error);
+      alert("Could not log out safely. Please try again.");
+      return;
+    }
+
+    setSessionUserId(null);
+    setRiderId(null);
+    setIsOnline(false);
+    setIsAdminSuspended(false);
+    setOrders([]);
+    setHistoryOrders([]);
+    setShowHistory(false);
+    setOtp("");
+    setOtpSent(false);
+    setAuthError("");
+    setAuthMessage("");
+    setAuthState("login");
   };
 
-  if (error) {
+  if (authState === "checking") {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="animate-spin w-10 h-10 border-4 border-slate-900 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (authState === "login") {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-3xl p-8 shadow-sm border max-w-md w-full">
+          <h1 className="text-2xl font-black text-slate-900 text-center">Zeshu Rider Login</h1>
+          <p className="mt-2 text-center text-sm font-medium text-slate-500">Sign in with your registered rider mobile number.</p>
+          {authError && <p role="alert" className="mt-5 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{authError}</p>}
+          {authMessage && <p role="status" className="mt-5 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{authMessage}</p>}
+          <div className="mt-6 space-y-4">
+            <div>
+              <label className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-500">Mobile number</label>
+              <input type="tel" inputMode="numeric" maxLength={13} value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} placeholder="10-digit mobile number" className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 font-bold outline-none focus:border-slate-900" />
+            </div>
+            {otpSent && <div><label className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-500">OTP</label><input type="text" inputMode="numeric" maxLength={6} value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, ""))} placeholder="6-digit OTP" className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-center text-xl font-black tracking-[0.4em] outline-none focus:border-slate-900" /></div>}
+            {otpSent ? <button onClick={() => void verifyOtp()} disabled={authSubmitting} className="w-full rounded-xl bg-slate-900 py-4 font-black text-white disabled:opacity-60">{authSubmitting ? "Verifying..." : "Verify OTP"}</button> : <button onClick={() => void sendOtp()} disabled={authSubmitting} className="w-full rounded-xl bg-slate-900 py-4 font-black text-white disabled:opacity-60">{authSubmitting ? "Sending..." : "Send OTP"}</button>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (authState === "blocked") {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <div className="bg-white rounded-3xl p-8 text-center shadow-sm border max-w-md w-full">
-          <h1 className="text-2xl font-black text-slate-900 mb-3">
-            Zeshu Rider
-          </h1>
-          <p className="text-slate-500 font-medium">{error}</p>
-          <button
-            onClick={() => (window.location.href = "/")}
-            className="mt-6 bg-slate-900 text-white px-6 py-3 rounded-xl font-black"
-          >
-            Go Home
-          </button>
+          <h1 className="text-2xl font-black text-slate-900">Zeshu Rider</h1>
+          <p className="mt-3 text-slate-500 font-medium">{authMessage}</p>
+          <button onClick={() => void logout()} className="mt-6 w-full rounded-xl bg-slate-900 px-6 py-3 font-black text-white">Use another account</button>
         </div>
       </div>
     );
@@ -222,15 +355,18 @@ export default function RiderDashboard() {
 
         <button
           onClick={toggleOnline}
+          disabled={availabilityUpdating || (!isOnline && isAdminSuspended)}
           className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 text-white font-black text-xl uppercase ${
             isOnline
               ? "bg-red-500 hover:bg-red-600"
               : "bg-emerald-500 hover:bg-emerald-600"
-          }`}
+          } disabled:opacity-60`}
         >
           <Power size={24} />
-          {isOnline ? "Go Offline" : "Go Online"}
+          {availabilityUpdating ? "Updating..." : isOnline ? "Go Offline" : "Go Online"}
         </button>
+
+        {isAdminSuspended && <p role="alert" className="mt-3 text-center text-sm font-bold text-amber-200">Your rider account has been suspended by admin.</p>}
 
         <button
           onClick={logout}
@@ -242,6 +378,7 @@ export default function RiderDashboard() {
       </div>
 
       <div className="p-6">
+        {ordersError && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{ordersError}</p>}
         <h2 className="text-slate-500 font-black uppercase tracking-widest text-sm mb-4">
           {isOnline ? "Active Deliveries" : "You are Offline"}
         </h2>
@@ -262,9 +399,8 @@ export default function RiderDashboard() {
             <div className="w-24 h-24 bg-slate-200 rounded-full flex items-center justify-center mb-4">
               <MapPin size={40} className="text-slate-400" />
             </div>
-            <p className="text-slate-500 font-bold text-lg">
-              Waiting for orders...
-            </p>
+            <p className="text-slate-500 font-bold text-lg">No assigned deliveries right now</p>
+            <p className="mt-2 text-center text-sm text-slate-400">Keep your availability on to receive assignments.</p>
           </div>
         ) : (
           orders.map((order) => (
@@ -278,7 +414,7 @@ export default function RiderDashboard() {
                 </span>
 
                 <span className="text-emerald-500 font-black text-xl">
-                  ₹30
+                  ₹{Number(order.delivery_fee || 0).toFixed(0)}
                 </span>
               </div>
 
@@ -310,13 +446,14 @@ export default function RiderDashboard() {
                   Navigate
                 </button>
 
-                <button
-                  onClick={() => markDelivered(order.id)}
-                  className="flex-1 bg-emerald-500 text-white font-black py-4 rounded-xl flex items-center justify-center gap-2"
+                {actionLabel(order.status) && <button
+                  disabled={loading}
+                  onClick={() => advanceOrder(order)}
+                  className="flex-1 bg-emerald-500 text-white font-black py-4 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60"
                 >
                   <CheckCircle2 size={18} />
-                  Delivered
-                </button>
+                  {loading ? 'Updating...' : actionLabel(order.status)}
+                </button>}
               </div>
             </div>
           ))
@@ -366,7 +503,7 @@ export default function RiderDashboard() {
 
                   <div className="text-right">
                     <p className="text-emerald-500 font-black text-lg">
-                      +₹30
+                      +₹{Number(item.delivery_fee || 0).toFixed(0)}
                     </p>
 
                     <p className="text-[9px] font-black mt-1 text-amber-500">

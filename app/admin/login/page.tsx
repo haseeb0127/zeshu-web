@@ -1,10 +1,10 @@
 "use client";
 import React, { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { ShieldCheck, Lock } from 'lucide-react';
+import { adminSupabase } from '../../lib/browser-supabase';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+const supabase = adminSupabase();
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -22,8 +22,8 @@ export default function AdminLogin() {
       alert("Access Denied: " + error.message);
       setLoading(false);
     } else {
-      // 🔒 Optional: Check if this specific email is authorized as an admin
-      if (data.user?.email === "admin@zeshu.in") { // Replace with your actual email
+      const { data: role } = await supabase.from('admin_roles').select('user_id').eq('user_id', data.user?.id || '').eq('role', 'admin').maybeSingle();
+      if (role) {
         router.push('/admin/dashboard');
       } else {
         alert("Unauthorized account.");

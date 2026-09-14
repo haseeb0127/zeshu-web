@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
+import { authenticateProviderRequest, authRequiredResponse, rateLimitResponse } from '@/app/lib/provider-security';
 
 export async function POST(request: Request) {
   try {
+    const user = await authenticateProviderRequest(request);
+    if (!user) return authRequiredResponse();
+    const limited = rateLimitResponse(user.id, 'upi-tools');
+    if (limited) return limited;
     // Read the incoming request from your frontend
     const body = await request.json();
     const { action, upiId, mobileNo, name } = body;
 
-    if (!action) {
+    if (!action || typeof action !== 'string' || action.length > 40) {
       return NextResponse.json({ success: false, message: "Action type is required" }, { status: 400 });
     }
 
@@ -27,38 +32,38 @@ export async function POST(request: Request) {
     // 3. The UPI Switchboard: Route to the correct PlanAPI EKYC endpoint
     switch (action) {
       case 'vpa_info':
-        if (!upiId) return NextResponse.json({ success: false, message: "UpiId required" });
+        if (!upiId || typeof upiId !== 'string' || upiId.length > 120) return NextResponse.json({ success: false, message: "UpiId required" }, { status: 400 });
         endpoint = 'VPA_Info';
         formData.append('UpiId', upiId);
         break;
 
       case 'upi_verification':
-        if (!upiId) return NextResponse.json({ success: false, message: "UpiId required" });
+        if (!upiId || typeof upiId !== 'string' || upiId.length > 120) return NextResponse.json({ success: false, message: "UpiId required" }, { status: 400 });
         endpoint = 'UpiVerification';
         formData.append('UpiId', upiId);
         break;
 
       case 'upi_validate':
-        if (!upiId || !name) return NextResponse.json({ success: false, message: "UpiId and Name required" });
+        if (!upiId || typeof upiId !== 'string' || upiId.length > 120 || !name || typeof name !== 'string' || name.length > 120) return NextResponse.json({ success: false, message: "UpiId and Name required" }, { status: 400 });
         endpoint = 'UPI_Validate';
         formData.append('UpiId', upiId);
         formData.append('Name', name);
         break;
 
       case 'mobile_to_vpa':
-        if (!mobileNo) return NextResponse.json({ success: false, message: "MobileNo required" });
+        if (!mobileNo || typeof mobileNo !== 'string' || mobileNo.length > 30) return NextResponse.json({ success: false, message: "MobileNo required" }, { status: 400 });
         endpoint = 'MobileNoToVPA';
         formData.append('MobileNo', mobileNo);
         break;
 
       case 'mobile_to_multiple_upi':
-        if (!mobileNo) return NextResponse.json({ success: false, message: "MobileNo required" });
+        if (!mobileNo || typeof mobileNo !== 'string' || mobileNo.length > 30) return NextResponse.json({ success: false, message: "MobileNo required" }, { status: 400 });
         endpoint = 'MobileToMultipleUPI';
         formData.append('MobileNo', mobileNo);
         break;
 
       case 'find_upi_by_mobile':
-        if (!mobileNo) return NextResponse.json({ success: false, message: "MobileNo required" });
+        if (!mobileNo || typeof mobileNo !== 'string' || mobileNo.length > 30) return NextResponse.json({ success: false, message: "MobileNo required" }, { status: 400 });
         endpoint = 'FindUpiAndNameByMobileNo';
         formData.append('MobileNo', mobileNo);
         break;
@@ -68,8 +73,6 @@ export async function POST(request: Request) {
     }
 
     const apiUrl = `https://planapi.in/Api/Ekyc/${endpoint}`;
-    console.log(`📡 [UPI SWITCHBOARD] Calling ${endpoint}...`);
-
     // 4. Fetch from PlanAPI
     const res = await fetch(apiUrl, {
       method: 'POST',
@@ -83,10 +86,10 @@ export async function POST(request: Request) {
     try {
       data = JSON.parse(rawText);
     } catch (e) {
-      console.error("PlanAPI sent HTML instead of JSON:", rawText.substring(0, 200));
+      if (process.env.NODE_ENV === 'development') console.error('UPI provider returned a non-JSON response.');
       return NextResponse.json({ 
         success: false, 
-        message: `API HTML Error. PlanAPI says: ${rawText.substring(0, 100)}` 
+        message: "Unable to verify UPI details right now. Please try again." 
       }, { status: 400 });
     }
 
@@ -94,25 +97,21 @@ export async function POST(request: Request) {
     const successCodes = [100, 200, 211];
     
     if (successCodes.includes(data.Errorcode)) {
-      console.log(`✅ [${endpoint}] Fetch Successful!`);
       return NextResponse.json({ 
         success: true, 
         data: data.data || data, // Handle different nested structures
-        message: data.Message || data.msg || "Success"
+        message: "UPI details fetched successfully."
       });
     } else {
-      console.log(`❌ [${endpoint}] Fetch Failed:`, data.Message || data.msg);
+      if (process.env.NODE_ENV === 'development') console.info('UPI provider request completed without success.', { endpoint });
       return NextResponse.json({ 
         success: false, 
-        message: data.Message || data.msg || "Could not fetch UPI details. Please check the ID/Number." 
+        message: "Unable to verify UPI details right now. Please try again." 
       }, { status: 400 });
     }
 
-  } catch (error: any) {
-    console.error("Critical UPI API Error:", error);
-    return NextResponse.json({ 
-      success: false, 
-      message: `CRASH REPORT: ${error.message || "Unknown Network Error"}` 
-    }, { status: 500 });
+  } catch (error: unknown) {
+    if (process.env.NODE_ENV === 'development') console.error('UPI provider request failed:', error instanceof Error ? error.message : 'unknown error');
+    return NextResponse.json({ success: false, message: "Unable to verify UPI details right now. Please try again." }, { status: 500 });
   }
 }

@@ -2,20 +2,21 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import Script from 'next/script';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
+import OrderStatusTimeline from './components/OrderStatusTimeline';
+import ProductCard from './components/ProductCard';
+import ReviewForm, { ReviewProduct } from './components/ReviewForm';
 import { 
   Mic, MapPin, Search, Coins, User, ChevronRight, Zap, Smartphone, 
   Tv, HeartHandshake, Plus, Minus, ShoppingBag, X, LogOut, Ticket, QrCode,
   Droplets, Wifi, Car, Landmark, ShieldCheck, PhoneCall, Phone, Package, Flame, BadgeCheck,
   History, ChevronDown, CheckSquare, Square, Clock, CheckCircle, Menu, Info, AlertCircle, BookUser, Truck,
-  Timer, Crown 
+  Crown 
 } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
+import { customerSupabase } from './lib/browser-supabase';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = customerSupabase();
 
 const SERVICES = [
   { id: 'mobile', label: 'Prepaid', icon: <Smartphone size={28} strokeWidth={1.5}/>, color: 'bg-[#EEF2FF] text-[#4F46E5] group-hover:bg-[#4F46E5] group-hover:text-white', inputLabel: 'Mobile Number' },
@@ -37,23 +38,61 @@ const OPERATORS_DATA: any = {
   gas: { 'MAHANAGAR GAS': '62', 'INDRAPRASTHA GAS': '63', 'GUJARAT GAS': '64', 'Adani Gas': '154' },
 };
 
-const FALLBACK_BANNERS = [
-  "https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=1440/layout-engine/2022-05/Group-33704.jpg",
-  "https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=1440/layout-engine/2022-05/Group-33703.jpg",
-];
+type PendingGroceryConfirmation = {
+  userId: string;
+  reservationId: string;
+  paymentId: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+};
 
-const FLASH_DEALS = [
-  { id: 'fd1', name: 'Lays Magic Masala (Party Pack)', price: 85, discount_price: 65, image_url: 'https://m.media-amazon.com/images/I/71O156m1YEL.jpg', weight: '160g' },
-  { id: 'fd2', name: 'Amul Butter', price: 56, discount_price: 49, image_url: 'https://m.media-amazon.com/images/I/61bMszq-24L.jpg', weight: '100g' },
-  { id: 'fd3', name: 'Boat Bassheads 100', price: 999, discount_price: 349, image_url: 'https://m.media-amazon.com/images/I/719elVA3FvL.jpg', weight: '1 Unit' },
-];
+type CustomerAddress = {
+  id: string;
+  label: string;
+  recipient_name: string | null;
+  phone: string | null;
+  address_line: string;
+  landmark: string | null;
+  city: string;
+  state: string;
+  postal_code: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  is_default: boolean;
+};
+
+const parseHistoricalOrderItems = (order: any): Array<{ productId: string; quantity: number }> => {
+  if (!Array.isArray(order?.items)) return [];
+  const quantities = new Map<string, number>();
+  order.items.forEach((entry: any) => {
+    const productId = String(entry?.item?.id ?? entry?.product_id ?? '');
+    const quantity = Number(entry?.qty ?? entry?.quantity ?? 0);
+    if (productId && Number.isInteger(quantity) && quantity > 0) quantities.set(productId, (quantities.get(productId) || 0) + quantity);
+  });
+  return Array.from(quantities, ([productId, quantity]) => ({ productId, quantity }));
+};
+
+const PENDING_GROCERY_CONFIRMATION_KEY = 'zeshu_pending_grocery_confirmation';
+const CART_STORAGE_KEY = 'zeshu_customer_cart';
+const DELIVERY_ADDRESS_STORAGE_KEY = 'zeshu_delivery_address';
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Order placed', CONFIRMED: 'Confirmed', PREPARING: 'Being prepared',
+  READY_FOR_PICKUP: 'Ready for pickup', PICKED_UP: 'Picked up',
+  OUT_FOR_DELIVERY: 'Out for delivery', DELIVERED: 'Delivered', CANCELLED: 'Cancelled',
+};
+const ACTIVE_ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'PICKED_UP', 'OUT_FOR_DELIVERY'];
 
 export default function ZeshuSuperApp() {
   const [activeTab, setActiveTab] = useState('home'); 
   const [activeService, setActiveService] = useState('mobile');
   const [products, setProducts] = useState<any[]>([]);
-  const [banners, setBanners] = useState<string[]>(FALLBACK_BANNERS);
+  const [banners, setBanners] = useState<string[]>([]);
   const [myOrders, setMyOrders] = useState<any[]>([]);
+  const [recentlyPurchased, setRecentlyPurchased] = useState<any[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [favoriteProducts, setFavoriteProducts] = useState<any[]>([]);
+  const [favoriteBusyId, setFavoriteBusyId] = useState<string | null>(null);
+  const [frequentCategories, setFrequentCategories] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState(''); 
   const [cart, setCart] = useState<{item: any, qty: number}[]>([]);
   
@@ -64,18 +103,20 @@ export default function ZeshuSuperApp() {
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckoutOpening, setIsCheckoutOpening] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All'); 
   
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
-  const [useZeshuCoins, setUseZeshuCoins] = useState(false);
   const [tipAmount, setTipAmount] = useState(20); 
   const [isDonating, setIsDonating] = useState(true); 
   const [hasZeshuPass, setHasZeshuPass] = useState(false);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
-  const [trackingStep, setTrackingStep] = useState(1);
+  const [trackedOrder, setTrackedOrder] = useState<any>(null);
+  const [liveRider, setLiveRider] = useState<any>(null);
+  const [riderLocationState, setRiderLocationState] = useState<'idle' | 'loading' | 'available' | 'unavailable'>('idle');
   
-  const [currentAddress, setCurrentAddress] = useState('Fetching precise location...');
+  const [currentAddress, setCurrentAddress] = useState('Location not set');
   const [isDetectingLoc, setIsDetectingLoc] = useState(true);
   
   const [rechargeNumber, setRechargeNumber] = useState('');
@@ -91,26 +132,56 @@ export default function ZeshuSuperApp() {
   
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [contentError, setContentError] = useState(false);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [ordersLoadError, setOrdersLoadError] = useState(false);
+  const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
+  const [addressFormOpen, setAddressFormOpen] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<CustomerAddress | null>(null);
+  const [addressSaving, setAddressSaving] = useState(false);
+  const [addressForm, setAddressForm] = useState({ label: 'Home', recipient_name: '', phone: '', address_line: '', landmark: '', city: '', state: '', postal_code: '', latitude: '', longitude: '', is_default: false });
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [reorderingId, setReorderingId] = useState<string | null>(null);
+  const [productAggregates, setProductAggregates] = useState<Record<string, { average_rating: number; review_count: number }>>({});
+  const [reviewOrderId, setReviewOrderId] = useState<string | null>(null);
+  const [reviewOverall, setReviewOverall] = useState(0);
+  const [reviewDelivery, setReviewDelivery] = useState(0);
+  const [reviewStore, setReviewStore] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewProducts, setReviewProducts] = useState<ReviewProduct[]>([]);
+  const [reviewExisting, setReviewExisting] = useState(false);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [reviewSuccess, setReviewSuccess] = useState<string | null>(null);
+  const [publicReviewProduct, setPublicReviewProduct] = useState<any>(null);
+  const [publicReviews, setPublicReviews] = useState<any[]>([]);
+  const [publicReviewsLoading, setPublicReviewsLoading] = useState(false);
+  const modalCloseRef = useRef<HTMLButtonElement>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
 
   const currentServiceObj = SERVICES.find(s => s.id === activeService) || SERVICES[0];
   const isPlanBased = activeService === 'mobile' || activeService === 'dth'; 
 
   // 🚀 ZESHU COINS EXACT MATH LOGIC
-  const ZESHU_COINS_VAL = 50; // Maximum limit allowed per transaction
   const HANDLING_FEE = 5;
 
   const productCategories = useMemo(() => {
-    const cats = new Set(products.map(p => p.category || 'General'));
-    ['Electronics', 'Beauty', 'Pet Supplies', 'Baby Care', 'Food Delivery'].forEach(c => cats.add(c));
-    return ['All', ...Array.from(cats)];
+    const cats = new Set(products.map(p => String(p?.category || '').trim()).filter(Boolean));
+    return ['All', ...Array.from(cats).sort((a, b) => a.localeCompare(b))];
   }, [products]);
 
+  const normalizedSearch = searchQuery.trim().replace(/\s+/g, ' ').toLowerCase();
   const filteredProducts = products.filter(p => {
     if (!p || !p.name) return false; 
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = activeCategory === 'All' || (p.category || 'General') === activeCategory;
+    const haystack = [p.name, p.category, p.weight, p.unit].filter(Boolean).join(' ').replace(/\s+/g, ' ').toLowerCase();
+    const matchesSearch = !normalizedSearch || haystack.includes(normalizedSearch);
+    const matchesCategory = activeCategory === 'All' || String(p.category || '').trim() === activeCategory;
     return matchesSearch && matchesCategory;
   });
+
+  // Provider fulfillment is not connected for any utility service yet. Keep every
+  // entry point honest and prevent the UI from progressing to a charge path.
+  const unavailableService = true;
 
   const planCategories = useMemo(() => {
     const cats = new Set(plans.map(p => p.category || 'All'));
@@ -126,41 +197,320 @@ export default function ZeshuSuperApp() {
   }, []);
 
   useEffect(() => {
+    const modalOpen = isAuthModalOpen || isCartOpen || isAccountOpen || isTrackingOpen;
+    if (!modalOpen) return;
+    lastFocusedRef.current = document.activeElement as HTMLElement | null;
+    const focusTimer = window.setTimeout(() => modalCloseRef.current?.focus(), 0);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsAuthModalOpen(false);
+        setIsCartOpen(false);
+        setIsAccountOpen(false);
+        setIsTrackingOpen(false);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.removeEventListener('keydown', onKeyDown);
+      lastFocusedRef.current?.focus();
+    };
+  }, [isAuthModalOpen, isCartOpen, isAccountOpen, isTrackingOpen]);
+
+  useEffect(() => {
+    try {
+      const savedCart = localStorage.getItem(CART_STORAGE_KEY);
+      if (savedCart) {
+        const parsedCart = JSON.parse(savedCart);
+        if (Array.isArray(parsedCart)) {
+          setCart(parsedCart.filter((entry: any) => entry?.item?.id !== undefined && Number.isInteger(entry?.qty) && entry.qty > 0));
+        }
+      }
+      const savedAddress = localStorage.getItem(DELIVERY_ADDRESS_STORAGE_KEY);
+      if (savedAddress?.trim()) setCurrentAddress(savedAddress.trim());
+    } catch {
+      localStorage.removeItem(CART_STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+  }, [cart]);
+
+  useEffect(() => {
+    const address = currentAddress.trim();
+    if (address && address !== 'Location not set') localStorage.setItem(DELIVERY_ADDRESS_STORAGE_KEY, address);
+  }, [currentAddress]);
+
+  useEffect(() => {
     const fetchAppContent = async () => {
+      setProductsLoading(true);
       const cachedProducts = localStorage.getItem('zeshu_products');
-      if (cachedProducts) setProducts(JSON.parse(cachedProducts));
-      const { data: pData } = await supabase.from('products').select('*');
+      if (cachedProducts) {
+        try { setProducts(JSON.parse(cachedProducts)); } catch { localStorage.removeItem('zeshu_products'); }
+      }
+      const { data: pData, error: productsError } = await supabase.from('products').select('*');
       if (pData) { setProducts(pData); localStorage.setItem('zeshu_products', JSON.stringify(pData)); }
+      if (productsError) setContentError(true);
       
       const { data: bData } = await supabase.from('banners').select('*').order('created_at', { ascending: false });
       if (bData && bData.length > 0) { setBanners(bData.map((b: any) => b.image_url)); }
+      setProductsLoading(false);
     };
     
     fetchAppContent();
     checkUser();
-    setTimeout(() => { setCurrentAddress('HotelRoom 205, 2nd floor Shree Amardeep...'); setIsDetectingLoc(false); }, 1500);
+    setIsDetectingLoc(false);
   }, []);
 
   useEffect(() => {
     if (user) {
+      void loadAddresses();
       const fetchMyOrders = async () => {
-        const { data } = await supabase.from('orders').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1);
-        if (data) setMyOrders(data);
+        const { data, error } = await supabase.from('orders').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20);
+        if (error) {
+          if (process.env.NODE_ENV === 'development') console.error('Customer orders refresh failed:', error.message);
+          setOrdersLoadError(true);
+        } else if (data) {
+          setOrdersLoadError(false);
+          setMyOrders(data);
+        }
       };
       fetchMyOrders();
-      const orderChannel = supabase.channel('customer-orders').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${user.id}` }, (payload) => { setMyOrders([payload.new]); }).subscribe();
+      const orderChannel = supabase.channel('customer-orders').on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${user.id}` }, (payload) => {
+        const nextOrder = payload.new as { id?: string; created_at?: string };
+        const oldOrder = payload.old as { id?: string };
+        setMyOrders((current) => {
+          if (payload.eventType === 'DELETE') return current.filter((order) => order.id !== oldOrder.id);
+          if (!nextOrder?.id) return current;
+          return [nextOrder, ...current.filter((order) => order.id !== nextOrder.id)].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+        });
+        if (nextOrder?.id) setTrackedOrder((current: any) => current?.id === nextOrder.id ? payload.new : current);
+      }).subscribe();
       return () => { supabase.removeChannel(orderChannel); };
     }
   }, [user]);
 
+  useEffect(() => {
+    if (!user) {
+      setRecentlyPurchased([]);
+      setFrequentCategories([]);
+      return;
+    }
+    const deliveredOrders = myOrders.filter((order) => order.status === 'DELIVERED').slice(0, 12);
+    const productIds = Array.from(new Set(deliveredOrders.flatMap((order) => parseHistoricalOrderItems(order).map((entry) => entry.productId))));
+    if (!productIds.length) {
+      setRecentlyPurchased([]);
+      setFrequentCategories([]);
+      return;
+    }
+    let mounted = true;
+    const loadRecentlyPurchased = async () => {
+      const { data, error } = await supabase.from('products').select('*').in('id', productIds);
+      if (!mounted) return;
+      if (error) {
+        if (process.env.NODE_ENV === 'development') console.error('Recently purchased products load failed:', error.message);
+        setRecentlyPurchased([]);
+        return;
+      }
+      const byId = new Map((data || []).map((product: any) => [String(product.id), product]));
+      const ordered: any[] = [];
+      const seen = new Set<string>();
+      const categoryCounts = new Map<string, number>();
+      deliveredOrders.forEach((order) => parseHistoricalOrderItems(order).forEach(({ productId }) => {
+        const currentProduct = byId.get(productId);
+        const quantity = parseHistoricalOrderItems(order).find((entry) => entry.productId === productId)?.quantity || 0;
+        if (currentProduct?.category) categoryCounts.set(currentProduct.category, (categoryCounts.get(currentProduct.category) || 0) + quantity);
+        if (!seen.has(productId) && byId.has(productId)) {
+          seen.add(productId);
+          ordered.push(byId.get(productId));
+        }
+      }));
+      setRecentlyPurchased(ordered.slice(0, 10));
+      setFrequentCategories(Array.from(categoryCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([category]) => category));
+    };
+    void loadRecentlyPurchased();
+    return () => { mounted = false; };
+  }, [user, myOrders]);
+
+  useEffect(() => {
+    const ids = products.map((product) => String(product.id)).filter(Boolean);
+    if (!ids.length) { setProductAggregates({}); return; }
+    void supabase.rpc('get_product_review_aggregates', { p_product_ids: ids }).then(({ data, error }) => {
+      if (error) { if (process.env.NODE_ENV === 'development') console.error('Product review aggregates failed:', error.message); return; }
+      const next: Record<string, { average_rating: number; review_count: number }> = {};
+      (data || []).forEach((row: any) => { next[String(row.product_id)] = { average_rating: Number(row.average_rating), review_count: Number(row.review_count) }; });
+      setProductAggregates(next);
+    });
+  }, [products]);
+
+  useEffect(() => {
+    if (trackedOrder?.status !== 'DELIVERED') { setReviewOrderId(null); return; }
+    const purchased = parseHistoricalOrderItems(trackedOrder);
+    setReviewOrderId(trackedOrder.id);
+    setReviewProducts(purchased.map(({ productId }) => ({ id: productId, name: products.find((product) => String(product.id) === productId)?.name || `Product ${productId.slice(0, 8)}`, rating: 0, comment: '', existing: false })));
+    setReviewExisting(false); setReviewError(null); setReviewSuccess(null);
+    void (async () => {
+      const [{ data: orderReview }, { data: productReviews }] = await Promise.all([
+        supabase.from('order_reviews').select('overall_rating,delivery_rating,store_rating,comment').eq('order_id', trackedOrder.id).maybeSingle(),
+        supabase.from('product_reviews').select('product_id,rating,comment').eq('order_id', trackedOrder.id),
+      ]);
+      if (orderReview) { setReviewExisting(true); setReviewOverall(Number(orderReview.overall_rating) || 0); setReviewDelivery(Number(orderReview.delivery_rating) || 0); setReviewStore(Number(orderReview.store_rating) || 0); setReviewComment(orderReview.comment || ''); }
+      const byProduct = new Map((productReviews || []).map((review: any) => [String(review.product_id), review]));
+      setReviewProducts((current) => current.map((item) => { const review = byProduct.get(item.id); return review ? { ...item, rating: Number(review.rating) || 0, comment: review.comment || '', existing: true } : item; }));
+    })();
+  }, [trackedOrder, products]);
+
+  useEffect(() => {
+    if (!user) {
+      setFavoriteIds(new Set());
+      setFavoriteProducts([]);
+      return;
+    }
+    let mounted = true;
+    const loadFavorites = async () => {
+      const { data, error } = await supabase.from('customer_favorites').select('product_id,created_at').order('created_at', { ascending: false }).limit(100);
+      if (!mounted) return;
+      if (error) {
+        if (process.env.NODE_ENV === 'development') console.error('Favorites load failed:', error.message);
+        setFavoriteIds(new Set());
+        setFavoriteProducts([]);
+        return;
+      }
+      const ids = (data || []).map((entry: any) => String(entry.product_id));
+      setFavoriteIds(new Set(ids));
+      if (!ids.length) { setFavoriteProducts([]); return; }
+      const { data: productsData, error: productsError } = await supabase.from('products').select('*').in('id', ids);
+      if (!mounted) return;
+      if (productsError) {
+        if (process.env.NODE_ENV === 'development') console.error('Favorite products load failed:', productsError.message);
+        setFavoriteProducts([]);
+        return;
+      }
+      const byId = new Map((productsData || []).map((product: any) => [String(product.id), product]));
+      const liveIds = ids.filter((id) => byId.has(id));
+      setFavoriteIds(new Set(liveIds));
+      setFavoriteProducts(liveIds.map((id) => byId.get(id)).filter(Boolean));
+    };
+    void loadFavorites();
+    return () => { mounted = false; };
+  }, [user]);
+
+  useEffect(() => {
+    const deliveryIsActive = ['PICKED_UP', 'OUT_FOR_DELIVERY'].includes(trackedOrder?.status);
+    const riderId = trackedOrder?.rider_id;
+    const isOrderOwner = Boolean(user?.id && trackedOrder?.user_id === user.id);
+
+    if (!isTrackingOpen || !deliveryIsActive || !riderId || !isOrderOwner) {
+      setLiveRider(null);
+      setRiderLocationState('idle');
+      return;
+    }
+
+    let mounted = true;
+    setRiderLocationState('loading');
+    const loadRider = async () => {
+      const { data, error } = await supabase
+        .from('rider_location_feed')
+        .select('rider_id,full_name,is_active,current_latitude,current_longitude')
+        .eq('rider_id', riderId)
+        .maybeSingle();
+
+      if (!mounted) return;
+      if (error || !data) {
+        setLiveRider(null);
+        setRiderLocationState('unavailable');
+        return;
+      }
+      setLiveRider(data);
+      setRiderLocationState('available');
+    };
+    void loadRider();
+
+    const riderChannel = supabase
+      .channel(`customer-rider-location-${trackedOrder.id}-${riderId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rider_location_feed', filter: `rider_id=eq.${riderId}` }, (payload) => {
+        if (!mounted) return;
+        setLiveRider(payload.new);
+        setRiderLocationState('available');
+      })
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      supabase.removeChannel(riderChannel);
+    };
+  }, [isTrackingOpen, trackedOrder?.id, trackedOrder?.rider_id, trackedOrder?.status, trackedOrder?.user_id, user?.id]);
+
   const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); };
+  const getUtilityAuthHeaders = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      showToast('Please sign in to use this service.');
+      return null;
+    }
+    return { Authorization: `Bearer ${session.access_token}` };
+  };
+
+  const confirmPendingGroceryOrder = async (pending: PendingGroceryConfirmation) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user || session.user.id !== pending.userId) {
+      showToast('Sign in with the customer account that made this payment to finish confirmation.');
+      return false;
+    }
+
+    let confirmationData: any;
+    try {
+      const confirmation = await fetch('/api/confirm-grocery-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({
+          reservationId: pending.reservationId,
+          razorpay_payment_id: pending.paymentId,
+          razorpay_order_id: pending.razorpay_order_id,
+          razorpay_signature: pending.razorpay_signature,
+        }),
+      });
+      confirmationData = await confirmation.json();
+      if (!confirmation.ok || !confirmationData.success) {
+        showToast(confirmationData.error || 'Payment confirmation is still pending. Retry with the same payment; do not pay again.');
+        return false;
+      }
+    } catch {
+      showToast('Could not reach payment confirmation. Retry with the same payment; do not pay again.');
+      return false;
+    }
+
+    sessionStorage.removeItem(PENDING_GROCERY_CONFIRMATION_KEY);
+    showToast(confirmationData.duplicate ? 'Order confirmation restored.' : 'Order placed!');
+    setCart([]);
+    setIsCartOpen(false);
+    setTrackedOrder(confirmationData.order);
+    setMyOrders([confirmationData.order]);
+    setIsTrackingOpen(true);
+    return true;
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    const storedConfirmation = sessionStorage.getItem(PENDING_GROCERY_CONFIRMATION_KEY);
+    if (!storedConfirmation) return;
+    try {
+      const pending = JSON.parse(storedConfirmation) as PendingGroceryConfirmation;
+      if (pending.userId !== user.id) return;
+      showToast('Finishing your previous payment confirmation...');
+      void confirmPendingGroceryOrder(pending);
+    } catch {
+      sessionStorage.removeItem(PENDING_GROCERY_CONFIRMATION_KEY);
+    }
+  }, [user]);
 
   const handleAutoDetectLocation = () => {
     setIsDetectingLoc(true);
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
-        (position) => { setTimeout(() => { setCurrentAddress("Current GPS Location Synced"); setIsDetectingLoc(false); showToast("Location updated!"); }, 1000); },
-        () => { alert("Location access denied."); setIsDetectingLoc(false); }
+        (position) => { setTimeout(() => { setCurrentAddress((previous) => previous === 'Location not set' ? '' : previous); setIsDetectingLoc(false); showToast("GPS location synced. Confirm your delivery address."); }, 1000); },
+        () => { showToast("Location access denied."); setIsDetectingLoc(false); }
       );
     } else { setIsDetectingLoc(false); }
   };
@@ -203,7 +553,9 @@ export default function ZeshuSuperApp() {
   const autoDetectAndFetchPlans = async (num: string) => {
     setIsDetecting(true); setPlans([]);
     try {
-      const opRes = await fetch(`/api/fetch-operator?number=${num}&service=${activeService}`);
+      const authHeaders = await getUtilityAuthHeaders();
+      if (!authHeaders) { setIsDetecting(false); return; }
+      const opRes = await fetch(`/api/fetch-operator?number=${num}&service=${activeService}`, { headers: authHeaders });
       const opData = await opRes.json();
       if (opData && opData.success && opData.operator) {
         const opNameFromAPI = opData.operator.toLowerCase();
@@ -212,51 +564,203 @@ export default function ZeshuSuperApp() {
         setSelectedOperator(finalOperator); 
         const opCode = OPERATORS_DATA['mobile'][finalOperator];
         if (opCode) {
-          const planRes = await fetch(`/api/fetch-plans?number=${num}&operator=${opCode}&service=${activeService}`);
+          const planRes = await fetch(`/api/fetch-plans?number=${num}&operator=${opCode}&service=${activeService}`, { headers: authHeaders });
           const planData = await planRes.json();
           if(planData.plans && planData.plans.length > 0) { setPlans(planData.plans); setSelectedPlanCategory("All"); showToast(`Auto-detected ${finalOperator}`); }
         }
       }
-    } catch (err) {}
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') console.error('Automatic operator/plan lookup failed:', err instanceof Error ? err.message : 'unknown error');
+    }
     setIsDetecting(false);
   };
 
   const fetchOffers = async () => {
-    if (!rechargeNumber || !selectedOperator) return alert(`Enter details`);
+    if (!rechargeNumber || !selectedOperator) return showToast("Enter the required details.");
     setIsLoading(true);
     try {
+      const authHeaders = await getUtilityAuthHeaders();
+      if (!authHeaders) { setIsLoading(false); return; }
       const opCode = OPERATORS_DATA[activeService][selectedOperator];
-      const res = await fetch(`/api/fetch-plans?number=${rechargeNumber}&operator=${opCode}&service=${activeService}`);
+      const res = await fetch(`/api/fetch-plans?number=${rechargeNumber}&operator=${opCode}&service=${activeService}`, { headers: authHeaders });
       const data = await res.json();
       if (data && data.plans) { setPlans(data.plans); setSelectedPlanCategory("All"); } 
-    } catch (err) {}
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') console.error('Plan lookup failed:', err instanceof Error ? err.message : 'unknown error');
+      showToast('Unable to fetch plans right now. Please try again.');
+    }
     setIsLoading(false);
   };
 
   const fetchBillDetails = async () => {
-    if (!rechargeNumber || !selectedOperator) return alert(`Enter details`);
+    if (!rechargeNumber || !selectedOperator) return showToast("Enter the required details.");
     setIsLoading(true); setFetchedBill(null);
     try {
+      const authHeaders = await getUtilityAuthHeaders();
+      if (!authHeaders) { setIsLoading(false); return; }
       const opCode = OPERATORS_DATA[activeService][selectedOperator];
-      const res = await fetch(`/api/fetch-bill?service=${activeService}&number=${rechargeNumber}&operatorCode=${opCode}`);
+      const res = await fetch(`/api/fetch-bill?service=${activeService}&number=${rechargeNumber}&operatorCode=${opCode}`, { headers: authHeaders });
       const data = await res.json();
       if (data.success && data.bill) { setFetchedBill(data.bill); setRechargeAmount(data.bill.DueAmount); showToast("Bill Details Fetched!"); } 
-    } catch (err) {}
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') console.error('Bill lookup failed:', err instanceof Error ? err.message : 'unknown error');
+      showToast('Unable to fetch bill details right now. Please try again.');
+    }
     setIsLoading(false);
   };
 
   const checkUser = async () => { const { data: { session } } = await supabase.auth.getSession(); if (session) { setUser(session.user); fetchCoinBalance(session.user.id); } };
+  const loadAddresses = async () => {
+    if (!user) return;
+    const { data, error } = await supabase.from('customer_addresses').select('*').order('is_default', { ascending: false }).order('created_at', { ascending: false });
+    if (error) { if (process.env.NODE_ENV === 'development') console.error('Customer addresses load failed:', error.message); return; }
+    const next = (data || []) as CustomerAddress[];
+    setAddresses(next);
+    const defaultAddress = next.find((address) => address.is_default);
+    if (!selectedAddressId && defaultAddress) setSelectedAddressId(defaultAddress.id);
+  };
+  const openAddressForm = (address?: CustomerAddress) => {
+    setEditingAddress(address || null);
+    setAddressForm(address ? { label: address.label, recipient_name: address.recipient_name || '', phone: address.phone || '', address_line: address.address_line, landmark: address.landmark || '', city: address.city, state: address.state, postal_code: address.postal_code || '', latitude: address.latitude === null ? '' : String(address.latitude), longitude: address.longitude === null ? '' : String(address.longitude), is_default: address.is_default } : { label: 'Home', recipient_name: '', phone: '', address_line: '', landmark: '', city: '', state: '', postal_code: '', latitude: '', longitude: '', is_default: addresses.length === 0 });
+    setAddressFormOpen(true);
+  };
+  const saveAddress = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (addressSaving) return;
+    if (!addressForm.label.trim() || !addressForm.address_line.trim() || !addressForm.city.trim() || !addressForm.state.trim()) return showToast('Label, address, city, and state are required.');
+    const latitude = addressForm.latitude.trim() ? Number(addressForm.latitude) : null;
+    const longitude = addressForm.longitude.trim() ? Number(addressForm.longitude) : null;
+    if ((latitude !== null && (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)) || (longitude !== null && (!Number.isFinite(longitude) || longitude < -180 || longitude > 180))) return showToast('Enter valid map coordinates or leave them blank.');
+    setAddressSaving(true);
+    const { error } = await supabase.rpc('customer_upsert_address', { p_address_id: editingAddress?.id || null, p_label: addressForm.label.trim(), p_recipient_name: addressForm.recipient_name.trim() || null, p_phone: addressForm.phone.trim() || null, p_address_line: addressForm.address_line.trim(), p_landmark: addressForm.landmark.trim() || null, p_city: addressForm.city.trim(), p_state: addressForm.state.trim(), p_postal_code: addressForm.postal_code.trim() || null, p_latitude: latitude, p_longitude: longitude, p_is_default: addressForm.is_default });
+    setAddressSaving(false);
+    if (error) { if (process.env.NODE_ENV === 'development') console.error('Customer address save failed:', error.message); return showToast('Could not save this address. Please try again.'); }
+    setAddressFormOpen(false); showToast('Address saved.'); await loadAddresses();
+  };
+  const setDefaultAddress = async (addressId: string) => {
+    const { error } = await supabase.rpc('customer_set_default_address', { p_address_id: addressId });
+    if (error) return showToast('Could not update the default address.');
+    setSelectedAddressId(addressId); await loadAddresses(); showToast('Default address updated.');
+  };
+  const deleteAddress = async (addressId: string) => {
+    if (!window.confirm('Delete this saved address?')) return;
+    const { error } = await supabase.rpc('customer_delete_address', { p_address_id: addressId });
+    if (error) return showToast('Could not delete this address.');
+    if (selectedAddressId === addressId) setSelectedAddressId(null);
+    await loadAddresses(); showToast('Address deleted.');
+  };
+  const formatAddress = (address: CustomerAddress) => [address.address_line, address.landmark, address.city, address.state, address.postal_code].filter(Boolean).join(', ');
+  const reorder = async (order: any) => {
+    if (reorderingId) return;
+    setReorderingId(order.id);
+    const historicalItems = parseHistoricalOrderItems(order);
+    const ids = historicalItems.map((entry) => entry.productId);
+    const { data: currentProducts, error } = ids.length ? await supabase.from('products').select('*').in('id', ids) : { data: [] as any[], error: null };
+    if (error) { setReorderingId(null); return showToast('Could not check current product availability. Please try again.'); }
+    const validProducts = (currentProducts || []).filter((product: any) => product.vendor_id && product.in_stock !== false && (product.quantity === null || Number(product.quantity) > 0));
+    const targetVendorId = validProducts[0]?.vendor_id;
+    const cartVendorIds = Array.from(new Set(cart.map((entry) => entry.item?.vendor_id).filter(Boolean)));
+    if (targetVendorId && cartVendorIds.some((vendorId) => vendorId !== targetVendorId)) { setReorderingId(null); return showToast('Your cart contains items from another store. Checkout one store at a time.'); }
+    const productById = new Map(validProducts.map((product: any) => [String(product.id), product]));
+    let addedCount = 0;
+    let unavailableCount = 0;
+    setCart((current) => {
+      const next = [...current];
+      historicalItems.forEach(({ productId, quantity }) => {
+        const product = productById.get(productId);
+        if (!product) { unavailableCount += 1; return; }
+        const existing = next.find((entry) => String(entry.item.id) === productId);
+        const existingQuantity = existing?.qty || 0;
+        const maxQuantity = product.quantity === null ? existingQuantity + quantity : Number(product.quantity);
+        const nextQuantity = Math.min(existingQuantity + quantity, maxQuantity);
+        if (nextQuantity <= existingQuantity) { unavailableCount += 1; return; }
+        addedCount += nextQuantity - existingQuantity;
+        if (existing) existing.qty = nextQuantity; else next.push({ item: product, qty: nextQuantity });
+      });
+      return next;
+    });
+    setReorderingId(null); setIsAccountOpen(false); setIsCartOpen(true);
+    if (!addedCount) showToast('These products are currently unavailable.');
+    else if (unavailableCount) showToast('Available items were added. Some products are currently unavailable.');
+    else showToast('Items added to your cart.');
+  };
+
+  const submitReview = async () => {
+    if (!reviewOrderId || reviewOverall < 1 || reviewLoading) return;
+    setReviewLoading(true); setReviewError(null); setReviewSuccess(null);
+    try {
+      const { error } = await supabase.rpc('customer_submit_order_review', {
+        p_order_id: reviewOrderId,
+        p_overall_rating: reviewOverall,
+        p_delivery_rating: reviewDelivery || null,
+        p_store_rating: reviewStore || null,
+        p_comment: reviewComment.trim() || null,
+      });
+      if (error) throw error;
+      for (const product of reviewProducts.filter((item) => item.rating > 0)) {
+        const { error: productError } = await supabase.rpc('customer_submit_product_review', { p_order_id: reviewOrderId, p_product_id: product.id, p_rating: product.rating, p_comment: product.comment.trim() || null });
+        if (productError) throw productError;
+      }
+      setReviewSuccess('Thanks — your verified review was saved.');
+      setToastMessage('Review saved');
+      setTimeout(() => setToastMessage(null), 2500);
+    } catch (error: any) {
+      if (process.env.NODE_ENV === 'development') console.error('Review submission failed:', error?.message || error);
+      setReviewError(error?.message?.includes('delivered') ? 'Only delivered orders can be reviewed.' : 'We could not save your review. Please try again.');
+    } finally { setReviewLoading(false); }
+  };
+
+  const openPublicReviews = async (product: any) => {
+    setPublicReviewProduct(product); setPublicReviews([]); setPublicReviewsLoading(true);
+    const { data, error } = await supabase.rpc('get_public_product_reviews', { p_product_id: product.id, p_limit: 20, p_offset: 0 });
+    if (error && process.env.NODE_ENV === 'development') console.error('Public reviews load failed:', error.message);
+    setPublicReviews(data || []); setPublicReviewsLoading(false);
+  };
   const fetchCoinBalance = async (userId: string) => { 
     const { data } = await supabase.from('wallets').select('zeshu_coins').eq('user_id', userId).single(); 
     if (data) setCoinsBalance(data.zeshu_coins || 0); 
   };
 
-  const handleSendOtp = async () => { setIsLoading(true); const { error } = await supabase.auth.signInWithOtp({ phone: `+91${phoneNumber}` }); setIsLoading(false); if (!error) setOtpSent(true); else alert(error.message); };
-  const handleVerifyOtp = async () => { setIsLoading(true); const { data, error } = await supabase.auth.verifyOtp({ phone: `+91${phoneNumber}`, token: otp, type: 'sms' }); setIsLoading(false); if (data.session) { setUser(data.session.user); setIsAuthModalOpen(false); fetchCoinBalance(data.session.user.id); showToast("Welcome back!"); } else alert(error?.message); };
+  const handleSendOtp = async () => { if (!/^\d{10}$/.test(phoneNumber)) return showToast('Enter a valid 10-digit mobile number.'); setIsLoading(true); const { error } = await supabase.auth.signInWithOtp({ phone: `+91${phoneNumber}` }); setIsLoading(false); if (!error) setOtpSent(true); else showToast('We could not start OTP delivery. Check the number and try again later.'); };
+  const handleVerifyOtp = async () => { setIsLoading(true); const { data, error } = await supabase.auth.verifyOtp({ phone: `+91${phoneNumber}`, token: otp, type: 'sms' }); setIsLoading(false); if (data.session && data.user && !error) { setUser(data.session.user); setIsAuthModalOpen(false); fetchCoinBalance(data.session.user.id); showToast("Welcome back!"); } else showToast('Incorrect or expired OTP. Please try again.'); };
   const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); setCoinsBalance(0); setIsAccountOpen(false); showToast("Logged out."); };
+
+  const toggleFavorite = async (product: any) => {
+    if (!user) { setIsAuthModalOpen(true); return; }
+    const productId = String(product.id);
+    if (favoriteBusyId === productId) return;
+    setFavoriteBusyId(productId);
+    const isFavorite = favoriteIds.has(productId);
+    const { error } = await supabase.rpc(isFavorite ? 'customer_remove_favorite' : 'customer_add_favorite', { p_product_id: product.id });
+    setFavoriteBusyId(null);
+    if (error) {
+      if (process.env.NODE_ENV === 'development') console.error('Favorite update failed:', error.message);
+      return showToast('Could not update favorites. Please try again.');
+    }
+    setFavoriteIds((current) => {
+      const next = new Set(current);
+      if (isFavorite) next.delete(productId); else next.add(productId);
+      return next;
+    });
+    setFavoriteProducts((current) => isFavorite ? current.filter((entry) => String(entry.id) !== productId) : [product, ...current.filter((entry) => String(entry.id) !== productId)].slice(0, 100));
+    showToast(isFavorite ? 'Removed from favorites.' : 'Added to favorites.');
+  };
   
-  const addToCart = (product: any) => { setCart(prev => { const existing = prev.find(c => c.item.id === product.id); return existing ? prev.map(c => c.item.id === product.id ? { ...c, qty: c.qty + 1 } : c) : [...prev, { item: product, qty: 1 }]; }); showToast(`${product.name} added`); };
+  const addToCart = (product: any) => {
+    if (product?.in_stock === false || Number(product?.quantity) === 0) return showToast('This product is currently unavailable.');
+    const existing = cart.find((entry) => String(entry.item.id) === String(product.id));
+    const cartVendorIds = Array.from(new Set(cart.map((entry) => entry.item?.vendor_id).filter(Boolean)));
+    if (product?.vendor_id && cartVendorIds.some((vendorId) => vendorId !== product.vendor_id)) return showToast('Checkout supports one store at a time.');
+    if (existing && product.quantity !== null && existing.qty >= Number(product.quantity)) return showToast('Maximum available quantity already in your cart.');
+    setCart(prev => { const current = prev.find((entry) => String(entry.item.id) === String(product.id)); return current ? prev.map(c => String(c.item.id) === String(product.id) ? { ...c, qty: c.qty + 1 } : c) : [...prev, { item: product, qty: 1 }]; });
+    showToast(`${product.name} added`);
+  };
   const removeFromCart = (productId: any) => { setCart(prev => { const existing = prev.find(c => c.item.id === productId); if (existing && existing.qty > 1) { return prev.map(c => c.item.id === productId ? { ...c, qty: c.qty - 1 } : c); } else { const newCart = prev.filter(c => c.item.id !== productId); if (newCart.length === 0) setIsCartOpen(false); return newCart; } }); };
+  const clearCart = () => {
+    if (!cart.length || !window.confirm('Clear every item from your cart?')) return;
+    setCart([]);
+    showToast('Cart cleared.');
+  };
 
   // 🚀 UPDATED COIN DEDUCTION MATH
   const itemTotal = cart.reduce((acc, curr) => acc + (curr.item.price * curr.qty), 0);
@@ -264,42 +768,109 @@ export default function ZeshuSuperApp() {
   const deliveryCharge = hasZeshuPass ? 0 : (itemTotal > 0 && itemTotal < 299) ? 30 : 0; 
   const donationAmt = isDonating ? 1 : 0;
   
-  // Calculate exactly how many coins can be used without going below 0
-  const maxCoinsToUse = Math.min(coinsBalance, ZESHU_COINS_VAL);
-  const zeshuDiscount = useZeshuCoins ? Math.min(maxCoinsToUse, itemTotal) : 0; 
+  // Redemption remains deliberately unavailable until it has an atomic wallet debit.
+  const zeshuDiscount = 0;
   
   const passFee = hasZeshuPass ? 99 : 0; 
   const finalCartTotal = itemTotal > 0 ? (itemTotal + deliveryCharge + smallCartFee + HANDLING_FEE + donationAmt + tipAmount + passFee - zeshuDiscount) : 0;
+  const liveDeliveryStatus = ['PICKED_UP', 'OUT_FOR_DELIVERY'].includes(trackedOrder?.status);
+  const hasLiveRiderCoordinates = Number.isFinite(Number(liveRider?.current_latitude)) && Number.isFinite(Number(liveRider?.current_longitude));
+  const liveRiderMapUrl = hasLiveRiderCoordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${liveRider.current_latitude},${liveRider.current_longitude}`)}` : '';
+  const activeOrder = myOrders.find((order) => ACTIVE_ORDER_STATUSES.includes(order?.status));
+
+  const validateCartFreshness = async () => {
+    const ids = cart.map((entry) => entry.item?.id).filter(Boolean);
+    if (!ids.length) return true;
+    const { data, error } = await supabase.from('products').select('*').in('id', ids);
+    if (error) return true; // Server reservation remains authoritative if this advisory refresh fails.
+    const currentById = new Map((data || []).map((product: any) => [String(product.id), product]));
+    const changed = cart.some((entry) => {
+      const current = currentById.get(String(entry.item.id));
+      return !current || current.price !== entry.item.price || current.in_stock === false || (current.quantity !== null && Number(current.quantity) < entry.qty);
+    });
+    if (!changed) return true;
+    setCart((current) => current.map((entry) => ({ ...entry, item: currentById.get(String(entry.item.id)) || entry.item })));
+    showToast('Cart updated: price or availability changed. Review before paying.');
+    return false;
+  };
 
   const handleCartCheckout = async () => {
-    if (finalCartTotal === 0) return;
+    if (process.env.NODE_ENV === 'development') {
+      console.info('Checkout button pressed', {
+        cartLength: cart.length,
+        cartProductIds: cart.map((entry) => String(entry.item?.id ?? '')),
+        cartQuantities: cart.map((entry) => entry.qty),
+        hasDeliveryAddress: currentAddress.trim().length > 0 && currentAddress !== 'Location not set',
+        deliveryAddressLength: currentAddress.trim().length,
+        hasAuthenticatedUser: Boolean(user),
+      });
+    }
+    if (isCheckoutOpening) return;
+    if (!cart.length || finalCartTotal === 0) return showToast('Add an available product before checkout.');
     if (!user) return setIsAuthModalOpen(true);
+    if (!currentAddress.trim() || currentAddress === 'Location not set' || currentAddress === 'Current GPS Location Synced') {
+      setIsCartOpen(true);
+      return showToast('Enter a delivery address before checkout.');
+    }
+    if (!(await validateCartFreshness())) return;
+    setIsCheckoutOpening(true);
     setIsLoading(true);
     try {
-      const orderResponse = await fetch('/api/create-razorpay-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: finalCartTotal }) });
+      const { data: { session } } = await supabase.auth.getSession();
+      const orderResponse = await fetch('/api/create-razorpay-order', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` }, body: JSON.stringify({ cartItems: cart, deliveryAddress: currentAddress, isDonating, tipAmount, hasZeshuPass }) });
       const orderData = await orderResponse.json();
-      const orderId = orderData.id || orderData.order?.id;
+      if (!orderResponse.ok || !orderData.success) throw new Error(orderData.error || 'Unable to create payment order.');
+      const orderId = orderData.orderId || orderData.id || orderData.order?.id;
+      const reservationId = orderData.reservationId;
+      if (typeof orderId !== 'string' || typeof reservationId !== 'string' || !Number.isSafeInteger(Number(orderData.amount)) || Number(orderData.amount) <= 0) throw new Error('Unable to prepare a verified payment checkout.');
+      let paymentSucceeded = false;
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, amount: orderData.amount || (finalCartTotal * 100), currency: orderData.currency || 'INR', name: "Zeshu Super App", order_id: orderId,
-        handler: async function (response: any) { 
-          // Process Grocery Order in DB
-          await fetch('/api/confirm-grocery-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user.id, cartItems: cart, totalAmount: finalCartTotal, paymentId: response.razorpay_payment_id, address: currentAddress }) });
-          
-          // 🚀 UPDATE WALLET IN DATABASE (DEDUCT COINS USED)
-          if (useZeshuCoins && zeshuDiscount > 0) {
-            const newBalance = coinsBalance - zeshuDiscount;
-            await supabase.from('wallets').update({ zeshu_coins: newBalance }).eq('user_id', user.id);
-            setCoinsBalance(newBalance);
-            setUseZeshuCoins(false);
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, amount: Number(orderData.amount), currency: orderData.currency || 'INR', name: "Zeshu Super App", order_id: orderId,
+        handler: async function (response: any) {
+          paymentSucceeded = true;
+          setIsLoading(true);
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session?.user || typeof response?.razorpay_payment_id !== 'string' || typeof response?.razorpay_order_id !== 'string' || typeof response?.razorpay_signature !== 'string') {
+            showToast('Payment succeeded, but verification details were incomplete. Do not pay again.');
+            setIsLoading(false);
+            setIsCheckoutOpening(false);
+            return;
           }
-
-          showToast("Order placed!"); setCart([]); setIsCartOpen(false); setIsTrackingOpen(true); setTrackingStep(1);
+          const pendingConfirmation: PendingGroceryConfirmation = {
+            userId: session.user.id,
+            reservationId,
+            paymentId: response.razorpay_payment_id,
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_signature: response.razorpay_signature,
+          };
+          sessionStorage.setItem(PENDING_GROCERY_CONFIRMATION_KEY, JSON.stringify(pendingConfirmation));
+          await confirmPendingGroceryOrder(pendingConfirmation);
+          setIsLoading(false);
+          setIsCheckoutOpening(false);
+        },
+        modal: {
+          ondismiss: () => {
+            if (paymentSucceeded) return;
+            showToast('Payment cancelled. Your cart is still available. You can retry payment.');
+            setIsLoading(false);
+            setIsCheckoutOpening(false);
+          },
         },
         theme: { color: "#4F46E5" },
       };
       const rzp = new (window as any).Razorpay(options); rzp.open();
-    } catch (error) { alert("Gateway Error"); }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      const lower = message.toLowerCase();
+      const safeMessage = lower.includes('price') ? 'A product price changed. Review your cart and try again.' : lower.includes('stock') || lower.includes('quantity') || lower.includes('unavailable') ? 'One or more products are no longer available in that quantity.' : lower.includes('vendor') && lower.includes('closed') ? 'This store is currently closed. Please try again later.' : lower.includes('session') || lower.includes('auth') ? 'Your customer session has expired. Please sign in again.' : message || 'Unable to start secure checkout.';
+      showToast(safeMessage);
+      setIsCheckoutOpening(false);
+    }
     setIsLoading(false);
+  };
+
+  const handleRechargeCheckout = () => {
+    showToast('Recharge fulfillment is currently unavailable. No payment has been started.');
   };
 
   return (
@@ -312,22 +883,22 @@ export default function ZeshuSuperApp() {
         <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 md:py-0 md:h-[88px] flex flex-col md:flex-row items-center justify-between gap-3 md:gap-8">
           <div className="flex items-center justify-between w-full md:w-auto gap-4">
             <div className="flex items-center gap-4 md:gap-6">
-              <div className="flex items-center gap-2 md:gap-3 cursor-pointer md:border-r border-gray-200/60 md:pr-6 active:scale-[0.97] transition-transform" onClick={() => { setActiveTab('home'); setIsTrackingOpen(true); }}>
-                <div className="bg-gradient-to-br from-[#6366F1] to-[#4F46E5] text-white font-black p-2 md:p-2.5 rounded-xl md:rounded-2xl text-xl md:text-2xl tracking-tighter shadow-sm">Z</div>
-                <div className="hidden md:flex flex-col"><span className="text-[22px] font-black tracking-tighter leading-none">ZESHU</span><span className="text-[10px] font-extrabold text-[#6366F1] tracking-[0.2em] uppercase mt-0.5">Super App</span></div>
-              </div>
-              <div className="flex flex-col cursor-pointer max-w-[160px] md:max-w-[220px] group active:scale-[0.97] transition-transform" onClick={handleAutoDetectLocation}>
-                <div className="font-black text-[13px] md:text-[15px] flex items-center gap-1.5">Delivery in 12 min <Zap size={14} className="text-[#F59E0B] fill-[#F59E0B]"/></div>
+              <button aria-label="Go to Zeshu home" className="flex items-center gap-2 md:gap-3 md:border-r border-gray-200/60 md:pr-6 active:scale-[0.97] transition-transform" onClick={() => setActiveTab('home')}>
+                <div className="bg-[#087443] text-white font-black p-2 md:p-2.5 rounded-xl md:rounded-2xl text-xl md:text-2xl tracking-tighter shadow-sm">Z</div>
+                <div className="hidden md:flex flex-col text-left"><span className="text-[22px] font-black tracking-tighter leading-none">ZESHU</span><span className="text-[10px] font-extrabold text-[#087443] tracking-[0.2em] uppercase mt-0.5">Everyday, simply</span></div>
+              </button>
+              <button type="button" aria-label="Detect or change delivery location" className="flex max-w-[160px] flex-col cursor-pointer text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443] md:max-w-[220px]" onClick={handleAutoDetectLocation}>
+                <div className="font-black text-[13px] md:text-[15px] flex items-center gap-1.5">Delivering to <MapPin size={14} className="text-[#087443]"/></div>
                 <div className="flex items-center text-[10px] md:text-xs text-[#6B7280] mt-0.5 font-medium truncate">{currentAddress}<ChevronDown size={14} className="ml-1"/></div>
-              </div>
+              </button>
             </div>
 
             <div className="md:hidden flex items-center gap-2">
-              <Link href="/scanner" className="p-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full active:scale-95 shadow-md flex items-center justify-center">
-                <QrCode size={18} className="animate-pulse" />
+              <Link href="/scanner" aria-label="Open QR scanner" className="p-2 bg-[#087443] text-white rounded-full active:scale-95 shadow-md flex items-center justify-center">
+                <QrCode size={18} />
               </Link>
-              <button onClick={() => user ? setIsAccountOpen(true) : setIsAuthModalOpen(true)} className="p-2 bg-gray-100 rounded-full active:scale-95 text-gray-700 border border-gray-200"><User size={18} /></button>
-              <button onClick={() => setIsCartOpen(true)} className="relative p-2 bg-gray-100 rounded-full active:scale-95 border border-gray-200">
+              <button aria-label={user ? 'Open account' : 'Sign in'} onClick={() => user ? setIsAccountOpen(true) : setIsAuthModalOpen(true)} className="p-2 bg-gray-100 rounded-full active:scale-95 text-gray-700 border border-gray-200"><User size={18} /></button>
+              <button aria-label="Open cart" onClick={() => setIsCartOpen(true)} className="relative p-2 bg-gray-100 rounded-full active:scale-95 border border-gray-200">
                 <ShoppingBag size={18} className="text-gray-700" />
                 {cart.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full text-[9px] font-black w-4 h-4 flex items-center justify-center border border-white">{cart.length}</span>}
               </button>
@@ -335,16 +906,16 @@ export default function ZeshuSuperApp() {
           </div>
 
           <div className="w-full md:flex-1 max-w-3xl order-last md:order-none mt-1 md:mt-0">
-            <div className="bg-[#F3F4F6] hover:bg-[#E5E7EB] transition-all rounded-[14px] md:rounded-[20px] flex items-center px-4 py-3 md:py-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#6366F1]/20">
+            <div className="bg-[#f1f4f1] transition-all rounded-[14px] md:rounded-[20px] flex items-center px-4 py-3 md:py-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#087443]/25">
               <Search className="text-[#9CA3AF] w-[18px] h-[18px] md:w-[22px] md:h-[22px]" />
-              <input type="text" placeholder="Search 'protein powder', 'midnight snacks'..." className="bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-              {searchQuery ? <X size={16} className="cursor-pointer text-gray-500" onClick={() => setSearchQuery('')}/> : <Mic size={18} className="text-[#6366F1] cursor-pointer" title="Voice Search"/>}
+              <input aria-label="Search products" type="search" placeholder="Search products" className="bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              {searchQuery ? <button aria-label="Clear search" className="text-gray-500 p-1" onClick={() => setSearchQuery('')}><X size={16}/></button> : <Mic size={18} className="text-[#087443]" aria-hidden="true"/>}
             </div>
           </div>
 
           <div className="hidden md:flex items-center gap-4 shrink-0">
-            <Link href="/scanner" className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2.5 rounded-full font-black text-sm transition-all active:scale-95 shadow-[0_0_15px_rgba(79,70,229,0.4)]">
-              <QrCode size={18} className="animate-pulse" /><span>Scan & Pay</span>
+            <Link href="/scanner" className="flex items-center gap-2 bg-[#087443] text-white px-4 py-2.5 rounded-full font-black text-sm transition-all active:scale-95 shadow-sm">
+              <QrCode size={18} /><span>Scan</span>
             </Link>
             <button onClick={() => user ? setIsAccountOpen(true) : setIsAuthModalOpen(true)} className="flex items-center gap-2 text-[#4B5563] font-extrabold text-sm active:scale-95"><User size={20}/>{user ? 'Account' : 'Login'}</button>
             <button onClick={() => setIsCartOpen(true)} className="bg-gradient-to-b from-[#059669] to-[#047857] text-white px-5 py-3.5 rounded-[20px] flex items-center gap-3 font-bold text-sm min-w-[120px] justify-center active:scale-[0.96]">
@@ -355,7 +926,7 @@ export default function ZeshuSuperApp() {
       </header>
 
       <main className="max-w-[1400px] mx-auto w-full md:px-8 py-8 pt-[130px] md:pt-[120px] flex gap-8">
-        {activeTab === 'home' && searchQuery === '' && (
+        {activeTab === 'home' && normalizedSearch === '' && (
           <aside className="hidden lg:block w-[260px] shrink-0 sticky top-[120px] h-[calc(100vh-120px)] overflow-y-auto no-scrollbar pr-4">
             <h3 className="font-black text-[#111827] mb-5 px-3 tracking-tight text-lg">Shop by Category</h3>
             <div className="flex flex-col gap-1.5">
@@ -370,6 +941,7 @@ export default function ZeshuSuperApp() {
         )}
 
         <div className="flex-1 min-w-0 pb-32">
+          {activeTab === 'home' && <div className="mb-5 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar md:px-0" aria-label="Product categories">{productCategories.map((category) => <button type="button" key={category} onClick={() => setActiveCategory(category)} aria-pressed={activeCategory === category} className={`whitespace-nowrap rounded-full border px-4 py-2 text-xs font-black transition ${activeCategory === category ? 'border-[#087443] bg-[#087443] text-white' : 'border-[#dce8df] bg-white text-[#52645a]'}`}>{category}</button>)}</div>}
           {activeTab === 'recharge' ? (
              <div className="bg-white rounded-[32px] shadow-xl border border-gray-100 max-w-2xl mx-auto overflow-hidden animate-in slide-in-from-bottom-4">
                <div className="flex overflow-x-auto bg-[#F8F9FC] p-3 gap-2 border-b border-gray-100 no-scrollbar">
@@ -381,7 +953,14 @@ export default function ZeshuSuperApp() {
                </div>
                
                <div className="p-5 md:p-8 space-y-5">
-                 {activeService === 'pharmacy' ? (
+                 {unavailableService ? (
+                   <div className="rounded-3xl border border-[#cfe7d8] bg-[#f4fbf6] p-6 text-center md:p-10">
+                     <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e1f3e7] text-[#087443]"><Info size={24}/></div>
+                     <h2 className="text-xl font-black text-[#183524]">{currentServiceObj.label} is not available yet</h2>
+                     <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#587065]">We&apos;re connecting verified providers before enabling this service. No payment can be started from this screen.</p>
+                     <button onClick={() => setActiveTab('home')} className="mt-6 rounded-xl bg-[#087443] px-5 py-3 text-sm font-bold text-white active:scale-[.98]">Continue shopping</button>
+                   </div>
+                 ) : activeService === 'pharmacy' ? (
                    <div className="space-y-5">
                      <div>
                        <label className="text-xs font-bold text-[#6B7280] uppercase tracking-wider mb-2 block">{currentServiceObj.inputLabel}</label>
@@ -457,8 +1036,8 @@ export default function ZeshuSuperApp() {
                      </div>
 
                      {activeService !== 'upi' && (
-                       <button onClick={handleCartCheckout} disabled={isLoading} className="w-full bg-gradient-to-r from-[#059669] to-[#047857] hover:to-[#065F46] text-white py-5 rounded-2xl font-black text-lg shadow-[0_8px_20px_-6px_rgba(5,150,105,0.4)] mt-4 transition-all active:scale-[0.98]">
-                         {isLoading ? 'Processing...' : `Proceed to Pay ₹${rechargeAmount || 0}`}
+                       <button onClick={handleRechargeCheckout} disabled={isLoading || !rechargeAmount} className="w-full bg-gradient-to-r from-[#059669] to-[#047857] hover:to-[#065F46] text-white py-5 rounded-2xl font-black text-lg shadow-[0_8px_20px_-6px_rgba(5,150,105,0.4)] mt-4 transition-all active:scale-[0.98] disabled:opacity-50">
+                         {isLoading ? 'Processing...' : 'Recharge fulfillment unavailable'}
                        </button>
                      )}
                    </>
@@ -467,32 +1046,25 @@ export default function ZeshuSuperApp() {
              </div>
           ) : (
             <>
-              {searchQuery === '' && (
-                <div className="mb-12 space-y-10 animate-in fade-in duration-700">
+              {normalizedSearch === '' && (
+                <div className="mb-12 space-y-8">
                   <div className="flex gap-4 md:gap-5 overflow-x-auto no-scrollbar pb-4 px-4 md:px-0 snap-x">
                     {banners.map((img, idx) => (<img key={idx} src={img} alt="Promo" className="h-[140px] md:h-[240px] rounded-[16px] md:rounded-[28px] object-cover min-w-[280px] md:min-w-[480px] cursor-pointer shadow-lg hover:-translate-y-1.5 transition-all snap-center border border-gray-100/50" />))}
                   </div>
 
-                  <div className="px-4 md:px-0">
-                    <div className="flex items-center gap-3 mb-5">
-                      <Timer className="text-red-500 animate-pulse" size={24} />
-                      <h2 className="text-2xl font-black tracking-tight text-red-600">10-Minute Midnight Deals</h2>
-                    </div>
-                    <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 snap-x">
-                      {FLASH_DEALS.map(deal => (
-                        <div key={deal.id} className="min-w-[160px] md:min-w-[200px] bg-red-50 p-4 rounded-2xl border border-red-100 snap-start flex flex-col relative overflow-hidden">
-                          <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl">SALE</div>
-                          <img src={deal.image_url} className="h-24 object-contain mix-blend-multiply mb-3" />
-                          <div className="font-bold text-sm line-clamp-2 leading-tight mb-1">{deal.name}</div>
-                          <div className="flex items-center gap-2 mb-3"><span className="font-black text-lg text-red-600">₹{deal.discount_price}</span><span className="text-xs text-gray-400 line-through">₹{deal.price}</span></div>
-                          <button onClick={() => addToCart({id: deal.id, name: deal.name, price: deal.discount_price, image_url: deal.image_url})} className="w-full bg-white border border-red-200 text-red-600 font-black py-2 rounded-xl text-xs hover:bg-red-50 active:scale-95">ADD NOW</button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <section className="mx-4 rounded-[28px] bg-[#083b27] p-6 text-white md:mx-0 md:p-10">
+                    <p className="text-xs font-bold uppercase tracking-[.18em] text-[#a6dfba]">Zeshu groceries</p>
+                    <h1 className="mt-2 max-w-xl text-3xl font-black tracking-tight md:text-5xl">Everyday essentials, simply delivered.</h1>
+                    <p className="mt-3 max-w-lg text-sm leading-6 text-[#d9f3e3]">Browse products in the live Zeshu catalogue. Prices and availability are confirmed securely at checkout.</p>
+                    <button onClick={() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' })} className="mt-6 rounded-xl bg-white px-5 py-3 text-sm font-black text-[#075b36] active:scale-[.98]">Browse groceries</button>
+                  </section>
+
+                  {activeOrder && <button type="button" onClick={() => { setTrackedOrder(activeOrder); setIsTrackingOpen(true); }} className="mx-4 flex w-[calc(100%-2rem)] items-center justify-between gap-4 rounded-2xl border border-[#cfe8d7] bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md md:mx-0 md:w-full">
+                    <span><span className="block text-[10px] font-black uppercase tracking-[.16em] text-[#087443]">Your active order</span><span className="mt-1 block text-lg font-black text-slate-900">{ORDER_STATUS_LABELS[activeOrder.status] || 'Order in progress'}</span><span className="mt-1 block text-xs font-medium text-slate-500">Order #{activeOrder.id?.split('-')[0]?.toUpperCase()} · Tap to view details</span></span><ChevronRight className="shrink-0 text-[#087443]" size={22}/>
+                  </button>}
 
                   <div className="bg-white p-6 md:p-10 rounded-[24px] md:rounded-[32px] shadow-sm border border-gray-100 mx-4 md:mx-0">
-                    <div className="flex items-center justify-between mb-8"><h2 className="text-xl md:text-2xl font-black tracking-tight">Utility & Recharges</h2><span className="text-[#4F46E5] font-extrabold text-xs md:text-sm cursor-pointer hover:bg-[#E0E7FF] bg-[#EEF2FF] px-3 py-1.5 md:px-4 md:py-2 rounded-xl">Explore All</span></div>
+                    <div className="flex items-center justify-between mb-8"><h2 className="text-xl md:text-2xl font-black tracking-tight">Services</h2><button onClick={() => setActiveTab('recharge')} className="text-[#075b36] font-extrabold text-xs md:text-sm hover:bg-[#e9f7ef] bg-[#f1faf4] px-3 py-1.5 md:px-4 md:py-2 rounded-xl">Explore services</button></div>
                     <div className="grid grid-cols-4 md:grid-cols-8 gap-y-8 md:gap-y-10 gap-x-2 md:gap-x-4">
                       {SERVICES.map((s) => (
                         <div key={s.id} onClick={() => { setActiveTab('recharge'); setActiveService(s.id); }} className="flex flex-col items-center gap-2.5 md:gap-3.5 cursor-pointer group active:scale-95 transition-transform">
@@ -504,38 +1076,63 @@ export default function ZeshuSuperApp() {
                   </div>
                 </div>
               )}
-              <div className="px-4 md:px-0">
+              {user && (favoriteProducts.length > 0 || recentlyPurchased.length > 0 || frequentCategories.length > 0) && normalizedSearch === '' && (
+                <section className="mx-4 mb-6 rounded-[20px] border border-[#dce8df] bg-[#f7fbf8] p-4 md:mx-0" aria-labelledby="quick-picks-title">
+                  <div className="flex items-center justify-between"><h2 id="quick-picks-title" className="text-lg font-black tracking-tight text-[#173d27]">Quick Picks</h2><span className="text-[10px] font-black uppercase tracking-wider text-[#5d8069]">For you</span></div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {recentlyPurchased.length > 0 && <button type="button" onClick={() => document.getElementById('recently-purchased')?.scrollIntoView({ behavior: 'smooth' })} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-[#087443] shadow-sm">Buy Again</button>}
+                    {favoriteProducts.length > 0 && <button type="button" onClick={() => document.getElementById('favorites')?.scrollIntoView({ behavior: 'smooth' })} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-[#087443] shadow-sm">Favorites</button>}
+                    {frequentCategories.map((category) => <button type="button" key={category} onClick={() => { setActiveCategory(category); document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' }); }} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-[#087443] shadow-sm">{category}</button>)}
+                  </div>
+                </section>
+              )}
+              {user && favoriteProducts.length > 0 && normalizedSearch === '' && (
+                <section id="favorites" className="mx-4 mb-8 rounded-[24px] border border-[#dce8df] bg-white p-5 md:mx-0 md:p-7" aria-labelledby="favorites-title">
+                  <div className="flex items-center justify-between gap-3"><div><h2 id="favorites-title" className="text-xl font-black tracking-tight">Your Favorites</h2><p className="mt-1 text-xs text-slate-500">Live prices and availability from your saved products.</p></div><HeartHandshake size={22} className="text-[#087443]" /></div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
+                    {favoriteProducts.slice(0, 10).map((product: any) => {
+                      const unavailable = product.in_stock === false || (product.quantity !== null && Number(product.quantity) <= 0) || !product.vendor_id;
+                      const inCart = cart.find((entry) => String(entry.item.id) === String(product.id));
+                      return <div key={product.id} className="rounded-2xl border border-slate-100 p-3"><div className="flex h-24 items-center justify-center rounded-xl bg-slate-50"><img src={product.image_url || 'https://via.placeholder.com/120'} alt={product.name} className="h-full w-full object-contain" /></div><p className="mt-2 line-clamp-2 text-xs font-black text-slate-800">{product.name}</p><p className="mt-1 text-sm font-black text-slate-900">₹{product.price}</p>{unavailable ? <div className="mt-2 flex items-center justify-between gap-2"><span className="text-[10px] font-black text-red-600">Unavailable</span><button type="button" onClick={() => void toggleFavorite(product)} className="text-[10px] font-black text-slate-500">Remove</button></div> : <button type="button" onClick={() => addToCart(product)} className="mt-2 w-full rounded-lg bg-[#eef8f1] py-2 text-[10px] font-black text-[#087443]">{inCart ? `In cart (${inCart.qty})` : 'ADD'}</button>}</div>;
+                    })}
+                  </div>
+                </section>
+              )}
+              {user && recentlyPurchased.length > 0 && normalizedSearch === '' && (
+                <section id="recently-purchased" className="mx-4 mb-8 rounded-[24px] border border-[#dce8df] bg-white p-5 md:mx-0 md:p-7" aria-labelledby="recently-purchased-title">
+                  <div className="flex items-center justify-between gap-3"><div><h2 id="recently-purchased-title" className="text-xl font-black tracking-tight">Recently Purchased</h2><p className="mt-1 text-xs text-slate-500">Current prices and availability from your delivered orders.</p></div><span className="rounded-lg bg-[#eef8f1] px-2 py-1 text-xs font-black text-[#087443]">Buy Again</span></div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
+                    {recentlyPurchased.map((product: any) => {
+                      const unavailable = product.in_stock === false || (product.quantity !== null && Number(product.quantity) <= 0) || !product.vendor_id;
+                      const inCart = cart.find((entry) => String(entry.item.id) === String(product.id));
+                      return <div key={product.id} className="rounded-2xl border border-slate-100 p-3"><div className="flex h-24 items-center justify-center rounded-xl bg-slate-50"><img src={product.image_url || 'https://via.placeholder.com/120'} alt={product.name} className="h-full w-full object-contain" /></div><p className="mt-2 line-clamp-2 text-xs font-black text-slate-800">{product.name}</p><p className="mt-1 text-sm font-black text-slate-900">₹{product.price}</p>{unavailable ? <span className="mt-2 block text-[10px] font-black text-red-600">Currently unavailable</span> : <button type="button" onClick={() => addToCart(product)} className="mt-2 w-full rounded-lg bg-[#eef8f1] py-2 text-[10px] font-black text-[#087443]">{inCart ? `In cart (${inCart.qty})` : 'ADD'}</button>}</div>;
+                    })}
+                  </div>
+                </section>
+              )}
+              <div id="products" className="px-4 md:px-0">
                 <div className="flex justify-between items-end mb-6 md:mb-8 border-b pb-4 md:pb-5">
                   <h2 className="text-2xl md:text-3xl font-black tracking-tighter">{activeCategory} Items</h2>
                   <span className="text-[#6B7280] font-bold text-xs md:text-sm bg-gray-100 px-3 py-1 rounded-xl">{filteredProducts.length} items</span>
                 </div>
                 
-                {filteredProducts.length === 0 ? (
+                {productsLoading ? (
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" aria-label="Loading products" aria-busy="true">{Array.from({ length: 6 }, (_, index) => <div key={index} className="min-h-[290px] animate-pulse rounded-3xl border border-[#e3e9e4] bg-white p-3 md:p-4"><div className="aspect-square rounded-2xl bg-[#edf2ed]" /><div className="mt-4 h-4 w-4/5 rounded bg-[#edf2ed]" /><div className="mt-3 h-3 w-2/5 rounded bg-[#edf2ed]" /><div className="mt-8 h-10 rounded-xl bg-[#edf2ed]" /></div>)}</div>
+                ) : contentError ? (
+                  <div className="bg-white p-12 md:p-20 rounded-[32px] border border-[#dce8df] text-center flex flex-col items-center justify-center gap-4"><AlertCircle size={32} className="text-[#087443]"/><h3 className="text-xl font-black">Couldn&apos;t load products</h3><p className="text-gray-500 text-sm">Check your connection and try again.</p><button onClick={() => { setContentError(false); window.location.reload(); }} className="rounded-xl bg-[#087443] px-4 py-2.5 text-sm font-bold text-white">Try again</button></div>
+                ) : filteredProducts.length === 0 ? (
                   <div className="bg-white p-12 md:p-20 rounded-[32px] border-2 border-dashed border-gray-200 text-center flex flex-col items-center justify-center gap-4">
                      <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center"><Search size={32} className="text-gray-300"/></div>
-                     <h3 className="text-xl font-black">No matches found</h3>
-                     <p className="text-gray-500 text-sm">We are expanding our catalog daily! Try searching for something else.</p>
+                     <h3 className="text-xl font-black">No products found{normalizedSearch ? ` for “${searchQuery.trim()}”` : ''}.</h3>
+                     <p className="text-gray-500 text-sm">Try clearing search or browsing another category.</p>
+                     <div className="flex flex-wrap justify-center gap-2"><button type="button" onClick={() => setSearchQuery('')} className="rounded-xl bg-[#087443] px-4 py-2 text-xs font-black text-white">Clear search</button><button type="button" onClick={() => setActiveCategory('All')} className="rounded-xl border border-[#087443] px-4 py-2 text-xs font-black text-[#087443]">Browse all categories</button>{user && recentlyPurchased.length > 0 && <button type="button" onClick={() => document.getElementById('recently-purchased')?.scrollIntoView({ behavior: 'smooth' })} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-700">Recently purchased</button>}</div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
                     {filteredProducts.map((p) => {
                       const inCart = cart.find(c => c.item.id === p.id);
-                      return (
-                        <div key={p.id} className="bg-white p-3 md:p-4 rounded-[20px] md:rounded-[28px] shadow-sm border border-gray-100 flex flex-col hover:shadow-xl hover:-translate-y-1.5 transition-all group relative">
-                          <div className="absolute top-3 left-3 md:top-4 md:left-4 bg-white/90 backdrop-blur-md px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-sm z-10 flex items-center gap-1 md:gap-1.5 border border-gray-50"><Clock size={10} className="text-[#4F46E5]"/><span className="text-[9px] md:text-[10px] font-black">12 MINS</span></div>
-                          <div className="bg-[#F8F9FC] rounded-[16px] mb-3 flex items-center justify-center p-4 aspect-square relative overflow-hidden group-hover:bg-[#F3F4F6] transition-colors"><img src={p.image_url || 'https://via.placeholder.com/150'} className="h-full w-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" alt={p.name} /></div>
-                          <div className="text-[13px] md:text-[15px] font-bold text-[#1F2937] line-clamp-2 min-h-[38px] md:min-h-[44px] mb-1 leading-snug tracking-tight group-hover:text-[#4F46E5]">{p.name}</div>
-                          <div className="text-[11px] md:text-[13px] text-[#6B7280] mb-4 font-semibold">{p.weight || '1 unit'}</div>
-                          <div className="flex justify-between items-center mt-auto pt-2 md:pt-3 border-t">
-                            <span className="font-black text-base md:text-lg">₹{p.price || 0}</span>
-                            {inCart ? (
-                              <div className="flex items-center bg-[#059669] text-white rounded-xl shadow-lg min-w-[70px] md:min-w-[84px] justify-between overflow-hidden h-[30px] md:h-[36px]"><button onClick={() => removeFromCart(p.id)} className="flex-1 active:bg-black/20">-</button><span className="font-black text-xs md:text-sm">{inCart.qty}</span><button onClick={() => addToCart(p)} className="flex-1 active:bg-black/20">+</button></div>
-                            ) : (
-                              <button onClick={() => addToCart(p)} className="px-4 md:px-6 h-[30px] md:h-[36px] border border-[#059669] text-[#059669] bg-[#ECFDF5] rounded-xl text-[11px] md:text-[13px] font-black active:scale-95 shadow-sm min-w-[70px] md:min-w-[84px]">ADD</button>
-                            )}
-                          </div>
-                        </div>
-                      );
+                      const aggregate = productAggregates[String(p.id)];
+                      return <ProductCard key={p.id} product={p} quantity={inCart?.qty} onAdd={() => addToCart(p)} onRemove={() => removeFromCart(p.id)} isFavorite={favoriteIds.has(String(p.id))} favoriteBusy={favoriteBusyId === String(p.id)} onFavoriteToggle={() => void toggleFavorite(p)} reviewAverage={aggregate?.average_rating} reviewCount={aggregate?.review_count} onReviews={() => void openPublicReviews(p)} />;
                     })}
                   </div>
                 )}
@@ -565,51 +1162,57 @@ export default function ZeshuSuperApp() {
       )}
 
       {/* --- LIVE ORDER TRACKING SCREEN --- */}
-      {isTrackingOpen && (
-        <div className="fixed inset-0 bg-[#F8F9FC] z-[120] animate-in slide-in-from-bottom-full duration-500 flex flex-col">
-          <div className="bg-white px-6 py-5 flex justify-between items-center shadow-sm z-10 relative">
+      {isTrackingOpen && trackedOrder && (
+        <div role="dialog" aria-modal="true" aria-labelledby="tracking-title" className="fixed inset-0 bg-black/40 z-[120] flex items-center justify-center p-3 md:p-6">
+          <div className="flex h-full max-h-[95vh] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] bg-[#F8F9FC] shadow-2xl">
+          <div className="flex shrink-0 items-center justify-between bg-white px-6 py-5 shadow-sm">
             <div>
-              <h2 className="text-xl font-black tracking-tighter text-gray-900">Arriving in 12 mins</h2>
-              <p className="text-xs font-bold text-gray-500">Order #ZSH-{Math.floor(Math.random() * 100000)}</p>
+              <h2 id="tracking-title" className="text-xl font-black tracking-tighter text-gray-900">{ORDER_STATUS_LABELS[trackedOrder.status] || 'Order details'}</h2>
+              <p className="text-xs font-bold text-gray-500">Order #{trackedOrder.id?.split('-')[0]?.toUpperCase()}</p>
             </div>
-            <button onClick={() => setIsTrackingOpen(false)} className="p-2.5 bg-gray-100 rounded-full active:scale-90"><X size={20}/></button>
+            <button ref={modalCloseRef} aria-label="Close order tracking" onClick={() => setIsTrackingOpen(false)} className="p-2.5 bg-gray-100 rounded-full active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443]"><X size={20}/></button>
           </div>
-          <div className="flex-1 relative bg-[#E5E7EB] overflow-hidden">
-            <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#4F46E5 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center animate-bounce">
-              <div className="bg-white p-2 rounded-full shadow-xl border-2 border-indigo-600"><Truck size={24} className="text-indigo-600"/></div>
-              <div className="w-16 h-3 bg-black/20 rounded-full blur-sm mt-1"></div>
-            </div>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="p-6 text-center text-gray-500">
+            <div className="mx-auto max-w-sm rounded-3xl border border-[#dce9e0] bg-[#f4fbf6] p-6"><Truck size={36} className="mx-auto mb-3 text-[#087443]"/><p className="font-bold text-[#183524]">{trackedOrder.status === 'CANCELLED' ? 'This order was cancelled.' : 'Your order updates here as it progresses.'}</p><p className="text-xs mt-2">{trackedOrder.status === 'CANCELLED' ? 'No delivery is scheduled.' : 'Status updates are based on the latest order record.'}</p></div>
+            {liveDeliveryStatus && <div className="mx-auto mt-5 max-w-sm rounded-3xl border border-[#cfe8d7] bg-white p-5 text-left shadow-sm">
+              <div className="flex items-center gap-2 text-[#075b36]"><MapPin size={18}/><h3 className="font-black">Live rider location</h3></div>
+              <p className="mt-2 text-sm font-bold text-[#26372b]">{trackedOrder.status.replaceAll('_', ' ')}</p>
+              {riderLocationState === 'loading' ? <p className="mt-3 text-sm text-[#587065]">Location updating...</p> : liveRider ? <>
+                <div className="mt-3 flex items-center gap-2 text-sm"><span className={`h-2.5 w-2.5 rounded-full ${liveRider.is_active ? 'bg-[#13a657]' : 'bg-slate-400'}`}/><span className="font-bold text-[#26372b]">{liveRider.full_name || 'Your rider'} is {liveRider.is_active ? 'online' : 'offline'}</span></div>
+                {hasLiveRiderCoordinates ? <a href={liveRiderMapUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#087443] px-4 py-3 text-sm font-black text-white active:scale-95"><MapPin size={16}/>Open rider location in Maps</a> : <p className="mt-3 text-sm text-[#587065]">Rider location not available yet.</p>}
+              </> : <p className="mt-3 text-sm text-[#587065]">Rider location not available yet.</p>}
+            </div>}
+            {trackedOrder.status === 'READY_FOR_PICKUP' && <p className="mx-auto mt-5 max-w-sm rounded-2xl border border-slate-200 bg-white p-4 text-sm font-bold text-slate-600">A rider is assigned. Live tracking starts after pickup.</p>}
           </div>
-          <div className="bg-white rounded-t-[32px] -mt-6 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] p-6 md:p-8 space-y-6">
-            <div className="flex items-center justify-between relative px-2">
-              <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-100 -z-10 -translate-y-1/2"></div>
-              <div className={`absolute top-1/2 left-0 h-1 bg-green-500 -z-10 -translate-y-1/2 transition-all duration-1000 ${trackingStep === 1 ? 'w-0' : trackingStep === 2 ? 'w-1/2' : 'w-full'}`}></div>
-              <div className="flex flex-col items-center gap-2">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-colors ${trackingStep >= 1 ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'}`}>1</div>
-                <span className="text-[10px] font-black text-gray-500">Accepted</span>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-colors ${trackingStep >= 2 ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'}`}>2</div>
-                <span className="text-[10px] font-black text-gray-500">Picked Up</span>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-colors ${trackingStep >= 3 ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'}`}>3</div>
-                <span className="text-[10px] font-black text-gray-500">Delivered</span>
-              </div>
+          <div className="bg-white p-6 md:p-8">
+            <div className="mb-6 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-left">
+              <div className="flex items-center justify-between gap-4"><span className="text-xs font-black uppercase tracking-wider text-slate-500">Order total</span><span className="text-lg font-black text-slate-900">₹{Number(trackedOrder.total_paid || 0).toFixed(0)}</span></div>
+              {Array.isArray(trackedOrder.items) && trackedOrder.items.length > 0 && <div className="mt-3 space-y-2 text-left">{trackedOrder.items.map((entry: any, index: number) => { const qty = Number(entry.qty ?? entry.quantity ?? 1); const price = Number(entry.item?.price ?? entry.item_snapshot?.price ?? entry.unit_price ?? entry.price ?? 0); return <div key={index} className="flex justify-between gap-3 text-xs text-slate-600"><span>{qty}× {entry.item?.name || entry.item_snapshot?.name || entry.name || 'Item'}</span><span className="font-black text-slate-800">₹{price.toFixed(0)}</span></div>; })}</div>}
+              {trackedOrder.delivery_fee != null && <div className="mt-3 flex justify-between text-xs text-slate-600"><span>Delivery fee</span><span className="font-black">₹{Number(trackedOrder.delivery_fee).toFixed(0)}</span></div>}
+              {trackedOrder.earn_coins != null && <div className="mt-2 flex justify-between text-xs text-slate-600"><span>Coins earned</span><span className="font-black text-[#087443]">{trackedOrder.earn_coins}</span></div>}
+              {trackedOrder.delivery_address && <p className="mt-3 text-xs text-slate-600"><span className="font-black">Delivered to:</span> {trackedOrder.delivery_address}</p>}
+              {trackedOrder.payment_id && <p className="mt-2 text-[11px] text-slate-500"><span className="font-black">Payment:</span> {String(trackedOrder.payment_id).slice(0, 8)}…</p>}
+              {trackedOrder.created_at && <p className="mt-2 text-[11px] font-medium text-slate-500">Placed {new Date(trackedOrder.created_at).toLocaleString()}</p>}
             </div>
+            <OrderStatusTimeline status={trackedOrder.status} />
+            {trackedOrder.status === 'DELIVERED' && <><ReviewForm overall={reviewOverall} delivery={reviewDelivery} store={reviewStore} comment={reviewComment} products={reviewProducts} existingReview={reviewExisting} loading={reviewLoading} error={reviewError} success={reviewSuccess} onOverallChange={setReviewOverall} onDeliveryChange={setReviewDelivery} onStoreChange={setReviewStore} onCommentChange={setReviewComment} onProductChange={(id, value) => setReviewProducts((current) => current.map((item) => item.id === id ? { ...item, rating: value } : item))} onProductCommentChange={(id, value) => setReviewProducts((current) => current.map((item) => item.id === id ? { ...item, comment: value } : item))} onSubmit={() => void submitReview()} /><div className="mt-6 flex flex-wrap gap-2"><button type="button" disabled={reorderingId === trackedOrder.id} onClick={() => void reorder(trackedOrder)} className="rounded-xl bg-[#087443] px-4 py-3 text-sm font-black text-white disabled:opacity-60">{reorderingId === trackedOrder.id ? 'Adding…' : 'Buy again'}</button><button type="button" onClick={() => { setIsTrackingOpen(false); setActiveTab('home'); }} className="rounded-xl border border-[#087443] px-4 py-3 text-sm font-black text-[#087443]">Continue shopping</button></div></>}
+          </div>
+          </div>
           </div>
         </div>
       )}
+
+      {publicReviewProduct && <div className="fixed inset-0 z-[125] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="public-reviews-title"><div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"><div className="flex shrink-0 items-center justify-between border-b p-5"><div><h2 id="public-reviews-title" className="text-xl font-black">Reviews for {publicReviewProduct.name}</h2><p className="mt-1 text-xs text-slate-500">Verified purchases only</p></div><button type="button" aria-label="Close reviews" onClick={() => setPublicReviewProduct(null)} className="rounded-xl bg-slate-100 p-2"><X size={18} /></button></div><div className="min-h-0 flex-1 overflow-y-auto p-5">{publicReviewsLoading ? <p className="py-8 text-center text-sm text-slate-500">Loading reviews…</p> : publicReviews.length === 0 ? <p className="py-8 text-center text-sm text-slate-500">No written reviews yet.</p> : <div className="space-y-3">{publicReviews.map((review: any, index) => <article key={`${review.updated_at || review.created_at}-${index}`} className="rounded-2xl border border-slate-100 p-4"><p className="text-amber-500">{'★'.repeat(Number(review.rating || 0))}</p><p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{review.comment}</p><div className="mt-3 flex items-center justify-between text-[11px] text-slate-500"><span>Verified purchase</span><time>{new Date(review.updated_at || review.created_at).toLocaleDateString()}</time></div></article>)}</div>}</div></div></div>}
 
       {/* --- CART DRAWER WITH SMOOTH EDGES --- */}
       {isCartOpen && (
         <>
           <div className="fixed inset-0 bg-[#111827]/40 backdrop-blur-sm z-[60]" onClick={() => setIsCartOpen(false)}></div>
-          <div className="fixed top-0 right-0 h-full w-full md:w-[460px] bg-[#F8F9FC] z-[70] shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col md:rounded-l-[32px] overflow-hidden">
+          <div role="dialog" aria-modal="true" aria-labelledby="cart-title" className="fixed top-0 right-0 h-full w-full md:w-[460px] bg-[#F8F9FC] z-[70] shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col md:rounded-l-[32px] overflow-hidden">
             <div className="bg-white px-6 py-5 flex justify-between items-center border-b">
-              <h2 className="text-2xl font-black tracking-tighter">My Cart</h2>
-              <button onClick={() => setIsCartOpen(false)} className="p-2.5 bg-[#F3F4F6] rounded-full active:scale-90"><X size={20}/></button>
+              <h2 id="cart-title" className="text-2xl font-black tracking-tighter">My Cart</h2>
+              <button ref={modalCloseRef} aria-label="Close cart" onClick={() => setIsCartOpen(false)} className="p-2.5 bg-[#F3F4F6] rounded-full active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443]"><X size={20}/></button>
             </div>
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
               {!hasZeshuPass && itemTotal > 0 && (
@@ -621,15 +1224,22 @@ export default function ZeshuSuperApp() {
                    <button onClick={() => setHasZeshuPass(true)} className="bg-white text-indigo-900 font-black px-4 py-2 rounded-xl text-xs active:scale-95">JOIN NOW</button>
                 </div>
               )}
+              {cart.length === 0 && <div className="rounded-3xl border border-dashed border-[#cbd8cf] bg-white p-10 text-center"><ShoppingBag size={32} className="mx-auto mb-3 text-[#087443]"/><h3 className="font-black">Your cart is empty</h3><p className="mt-2 text-sm text-gray-500">Add essentials when you are ready.</p><button onClick={() => setIsCartOpen(false)} className="mt-5 rounded-xl bg-[#087443] px-4 py-2.5 text-sm font-bold text-white">Browse products</button></div>}
               {cart.map((c, i) => (
                 <div key={i} className="bg-white p-4 rounded-2xl flex items-center gap-4 shadow-sm">
                   <img src={c.item.image_url} className="w-16 h-16 object-contain" alt="cart item"/>
                   <div className="flex-1"><h4 className="font-bold text-sm">{c.item.name}</h4><p className="text-xs text-gray-500">₹{c.item.price} x {c.qty}</p></div>
-                  <div className="flex items-center bg-[#059669] text-white rounded-lg px-2"><button onClick={() => removeFromCart(c.item.id)} className="px-2">-</button><span className="px-2">{c.qty}</span><button onClick={() => addToCart(c.item)} className="px-2">+</button></div>
+                  <div className="flex items-center bg-[#059669] text-white rounded-lg px-2"><button type="button" onClick={() => removeFromCart(c.item.id)} className="min-h-9 min-w-8 px-2">-</button><span className="px-2">{c.qty}</span><button type="button" disabled={c.item.quantity !== null && c.qty >= Number(c.item.quantity)} onClick={() => addToCart(c.item)} className="min-h-9 min-w-8 px-2 disabled:cursor-not-allowed disabled:opacity-40">+</button></div>
                 </div>
               ))}
+              {cart.length > 0 && <div className="rounded-2xl border border-[#dce8df] bg-white p-4">
+                {addresses.length > 0 && <div className="mb-3"><p className="text-xs font-black uppercase tracking-wider text-[#52645a]">Saved addresses</p><div className="mt-2 flex gap-2 overflow-x-auto pb-1">{addresses.map((address) => <button type="button" key={address.id} onClick={() => { setSelectedAddressId(address.id); setCurrentAddress(formatAddress(address)); }} className={`min-w-[180px] rounded-xl border p-3 text-left text-xs ${selectedAddressId === address.id ? 'border-[#087443] bg-[#f1faf4]' : 'border-slate-200 bg-white'}`}><span className="block font-black">{address.label}{address.is_default ? ' · Default' : ''}</span><span className="mt-1 block line-clamp-2 text-slate-500">{formatAddress(address)}</span></button>)}</div></div>}
+                <button type="button" onClick={() => openAddressForm()} className="mb-2 text-xs font-black text-[#087443]">+ Add a saved address</button><label htmlFor="delivery-address" className="block text-xs font-black uppercase tracking-wider text-[#52645a]">Delivery address</label>
+                <textarea id="delivery-address" value={currentAddress === 'Location not set' ? '' : currentAddress} onChange={(event) => setCurrentAddress(event.target.value)} rows={3} placeholder="House / flat, street, area and landmark" className="mt-2 w-full resize-none rounded-xl border border-[#dce8df] bg-[#f8fbf8] p-3 text-sm font-medium outline-none focus:border-[#087443]" />
+                <p className="mt-2 text-[11px] text-slate-500">Your address is used only for this checkout and is validated again on the server.</p>
+              </div>}
               <div className="bg-white p-6 rounded-[24px] shadow-sm space-y-4">
-                {coinsBalance > 0 && (
+                {coinsBalance > 0 && <>
                   <div className="bg-[#EEF2FF] border border-[#C7D2FE] p-3 rounded-xl flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Coins size={20} className="text-[#4F46E5]"/>
@@ -638,34 +1248,36 @@ export default function ZeshuSuperApp() {
                         <p className="text-[10px] text-[#6366F1] font-bold">Balance: {coinsBalance}</p>
                       </div>
                     </div>
-                    <button onClick={() => setUseZeshuCoins(!useZeshuCoins)} className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all active:scale-95 ${useZeshuCoins ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-[#4F46E5] text-white hover:bg-[#4338CA]'}`}>
-                      {useZeshuCoins ? 'REMOVE' : 'APPLY'}
-                    </button>
+                    <button type="button" disabled className="cursor-not-allowed rounded-lg bg-slate-200 px-4 py-1.5 text-xs font-black text-slate-500">UNAVAILABLE</button>
                   </div>
-                )}
+                  <p className="mt-2 text-[11px] font-bold text-[#6366F1]">Zeshu Coin redemption is temporarily unavailable.</p>
+                </>}
                 <div className="flex justify-between text-[#4B5563]"><span>Items total</span><span className="font-bold">₹{itemTotal}</span></div>
                 <div className="flex justify-between text-[#059669]"><span>Delivery charge</span><span className="font-black">{deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}</span></div>
                 {hasZeshuPass && <div className="flex justify-between text-indigo-600 font-bold"><span>Zeshu Pass (1 Month)</span><span>₹99</span></div>}
                 {smallCartFee > 0 && <div className="flex justify-between text-red-500 text-xs"><span>Small cart fee</span><span>₹{smallCartFee}</span></div>}
-                {useZeshuCoins && <div className="flex justify-between text-[#4F46E5]"><span>Zeshu Coins Applied</span><span className="font-black">-₹{zeshuDiscount}</span></div>}
                 <div className="border-t pt-4 flex justify-between font-black text-xl"><span>Grand total</span><span>₹{finalCartTotal}</span></div>
               </div>
             </div>
             <div className="bg-white p-6 border-t shadow-2xl">
-              <button onClick={handleCartCheckout} className="w-full bg-gradient-to-r from-[#059669] to-[#047857] text-white font-bold py-4 rounded-2xl flex justify-between px-6 items-center">
-                <span>Proceed to Pay</span><span>₹{finalCartTotal}</span>
+              <div className="mb-3 flex items-center justify-between gap-3"><button type="button" onClick={clearCart} disabled={!cart.length || isCheckoutOpening} className="text-xs font-black text-red-600 disabled:text-slate-300">Clear cart</button><span className="text-[11px] font-medium text-slate-500">Stock and price are checked again before payment.</span></div>
+              <p className="mb-3 text-center text-[11px] font-bold text-slate-500">Secure payment powered by Razorpay. Your total and stock are checked again before payment.</p>
+              <button disabled={cart.length === 0 || isLoading || isCheckoutOpening} onClick={handleCartCheckout} className="w-full bg-[#087443] disabled:bg-[#a7b6ac] text-white font-bold py-4 rounded-2xl flex justify-between px-6 items-center">
+                <span>{isLoading ? 'Preparing secure checkout…' : 'Proceed to secure payment'}</span><span>₹{finalCartTotal}</span>
               </button>
             </div>
           </div>
         </>
       )}
 
+      {addressFormOpen && <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 p-4"><form onSubmit={saveAddress} role="dialog" aria-modal="true" aria-labelledby="address-form-title" className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl"><div className="mb-5 flex items-center justify-between"><h2 id="address-form-title" className="text-xl font-black">{editingAddress ? 'Edit address' : 'Add address'}</h2><button type="button" aria-label="Close address form" onClick={() => setAddressFormOpen(false)} className="min-h-10 min-w-10 rounded-xl bg-slate-100"><X size={18} /></button></div><div className="grid gap-3 sm:grid-cols-2"><input required aria-label="Address label" placeholder="Label (Home, Work)" value={addressForm.label} onChange={(event) => setAddressForm({ ...addressForm, label: event.target.value })} className="rounded-xl border p-3 text-sm" /><input aria-label="Recipient name" placeholder="Recipient name (optional)" value={addressForm.recipient_name} onChange={(event) => setAddressForm({ ...addressForm, recipient_name: event.target.value })} className="rounded-xl border p-3 text-sm" /><input aria-label="Phone" placeholder="Phone (optional)" value={addressForm.phone} onChange={(event) => setAddressForm({ ...addressForm, phone: event.target.value })} className="rounded-xl border p-3 text-sm" /><input required aria-label="Address line" placeholder="House / flat and street" value={addressForm.address_line} onChange={(event) => setAddressForm({ ...addressForm, address_line: event.target.value })} className="rounded-xl border p-3 text-sm sm:col-span-2" /><input aria-label="Landmark" placeholder="Landmark (optional)" value={addressForm.landmark} onChange={(event) => setAddressForm({ ...addressForm, landmark: event.target.value })} className="rounded-xl border p-3 text-sm" /><input required aria-label="City" placeholder="City" value={addressForm.city} onChange={(event) => setAddressForm({ ...addressForm, city: event.target.value })} className="rounded-xl border p-3 text-sm" /><input required aria-label="State" placeholder="State" value={addressForm.state} onChange={(event) => setAddressForm({ ...addressForm, state: event.target.value })} className="rounded-xl border p-3 text-sm" /><input aria-label="Postal code" placeholder="Postal code (optional)" value={addressForm.postal_code} onChange={(event) => setAddressForm({ ...addressForm, postal_code: event.target.value })} className="rounded-xl border p-3 text-sm" /><input aria-label="Latitude" inputMode="decimal" placeholder="Latitude (optional)" value={addressForm.latitude} onChange={(event) => setAddressForm({ ...addressForm, latitude: event.target.value })} className="rounded-xl border p-3 text-sm" /><input aria-label="Longitude" inputMode="decimal" placeholder="Longitude (optional)" value={addressForm.longitude} onChange={(event) => setAddressForm({ ...addressForm, longitude: event.target.value })} className="rounded-xl border p-3 text-sm" /></div><label className="mt-4 flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={addressForm.is_default} onChange={(event) => setAddressForm({ ...addressForm, is_default: event.target.checked })} /> Make this my default address</label><div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setAddressFormOpen(false)} className="rounded-xl px-4 py-3 text-sm font-black text-slate-600">Cancel</button><button disabled={addressSaving} className="rounded-xl bg-[#087443] px-5 py-3 text-sm font-black text-white disabled:opacity-60">{addressSaving ? 'Saving...' : 'Save address'}</button></div></form></div>}
+
       {/* --- AUTH MODAL WITH SMOOTH EDGES --- */}
       {isAuthModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[32px] p-8 w-full max-w-sm relative shadow-2xl">
-            <button onClick={() => setIsAuthModalOpen(false)} className="absolute top-5 right-5 text-gray-400"><X size={20}/></button>
-            <h2 className="text-2xl font-black text-center mb-6">Sign In</h2>
+          <div role="dialog" aria-modal="true" aria-labelledby="auth-title" className="bg-white rounded-[32px] p-8 w-full max-w-sm relative shadow-2xl">
+            <button ref={modalCloseRef} aria-label="Close sign in" onClick={() => setIsAuthModalOpen(false)} className="absolute top-5 right-5 text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F46E5]"><X size={20}/></button>
+            <h2 id="auth-title" className="text-2xl font-black text-center mb-6">Sign In</h2>
             {!otpSent ? (
               <div className="space-y-4">
                 <input type="tel" maxLength={10} value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="w-full p-4 bg-[#F8F9FC] border rounded-2xl font-bold text-lg outline-none focus:border-[#6366F1]" placeholder="Mobile Number" />
@@ -685,12 +1297,16 @@ export default function ZeshuSuperApp() {
       {isAccountOpen && (
         <>
           <div className="fixed inset-0 bg-[#111827]/40 backdrop-blur-sm z-[60]" onClick={() => setIsAccountOpen(false)}></div>
-          <div className="fixed top-0 right-0 h-full w-full md:w-[400px] bg-[#F8F9FC] z-[70] shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col md:rounded-l-[32px] overflow-hidden">
+          <div role="dialog" aria-modal="true" aria-labelledby="account-title" className="fixed top-0 right-0 h-full w-full md:w-[400px] bg-[#F8F9FC] z-[70] shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col md:rounded-l-[32px] overflow-hidden">
             <div className="bg-white px-6 py-5 flex justify-between items-center border-b">
-              <h2 className="text-2xl font-black tracking-tighter">My Account</h2>
-              <button onClick={() => setIsAccountOpen(false)} className="p-2.5 bg-[#F3F4F6] rounded-full active:scale-90"><X size={20}/></button>
+              <h2 id="account-title" className="text-2xl font-black tracking-tighter">My Account</h2>
+              <button ref={modalCloseRef} aria-label="Close account" onClick={() => setIsAccountOpen(false)} className="p-2.5 bg-[#F3F4F6] rounded-full active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F46E5]"><X size={20}/></button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <section className="rounded-[24px] border border-slate-200 bg-white p-5" aria-labelledby="saved-addresses-title">
+                <div className="flex items-center justify-between gap-3"><div><h3 id="saved-addresses-title" className="font-black text-slate-900">Saved Addresses</h3><p className="mt-1 text-xs text-slate-500">Choose a saved address at checkout.</p></div><button type="button" onClick={() => openAddressForm()} className="rounded-xl bg-[#087443] px-3 py-2 text-xs font-black text-white">+ Add Address</button></div>
+                <div className="mt-4 space-y-3">{addresses.length === 0 ? <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No saved addresses yet.</p> : addresses.map((address) => <div key={address.id} className="rounded-xl border border-slate-100 p-3"><div className="flex items-start justify-between gap-3"><div><p className="font-black text-slate-900">{address.label} {address.is_default && <span className="ml-1 rounded bg-emerald-100 px-2 py-1 text-[10px] text-emerald-700">Default</span>}</p><p className="mt-1 text-xs text-slate-600">{address.recipient_name || 'Recipient'} · {formatAddress(address)}</p></div><button type="button" onClick={() => void deleteAddress(address.id)} className="text-xs font-black text-red-600">Delete</button></div><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => openAddressForm(address)} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black">Edit</button>{!address.is_default && <button type="button" onClick={() => void setDefaultAddress(address.id)} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">Set default</button>}<button type="button" onClick={() => { setSelectedAddressId(address.id); setCurrentAddress(formatAddress(address)); setIsAccountOpen(false); setIsCartOpen(true); }} className="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700">Use for checkout</button></div></div>)}</div>
+              </section>
               <div className="bg-gradient-to-br from-[#4F46E5] to-[#4338CA] p-6 rounded-[24px] text-white shadow-lg">
                  <div className="flex items-center gap-4 mb-6">
                    <div className="h-16 w-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md border border-white/30"><User size={32} className="text-white"/></div>
@@ -704,6 +1320,14 @@ export default function ZeshuSuperApp() {
                    <span className="font-black text-2xl">{coinsBalance}</span>
                  </div>
               </div>
+              <section className="rounded-[24px] border border-slate-200 bg-white p-5">
+                <div className="flex items-center justify-between gap-3"><div><h3 className="font-black text-slate-900">Recent orders</h3><p className="mt-1 text-xs text-slate-500">Your latest confirmed grocery orders.</p></div><span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">{myOrders.length}</span></div>
+                <div className="mt-4 space-y-3">
+                  {ordersLoadError ? <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm font-bold text-red-700">Recent orders are temporarily unavailable. Please try again later.</p> : myOrders.length === 0 ? <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No confirmed grocery orders yet.</p> : myOrders.map((order) => <button key={order.id} type="button" onClick={() => { setTrackedOrder(order); setIsTrackingOpen(true); setIsAccountOpen(false); }} className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-100 p-3 text-left hover:bg-slate-50"><span><span className="block text-xs font-black text-slate-800">#{order.id?.split('-')[0]?.toUpperCase()}</span><span className="mt-1 block text-[11px] font-medium text-slate-500">{order.created_at ? new Date(order.created_at).toLocaleString() : 'Order date unavailable'}</span></span><span className="text-right"><span className="block text-sm font-black text-slate-900">₹{Number(order.total_paid || 0).toFixed(0)}</span><span className="mt-1 inline-block text-[10px] font-black text-[#087443]">{String(order.status || 'PENDING').replaceAll('_', ' ')}</span></span></button>)}
+                </div>
+              </section>
+              <section className="rounded-[24px] border border-slate-200 bg-white p-5"><h3 className="font-black text-slate-900">Buy again</h3><p className="mt-1 text-xs text-slate-500">Use current prices and availability from delivered orders.</p><div className="mt-3 space-y-2">{myOrders.filter((order) => order.status === 'DELIVERED').slice(0, 5).length === 0 ? <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-500">No delivered orders yet.</p> : myOrders.filter((order) => order.status === 'DELIVERED').slice(0, 5).map((order) => <button type="button" key={`reorder-${order.id}`} disabled={reorderingId === order.id} onClick={() => void reorder(order)} className="flex w-full items-center justify-between rounded-xl border border-slate-100 p-3 text-left text-xs font-black disabled:opacity-60"><span>Order #{order.id?.split('-')[0]?.toUpperCase()}</span><span className="text-indigo-700">{reorderingId === order.id ? 'Adding...' : 'Reorder'}</span></button>)}</div></section>
+              <section className="rounded-[24px] border border-slate-200 bg-white p-5"><h3 className="font-black text-slate-900">Help & policies</h3><p className="mt-2 text-sm leading-6 text-slate-600">Need help with an order? Contact Zeshu support through the verified channel shown in your order communication. Refunds and cancellations are handled only when an eligible workflow is available.</p></section>
             </div>
             <div className="bg-white p-6 border-t shadow-2xl">
               <button onClick={handleLogout} className="w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-4 rounded-2xl flex justify-center items-center gap-2 transition-colors active:scale-95">
@@ -718,3 +1342,4 @@ export default function ZeshuSuperApp() {
     </div>
   );
 }
+
