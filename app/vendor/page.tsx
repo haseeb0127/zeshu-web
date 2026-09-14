@@ -53,6 +53,8 @@ const EMPTY_PRODUCT = {
   in_stock: true,
 };
 
+const PRODUCT_UNITS = ["pcs", "pack", "kg", "g", "L", "ml"] as const;
+
 const NEXT_STATUS: Record<string, { label: string; status: string }> = {
   PENDING: { label: "Confirm order", status: "CONFIRMED" },
   CONFIRMED: { label: "Start preparing", status: "PREPARING" },
@@ -245,15 +247,16 @@ export default function VendorDashboard() {
     if (!vendor || savingProduct) return;
     const price = Number(productForm.price);
     const quantity = productForm.quantity === "" ? null : Number(productForm.quantity);
-    if (!productForm.name.trim() || !Number.isFinite(price) || price < 0 || (quantity !== null && (!Number.isFinite(quantity) || quantity < 0))) {
-      setError("Enter a product name, a valid price, and a non-negative quantity.");
+    const unit = productForm.unit.trim();
+    if (!productForm.name.trim() || !Number.isFinite(price) || price < 0 || (quantity !== null && (!Number.isFinite(quantity) || quantity < 0)) || !unit) {
+      setError("Enter a product name, valid price, non-negative quantity, and unit.");
       return;
     }
     setSavingProduct(true);
     setError("");
     const payload = {
       name: productForm.name.trim(), price, category: productForm.category.trim() || null, quantity,
-      weight: productForm.weight.trim() || null, unit: productForm.unit.trim() || null,
+      weight: productForm.weight.trim() || null, unit,
       image_url: productForm.image_url.trim() || null, in_stock: productForm.in_stock,
     };
     const result = editingProduct
@@ -448,6 +451,7 @@ function ProductForm({ form, editing, saving, onClose, onChange, onSubmit }: { f
     document.addEventListener("keydown", onKeyDown);
     return () => { document.removeEventListener("keydown", onKeyDown); previous?.focus(); };
   }, [onClose, saving]);
+  const unitField = <label className="block text-sm font-bold text-slate-300">Unit <span className="text-red-300">*</span><select required value={form.unit} onChange={(event) => onChange((current) => ({ ...current, unit: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-white outline-none focus:border-indigo-400"><option value="">Select unit</option>{form.unit && !PRODUCT_UNITS.includes(form.unit as typeof PRODUCT_UNITS[number]) && <option value={form.unit}>{form.unit}</option>}{PRODUCT_UNITS.map((unit) => <option key={unit} value={unit}>{unit}</option>)}</select></label>;
   const field = (key: keyof typeof EMPTY_PRODUCT, label: string, type = "text", required = false) => <label className="block text-sm font-bold text-slate-300">{label}<input required={required} type={type} min={type === "number" ? 0 : undefined} step={key === "price" ? "0.01" : undefined} value={String(form[key] ?? "")} onChange={(event) => onChange((current) => ({ ...current, [key]: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-white outline-none focus:border-indigo-400" /></label>;
-  return <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="product-form-title" className="fixed inset-0 z-50 flex items-end bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4"><form onSubmit={onSubmit} className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-white/10 bg-slate-900 p-5 shadow-2xl sm:rounded-3xl"><div className="mb-5 flex items-center justify-between"><div><h2 id="product-form-title" className="text-xl font-black">{editing ? "Edit product" : "Add product"}</h2><p className="text-sm text-slate-400">This product is saved only to your vendor store.</p></div><button type="button" aria-label="Close product form" onClick={onClose} disabled={saving} className="rounded-xl bg-slate-800 p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"><X size={18} /></button></div><div className="grid gap-4 sm:grid-cols-2">{field("name", "Product name", "text", true)}{field("price", "Price (₹)", "number", true)}{field("category", "Category")}{field("quantity", "Quantity", "number")}{field("weight", "Weight")}{field("unit", "Unit")}</div><div className="mt-4">{field("image_url", "Image URL")}</div><label className="mt-4 flex items-center justify-between rounded-xl border border-white/10 bg-slate-800 p-3"><span><span className="block font-black">Available for sale</span><span className="text-xs text-slate-400">Inventory is not reserved during checkout.</span></span><input type="checkbox" checked={form.in_stock} onChange={(event) => onChange((current) => ({ ...current, in_stock: event.target.checked }))} className="h-5 w-5 accent-indigo-500" /></label><div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" onClick={onClose} disabled={saving} className="rounded-xl px-4 py-3 font-black text-slate-300">Cancel</button><button disabled={saving} className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-500 px-5 py-3 font-black text-white disabled:opacity-60">{saving && <Loader2 className="animate-spin" size={17} />}{saving ? "Saving..." : editing ? "Save changes" : "Add product"}</button></div></form></div>;
+  return <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="product-form-title" className="fixed inset-0 z-50 flex items-end bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4"><form onSubmit={onSubmit} className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-white/10 bg-slate-900 p-5 shadow-2xl sm:rounded-3xl"><div className="mb-5 flex items-center justify-between"><div><h2 id="product-form-title" className="text-xl font-black">{editing ? "Edit product" : "Add product"}</h2><p className="text-sm text-slate-400">This product is saved only to your vendor store.</p></div><button type="button" aria-label="Close product form" onClick={onClose} disabled={saving} className="rounded-xl bg-slate-800 p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"><X size={18} /></button></div><div className="grid gap-4 sm:grid-cols-2">{field("name", "Product name", "text", true)}{field("price", "Price (₹)", "number", true)}{field("category", "Category")}{field("quantity", "Quantity", "number")}{field("weight", "Weight")}{unitField}</div><div className="mt-4">{field("image_url", "Image URL")}</div><label className="mt-4 flex items-center justify-between rounded-xl border border-white/10 bg-slate-800 p-3"><span><span className="block font-black">Available for sale</span><span className="text-xs text-slate-400">Inventory is not reserved during checkout.</span></span><input type="checkbox" checked={form.in_stock} onChange={(event) => onChange((current) => ({ ...current, in_stock: event.target.checked }))} className="h-5 w-5 accent-indigo-500" /></label><div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" onClick={onClose} disabled={saving} className="rounded-xl px-4 py-3 font-black text-slate-300">Cancel</button><button disabled={saving} className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-500 px-5 py-3 font-black text-white disabled:opacity-60">{saving && <Loader2 className="animate-spin" size={17} />}{saving ? "Saving..." : editing ? "Save changes" : "Add product"}</button></div></form></div>;
 }

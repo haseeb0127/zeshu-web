@@ -49,7 +49,7 @@ export default function CartDrawer({
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           
           {/* 🚀 SUBSCRIPTION UPSELL (ZESHU PASS) */}
-          {!hasZeshuPass && itemTotal > 0 && (
+          {false && !hasZeshuPass && itemTotal > 0 && (
             <div className="bg-gradient-to-r from-indigo-900 to-purple-900 p-5 rounded-[24px] text-white flex items-center justify-between shadow-xl">
                <div>
                  <div className="flex items-center gap-2 mb-1"><Crown size={20} className="text-yellow-400"/><h3 className="font-black text-lg">Zeshu Pass</h3></div>
@@ -72,7 +72,6 @@ export default function CartDrawer({
             <div className="flex justify-between text-[#059669]"><span>Delivery charge</span><span className="font-black">{deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}</span></div>
             {hasZeshuPass && <div className="flex justify-between text-indigo-600 font-bold"><span>Zeshu Pass (1 Month)</span><span>₹99</span></div>}
             {smallCartFee > 0 && <div className="flex justify-between text-red-500 text-xs"><span>Small cart fee (Add ₹{199-itemTotal} to remove)</span><span>₹{smallCartFee}</span></div>}
-            {useZeshuCoins && <div className="flex justify-between text-[#4F46E5]"><span>Zeshu Coins Applied</span><span className="font-black">-₹{zeshuDiscount}</span></div>}
             <div className="border-t pt-4 flex justify-between font-black text-xl"><span>Grand total</span><span>₹{finalCartTotal}</span></div>
           </div>
         </div>

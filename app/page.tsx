@@ -8,7 +8,7 @@ import OrderStatusTimeline from './components/OrderStatusTimeline';
 import ProductCard from './components/ProductCard';
 import ReviewForm, { ReviewProduct } from './components/ReviewForm';
 import { 
-  Mic, MapPin, Search, Coins, User, ChevronRight, Zap, Smartphone, 
+  Mic, MapPin, Search, User, ChevronRight, Zap, Smartphone, 
   Tv, HeartHandshake, Plus, Minus, ShoppingBag, X, LogOut, Ticket, QrCode,
   Droplets, Wifi, Car, Landmark, ShieldCheck, PhoneCall, Phone, Package, Flame, BadgeCheck,
   History, ChevronDown, CheckSquare, Square, Clock, CheckCircle, Menu, Info, AlertCircle, BookUser, Truck,
@@ -97,7 +97,13 @@ export default function ZeshuSuperApp() {
   const [cart, setCart] = useState<{item: any, qty: number}[]>([]);
   
   const [user, setUser] = useState<any>(null);
-  const [coinsBalance, setCoinsBalance] = useState(0);
+  const [rewardBalance, setRewardBalance] = useState(0);
+  const [rewardHistory, setRewardHistory] = useState<any[]>([]);
+  const [referralCode, setReferralCode] = useState('');
+  const [referralInput, setReferralInput] = useState('');
+  const [referralMessage, setReferralMessage] = useState('');
+  const [referralApplying, setReferralApplying] = useState(false);
+  const [referralCopied, setReferralCopied] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
@@ -107,6 +113,8 @@ export default function ZeshuSuperApp() {
   const [activeCategory, setActiveCategory] = useState('All'); 
   
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [useZeshuCash, setUseZeshuCash] = useState(false);
+  const [zeshuCashAmount, setZeshuCashAmount] = useState('');
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [tipAmount, setTipAmount] = useState(20); 
   const [isDonating, setIsDonating] = useState(true); 
@@ -178,6 +186,19 @@ export default function ZeshuSuperApp() {
     const matchesCategory = activeCategory === 'All' || String(p.category || '').trim() === activeCategory;
     return matchesSearch && matchesCategory;
   });
+
+  const smartAddOns = useMemo(() => {
+    const vendorId = cart[0]?.item?.vendor_id;
+    if (!vendorId) return [];
+    const inCart = new Set(cart.map((entry) => String(entry.item.id)));
+    const candidates = [...favoriteProducts, ...recentlyPurchased, ...products];
+    const seen = new Set<string>();
+    return candidates.filter((product) => {
+      const id = String(product?.id || '');
+      if (!id || seen.has(id) || inCart.has(id) || String(product.vendor_id) !== String(vendorId) || product.in_stock === false || (product.quantity !== null && Number(product.quantity) <= 0)) return false;
+      seen.add(id); return true;
+    }).slice(0, 4);
+  }, [cart, favoriteProducts, recentlyPurchased, products]);
 
   // Provider fulfillment is not connected for any utility service yet. Keep every
   // entry point honest and prevent the UI from progressing to a charge path.
@@ -278,7 +299,7 @@ export default function ZeshuSuperApp() {
       };
       fetchMyOrders();
       const orderChannel = supabase.channel('customer-orders').on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${user.id}` }, (payload) => {
-        const nextOrder = payload.new as { id?: string; created_at?: string };
+        const nextOrder = payload.new as { id?: string; created_at?: string; status?: string };
         const oldOrder = payload.old as { id?: string };
         setMyOrders((current) => {
           if (payload.eventType === 'DELETE') return current.filter((order) => order.id !== oldOrder.id);
@@ -286,6 +307,7 @@ export default function ZeshuSuperApp() {
           return [nextOrder, ...current.filter((order) => order.id !== nextOrder.id)].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
         });
         if (nextOrder?.id) setTrackedOrder((current: any) => current?.id === nextOrder.id ? payload.new : current);
+        if (nextOrder?.status === 'DELIVERED') void loadGrowthData();
       }).subscribe();
       return () => { supabase.removeChannel(orderChannel); };
     }
@@ -482,11 +504,14 @@ export default function ZeshuSuperApp() {
     }
 
     sessionStorage.removeItem(PENDING_GROCERY_CONFIRMATION_KEY);
-    showToast(confirmationData.duplicate ? 'Order confirmation restored.' : 'Order placed!');
+    const rewardMessage = Number(confirmationData.zeshuCashUsed || 0) > 0 ? ` ₹${Number(confirmationData.zeshuCashUsed).toFixed(0)} Zeshu Cash used.` : '';
+    if (Number(confirmationData.zeshuCashUsed || 0) > 0) setRewardBalance((current) => Math.max(0, current - Number(confirmationData.zeshuCashUsed)));
+    showToast(`${confirmationData.duplicate ? 'Order confirmation restored.' : 'Order placed!'}${rewardMessage}`);
     setCart([]);
     setIsCartOpen(false);
-    setTrackedOrder(confirmationData.order);
-    setMyOrders([confirmationData.order]);
+    const confirmedOrder = { ...confirmationData.order, zeshuCashUsed: confirmationData.zeshuCashUsed, pendingReward: confirmationData.pendingReward };
+    setTrackedOrder(confirmedOrder);
+    setMyOrders([confirmedOrder]);
     setIsTrackingOpen(true);
     return true;
   };
@@ -609,7 +634,7 @@ export default function ZeshuSuperApp() {
     setIsLoading(false);
   };
 
-  const checkUser = async () => { const { data: { session } } = await supabase.auth.getSession(); if (session) { setUser(session.user); fetchCoinBalance(session.user.id); } };
+  const checkUser = async () => { const { data: { session } } = await supabase.auth.getSession(); if (session) { setUser(session.user); void loadGrowthData(); } };
   const loadAddresses = async () => {
     if (!user) return;
     const { data, error } = await supabase.from('customer_addresses').select('*').order('is_default', { ascending: false }).order('created_at', { ascending: false });
@@ -716,14 +741,20 @@ export default function ZeshuSuperApp() {
     if (error && process.env.NODE_ENV === 'development') console.error('Public reviews load failed:', error.message);
     setPublicReviews(data || []); setPublicReviewsLoading(false);
   };
-  const fetchCoinBalance = async (userId: string) => { 
-    const { data } = await supabase.from('wallets').select('zeshu_coins').eq('user_id', userId).single(); 
-    if (data) setCoinsBalance(data.zeshu_coins || 0); 
+  const loadGrowthData = async () => {
+    const [{ data: balance }, { data: history }, { data: code }] = await Promise.all([
+      supabase.rpc('get_my_reward_balance'),
+      supabase.rpc('get_my_reward_history', { p_limit: 20 }),
+      supabase.rpc('get_or_create_my_referral_code'),
+    ]);
+    setRewardBalance(Number(balance || 0)); setRewardHistory(history || []); setReferralCode(String(code || ''));
   };
 
   const handleSendOtp = async () => { if (!/^\d{10}$/.test(phoneNumber)) return showToast('Enter a valid 10-digit mobile number.'); setIsLoading(true); const { error } = await supabase.auth.signInWithOtp({ phone: `+91${phoneNumber}` }); setIsLoading(false); if (!error) setOtpSent(true); else showToast('We could not start OTP delivery. Check the number and try again later.'); };
-  const handleVerifyOtp = async () => { setIsLoading(true); const { data, error } = await supabase.auth.verifyOtp({ phone: `+91${phoneNumber}`, token: otp, type: 'sms' }); setIsLoading(false); if (data.session && data.user && !error) { setUser(data.session.user); setIsAuthModalOpen(false); fetchCoinBalance(data.session.user.id); showToast("Welcome back!"); } else showToast('Incorrect or expired OTP. Please try again.'); };
-  const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); setCoinsBalance(0); setIsAccountOpen(false); showToast("Logged out."); };
+  const handleVerifyOtp = async () => { setIsLoading(true); const { data, error } = await supabase.auth.verifyOtp({ phone: `+91${phoneNumber}`, token: otp, type: 'sms' }); setIsLoading(false); if (data.session && data.user && !error) { setUser(data.session.user); setIsAuthModalOpen(false); void loadGrowthData(); showToast("Welcome back!"); } else showToast('Incorrect or expired OTP. Please try again.'); };
+  const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); setRewardBalance(0); setRewardHistory([]); setReferralCode(''); setUseZeshuCash(false); setZeshuCashAmount(''); setIsAccountOpen(false); showToast("Logged out."); };
+  const applyReferral = async () => { const code = referralInput.trim().toUpperCase(); if (!code || referralApplying) return; setReferralApplying(true); setReferralMessage(''); const { error } = await supabase.rpc('apply_referral_code', { p_code: code }); setReferralApplying(false); if (error) { if (process.env.NODE_ENV === 'development') console.error('Referral code failed:', error.message); setReferralMessage('This referral code could not be applied.'); return; } setReferralInput(''); setReferralMessage('Referral applied. Complete your first delivered order to unlock the reward.'); };
+  const copyReferralCode = async () => { if (!referralCode) return; try { await navigator.clipboard?.writeText(referralCode); setReferralCopied(true); setReferralMessage('Invite code copied.'); window.setTimeout(() => setReferralCopied(false), 1800); } catch { setReferralMessage(`Your invite code: ${referralCode}`); } };
 
   const toggleFavorite = async (product: any) => {
     if (!user) { setIsAuthModalOpen(true); return; }
@@ -764,15 +795,21 @@ export default function ZeshuSuperApp() {
 
   // 🚀 UPDATED COIN DEDUCTION MATH
   const itemTotal = cart.reduce((acc, curr) => acc + (curr.item.price * curr.qty), 0);
+  const freeDeliveryThreshold = 299;
   const smallCartFee = (itemTotal > 0 && itemTotal < 199) ? 29 : 0; 
-  const deliveryCharge = hasZeshuPass ? 0 : (itemTotal > 0 && itemTotal < 299) ? 30 : 0; 
+  const deliveryCharge = hasZeshuPass ? 0 : (itemTotal > 0 && itemTotal < freeDeliveryThreshold) ? 30 : 0; 
   const donationAmt = isDonating ? 1 : 0;
-  
-  // Redemption remains deliberately unavailable until it has an atomic wallet debit.
-  const zeshuDiscount = 0;
+
+  const maskedPhone = (phone: string | undefined) => {
+    const digits = String(phone || '').replace(/\D/g, '');
+    if (digits.length < 4) return 'Protected account';
+    return `+91 ••••••${digits.slice(-4)}`;
+  };
   
   const passFee = hasZeshuPass ? 99 : 0; 
-  const finalCartTotal = itemTotal > 0 ? (itemTotal + deliveryCharge + smallCartFee + HANDLING_FEE + donationAmt + tipAmount + passFee - zeshuDiscount) : 0;
+  const zeshuCashMax = itemTotal > 0 ? Math.max(0, Math.min(rewardBalance, 20, Math.floor(itemTotal * 0.1))) : 0;
+  const requestedZeshuCash = useZeshuCash ? Math.max(0, Math.min(Number(zeshuCashAmount || zeshuCashMax), zeshuCashMax)) : 0;
+  const finalCartTotal = itemTotal > 0 ? (itemTotal + deliveryCharge + smallCartFee + HANDLING_FEE + donationAmt + tipAmount + passFee - requestedZeshuCash) : 0;
   const liveDeliveryStatus = ['PICKED_UP', 'OUT_FOR_DELIVERY'].includes(trackedOrder?.status);
   const hasLiveRiderCoordinates = Number.isFinite(Number(liveRider?.current_latitude)) && Number.isFinite(Number(liveRider?.current_longitude));
   const liveRiderMapUrl = hasLiveRiderCoordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${liveRider.current_latitude},${liveRider.current_longitude}`)}` : '';
@@ -817,9 +854,10 @@ export default function ZeshuSuperApp() {
     setIsLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const orderResponse = await fetch('/api/create-razorpay-order', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` }, body: JSON.stringify({ cartItems: cart, deliveryAddress: currentAddress, isDonating, tipAmount, hasZeshuPass }) });
+      const orderResponse = await fetch('/api/create-razorpay-order', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` }, body: JSON.stringify({ cartItems: cart, deliveryAddress: currentAddress, isDonating, tipAmount, hasZeshuPass, zeshuCashAmount: requestedZeshuCash }) });
       const orderData = await orderResponse.json();
       if (!orderResponse.ok || !orderData.success) throw new Error(orderData.error || 'Unable to create payment order.');
+      if (orderData.abandonedCheckoutReleased) showToast('Previous payment was cancelled. You can continue with a new checkout.');
       const orderId = orderData.orderId || orderData.id || orderData.order?.id;
       const reservationId = orderData.reservationId;
       if (typeof orderId !== 'string' || typeof reservationId !== 'string' || !Number.isSafeInteger(Number(orderData.amount)) || Number(orderData.amount) <= 0) throw new Error('Unable to prepare a verified payment checkout.');
@@ -1190,7 +1228,9 @@ export default function ZeshuSuperApp() {
               <div className="flex items-center justify-between gap-4"><span className="text-xs font-black uppercase tracking-wider text-slate-500">Order total</span><span className="text-lg font-black text-slate-900">₹{Number(trackedOrder.total_paid || 0).toFixed(0)}</span></div>
               {Array.isArray(trackedOrder.items) && trackedOrder.items.length > 0 && <div className="mt-3 space-y-2 text-left">{trackedOrder.items.map((entry: any, index: number) => { const qty = Number(entry.qty ?? entry.quantity ?? 1); const price = Number(entry.item?.price ?? entry.item_snapshot?.price ?? entry.unit_price ?? entry.price ?? 0); return <div key={index} className="flex justify-between gap-3 text-xs text-slate-600"><span>{qty}× {entry.item?.name || entry.item_snapshot?.name || entry.name || 'Item'}</span><span className="font-black text-slate-800">₹{price.toFixed(0)}</span></div>; })}</div>}
               {trackedOrder.delivery_fee != null && <div className="mt-3 flex justify-between text-xs text-slate-600"><span>Delivery fee</span><span className="font-black">₹{Number(trackedOrder.delivery_fee).toFixed(0)}</span></div>}
-              {trackedOrder.earn_coins != null && <div className="mt-2 flex justify-between text-xs text-slate-600"><span>Coins earned</span><span className="font-black text-[#087443]">{trackedOrder.earn_coins}</span></div>}
+              {trackedOrder.status === 'DELIVERED' && rewardHistory.find((entry) => entry.order_id === trackedOrder.id && entry.event_type === 'ORDER_REWARD') && <p className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm font-black text-emerald-700">You earned ₹{Number(rewardHistory.find((entry) => entry.order_id === trackedOrder.id && entry.event_type === 'ORDER_REWARD')?.amount || 0).toFixed(2)} Zeshu Cash on this delivered order.</p>}
+              {Number(trackedOrder.zeshuCashUsed || 0) > 0 && <p className="mt-3 text-sm font-black text-emerald-700">₹{Number(trackedOrder.zeshuCashUsed).toFixed(0)} Zeshu Cash used.</p>}
+              {trackedOrder.status !== 'DELIVERED' && Number(trackedOrder.pendingReward || 0) > 0 && <p className="mt-2 text-sm font-bold text-slate-600">Earn ₹{Number(trackedOrder.pendingReward).toFixed(0)} Zeshu Cash after delivery.</p>}
               {trackedOrder.delivery_address && <p className="mt-3 text-xs text-slate-600"><span className="font-black">Delivered to:</span> {trackedOrder.delivery_address}</p>}
               {trackedOrder.payment_id && <p className="mt-2 text-[11px] text-slate-500"><span className="font-black">Payment:</span> {String(trackedOrder.payment_id).slice(0, 8)}…</p>}
               {trackedOrder.created_at && <p className="mt-2 text-[11px] font-medium text-slate-500">Placed {new Date(trackedOrder.created_at).toLocaleString()}</p>}
@@ -1215,15 +1255,6 @@ export default function ZeshuSuperApp() {
               <button ref={modalCloseRef} aria-label="Close cart" onClick={() => setIsCartOpen(false)} className="p-2.5 bg-[#F3F4F6] rounded-full active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443]"><X size={20}/></button>
             </div>
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
-              {!hasZeshuPass && itemTotal > 0 && (
-                <div className="bg-gradient-to-r from-indigo-900 to-purple-900 p-5 rounded-[24px] text-white flex items-center justify-between shadow-xl">
-                   <div>
-                     <div className="flex items-center gap-2 mb-1"><Crown size={20} className="text-yellow-400"/><h3 className="font-black text-lg">Zeshu Pass</h3></div>
-                     <p className="text-xs text-indigo-200 font-medium max-w-[200px]">Get Free Delivery! Join for just ₹99/month.</p>
-                   </div>
-                   <button onClick={() => setHasZeshuPass(true)} className="bg-white text-indigo-900 font-black px-4 py-2 rounded-xl text-xs active:scale-95">JOIN NOW</button>
-                </div>
-              )}
               {cart.length === 0 && <div className="rounded-3xl border border-dashed border-[#cbd8cf] bg-white p-10 text-center"><ShoppingBag size={32} className="mx-auto mb-3 text-[#087443]"/><h3 className="font-black">Your cart is empty</h3><p className="mt-2 text-sm text-gray-500">Add essentials when you are ready.</p><button onClick={() => setIsCartOpen(false)} className="mt-5 rounded-xl bg-[#087443] px-4 py-2.5 text-sm font-bold text-white">Browse products</button></div>}
               {cart.map((c, i) => (
                 <div key={i} className="bg-white p-4 rounded-2xl flex items-center gap-4 shadow-sm">
@@ -1238,23 +1269,13 @@ export default function ZeshuSuperApp() {
                 <textarea id="delivery-address" value={currentAddress === 'Location not set' ? '' : currentAddress} onChange={(event) => setCurrentAddress(event.target.value)} rows={3} placeholder="House / flat, street, area and landmark" className="mt-2 w-full resize-none rounded-xl border border-[#dce8df] bg-[#f8fbf8] p-3 text-sm font-medium outline-none focus:border-[#087443]" />
                 <p className="mt-2 text-[11px] text-slate-500">Your address is used only for this checkout and is validated again on the server.</p>
               </div>}
+              {cart.length > 0 && smartAddOns.length > 0 && <div className="rounded-2xl border border-[#dce8df] bg-white p-4"><div className="flex items-center justify-between"><h3 className="text-sm font-black text-slate-900">Complete your basket</h3><span className="text-[11px] font-bold text-slate-500">Current stock only</span></div><div className="mt-3 grid grid-cols-2 gap-2">{smartAddOns.map((product) => <div key={product.id} className="rounded-xl border border-slate-100 p-2"><img src={product.image_url} alt={product.name} className="h-16 w-full object-contain" /><p className="mt-1 line-clamp-2 text-xs font-bold">{product.name}</p><div className="mt-2 flex items-center justify-between"><span className="text-xs font-black">₹{product.price}</span><button type="button" onClick={() => addToCart(product)} className="rounded-lg bg-[#e9f7ef] px-2 py-1 text-[10px] font-black text-[#075b36]">ADD</button></div></div>)}</div></div>}
               <div className="bg-white p-6 rounded-[24px] shadow-sm space-y-4">
-                {coinsBalance > 0 && <>
-                  <div className="bg-[#EEF2FF] border border-[#C7D2FE] p-3 rounded-xl flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Coins size={20} className="text-[#4F46E5]"/>
-                      <div>
-                        <p className="font-black text-sm text-[#4F46E5]">Zeshu Coins</p>
-                        <p className="text-[10px] text-[#6366F1] font-bold">Balance: {coinsBalance}</p>
-                      </div>
-                    </div>
-                    <button type="button" disabled className="cursor-not-allowed rounded-lg bg-slate-200 px-4 py-1.5 text-xs font-black text-slate-500">UNAVAILABLE</button>
-                  </div>
-                  <p className="mt-2 text-[11px] font-bold text-[#6366F1]">Zeshu Coin redemption is temporarily unavailable.</p>
-                </>}
-                <div className="flex justify-between text-[#4B5563]"><span>Items total</span><span className="font-bold">₹{itemTotal}</span></div>
+                {rewardBalance > 0 && <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-black text-emerald-800">Zeshu Cash</p><p className="text-xs font-bold text-emerald-700">Available: ₹{rewardBalance.toFixed(2)}</p></div><button type="button" disabled={itemTotal <= 0 || zeshuCashMax < 1} onClick={() => { setUseZeshuCash((current) => !current); if (!useZeshuCash) setZeshuCashAmount(String(zeshuCashMax)); }} className={`rounded-xl px-3 py-2 text-xs font-black ${useZeshuCash ? 'bg-emerald-700 text-white' : 'bg-white text-emerald-700'} disabled:cursor-not-allowed disabled:opacity-50`}>{useZeshuCash ? 'REMOVE' : 'USE'}</button></div><p className="mt-2 text-[11px] font-bold text-emerald-700">₹1 Zeshu Cash = ₹1. Final payable stays at least ₹1.</p>{useZeshuCash && <div className="mt-3 flex items-center gap-2"><input type="number" min="1" max={zeshuCashMax} step="1" value={zeshuCashAmount} onChange={(event) => setZeshuCashAmount(event.target.value)} className="w-24 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm font-black" /><span className="text-xs font-bold text-emerald-700">You can use up to ₹{zeshuCashMax} on this order</span></div>}</div>}
+                {itemTotal > 0 && <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3"><div className="flex items-center justify-between text-xs font-black text-emerald-800"><span>{itemTotal >= freeDeliveryThreshold ? "You've unlocked FREE delivery 🎉" : `Add ₹${freeDeliveryThreshold - itemTotal} more for FREE delivery`}</span><span>{Math.min(100, Math.round((itemTotal / freeDeliveryThreshold) * 100))}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-emerald-100"><div className="h-full rounded-full bg-emerald-600 transition-all" style={{ width: `${Math.min(100, (itemTotal / freeDeliveryThreshold) * 100)}%` }} /></div>{itemTotal < freeDeliveryThreshold && itemTotal < 199 && <p className="mt-2 text-[11px] font-bold text-emerald-700">Add a few more essentials and save on delivery.</p>}</div>}
+                <div className="flex justify-between text-[#4B5563]"><span>Subtotal</span><span className="font-bold">₹{itemTotal}</span></div>
                 <div className="flex justify-between text-[#059669]"><span>Delivery charge</span><span className="font-black">{deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}</span></div>
-                {hasZeshuPass && <div className="flex justify-between text-indigo-600 font-bold"><span>Zeshu Pass (1 Month)</span><span>₹99</span></div>}
+                {requestedZeshuCash > 0 && <div className="flex justify-between text-emerald-700"><span>Zeshu Cash</span><span className="font-black">-₹{requestedZeshuCash}</span></div>}
                 {smallCartFee > 0 && <div className="flex justify-between text-red-500 text-xs"><span>Small cart fee</span><span>₹{smallCartFee}</span></div>}
                 <div className="border-t pt-4 flex justify-between font-black text-xl"><span>Grand total</span><span>₹{finalCartTotal}</span></div>
               </div>
@@ -1309,21 +1330,27 @@ export default function ZeshuSuperApp() {
               </section>
               <div className="bg-gradient-to-br from-[#4F46E5] to-[#4338CA] p-6 rounded-[24px] text-white shadow-lg">
                  <div className="flex items-center gap-4 mb-6">
-                   <div className="h-16 w-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md border border-white/30"><User size={32} className="text-white"/></div>
+                   <div className="h-16 w-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md border border-white/30"><User size={32} className="text-white" aria-hidden="true"/></div>
                    <div>
                      <p className="text-indigo-100 text-sm font-bold uppercase tracking-wider">Logged In As</p>
-                     <p className="font-black text-xl">{user?.phone || 'User'}</p>
+                   <p className="font-black text-xl">{maskedPhone(user?.phone)}</p>
                    </div>
                  </div>
-                 <div className="bg-white/10 rounded-xl p-4 flex items-center justify-between border border-white/20">
-                   <div className="flex items-center gap-2"><Coins className="text-yellow-400" size={24} /><span className="font-bold text-sm">Zeshu Coins</span></div>
-                   <span className="font-black text-2xl">{coinsBalance}</span>
-                 </div>
               </div>
+              <section className="rounded-[24px] border border-emerald-100 bg-emerald-50 p-5">
+                <p className="text-[11px] font-black tracking-[0.16em] text-emerald-700">ZESHU CASH</p>
+                <p className="mt-1 text-3xl font-black text-slate-900">₹{rewardBalance.toFixed(2)}</p>
+                <p className="mt-1 text-xs text-slate-600">Earn Zeshu Cash on eligible orders and use it at checkout.</p>
+                {(() => { const count = myOrders.filter((order) => order.status === 'DELIVERED' && new Date(order.created_at || 0).getMonth() === new Date().getMonth() && new Date(order.created_at || 0).getFullYear() === new Date().getFullYear()).length; return <p className="mt-3 text-xs font-black text-emerald-700">{count < 3 ? `Complete ${3 - count} more delivered order(s) for the monthly ₹5 bonus.` : count < 5 ? `Complete ${5 - count} more delivered order(s) for the monthly ₹10 bonus.` : 'Monthly milestone progress is complete.'}</p>; })()}
+                {referralCode && <div className="mt-4 rounded-xl border border-emerald-100 bg-white p-3"><p className="text-[11px] font-black uppercase tracking-wider text-slate-500">Your invite code</p><div className="mt-2 flex flex-wrap items-center gap-2"><span className="rounded-lg bg-emerald-50 px-3 py-2 font-mono text-sm font-black text-emerald-800">{referralCode}</span><button type="button" onClick={() => void copyReferralCode()} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-black text-white">{referralCopied ? 'Copied' : 'Copy'}</button></div></div>}
+                <div className="mt-4 rounded-xl border border-emerald-100 bg-white p-3"><p className="text-[11px] font-black uppercase tracking-wider text-slate-500">Have a referral code?</p><div className="mt-2 flex flex-col gap-2 sm:flex-row"><input value={referralInput} onChange={(event) => setReferralInput(event.target.value)} placeholder="Enter code" aria-label="Referral code" className="min-w-0 flex-1 rounded-lg border border-emerald-100 bg-white px-3 py-2 text-xs font-bold uppercase outline-none" /><button type="button" disabled={referralApplying} onClick={() => void applyReferral()} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-black text-white disabled:opacity-60">{referralApplying ? 'Applying...' : 'Apply code'}</button></div></div>
+                {referralMessage && <p className="mt-2 text-xs font-bold text-slate-600">{referralMessage}</p>}
+                <div className="mt-3 space-y-2">{rewardHistory.slice(0, 3).map((entry, index) => <div key={`${entry.event_type}-${index}`} className="flex justify-between gap-3 text-xs"><span className="text-slate-600">{entry.description || entry.event_type}</span><span className="font-black text-emerald-700">+₹{Number(entry.amount || 0).toFixed(2)}</span></div>)}</div>
+              </section>
               <section className="rounded-[24px] border border-slate-200 bg-white p-5">
                 <div className="flex items-center justify-between gap-3"><div><h3 className="font-black text-slate-900">Recent orders</h3><p className="mt-1 text-xs text-slate-500">Your latest confirmed grocery orders.</p></div><span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">{myOrders.length}</span></div>
                 <div className="mt-4 space-y-3">
-                  {ordersLoadError ? <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm font-bold text-red-700">Recent orders are temporarily unavailable. Please try again later.</p> : myOrders.length === 0 ? <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No confirmed grocery orders yet.</p> : myOrders.map((order) => <button key={order.id} type="button" onClick={() => { setTrackedOrder(order); setIsTrackingOpen(true); setIsAccountOpen(false); }} className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-100 p-3 text-left hover:bg-slate-50"><span><span className="block text-xs font-black text-slate-800">#{order.id?.split('-')[0]?.toUpperCase()}</span><span className="mt-1 block text-[11px] font-medium text-slate-500">{order.created_at ? new Date(order.created_at).toLocaleString() : 'Order date unavailable'}</span></span><span className="text-right"><span className="block text-sm font-black text-slate-900">₹{Number(order.total_paid || 0).toFixed(0)}</span><span className="mt-1 inline-block text-[10px] font-black text-[#087443]">{String(order.status || 'PENDING').replaceAll('_', ' ')}</span></span></button>)}
+                  {ordersLoadError ? <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm font-bold text-red-700">Recent orders are temporarily unavailable. Please try again later.</p> : myOrders.length === 0 ? <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No confirmed grocery orders yet.</p> : myOrders.map((order) => { const status = String(order.status || 'PENDING'); const delivered = status === 'DELIVERED'; return <div key={order.id} className="rounded-xl border border-slate-100 bg-white p-3"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black text-slate-800">Order #{order.id?.split('-')[0]?.toUpperCase()}</p><p className="mt-1 text-[11px] font-medium text-slate-500">{order.created_at ? new Date(order.created_at).toLocaleString() : 'Order date unavailable'}</p></div><div className="text-right"><p className="text-sm font-black text-slate-900">₹{Number(order.total_paid || 0).toFixed(2)}</p><span className="mt-1 inline-block rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-black text-[#087443]">{status.replaceAll('_', ' ')}</span></div></div><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => { setTrackedOrder(order); setIsTrackingOpen(true); setIsAccountOpen(false); }} className="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700">{delivered ? 'View order' : 'Track order'}</button>{delivered && <button type="button" disabled={reorderingId === order.id} onClick={() => void reorder(order)} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 disabled:opacity-60">{reorderingId === order.id ? 'Adding...' : 'Buy again'}</button>}</div></div>; })}
                 </div>
               </section>
               <section className="rounded-[24px] border border-slate-200 bg-white p-5"><h3 className="font-black text-slate-900">Buy again</h3><p className="mt-1 text-xs text-slate-500">Use current prices and availability from delivered orders.</p><div className="mt-3 space-y-2">{myOrders.filter((order) => order.status === 'DELIVERED').slice(0, 5).length === 0 ? <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-500">No delivered orders yet.</p> : myOrders.filter((order) => order.status === 'DELIVERED').slice(0, 5).map((order) => <button type="button" key={`reorder-${order.id}`} disabled={reorderingId === order.id} onClick={() => void reorder(order)} className="flex w-full items-center justify-between rounded-xl border border-slate-100 p-3 text-left text-xs font-black disabled:opacity-60"><span>Order #{order.id?.split('-')[0]?.toUpperCase()}</span><span className="text-indigo-700">{reorderingId === order.id ? 'Adding...' : 'Reorder'}</span></button>)}</div></section>

@@ -94,10 +94,22 @@ export async function POST(req: Request) {
     const orderId = Array.isArray(finalizedOrderId) ? finalizedOrderId[0] : finalizedOrderId;
     if (typeof orderId !== 'string' || !orderId) return NextResponse.json({ success: false, error: 'Verified payment did not return an order reference. Retry confirmation with the same payment; do not pay again.' }, { status: 500 });
 
+    const { error: redemptionError } = await supabase.rpc('consume_zeshu_cash_redemption', {
+      p_reservation_id: reservationId,
+      p_order_id: orderId,
+    });
+    if (redemptionError && redemptionError.message !== 'reward redemption not found') {
+      return NextResponse.json({ success: false, error: 'Order was finalized, but Zeshu Cash could not be completed. Retry confirmation with the same payment; do not pay again.' }, { status: 500 });
+    }
+
     const { data: order, error: orderError } = await supabase.from('orders').select('*').eq('id', orderId).eq('user_id', user.id).maybeSingle();
     if (orderError || !order) return NextResponse.json({ success: false, error: 'Order finalization completed but could not be loaded. Retry confirmation with the same payment; do not pay again.' }, { status: 500 });
 
-    return NextResponse.json({ success: true, order });
+    const { data: redemption } = await supabase.from('reward_redemptions').select('approved_amount').eq('reservation_id', reservationId).eq('status', 'CONSUMED').maybeSingle();
+    const merchandiseSubtotal = Array.isArray(order.items) ? order.items.reduce((sum: number, entry: any) => sum + Number(entry?.item?.price || 0) * Number(entry?.qty || 0), 0) : 0;
+    const pendingReward = merchandiseSubtotal >= 500 ? 5 : merchandiseSubtotal >= 299 ? 3 : merchandiseSubtotal >= 199 ? 2 : merchandiseSubtotal >= 99 ? 1 : 0;
+
+    return NextResponse.json({ success: true, order, zeshuCashUsed: Number(redemption?.approved_amount || 0), pendingReward });
   } catch (error: unknown) {
     console.error('Order confirmation failed without completing finalization.', error instanceof Error ? error.message : 'unknown error');
     return NextResponse.json({ success: false, error: 'Unable to confirm order. Retry confirmation with the same payment; do not pay again.' }, { status: 500 });
