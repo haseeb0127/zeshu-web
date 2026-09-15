@@ -1071,7 +1071,7 @@ export default function ZeshuSuperApp() {
   const liveRiderMapUrl = hasLiveRiderCoordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${liveRider.current_latitude},${liveRider.current_longitude}`)}` : '';
   const activeOrder = myOrders.find((order) => ACTIVE_ORDER_STATUSES.includes(order?.status));
 
-  const validateCartFreshness = async () => {
+  const refreshCartAvailability = async () => {
     const ids = cart.map((entry) => entry.item?.id).filter(Boolean);
     if (!ids.length) return true;
     const { data, error } = await supabase.from('products').select('*').in('id', ids);
@@ -1082,10 +1082,23 @@ export default function ZeshuSuperApp() {
       return !current || current.price !== entry.item.price || current.in_stock === false || (current.quantity !== null && Number(current.quantity) < entry.qty);
     });
     if (!changed) return true;
-    setCart((current) => current.map((entry) => ({ ...entry, item: currentById.get(String(entry.item.id)) || entry.item })));
-    showToast('Cart updated: price or availability changed. Review before paying.');
+    const changedNames: string[] = [];
+    const nextCart = cart.flatMap((entry) => {
+      const current = currentById.get(String(entry.item.id));
+      if (!current || current.in_stock === false || (current.quantity !== null && Number(current.quantity) <= 0)) {
+        changedNames.push(String(current?.name || entry.item?.name || 'An item'));
+        return [];
+      }
+      const availableQuantity = current.quantity === null ? entry.qty : Math.max(0, Math.min(entry.qty, Number(current.quantity)));
+      if (availableQuantity !== entry.qty || current.price !== entry.item.price) changedNames.push(String(current.name || entry.item?.name || 'An item'));
+      return [{ ...entry, item: current, qty: availableQuantity }].filter((item) => item.qty > 0);
+    });
+    setCart(nextCart);
+    showToast(`Some items in your cart have changed availability. Please review the updated quantities.${changedNames.length ? ` (${changedNames.join(', ')})` : ''}`);
     return false;
   };
+
+  const validateCartFreshness = refreshCartAvailability;
 
   const handleCartCheckout = async () => {
     if (process.env.NODE_ENV === 'development') {
@@ -1156,7 +1169,9 @@ export default function ZeshuSuperApp() {
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
       const lower = message.toLowerCase();
-      const safeMessage = lower.includes('price') ? 'A product price changed. Review your cart and try again.' : lower.includes('stock') || lower.includes('quantity') || lower.includes('unavailable') ? 'One or more products are no longer available in that quantity.' : lower.includes('vendor') && lower.includes('closed') ? 'This store is currently closed. Please try again later.' : lower.includes('session') || lower.includes('auth') ? 'Your customer session has expired. Please sign in again.' : message || 'Unable to start secure checkout.';
+      const stockFailure = lower.includes('stock') || lower.includes('quantity') || lower.includes('unavailable') || lower.includes('no longer available') || lower.includes('invalid reservation items');
+      if (stockFailure) await refreshCartAvailability();
+      const safeMessage = lower.includes('price') ? 'A product price changed. Review your cart and try again.' : stockFailure ? 'One or more products are no longer available in that quantity.' : lower.includes('vendor') && lower.includes('closed') ? 'This store is currently closed. Please try again later.' : lower.includes('session') || lower.includes('auth') ? 'Your customer session has expired. Please sign in again.' : message || 'Unable to start secure checkout.';
       showToast(safeMessage);
       setIsCheckoutOpening(false);
     }
