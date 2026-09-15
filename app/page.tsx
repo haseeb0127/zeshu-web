@@ -211,6 +211,13 @@ export default function ZeshuSuperApp() {
   const [waterBill, setWaterBill] = useState<Record<string, string> | null>(null);
   const [waterBillerInfo, setWaterBillerInfo] = useState<any>(null);
   const [waterLoading, setWaterLoading] = useState(false);
+  const [broadbandOperators, setBroadbandOperators] = useState<any[]>([]);
+  const [broadbandSearch, setBroadbandSearch] = useState('');
+  const [broadbandOperator, setBroadbandOperator] = useState<any>(null);
+  const [broadbandConsumerNumber, setBroadbandConsumerNumber] = useState('');
+  const [broadbandInfo, setBroadbandInfo] = useState<Record<string, string> | null>(null);
+  const [broadbandBillerInfo, setBroadbandBillerInfo] = useState<any>(null);
+  const [broadbandLoading, setBroadbandLoading] = useState(false);
   const [fastagOperators, setFastagOperators] = useState<any[]>([]);
   const [fastagSearch, setFastagSearch] = useState('');
   const [fastagOperator, setFastagOperator] = useState<any>(null);
@@ -690,6 +697,9 @@ export default function ZeshuSuperApp() {
     if (activeService !== 'water') {
       setWaterOperators([]); setWaterSearch(''); setWaterOperator(null); setWaterBillNumber(''); setWaterBill(null); setWaterBillerInfo(null);
     }
+    if (activeService !== 'broadband') {
+      setBroadbandOperators([]); setBroadbandSearch(''); setBroadbandOperator(null); setBroadbandConsumerNumber(''); setBroadbandInfo(null); setBroadbandBillerInfo(null);
+    }
     if (activeService !== 'fastag') {
       setFastagOperators([]); setFastagSearch(''); setFastagOperator(null); setFastagVehicleNumber(''); setFastagInfo(null);
     }
@@ -738,6 +748,36 @@ export default function ZeshuSuperApp() {
     try { const response = await fetch('/api/water/fetch-bill', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ operatorCode: waterOperator.operatorCode, billNumber: normalized }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setWaterBill(data.bill || {}); }
     catch (error) { showToast(error instanceof Error ? error.message : "We couldn't fetch this water bill. Check the details and try again."); }
     finally { setWaterLoading(false); }
+  };
+
+  const loadBroadbandOperators = async () => {
+    if (broadbandOperators.length) return;
+    const headers = await getUtilityAuthHeaders(); if (!headers) return;
+    setBroadbandLoading(true);
+    try { const response = await fetch('/api/broadband/operators', { headers }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setBroadbandOperators(data.operators || []); }
+    catch { showToast('Broadband providers are temporarily unavailable.'); }
+    finally { setBroadbandLoading(false); }
+  };
+
+  const loadBroadbandBillerInfo = async () => {
+    if (!broadbandOperator) return showToast('Select a broadband provider first.');
+    const headers = await getUtilityAuthHeaders(); if (!headers) return;
+    setBroadbandLoading(true); setBroadbandInfo(null); setBroadbandConsumerNumber('');
+    try { const response = await fetch('/api/broadband/biller-info', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ operatorCode: broadbandOperator.operatorCode }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setBroadbandBillerInfo(data); }
+    catch (error) { showToast(error instanceof Error ? error.message : 'Broadband provider metadata is temporarily unavailable.'); }
+    finally { setBroadbandLoading(false); }
+  };
+
+  const fetchBroadbandDetails = async () => {
+    if (!broadbandOperator || !broadbandBillerInfo) return showToast('Load the provider requirements first.');
+    const field = broadbandBillerInfo.fields?.length === 1 ? broadbandBillerInfo.fields[0] : null;
+    const normalized = broadbandConsumerNumber.trim();
+    if (!field || !normalized || normalized.length > 80 || /[\u0000-\u001F\u007F]/.test(normalized) || (field.fieldType === 'NUMERIC' && !/^\d+$/.test(normalized)) || (field.minLength !== null && normalized.length < field.minLength) || (field.maxLength !== null && normalized.length > field.maxLength)) return showToast('Enter a valid broadband customer/subscriber number.');
+    const headers = await getUtilityAuthHeaders(); if (!headers) return;
+    setBroadbandLoading(true); setBroadbandInfo(null);
+    try { const response = await fetch('/api/broadband/fetch-info', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ operatorCode: broadbandOperator.operatorCode, consumerNumber: normalized }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setBroadbandInfo(data.info || {}); }
+    catch (error) { showToast(error instanceof Error ? error.message : "We couldn't fetch this broadband bill. Check the details and try again."); }
+    finally { setBroadbandLoading(false); }
   };
 
   const loadFastagOperators = async () => {
@@ -1261,6 +1301,18 @@ export default function ZeshuSuperApp() {
                      <div><label htmlFor="fastag-vehicle" className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#6B7280]">Vehicle registration number</label><input id="fastag-vehicle" value={fastagVehicleNumber} onChange={(event) => setFastagVehicleNumber(event.target.value.slice(0, 15))} placeholder="Enter vehicle number" className="w-full rounded-2xl border border-gray-200 bg-[#F8F9FC] p-4 text-lg font-bold uppercase outline-none focus:border-[#6366F1]" /></div>
                      <button type="button" onClick={() => void fetchFastagDetails()} disabled={fastagLoading || !fastagOperator} className="w-full rounded-2xl bg-[#087443] p-4 text-sm font-black text-white disabled:opacity-50">{fastagLoading ? 'Checking details...' : 'Check FASTag details'}</button>
                      {fastagInfo && <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5"><p className="mb-3 text-sm font-black text-[#173d27]">FASTag details</p>{Object.entries(fastagInfo).map(([key, value]) => <div key={key} className="flex justify-between gap-3 border-b border-emerald-100 py-2 text-sm last:border-0"><span className="font-bold text-slate-600">{electricityLabels[key] || key}</span><span className="text-right font-black text-slate-900">{value}</span></div>)}<p className="mt-4 rounded-xl bg-amber-50 p-3 text-center text-sm font-black text-amber-900">FASTag payment is not enabled yet.</p></div>}
+                   </div>
+                 ) : activeService === 'broadband' ? (
+                   <div className="space-y-5">
+                     <button type="button" onClick={() => void loadBroadbandOperators()} disabled={broadbandLoading} className="w-full rounded-2xl border-2 border-dashed border-[#C7D2FE] bg-[#EEF2FF] p-4 text-sm font-black text-[#4F46E5] disabled:opacity-50">{broadbandLoading ? 'Loading providers...' : 'Load Broadband providers'}</button>
+                     {broadbandOperators.length > 0 && <div className="space-y-2"><label htmlFor="broadband-search" className="sr-only">Search Broadband providers</label><input id="broadband-search" value={broadbandSearch} onChange={(event) => setBroadbandSearch(event.target.value)} placeholder="Search providers..." className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold outline-none focus:border-[#087443]" /><div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200">{broadbandOperators.filter((operator: any) => operator.name.toLowerCase().includes(broadbandSearch.toLowerCase())).map((operator: any) => <button type="button" key={operator.operatorCode} onClick={() => { setBroadbandOperator(operator); setBroadbandConsumerNumber(''); setBroadbandBillerInfo(null); setBroadbandInfo(null); }} className={`block w-full px-4 py-3 text-left text-sm font-bold hover:bg-indigo-50 ${broadbandOperator?.operatorCode === operator.operatorCode ? 'bg-indigo-50 text-[#4338CA]' : ''}`}>{operator.name}</button>)}</div></div>}
+                     {broadbandOperator && <button type="button" onClick={() => void loadBroadbandBillerInfo()} disabled={broadbandLoading} className="w-full rounded-2xl border-2 border-dashed border-[#C7D2FE] bg-[#EEF2FF] p-4 text-sm font-black text-[#4F46E5] disabled:opacity-50">{broadbandLoading ? 'Loading required details...' : 'Load required details'}</button>}
+                     {broadbandBillerInfo?.billFetchAvailable === false && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-black text-amber-900">Bill lookup is currently unavailable for this provider.</p>}
+                     {broadbandBillerInfo?.billFetchAvailable === true && broadbandBillerInfo?.fields?.length === 0 && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-black text-amber-900">This broadband provider does not currently expose the account details required for bill lookup.</p>}
+                     {broadbandBillerInfo?.fields?.length === 1 && <div><label htmlFor="broadband-consumer-number" className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#6B7280]">{broadbandBillerInfo.fields[0].label}</label><input id="broadband-consumer-number" inputMode={broadbandBillerInfo.fields[0].fieldType === 'NUMERIC' ? 'numeric' : 'text'} maxLength={broadbandBillerInfo.fields[0].maxLength || 80} value={broadbandConsumerNumber} onChange={(event) => setBroadbandConsumerNumber(event.target.value)} placeholder="Enter the required value" className="w-full rounded-2xl border border-gray-200 bg-[#F8F9FC] p-4 text-lg font-bold outline-none focus:border-[#6366F1]" /></div>}
+                     {broadbandBillerInfo?.fields?.length > 1 && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-black text-amber-900">This broadband provider requires additional verification details that Zeshu does not support yet.</p>}
+                     <button type="button" onClick={() => void fetchBroadbandDetails()} disabled={broadbandLoading || !broadbandOperator || !broadbandBillerInfo || broadbandBillerInfo.fields?.length !== 1 || broadbandBillerInfo.billFetchAvailable === false} className="w-full rounded-2xl bg-[#087443] p-4 text-sm font-black text-white disabled:opacity-50">{broadbandLoading ? 'Fetching details...' : 'Fetch Broadband Bill'}</button>
+                     {broadbandInfo && <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-5"><p className="mb-3 text-sm font-black text-[#312E81]">Broadband bill details</p>{Object.entries(broadbandInfo).map(([key, value]) => <div key={key} className="flex justify-between gap-3 border-b border-indigo-100 py-2 text-sm last:border-0"><span className="font-bold text-slate-600">{electricityLabels[key] || key}</span><span className="text-right font-black text-slate-900">{value}</span></div>)}<p className="mt-4 rounded-xl bg-amber-50 p-3 text-center text-sm font-black text-amber-900">Broadband payment is not enabled yet.</p></div>}
                    </div>
                  ) : activeService === 'water' ? (
                    <div className="space-y-5">

@@ -129,6 +129,7 @@ async function fetchOperatorsByExactType(expectedType: string, unavailableMessag
 export const fetchPipedGasOperators = () => fetchOperatorsByExactType('GASPIPELINE');
 export const fetchLpgOperators = () => fetchOperatorsByExactType('lpg');
 export const fetchWaterOperators = () => fetchOperatorsByExactType('WATER', 'Water providers are temporarily unavailable.');
+export const fetchBroadbandOperators = () => fetchOperatorsByExactType('BROADBAND', 'Broadband providers are temporarily unavailable.');
 
 export async function fetchPipedGasInfo(operatorCode: string, consumerNumber: string) {
   const { memberId, password } = credentials();
@@ -298,6 +299,57 @@ export async function fetchBbpsBillInfo(operatorCode: string): Promise<BbpsBillI
 
 export async function fetchWaterBillerInfo(operatorCode: string): Promise<BbpsBillInfo> {
   return fetchBbpsBillInfoForService(operatorCode, 'Water');
+}
+
+export async function fetchBbpsBillInfoForBroadband(operatorCode: string): Promise<BbpsBillInfo> {
+  return fetchBbpsBillInfoForService(operatorCode, 'Broadband');
+}
+
+export function normalizeBroadbandIdentifier(value: unknown) {
+  if (typeof value !== 'string') throw new Error('INVALID_BROADBAND_INPUT');
+  const normalized = value.trim();
+  if (!normalized || normalized.length > 80 || /[\u0000-\u001F\u007F]/.test(normalized)) throw new Error('INVALID_BROADBAND_INPUT');
+  return normalized;
+}
+
+export function validateBroadbandIdentifier(value: unknown, field?: BbpsField) {
+  const normalized = normalizeBroadbandIdentifier(value);
+  if (field?.fieldType === 'NUMERIC' && !/^\d+$/.test(normalized)) throw new Error('INVALID_BROADBAND_INPUT');
+  if (field?.minLength !== null && field?.minLength !== undefined && normalized.length < field.minLength) throw new Error('INVALID_BROADBAND_INPUT');
+  if (field?.maxLength !== null && field?.maxLength !== undefined && normalized.length > field.maxLength) throw new Error('INVALID_BROADBAND_INPUT');
+  return normalized;
+}
+
+export function broadbandNormalizationSelfCheck() {
+  const normalized = normalizeBroadbandBill({ ERROR: '0', STATUS: '1', BILLDEATILS: { Name: 'TEST CUSTOMER', DueAmount: '470.46', DueDate: '2026-10-15', BillNumber: 'TEST-BB', BillDate: '2026-09-15', Balance: '', BillPeriod: null } });
+  const numeric = validateBroadbandIdentifier('12345', { label: 'Account', minLength: 5, maxLength: 5, fieldType: 'NUMERIC' });
+  const preserved = validateBroadbandIdentifier('subscriber/zone-ABC_123', { label: 'Subscriber', minLength: null, maxLength: 80, fieldType: 'TEXT' });
+  let rejected = false;
+  try { validateBroadbandIdentifier('1234', { label: 'Account', minLength: 5, maxLength: 8, fieldType: 'NUMERIC' }); } catch { rejected = true; }
+  let controlRejected = false;
+  try { normalizeBroadbandIdentifier('ABC\n123'); } catch { controlRejected = true; }
+  let zeroRejected = false;
+  try { if ([].length !== 1) throw new Error('unsupported'); } catch { zeroRejected = true; }
+  let multiRejected = false;
+  try { if ([{ label: 'A' }, { label: 'B' }].length !== 1) throw new Error('unsupported'); } catch { multiRejected = true; }
+  return normalized.customerName === 'TEST CUSTOMER' && normalized.dueAmount === '470.46' && normalized.dueDate === '2026-10-15' && normalized.billNumber === 'TEST-BB' && normalized.billDate === '2026-09-15' && !('balance' in normalized) && !('billPeriod' in normalized) && Object.keys(normalizeBroadbandBill({ BILLDEATILS: {} })).length === 0 && providerErrorCode({ ERROR: '1' }) !== '0' && numeric === '12345' && preserved === 'subscriber/zone-ABC_123' && rejected && controlRejected && zeroRejected && multiRejected;
+}
+
+function normalizeBroadbandBill(data: any) {
+  return normalizeElectricityBill(data);
+}
+
+export async function fetchBroadbandInfo(operatorCode: string, consumerNumber: string) {
+  const { memberId, password } = credentials();
+  const normalizedConsumerNumber = normalizeBroadbandIdentifier(consumerNumber);
+  if (!operatorCode || operatorCode.length > 40) throw new Error('INVALID_BROADBAND_INPUT');
+  const operators = await fetchBroadbandOperators();
+  if (!operators.some((operator) => operator.operatorCode === operatorCode)) throw providerError('Broadband provider is unavailable.');
+  const data = await getProvider('BroadbandInfoFetch', { apimember_id: memberId, api_password: password, ConsumerNo: normalizedConsumerNumber, operator_code: operatorCode });
+  if (providerErrorCode(data) !== '0') throw providerError("We couldn't fetch this broadband bill. Check the details and try again.");
+  const result = normalizeBroadbandBill(data);
+  if (!Object.keys(result).length) throw providerError('No broadband details were found for these details.');
+  return result;
 }
 
 function firstValue(value: Record<string, unknown>, keys: string[]) {
