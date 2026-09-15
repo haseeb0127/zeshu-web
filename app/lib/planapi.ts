@@ -44,6 +44,7 @@ export type DthPlan = {
 };
 export type UtilityOperator = { name: string; operatorCode: string; type: string };
 export type ElectricityOperator = UtilityOperator & { type: 'ELECTRICITY' };
+export type WaterOperator = UtilityOperator & { type: 'WATER' };
 export type BbpsField = { label: string; minLength: number | null; maxLength: number | null; fieldType: string };
 export type BbpsBillInfo = { billFetchAvailable: boolean; fields: BbpsField[] };
 
@@ -115,10 +116,10 @@ export async function fetchFastagOperators(): Promise<UtilityOperator[]> {
   return source.flatMap((entry) => { const item = entry as Record<string, unknown>; const type = firstValue(item, ['Type', 'type']); const operatorCode = firstValue(item, ['Opcode', 'OpCode', 'operatorcode', 'operator_code', 'code']); const name = firstValue(item, ['Name', 'Operator', 'operatorname', 'operator_name']); return type.toLowerCase() === 'fastag' && operatorCode && name ? [{ name, operatorCode, type: 'FASTAG' as const }] : []; });
 }
 
-async function fetchOperatorsByExactType(expectedType: string): Promise<UtilityOperator[]> {
+async function fetchOperatorsByExactType(expectedType: string, unavailableMessage = 'Gas providers are temporarily unavailable.'): Promise<UtilityOperator[]> {
   const { memberId, password } = credentials();
   const data = await getProvider('OperatorList', { ApiUserID: memberId, ApiPassword: password });
-  if (providerErrorCode(data) !== '0') throw providerError('Gas providers are temporarily unavailable.');
+  if (providerErrorCode(data) !== '0') throw providerError(unavailableMessage);
   const source: unknown[] = [];
   const walk = (value: unknown) => { if (!value || typeof value !== 'object') return; if (Array.isArray(value)) return value.forEach(walk); const item = value as Record<string, unknown>; if (Object.keys(item).some((key) => ['type', 'operatorcode', 'opcode', 'code'].includes(key.toLowerCase()))) source.push(item); else Object.values(item).forEach(walk); };
   walk(data?.RDATA ?? data?.DATA ?? data);
@@ -127,6 +128,7 @@ async function fetchOperatorsByExactType(expectedType: string): Promise<UtilityO
 
 export const fetchPipedGasOperators = () => fetchOperatorsByExactType('GASPIPELINE');
 export const fetchLpgOperators = () => fetchOperatorsByExactType('lpg');
+export const fetchWaterOperators = () => fetchOperatorsByExactType('WATER', 'Water providers are temporarily unavailable.');
 
 export async function fetchPipedGasInfo(operatorCode: string, consumerNumber: string) {
   const { memberId, password } = credentials();
@@ -138,6 +140,57 @@ export async function fetchPipedGasInfo(operatorCode: string, consumerNumber: st
   if (providerErrorCode(data) !== '0') throw providerError('Piped Gas details could not be fetched.');
   const result = normalizeElectricityBill(data);
   if (!Object.keys(result).length) throw providerError('No Piped Gas details were found for these details.');
+  return result;
+}
+
+function normalizeWaterBill(data: any) {
+  return normalizeElectricityBill(data);
+}
+
+export function normalizeWaterIdentifier(value: unknown) {
+  if (typeof value !== 'string') throw new Error('INVALID_WATER_INPUT');
+  const normalized = value.trim();
+  if (!normalized || normalized.length > 80 || /[\u0000-\u001F\u007F]/.test(normalized)) throw new Error('INVALID_WATER_INPUT');
+  return normalized;
+}
+
+export function validateWaterIdentifier(value: unknown, field?: BbpsField) {
+  const normalized = normalizeWaterIdentifier(value);
+  if (field?.fieldType === 'NUMERIC' && !/^\d+$/.test(normalized)) throw new Error('INVALID_WATER_INPUT');
+  if (field?.minLength !== null && field?.minLength !== undefined && normalized.length < field.minLength) throw new Error('INVALID_WATER_INPUT');
+  if (field?.maxLength !== null && field?.maxLength !== undefined && normalized.length > field.maxLength) throw new Error('INVALID_WATER_INPUT');
+  return normalized;
+}
+
+export function waterNormalizationSelfCheck() {
+  const normalized = normalizeWaterBill({ ERROR: '0', STATUS: '1', BILLDEATILS: { Name: 'TEST CUSTOMER', DueAmount: '450.00', DueDate: '2026-10-10', BillNumber: 'TEST-WATER', BillDate: '2026-09-15', Balance: '', BillPeriod: null } });
+  let rejected = false;
+  try { validateWaterIdentifier('1234', { label: 'Account', minLength: 5, maxLength: 8, fieldType: 'NUMERIC' }); } catch { rejected = true; }
+  let maxRejected = false;
+  try { validateWaterIdentifier('123456', { label: 'Account', minLength: 1, maxLength: 5, fieldType: 'NUMERIC' }); } catch { maxRejected = true; }
+  const numeric = validateWaterIdentifier('12345', { label: 'Account', minLength: 5, maxLength: 5, fieldType: 'NUMERIC' });
+  const preserved = validateWaterIdentifier('municipality/zone-ABC_1234567890', { label: 'Account', minLength: null, maxLength: 80, fieldType: 'TEXT' });
+  let controlRejected = false;
+  try { normalizeWaterIdentifier('ABC\n123'); } catch { controlRejected = true; }
+  let emptyRejected = false;
+  try { normalizeWaterIdentifier('   '); } catch { emptyRejected = true; }
+  let multiFieldRejected = false;
+  try { if ([{ label: 'A', minLength: null, maxLength: null, fieldType: 'TEXT' }, { label: 'B', minLength: null, maxLength: null, fieldType: 'TEXT' }].length !== 1) throw new Error('unsupported'); } catch { multiFieldRejected = true; }
+  const zeroFieldRejected = [].length !== 1;
+  return normalized.customerName === 'TEST CUSTOMER' && normalized.dueAmount === '450.00' && normalized.dueDate === '2026-10-10' && normalized.billNumber === 'TEST-WATER' && normalized.billDate === '2026-09-15' && !('balance' in normalized) && !('billPeriod' in normalized) && providerErrorCode({ ERROR: '1' }) !== '0' && Object.keys(normalizeWaterBill({ BILLDEATILS: {} })).length === 0 && numeric === '12345' && preserved === 'municipality/zone-ABC_1234567890' && rejected && maxRejected && controlRejected && emptyRejected && multiFieldRejected && zeroFieldRejected;
+}
+
+export async function fetchWaterBill(operatorCode: string, billNumber: string) {
+  const { memberId, password } = credentials();
+  const normalizedBillNumber = normalizeWaterIdentifier(billNumber);
+  if (!operatorCode || operatorCode.length > 40) throw new Error('INVALID_WATER_INPUT');
+  const operators = await fetchWaterOperators();
+  if (!operators.some((operator) => operator.operatorCode === operatorCode)) throw providerError('Water provider is unavailable.');
+  const params: Record<string, string> = { apimember_id: memberId, api_password: password, bill_number: normalizedBillNumber };
+  const data = await getProvider('WaterInfoFetch', { ...params, operator_code: operatorCode });
+  if (providerErrorCode(data) !== '0') throw providerError("We couldn't fetch this water bill. Check the details and try again.");
+  const result = normalizeWaterBill(data);
+  if (!Object.keys(result).length) throw providerError('No water bill details were found for these details.');
   return result;
 }
 
@@ -218,11 +271,11 @@ export async function fetchElectricityBill(operatorCode: string, billNumber: str
   return normalizeElectricityBill(data);
 }
 
-export async function fetchBbpsBillInfo(operatorCode: string): Promise<BbpsBillInfo> {
+async function fetchBbpsBillInfoForService(operatorCode: string, serviceName: string): Promise<BbpsBillInfo> {
   const { memberId, password } = credentials();
-  if (!operatorCode || operatorCode.length > 40) throw providerError('Electricity provider is unavailable.');
+  if (!operatorCode || operatorCode.length > 40) throw providerError(`${serviceName} provider is unavailable.`);
   const data = await getProvider('BBPSBillInfo', { ApiUserID: memberId, ApiPassword: password, Opcode: operatorCode });
-  if (providerErrorCode(data) !== '0') throw providerError('Electricity provider metadata is temporarily unavailable.');
+  if (providerErrorCode(data) !== '0') throw providerError(`${serviceName} provider metadata is temporarily unavailable.`);
   const info = data?.BillInfo && typeof data.BillInfo === 'object' ? data.BillInfo : {};
   const rawFields = Array.isArray(info.parameter) ? info.parameter : Array.isArray(info.Parameter) ? info.Parameter : [];
   const fields = rawFields.flatMap((entry: unknown) => {
@@ -237,6 +290,14 @@ export async function fetchBbpsBillInfo(operatorCode: string): Promise<BbpsBillI
     return label ? [{ label, minLength, maxLength, fieldType: fieldType.toUpperCase() }] : [];
   });
   return { billFetchAvailable: firstValue(info, ['bill_fetch', 'billfetch']) === '1', fields };
+}
+
+export async function fetchBbpsBillInfo(operatorCode: string): Promise<BbpsBillInfo> {
+  return fetchBbpsBillInfoForService(operatorCode, 'Electricity');
+}
+
+export async function fetchWaterBillerInfo(operatorCode: string): Promise<BbpsBillInfo> {
+  return fetchBbpsBillInfoForService(operatorCode, 'Water');
 }
 
 function firstValue(value: Record<string, unknown>, keys: string[]) {

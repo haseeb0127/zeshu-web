@@ -204,6 +204,13 @@ export default function ZeshuSuperApp() {
   const [electricityBill, setElectricityBill] = useState<Record<string, string> | null>(null);
   const [electricityBillerInfo, setElectricityBillerInfo] = useState<any>(null);
   const [electricityLoading, setElectricityLoading] = useState(false);
+  const [waterOperators, setWaterOperators] = useState<any[]>([]);
+  const [waterSearch, setWaterSearch] = useState('');
+  const [waterOperator, setWaterOperator] = useState<any>(null);
+  const [waterBillNumber, setWaterBillNumber] = useState('');
+  const [waterBill, setWaterBill] = useState<Record<string, string> | null>(null);
+  const [waterBillerInfo, setWaterBillerInfo] = useState<any>(null);
+  const [waterLoading, setWaterLoading] = useState(false);
   const [fastagOperators, setFastagOperators] = useState<any[]>([]);
   const [fastagSearch, setFastagSearch] = useState('');
   const [fastagOperator, setFastagOperator] = useState<any>(null);
@@ -680,6 +687,9 @@ export default function ZeshuSuperApp() {
     if (activeService !== 'electricity') {
       setElectricityOperators([]); setElectricitySearch(''); setElectricityOperator(null); setElectricityBillNumber(''); setElectricityBill(null); setElectricityBillerInfo(null);
     }
+    if (activeService !== 'water') {
+      setWaterOperators([]); setWaterSearch(''); setWaterOperator(null); setWaterBillNumber(''); setWaterBill(null); setWaterBillerInfo(null);
+    }
     if (activeService !== 'fastag') {
       setFastagOperators([]); setFastagSearch(''); setFastagOperator(null); setFastagVehicleNumber(''); setFastagInfo(null);
     }
@@ -698,6 +708,36 @@ export default function ZeshuSuperApp() {
       setElectricityOperators(data.operators || []);
     } catch { showToast('Electricity providers are temporarily unavailable.'); }
     finally { setElectricityLoading(false); }
+  };
+
+  const loadWaterOperators = async () => {
+    if (waterOperators.length) return;
+    const headers = await getUtilityAuthHeaders(); if (!headers) return;
+    setWaterLoading(true);
+    try { const response = await fetch('/api/water/operators', { headers }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setWaterOperators(data.operators || []); }
+    catch { showToast('Water providers are temporarily unavailable.'); }
+    finally { setWaterLoading(false); }
+  };
+
+  const loadWaterBillerInfo = async () => {
+    if (!waterOperator) return showToast('Select a water provider first.');
+    const headers = await getUtilityAuthHeaders(); if (!headers) return;
+    setWaterLoading(true); setWaterBill(null); setWaterBillNumber('');
+    try { const response = await fetch('/api/water/biller-info', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ operatorCode: waterOperator.operatorCode }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setWaterBillerInfo(data); }
+    catch (error) { showToast(error instanceof Error ? error.message : 'Water provider metadata is temporarily unavailable.'); }
+    finally { setWaterLoading(false); }
+  };
+
+  const fetchWaterBillDetails = async () => {
+    if (!waterOperator || !waterBillerInfo) return showToast('Load the provider requirements first.');
+    const field = waterBillerInfo.fields?.length === 1 ? waterBillerInfo.fields[0] : null;
+    const normalized = waterBillNumber.trim();
+    if (!field || !normalized || normalized.length > 80 || /[\u0000-\u001F\u007F]/.test(normalized) || (field.fieldType === 'NUMERIC' && !/^\d+$/.test(normalized)) || (field.minLength !== null && normalized.length < field.minLength) || (field.maxLength !== null && normalized.length > field.maxLength)) return showToast('Enter a valid water account/bill number.');
+    const headers = await getUtilityAuthHeaders(); if (!headers) return;
+    setWaterLoading(true); setWaterBill(null);
+    try { const response = await fetch('/api/water/fetch-bill', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ operatorCode: waterOperator.operatorCode, billNumber: normalized }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setWaterBill(data.bill || {}); }
+    catch (error) { showToast(error instanceof Error ? error.message : "We couldn't fetch this water bill. Check the details and try again."); }
+    finally { setWaterLoading(false); }
   };
 
   const loadFastagOperators = async () => {
@@ -1221,6 +1261,18 @@ export default function ZeshuSuperApp() {
                      <div><label htmlFor="fastag-vehicle" className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#6B7280]">Vehicle registration number</label><input id="fastag-vehicle" value={fastagVehicleNumber} onChange={(event) => setFastagVehicleNumber(event.target.value.slice(0, 15))} placeholder="Enter vehicle number" className="w-full rounded-2xl border border-gray-200 bg-[#F8F9FC] p-4 text-lg font-bold uppercase outline-none focus:border-[#6366F1]" /></div>
                      <button type="button" onClick={() => void fetchFastagDetails()} disabled={fastagLoading || !fastagOperator} className="w-full rounded-2xl bg-[#087443] p-4 text-sm font-black text-white disabled:opacity-50">{fastagLoading ? 'Checking details...' : 'Check FASTag details'}</button>
                      {fastagInfo && <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5"><p className="mb-3 text-sm font-black text-[#173d27]">FASTag details</p>{Object.entries(fastagInfo).map(([key, value]) => <div key={key} className="flex justify-between gap-3 border-b border-emerald-100 py-2 text-sm last:border-0"><span className="font-bold text-slate-600">{electricityLabels[key] || key}</span><span className="text-right font-black text-slate-900">{value}</span></div>)}<p className="mt-4 rounded-xl bg-amber-50 p-3 text-center text-sm font-black text-amber-900">FASTag payment is not enabled yet.</p></div>}
+                   </div>
+                 ) : activeService === 'water' ? (
+                   <div className="space-y-5">
+                     <button type="button" onClick={() => void loadWaterOperators()} disabled={waterLoading} className="w-full rounded-2xl border-2 border-dashed border-[#C7D2FE] bg-[#EEF2FF] p-4 text-sm font-black text-[#4F46E5] disabled:opacity-50">{waterLoading ? 'Loading providers...' : 'Load Water providers'}</button>
+                     {waterOperators.length > 0 && <div className="space-y-2"><label htmlFor="water-search" className="sr-only">Search Water providers</label><input id="water-search" value={waterSearch} onChange={(event) => setWaterSearch(event.target.value)} placeholder="Search providers..." className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold outline-none focus:border-[#087443]" /><div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200">{waterOperators.filter((operator: any) => operator.name.toLowerCase().includes(waterSearch.toLowerCase())).map((operator: any) => <button type="button" key={operator.operatorCode} onClick={() => { setWaterOperator(operator); setWaterBillNumber(''); setWaterBillerInfo(null); setWaterBill(null); }} className={`block w-full px-4 py-3 text-left text-sm font-bold hover:bg-cyan-50 ${waterOperator?.operatorCode === operator.operatorCode ? 'bg-cyan-50 text-[#087c8c]' : ''}`}>{operator.name}</button>)}</div></div>}
+                     {waterOperator && <button type="button" onClick={() => void loadWaterBillerInfo()} disabled={waterLoading} className="w-full rounded-2xl border-2 border-dashed border-[#A5F3FC] bg-[#ECFEFF] p-4 text-sm font-black text-[#0E7490] disabled:opacity-50">{waterLoading ? 'Loading required details...' : 'Load required details'}</button>}
+                     {waterBillerInfo?.billFetchAvailable === false && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-black text-amber-900">Bill lookup is currently unavailable for this provider.</p>}
+                     {waterBillerInfo?.billFetchAvailable === true && waterBillerInfo?.fields?.length === 0 && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-black text-amber-900">This water provider does not currently expose the account details required for bill lookup.</p>}
+                     {waterBillerInfo?.fields?.length === 1 && <div><label htmlFor="water-bill-number" className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#6B7280]">{waterBillerInfo.fields[0].label}</label><input id="water-bill-number" inputMode={waterBillerInfo.fields[0].fieldType === 'NUMERIC' ? 'numeric' : 'text'} maxLength={waterBillerInfo.fields[0].maxLength || 80} value={waterBillNumber} onChange={(event) => setWaterBillNumber(event.target.value)} placeholder="Enter the required value" className="w-full rounded-2xl border border-gray-200 bg-[#F8F9FC] p-4 text-lg font-bold outline-none focus:border-[#0891B2]" /></div>}
+                     {waterBillerInfo?.fields?.length > 1 && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-black text-amber-900">This water provider requires additional verification details that Zeshu does not support yet.</p>}
+                     <button type="button" onClick={() => void fetchWaterBillDetails()} disabled={waterLoading || !waterOperator || !waterBillerInfo || waterBillerInfo.fields?.length !== 1 || waterBillerInfo.billFetchAvailable === false} className="w-full rounded-2xl bg-[#087443] p-4 text-sm font-black text-white disabled:opacity-50">{waterLoading ? 'Fetching bill...' : 'Fetch Water Bill'}</button>
+                     {waterBill && <div className="rounded-2xl border border-cyan-100 bg-cyan-50 p-5"><p className="mb-3 text-sm font-black text-[#164e63]">Water bill details</p>{Object.entries(waterBill).map(([key, value]) => <div key={key} className="flex justify-between gap-3 border-b border-cyan-100 py-2 text-sm last:border-0"><span className="font-bold text-slate-600">{electricityLabels[key] || key}</span><span className="text-right font-black text-slate-900">{value}</span></div>)}<p className="mt-4 rounded-xl bg-amber-50 p-3 text-center text-sm font-black text-amber-900">Water payment is not enabled yet.</p></div>}
                    </div>
                  ) : activeService === 'electricity' ? (
                    <div className="space-y-5">
