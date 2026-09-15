@@ -160,9 +160,6 @@ export default function ZeshuSuperApp() {
   const [useZeshuCash, setUseZeshuCash] = useState(false);
   const [zeshuCashAmount, setZeshuCashAmount] = useState('');
   const [isAccountOpen, setIsAccountOpen] = useState(false);
-  const [tipAmount, setTipAmount] = useState(20); 
-  const [isDonating, setIsDonating] = useState(true); 
-  const [hasZeshuPass, setHasZeshuPass] = useState(false);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [trackedOrder, setTrackedOrder] = useState<any>(null);
   const [liveRider, setLiveRider] = useState<any>(null);
@@ -270,11 +267,9 @@ export default function ZeshuSuperApp() {
   const currentServiceObj = SERVICES.find(s => s.id === activeService) || SERVICES[0];
   const isPlanBased = activeService === 'mobile' || activeService === 'dth'; 
 
-  // 🚀 ZESHU COINS EXACT MATH LOGIC
-  const HANDLING_FEE = 5;
-
   const productCategories = useMemo(() => {
     const cats = new Set(products.map(p => String(p?.category || '').trim()).filter(Boolean));
+    ['Fruits', 'Vegetables', 'Chicken', 'Mutton', 'Fish & Seafood', 'Eggs'].forEach((category) => cats.add(category));
     return ['All', ...Array.from(cats).sort((a, b) => a.localeCompare(b))];
   }, [products]);
 
@@ -1057,12 +1052,10 @@ export default function ZeshuSuperApp() {
     showToast('Cart cleared.');
   };
 
-  // 🚀 UPDATED COIN DEDUCTION MATH
+  // Reward redemption display math; checkout remains server-authoritative.
   const itemTotal = cart.reduce((acc, curr) => acc + (curr.item.price * curr.qty), 0);
   const freeDeliveryThreshold = 299;
-  const smallCartFee = (itemTotal > 0 && itemTotal < 199) ? 29 : 0; 
-  const deliveryCharge = hasZeshuPass ? 0 : (itemTotal > 0 && itemTotal < freeDeliveryThreshold) ? 30 : 0; 
-  const donationAmt = isDonating ? 1 : 0;
+  const deliveryCharge = itemTotal > 0 && itemTotal < freeDeliveryThreshold ? 30 : 0;
 
   const maskedPhone = (phone: string | undefined) => {
     const digits = String(phone || '').replace(/\D/g, '');
@@ -1070,10 +1063,9 @@ export default function ZeshuSuperApp() {
     return `+91 ••••••${digits.slice(-4)}`;
   };
   
-  const passFee = hasZeshuPass ? 99 : 0; 
   const zeshuCashMax = itemTotal > 0 ? Math.max(0, Math.min(rewardBalance, 20, Math.floor(itemTotal * 0.1))) : 0;
   const requestedZeshuCash = useZeshuCash ? Math.max(0, Math.min(Number(zeshuCashAmount || zeshuCashMax), zeshuCashMax)) : 0;
-  const finalCartTotal = itemTotal > 0 ? (itemTotal + deliveryCharge + smallCartFee + HANDLING_FEE + donationAmt + tipAmount + passFee - requestedZeshuCash) : 0;
+  const finalCartTotal = itemTotal > 0 ? (itemTotal + deliveryCharge - requestedZeshuCash) : 0;
   const liveDeliveryStatus = ['PICKED_UP', 'OUT_FOR_DELIVERY'].includes(trackedOrder?.status);
   const hasLiveRiderCoordinates = Number.isFinite(Number(liveRider?.current_latitude)) && Number.isFinite(Number(liveRider?.current_longitude));
   const liveRiderMapUrl = hasLiveRiderCoordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${liveRider.current_latitude},${liveRider.current_longitude}`)}` : '';
@@ -1118,7 +1110,7 @@ export default function ZeshuSuperApp() {
     setIsLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const orderResponse = await fetch('/api/create-razorpay-order', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` }, body: JSON.stringify({ cartItems: cart, deliveryAddress: currentAddress, isDonating, tipAmount, hasZeshuPass, zeshuCashAmount: requestedZeshuCash }) });
+      const orderResponse = await fetch('/api/create-razorpay-order', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` }, body: JSON.stringify({ cartItems: cart, deliveryAddress: currentAddress, zeshuCashAmount: requestedZeshuCash }) });
       const orderData = await orderResponse.json();
       if (!orderResponse.ok || !orderData.success) throw new Error(orderData.error || 'Unable to create payment order.');
       if (orderData.abandonedCheckoutReleased) showToast('Previous payment was cancelled. You can continue with a new checkout.');
@@ -1286,8 +1278,8 @@ export default function ZeshuSuperApp() {
                  {unavailableService && ['pharmacy', 'upi'].includes(activeService) ? (
                    <div className="rounded-3xl border border-[#cfe7d8] bg-[#f4fbf6] p-6 text-center md:p-10">
                      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e1f3e7] text-[#087443]"><Info size={24}/></div>
-                     <h2 className="text-xl font-black text-[#183524]">{activeService === 'pharmacy' ? 'Medicine ordering is being prepared for your area.' : `${currentServiceObj.label} is not available yet`}</h2>
-                     <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#587065]">{activeService === 'pharmacy' ? 'You can return to groceries while our verified pharmacy fulfillment network is being prepared.' : 'We&apos;re connecting verified providers before enabling this service. No payment can be started from this screen.'}</p>
+                     <h2 className="text-xl font-black text-[#183524]">{activeService === 'pharmacy' ? 'Pharmacy ordering is not available yet.' : `${currentServiceObj.label} is not available yet`}</h2>
+                     <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#587065]">{activeService === 'pharmacy' ? 'You can return to groceries while our verified pharmacy fulfillment network is being prepared. No medicine payment or delivery can be started here.' : 'We&apos;re connecting verified providers before enabling this service. No payment can be started from this screen.'}</p>
                      <button onClick={() => setActiveTab('home')} className="mt-6 rounded-xl bg-[#087443] px-5 py-3 text-sm font-bold text-white active:scale-[.98]">Continue shopping</button>
                    </div>
                  ) : activeService === 'gas' ? (
@@ -1469,7 +1461,7 @@ export default function ZeshuSuperApp() {
                     </div>
                   </div>
                   <section className="mx-4 rounded-[24px] border border-emerald-100 bg-emerald-50 p-5 md:mx-0" aria-labelledby="pharmacy-health-title">
-                    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 id="pharmacy-health-title" className="text-xl font-black text-[#173d27]">Pharmacy &amp; Health</h2><p className="mt-1 text-sm text-[#587065]">Medicine ordering is being prepared for your area.</p></div><button type="button" onClick={() => { setActiveTab('recharge'); setActiveService('pharmacy'); }} className="rounded-xl bg-[#087443] px-4 py-2.5 text-sm font-black text-white">View availability</button></div>
+                    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 id="pharmacy-health-title" className="text-xl font-black text-[#173d27]">Pharmacy &amp; Health</h2><p className="mt-1 text-sm text-[#587065]">Pharmacy ordering is not available yet.</p></div><button type="button" onClick={() => { setActiveTab('recharge'); setActiveService('pharmacy'); }} className="rounded-xl bg-[#087443] px-4 py-2.5 text-sm font-black text-white">View availability</button></div>
                   </section>
                   <section className="mx-4 rounded-[24px] border border-slate-200 bg-white p-5 md:mx-0" aria-labelledby="upcoming-tools-title"><h2 id="upcoming-tools-title" className="text-lg font-black text-slate-900">More tools</h2><p className="mt-1 text-sm text-slate-500">UPI Tools are coming soon. Merchant QR payments and transfers are not enabled.</p></section>
                 </div>
@@ -1521,8 +1513,8 @@ export default function ZeshuSuperApp() {
                 ) : filteredProducts.length === 0 ? (
                   <div className="bg-white p-12 md:p-20 rounded-[32px] border-2 border-dashed border-gray-200 text-center flex flex-col items-center justify-center gap-4">
                      <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center"><Search size={32} className="text-gray-300"/></div>
-                     <h3 className="text-xl font-black">No products found{normalizedSearch ? ` for “${searchQuery.trim()}”` : ''}.</h3>
-                     <p className="text-gray-500 text-sm">Try clearing search or browsing another category.</p>
+                     <h3 className="text-xl font-black">{['Fruits', 'Vegetables', 'Chicken', 'Mutton', 'Fish & Seafood', 'Eggs'].includes(activeCategory) && !normalizedSearch ? 'Products coming soon.' : `No products found${normalizedSearch ? ` for “${searchQuery.trim()}”` : ''}.`}</h3>
+                     <p className="text-gray-500 text-sm">{['Fruits', 'Vegetables', 'Chicken', 'Mutton', 'Fish & Seafood', 'Eggs'].includes(activeCategory) && !normalizedSearch ? 'We will add verified products here when they are available.' : 'Try clearing search or browsing another category.'}</p>
                      <div className="flex flex-wrap justify-center gap-2"><button type="button" onClick={() => setSearchQuery('')} className="rounded-xl bg-[#087443] px-4 py-2 text-xs font-black text-white">Clear search</button><button type="button" onClick={() => setActiveCategory('All')} className="rounded-xl border border-[#087443] px-4 py-2 text-xs font-black text-[#087443]">Browse all categories</button>{user && recentlyPurchased.length > 0 && <button type="button" onClick={() => document.getElementById('recently-purchased')?.scrollIntoView({ behavior: 'smooth' })} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-700">Recently purchased</button>}</div>
                   </div>
                 ) : (
@@ -1539,6 +1531,16 @@ export default function ZeshuSuperApp() {
           )}
         </div>
       </main>
+
+      <footer className="border-t border-[#dce8df] bg-white px-4 py-8 text-sm text-slate-600 md:px-8">
+        <div className="mx-auto flex max-w-[1400px] flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <span className="font-bold">© Zeshu · Everyday, simply</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <Link href="/policies" className="font-black text-[#087443] underline-offset-4 hover:underline">Policies &amp; Trust Center</Link>
+            <span>Real support is provided through verified order communication.</span>
+          </div>
+        </div>
+      </footer>
 
       {/* 🚀 NEW FLOATING CART WINDOW WITH SMOOTH ROUNDED EDGES */}
       {!isCartOpen && cart.length > 0 && activeTab === 'home' && (
@@ -1636,8 +1638,8 @@ export default function ZeshuSuperApp() {
                 <div className="flex justify-between text-[#4B5563]"><span>Subtotal</span><span className="font-bold">₹{itemTotal}</span></div>
                 <div className="flex justify-between text-[#059669]"><span>Delivery charge</span><span className="font-black">{deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}</span></div>
                 {requestedZeshuCash > 0 && <div className="flex justify-between text-emerald-700"><span>Zeshu Cash</span><span className="font-black">-₹{requestedZeshuCash}</span></div>}
-                {smallCartFee > 0 && <div className="flex justify-between text-red-500 text-xs"><span>Small cart fee</span><span>₹{smallCartFee}</span></div>}
                 <div className="border-t pt-4 flex justify-between font-black text-xl"><span>Grand total</span><span>₹{finalCartTotal}</span></div>
+                <p className="text-center text-[11px] font-bold text-slate-500">No hidden fees. Know your full cost before checkout.</p>
               </div>
             </div>
             <div className="bg-white p-6 border-t shadow-2xl">
@@ -1714,7 +1716,25 @@ export default function ZeshuSuperApp() {
                 </div>
               </section>
               <section className="rounded-[24px] border border-slate-200 bg-white p-5"><h3 className="font-black text-slate-900">Buy again</h3><p className="mt-1 text-xs text-slate-500">Use current prices and availability from delivered orders.</p><div className="mt-3 space-y-2">{myOrders.filter((order) => order.status === 'DELIVERED').slice(0, 5).length === 0 ? <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-500">No delivered orders yet.</p> : myOrders.filter((order) => order.status === 'DELIVERED').slice(0, 5).map((order) => <button type="button" key={`reorder-${order.id}`} disabled={reorderingId === order.id} onClick={() => void reorder(order)} className="flex w-full items-center justify-between rounded-xl border border-slate-100 p-3 text-left text-xs font-black disabled:opacity-60"><span>Order #{order.id?.split('-')[0]?.toUpperCase()}</span><span className="text-indigo-700">{reorderingId === order.id ? 'Adding...' : 'Reorder'}</span></button>)}</div></section>
-              <section className="rounded-[24px] border border-slate-200 bg-white p-5"><h3 className="font-black text-slate-900">Help & policies</h3><p className="mt-2 text-sm leading-6 text-slate-600">Need help with an order? Contact Zeshu support through the verified channel shown in your order communication. Refunds and cancellations are handled only when an eligible workflow is available.</p></section>
+              <section className="rounded-[24px] border border-slate-200 bg-white p-5" aria-labelledby="support-title">
+                <h3 id="support-title" className="font-black text-slate-900">Support</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">Choose a category and describe the issue so you have the details ready for verified human support. No ticket is created from this screen.</p>
+                <label htmlFor="support-category" className="sr-only">Support category</label>
+                <select id="support-category" className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700">
+                  <option>Order issue</option>
+                  <option>Delivery issue</option>
+                  <option>Payment issue</option>
+                  <option>Refund issue</option>
+                  <option>Recharge/Bill issue</option>
+                  <option>Account issue</option>
+                  <option>Other</option>
+                </select>
+                <label htmlFor="support-details" className="sr-only">Support details</label>
+                <textarea id="support-details" rows={3} maxLength={1000} placeholder="Describe what you need help with" className="mt-2 w-full resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#087443]" />
+                <button type="button" disabled className="mt-3 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-500">Support tickets coming soon</button>
+                <p className="mt-2 text-xs font-medium text-slate-500">For urgent payment, refund, or safety issues, use the verified support channel in your order communication.</p>
+              </section>
+              <section className="rounded-[24px] border border-slate-200 bg-white p-5"><h3 className="font-black text-slate-900">Help &amp; policies</h3><p className="mt-2 text-sm leading-6 text-slate-600">Read the customer-facing policies and service availability notes in the Trust Center.</p><Link href="/policies" className="mt-3 inline-flex rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-black text-[#087443]">Open Trust Center</Link></section>
             </div>
             <div className="bg-white p-6 border-t shadow-2xl">
               <button onClick={handleLogout} className="w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-4 rounded-2xl flex justify-center items-center gap-2 transition-colors active:scale-95">

@@ -54,9 +54,13 @@ export async function POST(request: Request) {
 
   const cartItems = body.cartItems as CartItem[];
   const deliveryAddress = typeof body.deliveryAddress === 'string' ? body.deliveryAddress.trim() : '';
-  const tip = Number(body.tipAmount);
-    const requestedZeshuCash = body.zeshuCashAmount === undefined ? 0 : Number(body.zeshuCashAmount);
-    if (!Array.isArray(cartItems) || cartItems.length === 0 || deliveryAddress.length < 8 || !Number.isFinite(tip) || ![0, 20, 30, 50].includes(tip) || !Number.isFinite(requestedZeshuCash) || requestedZeshuCash < 0 || typeof body.hasZeshuPass !== 'boolean' || typeof body.isDonating !== 'boolean') {
+  // Legacy pricing inputs remain accepted for request compatibility, but the
+  // authoritative reservation now ignores pass/tip/donation pricing.
+  const tip = 0;
+  const hasZeshuPass = false;
+  const isDonating = false;
+  const requestedZeshuCash = body.zeshuCashAmount === undefined ? 0 : Number(body.zeshuCashAmount);
+  if (!Array.isArray(cartItems) || cartItems.length === 0 || deliveryAddress.length < 8 || !Number.isFinite(requestedZeshuCash) || requestedZeshuCash < 0) {
       return NextResponse.json({ success: false, error: 'Invalid checkout data.' }, { status: 400 });
     }
 
@@ -130,22 +134,21 @@ export async function POST(request: Request) {
       const merchandiseSubtotal = sameProductSet && currentVendorId
         ? canonicalRequestedItems.reduce((sum, item) => sum + Number(productsById.get(item.product_id)?.price || 0) * item.quantity, 0)
         : NaN;
-      const smallCartFee = Number.isFinite(merchandiseSubtotal) && merchandiseSubtotal > 0 && merchandiseSubtotal < 199 ? 29 : 0;
-      const deliveryFee = body.hasZeshuPass ? 0 : Number.isFinite(merchandiseSubtotal) && merchandiseSubtotal > 0 && merchandiseSubtotal < 299 ? 30 : 0;
+      const deliveryFee = Number.isFinite(merchandiseSubtotal) && merchandiseSubtotal >= 299 ? 0 : 30;
       const expectedPricing = {
-        small_cart_fee: smallCartFee,
+        small_cart_fee: 0,
         delivery_fee: deliveryFee,
-        handling_fee: 5,
-        donation: body.isDonating ? 1 : 0,
-        tip,
-        pass_fee: body.hasZeshuPass ? 99 : 0,
+        handling_fee: 0,
+        donation: 0,
+        tip: 0,
+        pass_fee: 0,
         discount_total: 0,
       };
       const snapshot = resumable.pricing_snapshot || {};
       const samePricing = Object.entries(expectedPricing).filter(([key]) => key !== 'discount_total').every(([key, value]) => sameNumber(snapshot[key], value));
       const existingCashDiscount = Number(snapshot.zeshu_cash_redemption || snapshot.discount_total || 0);
       const expectedTotal = Number.isFinite(merchandiseSubtotal)
-        ? merchandiseSubtotal + expectedPricing.small_cart_fee + expectedPricing.delivery_fee + expectedPricing.handling_fee + expectedPricing.donation + expectedPricing.tip + expectedPricing.pass_fee
+        ? merchandiseSubtotal + expectedPricing.delivery_fee
         : NaN;
       const sameCheckout = sameItems
         && sameProductSet
@@ -208,8 +211,8 @@ export async function POST(request: Request) {
       p_user_id: user.id,
       p_items: reservationItems,
       p_delivery_address: deliveryAddress,
-      p_has_zeshu_pass: body.hasZeshuPass,
-      p_is_donating: body.isDonating,
+      p_has_zeshu_pass: hasZeshuPass,
+      p_is_donating: isDonating,
       p_tip: tip,
     });
     if (reservationError) {
