@@ -124,6 +124,8 @@ function formatDthMetric(value: unknown, label: string) {
   return /^\d+(?:\.\d+)?$/.test(text) ? `${text} ${label}` : text;
 }
 
+const electricityLabels: Record<string, string> = { customerName: 'Customer name', dueAmount: 'Due amount', dueDate: 'Due date', billNumber: 'Bill number', billDate: 'Bill date', balance: 'Balance', billPeriod: 'Bill period' };
+
 export default function ZeshuSuperApp() {
   const [activeTab, setActiveTab] = useState('home'); 
   const [activeService, setActiveService] = useState('mobile');
@@ -195,6 +197,13 @@ export default function ZeshuSuperApp() {
   const [dthLanguageFilter, setDthLanguageFilter] = useState('All');
   const [selectedDthPlanId, setSelectedDthPlanId] = useState('');
   const [dthSelectionMessage, setDthSelectionMessage] = useState('');
+  const [electricityOperators, setElectricityOperators] = useState<any[]>([]);
+  const [electricitySearch, setElectricitySearch] = useState('');
+  const [electricityOperator, setElectricityOperator] = useState<any>(null);
+  const [electricityBillNumber, setElectricityBillNumber] = useState('');
+  const [electricityBill, setElectricityBill] = useState<Record<string, string> | null>(null);
+  const [electricityBillerInfo, setElectricityBillerInfo] = useState<any>(null);
+  const [electricityLoading, setElectricityLoading] = useState(false);
 
   const [medSearchQuery, setMedSearchQuery] = useState('');
   const [medResults, setMedResults] = useState<any>(null);
@@ -652,8 +661,48 @@ export default function ZeshuSuperApp() {
     if (activeService !== 'dth') {
       setDthPlans([]); setDthOperator(null); setDthInfo(null); setDthSearch(''); setDthLanguageFilter('All'); setSelectedDthPlanId(''); setDthSelectionMessage('');
     }
+    if (activeService !== 'electricity') {
+      setElectricityOperators([]); setElectricitySearch(''); setElectricityOperator(null); setElectricityBillNumber(''); setElectricityBill(null); setElectricityBillerInfo(null);
+    }
     setFetchedBill(null);
   }, [activeService]);
+
+  const loadElectricityOperators = async () => {
+    if (electricityOperators.length) return;
+    const headers = await getUtilityAuthHeaders(); if (!headers) return;
+    setElectricityLoading(true);
+    try {
+      const response = await fetch('/api/electricity/operators', { headers });
+      const data = await response.json(); if (!response.ok) throw new Error(data.error);
+      setElectricityOperators(data.operators || []);
+    } catch { showToast('Electricity providers are temporarily unavailable.'); }
+    finally { setElectricityLoading(false); }
+  };
+
+  const fetchElectricityBillDetails = async () => {
+    if (!electricityOperator || !electricityBillerInfo) return showToast('Load the provider requirements first.');
+    if (!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,79}$/.test(electricityBillNumber)) return showToast('Enter a valid electricity consumer/bill number.');
+    const headers = await getUtilityAuthHeaders(); if (!headers) return;
+    setElectricityLoading(true); setElectricityBill(null);
+    try {
+      const response = await fetch('/api/electricity/fetch-bill', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ operatorCode: electricityOperator.operatorCode, billNumber: electricityBillNumber }) });
+      const data = await response.json(); if (!response.ok) throw new Error(data.error);
+      setElectricityBill(data.bill || {});
+    } catch (error) { showToast(error instanceof Error ? error.message : "We couldn't fetch this electricity bill. Check the details and try again."); }
+    finally { setElectricityLoading(false); }
+  };
+
+  const loadElectricityBillerInfo = async () => {
+    if (!electricityOperator) return showToast('Select an electricity provider first.');
+    const headers = await getUtilityAuthHeaders(); if (!headers) return;
+    setElectricityLoading(true); setElectricityBill(null); setElectricityBillNumber('');
+    try {
+      const response = await fetch('/api/electricity/biller-info', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ operatorCode: electricityOperator.operatorCode }) });
+      const data = await response.json(); if (!response.ok) throw new Error(data.error);
+      setElectricityBillerInfo(data);
+    } catch (error) { showToast(error instanceof Error ? error.message : 'Electricity provider metadata is temporarily unavailable.'); }
+    finally { setElectricityLoading(false); }
+  };
 
   const detectDthOperator = async () => {
     if (!/^\d{6,20}$/.test(rechargeNumber)) return showToast('Enter a valid DTH subscriber/customer ID.');
@@ -1117,6 +1166,17 @@ export default function ZeshuSuperApp() {
                      <h2 className="text-xl font-black text-[#183524]">{activeService === 'pharmacy' ? 'Medicine ordering is being prepared for your area.' : `${currentServiceObj.label} is not available yet`}</h2>
                      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#587065]">{activeService === 'pharmacy' ? 'You can return to groceries while our verified pharmacy fulfillment network is being prepared.' : 'We&apos;re connecting verified providers before enabling this service. No payment can be started from this screen.'}</p>
                      <button onClick={() => setActiveTab('home')} className="mt-6 rounded-xl bg-[#087443] px-5 py-3 text-sm font-bold text-white active:scale-[.98]">Continue shopping</button>
+                   </div>
+                 ) : activeService === 'electricity' ? (
+                   <div className="space-y-5">
+                     <div><label htmlFor="electricity-provider" className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#6B7280]">Select electricity provider</label><button type="button" id="electricity-provider" onClick={() => void loadElectricityOperators()} className="w-full rounded-2xl border border-gray-200 bg-[#F8F9FC] p-4 text-left font-bold">{electricityOperator?.name || (electricityLoading ? 'Loading providers...' : 'Load providers')}</button></div>
+                     {electricityOperators.length > 0 && <div className="space-y-2"><label htmlFor="electricity-search" className="sr-only">Search electricity providers</label><input id="electricity-search" value={electricitySearch} onChange={(event) => setElectricitySearch(event.target.value)} placeholder="Search providers..." className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold outline-none focus:border-[#087443]" /><div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200">{electricityOperators.filter((operator: any) => operator.name.toLowerCase().includes(electricitySearch.toLowerCase())).map((operator: any) => <button type="button" key={operator.operatorCode} onClick={() => { setElectricityOperator(operator); setElectricityBill(null); setElectricityBillerInfo(null); setElectricityBillNumber(''); }} className={`block w-full px-4 py-3 text-left text-sm font-bold hover:bg-emerald-50 ${electricityOperator?.operatorCode === operator.operatorCode ? 'bg-emerald-50 text-[#087443]' : ''}`}>{operator.name}</button>)}</div></div>}
+                     {electricityOperator && <button type="button" onClick={() => void loadElectricityBillerInfo()} disabled={electricityLoading} className="w-full rounded-2xl border-2 border-dashed border-[#C7D2FE] bg-[#EEF2FF] p-4 text-sm font-black text-[#4F46E5] disabled:opacity-50">{electricityLoading ? 'Loading required details...' : 'Load required details'}</button>}
+                     {electricityBillerInfo?.billFetchAvailable === false && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-black text-amber-900">Bill lookup is currently unavailable for this provider.</p>}
+                     {electricityBillerInfo?.fields?.length === 1 && <div><label htmlFor="electricity-bill-number" className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#6B7280]">{electricityBillerInfo.fields[0].label}</label><input id="electricity-bill-number" inputMode={electricityBillerInfo.fields[0].fieldType === 'NUMERIC' ? 'numeric' : 'text'} maxLength={electricityBillerInfo.fields[0].maxLength || 80} value={electricityBillNumber} onChange={(event) => setElectricityBillNumber(event.target.value.slice(0, electricityBillerInfo.fields[0].maxLength || 80))} placeholder="Enter the required value" className="w-full rounded-2xl border border-gray-200 bg-[#F8F9FC] p-4 text-lg font-bold outline-none focus:border-[#6366F1]" /></div>}
+                     {electricityBillerInfo?.fields?.length > 1 && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-black text-amber-900">This provider requires additional verification details that Zeshu does not support yet.</p>}
+                     <button type="button" onClick={() => void fetchElectricityBillDetails()} disabled={electricityLoading || !electricityOperator || !electricityBillerInfo || electricityBillerInfo.fields?.length !== 1 || electricityBillerInfo.billFetchAvailable === false} className="w-full rounded-2xl bg-[#087443] p-4 text-sm font-black text-white disabled:opacity-50">{electricityLoading ? 'Fetching bill...' : 'Fetch Bill'}</button>
+                     {electricityBill && <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5"><p className="mb-3 text-sm font-black text-[#173d27]">Electricity bill details</p>{Object.entries(electricityBill).map(([key, value]) => <div key={key} className="flex justify-between gap-3 border-b border-emerald-100 py-2 text-sm last:border-0"><span className="font-bold text-slate-600">{electricityLabels[key] || key}</span><span className="text-right font-black text-slate-900">{value}</span></div>)}<p className="mt-4 rounded-xl bg-amber-50 p-3 text-center text-sm font-black text-amber-900">Electricity payment is not enabled yet.</p></div>}
                    </div>
                  ) : activeService === 'dth' ? (
                    <div className="space-y-5">

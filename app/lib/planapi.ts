@@ -42,6 +42,9 @@ export type DthPlan = {
   lastUpdated: string;
   pricingOptions: DthPricingOption[];
 };
+export type ElectricityOperator = { name: string; operatorCode: string; type: 'ELECTRICITY' };
+export type BbpsField = { label: string; minLength: number | null; maxLength: number | null; fieldType: string };
+export type BbpsBillInfo = { billFetchAvailable: boolean; fields: BbpsField[] };
 
 function credentials() {
   const memberId = process.env.PLANAPI_MEMBER_ID;
@@ -74,6 +77,83 @@ function dthDigits(value: string) {
   const digits = value.replace(/\D/g, '');
   if (digits.length < 6 || digits.length > 20 || /^0+$/.test(digits)) throw new Error('INVALID_DTH_NUMBER');
   return digits;
+}
+
+function providerErrorCode(data: any) {
+  return String(data?.ERROR ?? data?.error ?? '');
+}
+
+function normalizeElectricityOperators(data: any): ElectricityOperator[] {
+  const source: unknown[] = [];
+  const walk = (value: unknown) => { if (!value || typeof value !== 'object') return; if (Array.isArray(value)) return value.forEach(walk); const item = value as Record<string, unknown>; if (Object.keys(item).some((key) => ['type', 'operatorcode', 'opcode', 'code'].includes(key.toLowerCase()))) source.push(item); else Object.values(item).forEach(walk); };
+  walk(data?.RDATA ?? data?.DATA ?? data);
+  return source.flatMap((entry: unknown) => {
+    if (!entry || typeof entry !== 'object') return [];
+    const item = entry as Record<string, unknown>;
+    const type = firstValue(item, ['Type', 'type']);
+    const operatorCode = firstValue(item, ['Opcode', 'OpCode', 'operatorcode', 'operator_code', 'code']);
+    const name = firstValue(item, ['Name', 'Operator', 'operatorname', 'operator_name']);
+    return type.toLowerCase() === 'electricity' && operatorCode && name ? [{ name, operatorCode, type: 'ELECTRICITY' as const }] : [];
+  });
+}
+
+export async function fetchElectricityOperators() {
+  const { memberId, password } = credentials();
+  const data = await getProvider('OperatorList', { ApiUserID: memberId, ApiPassword: password });
+  if (providerErrorCode(data) !== '0') throw providerError('Electricity providers are temporarily unavailable.');
+  return normalizeElectricityOperators(data);
+}
+
+export function normalizeElectricityBill(data: any) {
+  const source = data?.BILLDEATILS ?? data?.BillDetails ?? data?.BILLDETAILS ?? data?.DATA ?? {};
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return {};
+  const item = source as Record<string, unknown>;
+  const pick = (keys: string[]) => firstValue(item, keys);
+  const result: Record<string, string> = {};
+  const fields: Array<[string, string[]]> = [
+    ['customerName', ['Name', 'CustomerName', 'customer_name']], ['dueAmount', ['DueAmount', 'due_amount']], ['dueDate', ['DueDate', 'due_date']],
+    ['billNumber', ['BillNumber', 'bill_number']], ['billDate', ['BillDate', 'bill_date']], ['balance', ['Balance', 'balance']], ['billPeriod', ['BillPeriod', 'bill_period']],
+  ];
+  fields.forEach(([target, keys]) => { const value = pick(keys); if (value) result[target] = value; });
+  return result;
+}
+
+export function electricityNormalizationSelfCheck() {
+  const normalized = normalizeElectricityBill({ ERROR: '0', STATUS: '1', BILLDEATILS: { Name: 'TEST NAME', DueAmount: '470.46', DueDate: '2026-09-30', BillNumber: 'TEST123', BillDate: '01 Sep 2026', Balance: '', BillPeriod: null } });
+  return normalized.customerName === 'TEST NAME' && normalized.dueAmount === '470.46' && normalized.billNumber === 'TEST123' && !('balance' in normalized) && !('billPeriod' in normalized);
+}
+
+export async function fetchElectricityBill(operatorCode: string, billNumber: string, optional: Record<string, string> = {}) {
+  const { memberId, password } = credentials();
+  if (!operatorCode || operatorCode.length > 40 || !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,79}$/.test(billNumber)) throw new Error('INVALID_ELECTRICITY_INPUT');
+  const operators = await fetchElectricityOperators();
+  if (!operators.some((operator) => operator.operatorCode === operatorCode)) throw providerError('Electricity provider is unavailable.');
+  const params: Record<string, string> = { apimember_id: memberId, api_password: password, bill_number: billNumber, operator_code: operatorCode };
+  ['Optional1', 'Optional2', 'Optional3'].forEach((key) => { if (optional[key]) params[key] = optional[key]; });
+  const data = await getProvider('ElectricityBillFetch', params);
+  if (providerErrorCode(data) !== '0') throw providerError('We could not fetch this electricity bill.');
+  return normalizeElectricityBill(data);
+}
+
+export async function fetchBbpsBillInfo(operatorCode: string): Promise<BbpsBillInfo> {
+  const { memberId, password } = credentials();
+  if (!operatorCode || operatorCode.length > 40) throw providerError('Electricity provider is unavailable.');
+  const data = await getProvider('BBPSBillInfo', { ApiUserID: memberId, ApiPassword: password, Opcode: operatorCode });
+  if (providerErrorCode(data) !== '0') throw providerError('Electricity provider metadata is temporarily unavailable.');
+  const info = data?.BillInfo && typeof data.BillInfo === 'object' ? data.BillInfo : {};
+  const rawFields = Array.isArray(info.parameter) ? info.parameter : Array.isArray(info.Parameter) ? info.Parameter : [];
+  const fields = rawFields.flatMap((entry: unknown) => {
+    if (!entry || typeof entry !== 'object') return [];
+    const item = entry as Record<string, unknown>;
+    const label = firstValue(item, ['placeholdername', 'placeholder_name', 'label', 'name']);
+    const minRaw = firstValue(item, ['minlength', 'min_length']);
+    const maxRaw = firstValue(item, ['maxlength', 'max_length']);
+    const minLength = /^\d+$/.test(minRaw) ? Number(minRaw) : null;
+    const maxLength = /^\d+$/.test(maxRaw) ? Number(maxRaw) : null;
+    const fieldType = firstValue(item, ['Fieldtype', 'fieldtype', 'field_type']) || 'TEXT';
+    return label ? [{ label, minLength, maxLength, fieldType: fieldType.toUpperCase() }] : [];
+  });
+  return { billFetchAvailable: firstValue(info, ['bill_fetch', 'billfetch']) === '1', fields };
 }
 
 function firstValue(value: Record<string, unknown>, keys: string[]) {
