@@ -171,6 +171,7 @@ export default function ZeshuSuperApp() {
   const [isDetecting, setIsDetecting] = useState(false);
   const [selectedPlanCategory, setSelectedPlanCategory] = useState("All");
   const [planDiscovery, setPlanDiscovery] = useState<any>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState('');
   const [planDiscoveryError, setPlanDiscoveryError] = useState('');
   const [planDiscoveryLoading, setPlanDiscoveryLoading] = useState(false);
   const [planSort, setPlanSort] = useState<'recommended' | 'low' | 'high' | 'validity'>('recommended');
@@ -179,6 +180,7 @@ export default function ZeshuSuperApp() {
   const [planVisibleCount, setPlanVisibleCount] = useState(20);
   const [expandedPlanIds, setExpandedPlanIds] = useState<Set<string>>(new Set());
   const [planSelectionMessage, setPlanSelectionMessage] = useState('');
+  const [testRechargeLoading, setTestRechargeLoading] = useState(false);
 
   const [medSearchQuery, setMedSearchQuery] = useState('');
   const [medResults, setMedResults] = useState<any>(null);
@@ -638,7 +640,7 @@ export default function ZeshuSuperApp() {
 
   const autoDetectAndFetchPlans = async (num: string) => {
     if (!/^[6-9]\d{9}$/.test(num)) { setPlanDiscoveryError('Enter a valid 10-digit Indian mobile number.'); return; }
-    setPlanDiscoveryLoading(true); setPlanDiscoveryError(''); setPlanDiscovery(null); setPlans([]); setSelectedPlanCategory('All'); setPlanSearch(''); setPlanVisibleCount(20); setPlanSelectionMessage('');
+    setPlanDiscoveryLoading(true); setPlanDiscoveryError(''); setPlanDiscovery(null); setPlans([]); setSelectedPlanCategory('All'); setPlanSearch(''); setPlanVisibleCount(20); setPlanSelectionMessage(''); setSelectedPlanId('');
     try {
       const response = await fetch('/api/recharge/plans', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mobile: num }) });
       const data = await response.json();
@@ -945,6 +947,34 @@ export default function ZeshuSuperApp() {
     showToast('Recharge fulfillment is currently unavailable. No payment has been started.');
   };
 
+  const handleMobileTestPayment = async () => {
+    if (testRechargeLoading || !planDiscovery || !rechargeAmount) return;
+    setTestRechargeLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) { showToast('Your customer session has expired. Please sign in again.'); setTestRechargeLoading(false); return; }
+      const response = await fetch('/api/recharge/create-test-payment', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` }, body: JSON.stringify({ mobile: rechargeNumber, planId: selectedPlanId, amount: Number(rechargeAmount) }) });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'Test payment is unavailable.');
+      const options = {
+        key: data.keyId, amount: data.amount, currency: data.currency || 'INR', name: 'Zeshu Super App', description: 'Mobile recharge test payment', order_id: data.orderId,
+        handler: async (paymentResponse: any) => {
+          const verification = await fetch('/api/recharge/verify-test-payment', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` }, body: JSON.stringify(paymentResponse) });
+          const result = await verification.json();
+          showToast(result.paymentVerified ? 'Test payment successful. Recharge was not submitted to the operator.' : 'Test payment could not be verified.');
+          setTestRechargeLoading(false);
+        },
+        modal: { ondismiss: () => setTestRechargeLoading(false) },
+        theme: { color: '#4F46E5' },
+      };
+      const razorpay = new (window as any).Razorpay(options);
+      razorpay.open();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Test payment is unavailable.');
+      setTestRechargeLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F8F9FC] font-sans antialiased text-[#111827] overflow-x-hidden relative">
       <div className={`fixed bottom-32 left-1/2 -translate-x-1/2 z-[150] transition-all duration-500 ${toastMessage ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-95 pointer-events-none'}`}>
@@ -1017,19 +1047,19 @@ export default function ZeshuSuperApp() {
           {activeTab === 'recharge' ? (
              <div className="bg-white rounded-[32px] shadow-xl border border-gray-100 max-w-2xl mx-auto overflow-hidden animate-in slide-in-from-bottom-4">
                <div className="flex overflow-x-auto bg-[#F8F9FC] p-3 gap-2 border-b border-gray-100 no-scrollbar">
-                 {SERVICES.map((s) => (
-                   <button key={s.id} onClick={() => { setActiveService(s.id); setSelectedOperator(''); setPlans([]); setFetchedBill(null); setRechargeNumber(''); setRechargeAmount(''); setMedResults(null); setMedSearchQuery(''); }} className={`flex items-center gap-2 px-5 py-3 rounded-[16px] whitespace-nowrap text-sm font-bold transition-all active:scale-95 ${activeService === s.id ? 'bg-white shadow-md text-[#111827]' : 'text-[#6B7280] hover:bg-[#E5E7EB]'}`}>
-                     {s.icon} {s.label}
+                     {SERVICES.map((s) => (
+                   <button key={s.id} onClick={() => { setActiveService(s.id); setSelectedOperator(''); setPlans([]); setFetchedBill(null); setRechargeNumber(''); setRechargeAmount(''); setSelectedPlanId(''); setMedResults(null); setMedSearchQuery(''); }} className={`flex items-center gap-2 px-5 py-3 rounded-[16px] whitespace-nowrap text-sm font-bold transition-all active:scale-95 ${activeService === s.id ? 'bg-white shadow-md text-[#111827]' : 'text-[#6B7280] hover:bg-[#E5E7EB]'}`}>
+                     {s.icon} {s.id === 'upi' ? 'UPI Tools · Soon' : s.label}
                    </button>
                  ))}
                </div>
                
                <div className="p-5 md:p-8 space-y-5">
-                 {unavailableService && activeService !== 'mobile' ? (
+                 {unavailableService && ['pharmacy', 'upi'].includes(activeService) ? (
                    <div className="rounded-3xl border border-[#cfe7d8] bg-[#f4fbf6] p-6 text-center md:p-10">
                      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e1f3e7] text-[#087443]"><Info size={24}/></div>
-                     <h2 className="text-xl font-black text-[#183524]">{currentServiceObj.label} is not available yet</h2>
-                     <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#587065]">We&apos;re connecting verified providers before enabling this service. No payment can be started from this screen.</p>
+                     <h2 className="text-xl font-black text-[#183524]">{activeService === 'pharmacy' ? 'Medicine ordering is being prepared for your area.' : `${currentServiceObj.label} is not available yet`}</h2>
+                     <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#587065]">{activeService === 'pharmacy' ? 'You can return to groceries while our verified pharmacy fulfillment network is being prepared.' : 'We&apos;re connecting verified providers before enabling this service. No payment can be started from this screen.'}</p>
                      <button onClick={() => setActiveTab('home')} className="mt-6 rounded-xl bg-[#087443] px-5 py-3 text-sm font-bold text-white active:scale-[.98]">Continue shopping</button>
                    </div>
                  ) : activeService === 'pharmacy' ? (
@@ -1097,9 +1127,9 @@ export default function ZeshuSuperApp() {
                        {showMorePlanCategories && <div className="flex flex-wrap gap-2 rounded-xl bg-slate-50 p-3">{planCategories.length === 0 ? <span className="text-xs text-slate-500">No additional provider categories.</span> : planCategories.map((category) => <button type="button" key={category} onClick={() => setSelectedPlanCategory(category)} className={`rounded-full px-3 py-2 text-xs font-black ${selectedPlanCategory === category ? 'bg-[#087443] text-white' : 'bg-white text-slate-600'}`}>{category}</button>)}</div>}
                        <div className="flex flex-col gap-2 sm:flex-row"><label className="sr-only" htmlFor="plan-search">Search plans</label><input id="plan-search" value={planSearch} onChange={(event) => setPlanSearch(event.target.value)} placeholder="Search plans, OTT, data, validity..." className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold outline-none focus:border-[#087443]" /><label className="sr-only" htmlFor="plan-sort">Sort plans</label><select id="plan-sort" value={planSort} onChange={(event) => setPlanSort(event.target.value as typeof planSort)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold"><option value="recommended">Recommended</option><option value="low">Price: Low to High</option><option value="high">Price: High to Low</option><option value="validity">Validity: Longest first</option></select></div>
                        {planSelectionMessage && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm font-black text-emerald-700">{planSelectionMessage}</p>}
-                       {planDiscovery.specialOffers?.length > 0 && (selectedPlanCategory === 'All' || selectedPlanCategory === 'Special Offers') && <div className="space-y-2"><p className="text-sm font-black text-amber-700">Special offer for this number</p>{planDiscovery.specialOffers.map((offer: any) => <div key={offer.id} className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><div className="flex items-center justify-between gap-3"><p className="font-black">₹{offer.amount}</p><button type="button" onClick={() => { setRechargeAmount(String(offer.amount)); setPlanSelectionMessage(`₹${offer.amount} plan selected`); }} className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-black text-white">Use this plan</button></div><p className="mt-1 text-xs text-amber-900">{offer.description}</p></div>)}</div>}
+                       {planDiscovery.specialOffers?.length > 0 && (selectedPlanCategory === 'All' || selectedPlanCategory === 'Special Offers') && <div className="space-y-2"><p className="text-sm font-black text-amber-700">Special offer for this number</p>{planDiscovery.specialOffers.map((offer: any) => <div key={offer.id} className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><div className="flex items-center justify-between gap-3"><p className="font-black">₹{offer.amount}</p><button type="button" onClick={() => { setSelectedPlanId(String(offer.id)); setRechargeAmount(String(offer.amount)); setPlanSelectionMessage(`₹${offer.amount} plan selected`); }} className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-black text-white">Use this plan</button></div><p className="mt-1 text-xs text-amber-900">{offer.description}</p></div>)}</div>}
                        {visiblePlans.length === 0 && selectedPlanCategory !== 'Special Offers' && <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No matching plans were returned.</p>}
-                       <div className="space-y-2">{visiblePlans.map((plan: any) => { const expanded = expandedPlanIds.has(plan.id); return <div key={plan.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-lg font-black text-slate-900">₹{plan.amount}</p><p className="text-sm font-black text-slate-700">{plan.validity}</p><p className="mt-1 text-xs font-black text-[#087443]">{plan.category}</p></div><button type="button" onClick={() => { setRechargeAmount(String(plan.amount)); setPlanSelectionMessage(`₹${plan.amount} plan selected`); }} className="shrink-0 rounded-lg bg-[#087443] px-3 py-2 text-xs font-black text-white">Use this plan</button></div><p className={`mt-2 text-sm leading-5 text-slate-600 ${expanded ? '' : 'line-clamp-3'}`}>{plan.description}</p>{plan.description?.length > 180 && <button type="button" onClick={() => setExpandedPlanIds((current) => { const next = new Set(current); expanded ? next.delete(plan.id) : next.add(plan.id); return next; })} className="mt-2 text-xs font-black text-[#087443]">{expanded ? 'Show less' : 'View details'}</button>}</div>; })}</div>
+                       <div className="space-y-2">{visiblePlans.map((plan: any) => { const expanded = expandedPlanIds.has(plan.id); return <div key={plan.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-lg font-black text-slate-900">₹{plan.amount}</p><p className="text-sm font-black text-slate-700">{plan.validity}</p><p className="mt-1 text-xs font-black text-[#087443]">{plan.category}</p></div><button type="button" onClick={() => { setSelectedPlanId(String(plan.id)); setRechargeAmount(String(plan.amount)); setPlanSelectionMessage(`₹${plan.amount} plan selected`); }} className="shrink-0 rounded-lg bg-[#087443] px-3 py-2 text-xs font-black text-white">Use this plan</button></div><p className={`mt-2 text-sm leading-5 text-slate-600 ${expanded ? '' : 'line-clamp-3'}`}>{plan.description}</p>{plan.description?.length > 180 && <button type="button" onClick={() => setExpandedPlanIds((current) => { const next = new Set(current); expanded ? next.delete(plan.id) : next.add(plan.id); return next; })} className="mt-2 text-xs font-black text-[#087443]">{expanded ? 'Show less' : 'View details'}</button>}</div>; })}</div>
                        {visiblePlans.length < filteredPlans.length && <button type="button" onClick={() => setPlanVisibleCount((count) => count + 20)} className="w-full rounded-xl border border-[#087443] px-4 py-3 text-sm font-black text-[#087443]">Show more plans</button>}
                      </div>}
                      
@@ -1119,11 +1149,7 @@ export default function ZeshuSuperApp() {
                        </div>
                      </div>
 
-                     {activeService !== 'upi' && (
-                       <button type="button" onClick={() => showToast('Recharge fulfillment is not available yet.')} disabled={isLoading || !rechargeAmount || activeService === 'mobile'} className="w-full bg-gradient-to-r from-[#059669] to-[#047857] hover:to-[#065F46] text-white py-5 rounded-2xl font-black text-lg shadow-[0_8px_20px_-6px_rgba(5,150,105,0.4)] mt-4 transition-all active:scale-[0.98] disabled:opacity-50">
-                         Recharge fulfillment unavailable
-                       </button>
-                     )}
+                     {activeService === 'mobile' ? <div className="mt-4 space-y-3"><div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-center"><p className="text-sm font-black text-amber-900">Test payment</p><p className="mt-1 text-xs font-bold text-amber-800">No real recharge will be submitted.</p></div><button type="button" onClick={() => void handleMobileTestPayment()} disabled={testRechargeLoading || !rechargeAmount || !selectedPlanId || !planDiscovery} className="w-full rounded-2xl bg-[#4F46E5] py-4 text-lg font-black text-white disabled:opacity-50">{testRechargeLoading ? 'Opening test payment...' : 'Continue to Test Payment'}</button></div> : activeService !== 'upi' && <button type="button" onClick={handleRechargeCheckout} disabled={isLoading || !rechargeAmount} className="w-full bg-gradient-to-r from-[#059669] to-[#047857] hover:to-[#065F46] text-white py-5 rounded-2xl font-black text-lg shadow-[0_8px_20px_-6px_rgba(5,150,105,0.4)] mt-4 transition-all active:scale-[0.98] disabled:opacity-50">Recharge fulfillment unavailable</button>}
                    </>
                  )}
                </div>
@@ -1148,9 +1174,9 @@ export default function ZeshuSuperApp() {
                   </button>}
 
                   <div className="bg-white p-6 md:p-10 rounded-[24px] md:rounded-[32px] shadow-sm border border-gray-100 mx-4 md:mx-0">
-                    <div className="flex items-center justify-between mb-8"><h2 className="text-xl md:text-2xl font-black tracking-tight">Services</h2><button onClick={() => setActiveTab('recharge')} className="text-[#075b36] font-extrabold text-xs md:text-sm hover:bg-[#e9f7ef] bg-[#f1faf4] px-3 py-1.5 md:px-4 md:py-2 rounded-xl">Explore services</button></div>
+                    <div className="flex items-center justify-between mb-8"><h2 className="text-xl md:text-2xl font-black tracking-tight">Recharge &amp; Bills</h2><button onClick={() => setActiveTab('recharge')} className="text-[#075b36] font-extrabold text-xs md:text-sm hover:bg-[#e9f7ef] bg-[#f1faf4] px-3 py-1.5 md:px-4 md:py-2 rounded-xl">Explore services</button></div>
                     <div className="grid grid-cols-4 md:grid-cols-8 gap-y-8 md:gap-y-10 gap-x-2 md:gap-x-4">
-                      {SERVICES.map((s) => (
+                      {SERVICES.filter((s) => !['pharmacy', 'upi'].includes(s.id)).map((s) => (
                         <div key={s.id} onClick={() => { setActiveTab('recharge'); setActiveService(s.id); }} className="flex flex-col items-center gap-2.5 md:gap-3.5 cursor-pointer group active:scale-95 transition-transform">
                           <div className={`h-[60px] w-[60px] md:h-[72px] md:w-[72px] rounded-[20px] md:rounded-[24px] flex items-center justify-center transition-all ${s.color}`}>{s.icon}</div>
                           <span className="text-[10px] md:text-[11px] font-black text-[#6B7280] text-center leading-tight group-hover:text-[#111827]">{s.label}</span>
@@ -1158,6 +1184,10 @@ export default function ZeshuSuperApp() {
                       ))}
                     </div>
                   </div>
+                  <section className="mx-4 rounded-[24px] border border-emerald-100 bg-emerald-50 p-5 md:mx-0" aria-labelledby="pharmacy-health-title">
+                    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 id="pharmacy-health-title" className="text-xl font-black text-[#173d27]">Pharmacy &amp; Health</h2><p className="mt-1 text-sm text-[#587065]">Medicine ordering is being prepared for your area.</p></div><button type="button" onClick={() => { setActiveTab('recharge'); setActiveService('pharmacy'); }} className="rounded-xl bg-[#087443] px-4 py-2.5 text-sm font-black text-white">View availability</button></div>
+                  </section>
+                  <section className="mx-4 rounded-[24px] border border-slate-200 bg-white p-5 md:mx-0" aria-labelledby="upcoming-tools-title"><h2 id="upcoming-tools-title" className="text-lg font-black text-slate-900">More tools</h2><p className="mt-1 text-sm text-slate-500">UPI Tools are coming soon. Merchant QR payments and transfers are not enabled.</p></section>
                 </div>
               )}
               {user && (favoriteProducts.length > 0 || recentlyPurchased.length > 0 || frequentCategories.length > 0) && normalizedSearch === '' && (
