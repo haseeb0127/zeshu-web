@@ -46,6 +46,31 @@ type PendingGroceryConfirmation = {
   razorpay_signature: string;
 };
 
+type CheckoutErrorState = { message: string; code?: string; requestId?: string };
+
+const CHECKOUT_ERROR_MESSAGES: Record<string, string> = {
+  AUTH_REQUIRED: 'Please sign in before checkout.',
+  SESSION_EXPIRED: 'Your customer session has expired. Please sign in again.',
+  INVALID_CHECKOUT_DATA: 'Please review your cart and delivery address.',
+  INVALID_CART_ITEM: 'One or more cart items are invalid. Please review your cart.',
+  ADMIN_CHECKOUT_FORBIDDEN: 'Admin sessions cannot be used for customer checkout. Sign in with a customer account.',
+  CUSTOMER_PROFILE_REQUIRED: 'Customer profile required before checkout. Please sign in with your customer account.',
+  PAYMENT_SERVICE_UNAVAILABLE: 'Payment service is temporarily unavailable. Please try again later.',
+  MULTI_VENDOR_CART: "Items from different stores can't be combined in one order yet. Please order from one store at a time.",
+  PRODUCT_UNAVAILABLE: 'One or more items are currently unavailable.',
+  INSUFFICIENT_STOCK: 'Some items are no longer available in the requested quantity.',
+  ACTIVE_PAYMENT_CHECKOUT: 'You already have a payment checkout in progress. Complete it or try again after a few minutes.',
+  PAYMENT_RECONCILIATION_REQUIRED: "We're checking your previous payment. Please wait a moment before retrying.",
+  CASH_RESERVATION_FAILED: 'Unable to reserve Zeshu Cash for checkout. Please try again.',
+  PRODUCT_LOOKUP_FAILED: "We couldn't verify the products in your cart. Please try again.",
+  RESERVATION_CREATE_FAILED: "We couldn't prepare your checkout. Please try again.",
+  RAZORPAY_CREATE_FAILED: "We couldn't start the payment service. Please try again.",
+  RESERVATION_BIND_FAILED: 'Unable to bind the checkout reservation. Please try again.',
+  CHECKOUT_INTERNAL_ERROR: "We couldn't prepare your checkout. Please try again.",
+};
+
+const checkoutFailureMessage = (code: unknown) => CHECKOUT_ERROR_MESSAGES[String(code || '')] || CHECKOUT_ERROR_MESSAGES.CHECKOUT_INTERNAL_ERROR;
+
 type CustomerAddress = {
   id: string;
   label: string;
@@ -154,6 +179,7 @@ export default function ZeshuSuperApp() {
   const [otpSent, setOtpSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckoutOpening, setIsCheckoutOpening] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<CheckoutErrorState | null>(null);
   const [activeCategory, setActiveCategory] = useState('All'); 
   
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -573,6 +599,10 @@ export default function ZeshuSuperApp() {
   }, [isTrackingOpen, trackedOrder?.id, trackedOrder?.rider_id, trackedOrder?.status, trackedOrder?.user_id, user?.id]);
 
   const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); };
+  const showCheckoutError = (message: string, code?: string, requestId?: string) => {
+    setCheckoutError({ message, code, requestId });
+    showToast(message);
+  };
   const getUtilityAuthHeaders = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) {
@@ -1038,6 +1068,7 @@ export default function ZeshuSuperApp() {
   
   const addToCart = (product: any) => {
     if (!product?.vendor_id || product?.in_stock === false || Number(product?.quantity) <= 0) return showToast('This product is currently unavailable.');
+    setCheckoutError(null);
     const existing = cart.find((entry) => String(entry.item.id) === String(product.id));
     const cartVendorIds = Array.from(new Set(cart.map((entry) => entry.item?.vendor_id).filter(Boolean)));
     if (product?.vendor_id && cartVendorIds.some((vendorId) => vendorId !== product.vendor_id)) return showToast('Checkout supports one store at a time.');
@@ -1045,9 +1076,10 @@ export default function ZeshuSuperApp() {
     setCart(prev => { const current = prev.find((entry) => String(entry.item.id) === String(product.id)); return current ? prev.map(c => String(c.item.id) === String(product.id) ? { ...c, qty: c.qty + 1 } : c) : [...prev, { item: product, qty: 1 }]; });
     showToast(`${product.name} added`);
   };
-  const removeFromCart = (productId: any) => { setCart(prev => { const existing = prev.find(c => c.item.id === productId); if (existing && existing.qty > 1) { return prev.map(c => c.item.id === productId ? { ...c, qty: c.qty - 1 } : c); } else { const newCart = prev.filter(c => c.item.id !== productId); if (newCart.length === 0) setIsCartOpen(false); return newCart; } }); };
+  const removeFromCart = (productId: any) => { setCheckoutError(null); setCart(prev => { const existing = prev.find(c => c.item.id === productId); if (existing && existing.qty > 1) { return prev.map(c => c.item.id === productId ? { ...c, qty: c.qty - 1 } : c); } else { const newCart = prev.filter(c => c.item.id !== productId); if (newCart.length === 0) setIsCartOpen(false); return newCart; } }); };
   const clearCart = () => {
     if (!cart.length || !window.confirm('Clear every item from your cart?')) return;
+    setCheckoutError(null);
     setCart([]);
     showToast('Cart cleared.');
   };
@@ -1112,24 +1144,40 @@ export default function ZeshuSuperApp() {
       });
     }
     if (isCheckoutOpening) return;
-    if (!cart.length || finalCartTotal === 0) return showToast('Add an available product before checkout.');
+    setCheckoutError(null);
+    if (!cart.length || finalCartTotal === 0) return showCheckoutError('Add an available product before checkout.', 'INVALID_CHECKOUT_DATA');
     if (!user) return setIsAuthModalOpen(true);
     if (!currentAddress.trim() || currentAddress === 'Location not set' || currentAddress === 'Current GPS Location Synced') {
       setIsCartOpen(true);
-      return showToast('Enter a delivery address before checkout.');
+      return showCheckoutError('Enter a delivery address before checkout.', 'INVALID_CHECKOUT_DATA');
     }
-    if (!(await validateCartFreshness())) return;
+    if (currentAddress === 'Fetching precise location...') return showCheckoutError('Enter a delivery address before checkout.', 'INVALID_CHECKOUT_DATA');
+    if (!(await validateCartFreshness())) return showCheckoutError('Some items in your cart have changed availability. Please review the updated quantities.', 'PRODUCT_UNAVAILABLE');
     const checkoutVendorIds = cart.map((entry) => entry.item?.vendor_id).filter(Boolean).map(String);
     if (checkoutVendorIds.length !== cart.length || new Set(checkoutVendorIds).size !== 1) {
-      return showToast("Items from different stores can't be combined in one order yet. Please order from one store at a time.");
+      return showCheckoutError(CHECKOUT_ERROR_MESSAGES.MULTI_VENDOR_CART, 'MULTI_VENDOR_CART');
     }
     setIsCheckoutOpening(true);
     setIsLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const orderResponse = await fetch('/api/create-razorpay-order', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` }, body: JSON.stringify({ cartItems: cart, deliveryAddress: currentAddress, zeshuCashAmount: requestedZeshuCash }) });
-      const orderData = await orderResponse.json();
-      if (!orderResponse.ok || !orderData.success) throw new Error(orderData.error || 'Unable to create payment order.');
+      let orderData: any;
+      try {
+        orderData = await orderResponse.json();
+      } catch {
+        setIsLoading(false);
+        setIsCheckoutOpening(false);
+        showCheckoutError(CHECKOUT_ERROR_MESSAGES.CHECKOUT_INTERNAL_ERROR, 'CHECKOUT_RESPONSE_INVALID', undefined);
+        return;
+      }
+      if (!orderResponse.ok || !orderData?.success) {
+        const code = typeof orderData?.code === 'string' ? orderData.code : 'CHECKOUT_INTERNAL_ERROR';
+        setIsLoading(false);
+        setIsCheckoutOpening(false);
+        showCheckoutError(checkoutFailureMessage(code), code, typeof orderData?.requestId === 'string' ? orderData.requestId : undefined);
+        return;
+      }
       if (orderData.abandonedCheckoutReleased) showToast('Previous payment was cancelled. You can continue with a new checkout.');
       const orderId = orderData.orderId || orderData.id || orderData.order?.id;
       const reservationId = orderData.reservationId;
@@ -1173,10 +1221,10 @@ export default function ZeshuSuperApp() {
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
       const lower = message.toLowerCase();
-      const stockFailure = lower.includes('stock') || lower.includes('quantity') || lower.includes('unavailable') || lower.includes('no longer available') || lower.includes('invalid reservation items');
+      const stockFailure = lower.includes('stock') || lower.includes('quantity') || lower.includes('unavailable') || lower.includes('no longer available');
       if (stockFailure) await refreshCartAvailability();
-      const safeMessage = lower.includes('price') ? 'A product price changed. Review your cart and try again.' : stockFailure ? 'One or more products are no longer available in that quantity.' : lower.includes('vendor') && lower.includes('closed') ? 'This store is currently closed. Please try again later.' : lower.includes('session') || lower.includes('auth') ? 'Your customer session has expired. Please sign in again.' : message || 'Unable to start secure checkout.';
-      showToast(safeMessage);
+      const safeMessage = lower.includes('price') ? 'A product price changed. Review your cart and try again.' : stockFailure ? 'One or more products are no longer available in that quantity.' : CHECKOUT_ERROR_MESSAGES.CHECKOUT_INTERNAL_ERROR;
+      showCheckoutError(safeMessage, stockFailure ? 'INSUFFICIENT_STOCK' : 'CHECKOUT_INTERNAL_ERROR');
       setIsCheckoutOpening(false);
     }
     setIsLoading(false);
@@ -1664,6 +1712,7 @@ export default function ZeshuSuperApp() {
             <div className="bg-white p-6 border-t shadow-2xl">
               <div className="mb-3 flex items-center justify-between gap-3"><button type="button" onClick={clearCart} disabled={!cart.length || isCheckoutOpening} className="text-xs font-black text-red-600 disabled:text-slate-300">Clear cart</button><span className="text-[11px] font-medium text-slate-500">Stock and price are checked again before payment.</span></div>
               <p className="mb-3 text-center text-[11px] font-bold text-slate-500">Secure payment powered by Razorpay. Your total and stock are checked again before payment.</p>
+              {checkoutError && <div role="alert" aria-live="assertive" className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-sm font-bold text-red-700"><p>{checkoutError.message}</p>{checkoutError.code && <p className="mt-1 text-xs font-semibold text-red-600">Code: {checkoutError.code}{checkoutError.requestId ? ` · Reference: ${checkoutError.requestId}` : ''}</p>}</div>}
               <button disabled={cart.length === 0 || isLoading || isCheckoutOpening} onClick={handleCartCheckout} className="w-full bg-[#087443] disabled:bg-[#a7b6ac] text-white font-bold py-4 rounded-2xl flex justify-between px-6 items-center">
                 <span>{isLoading ? 'Preparing secure checkout…' : 'Proceed to secure payment'}</span><span>₹{finalCartTotal}</span>
               </button>
