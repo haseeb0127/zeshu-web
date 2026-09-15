@@ -1037,7 +1037,7 @@ export default function ZeshuSuperApp() {
   };
   
   const addToCart = (product: any) => {
-    if (product?.in_stock === false || Number(product?.quantity) === 0) return showToast('This product is currently unavailable.');
+    if (!product?.vendor_id || product?.in_stock === false || Number(product?.quantity) <= 0) return showToast('This product is currently unavailable.');
     const existing = cart.find((entry) => String(entry.item.id) === String(product.id));
     const cartVendorIds = Array.from(new Set(cart.map((entry) => entry.item?.vendor_id).filter(Boolean)));
     if (product?.vendor_id && cartVendorIds.some((vendorId) => vendorId !== product.vendor_id)) return showToast('Checkout supports one store at a time.');
@@ -1119,6 +1119,10 @@ export default function ZeshuSuperApp() {
       return showToast('Enter a delivery address before checkout.');
     }
     if (!(await validateCartFreshness())) return;
+    const checkoutVendorIds = cart.map((entry) => entry.item?.vendor_id).filter(Boolean).map(String);
+    if (checkoutVendorIds.length !== cart.length || new Set(checkoutVendorIds).size !== 1) {
+      return showToast("Items from different stores can't be combined in one order yet. Please order from one store at a time.");
+    }
     setIsCheckoutOpening(true);
     setIsLoading(true);
     try {

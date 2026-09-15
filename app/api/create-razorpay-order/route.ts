@@ -35,6 +35,15 @@ const reservationErrorResponse = (message?: string) => {
   if (message === 'invalid reservation request' || message === 'invalid reservation items') {
     return NextResponse.json({ success: false, error: 'Your cart or delivery details are no longer available. Refresh and try again.' }, { status: 400 });
   }
+  if (message === 'MULTI_VENDOR_CART') {
+    return NextResponse.json({ success: false, code: 'MULTI_VENDOR_CART', error: "Items from different stores can't be combined in one order yet." }, { status: 400 });
+  }
+  if (message === 'PRODUCT_UNAVAILABLE') {
+    return NextResponse.json({ success: false, code: 'PRODUCT_UNAVAILABLE', error: 'One or more items are currently unavailable.' }, { status: 400 });
+  }
+  if (message === 'INSUFFICIENT_STOCK') {
+    return NextResponse.json({ success: false, code: 'INSUFFICIENT_STOCK', error: 'Some items are no longer available in the requested quantity.' }, { status: 400 });
+  }
   return NextResponse.json({ success: false, error: 'Unable to reserve inventory for checkout. Please try again.' }, { status: 500 });
 };
 
@@ -91,12 +100,13 @@ export async function POST(request: Request) {
     if (customerProfileError) return NextResponse.json({ success: false, error: 'Unable to verify customer profile.' }, { status: 500 });
     if (!customerProfile) return NextResponse.json({ success: false, error: 'Customer profile required before checkout. Please sign in with your customer account.' }, { status: 403 });
 
+    const canonicalRequestedItems = canonicalizeItems(reservationItems);
+
     const keyId = process.env.RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
     if (!keyId || !keySecret) return NextResponse.json({ success: false, error: 'Payment service is unavailable.' }, { status: 503 });
     const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
 
-    const canonicalRequestedItems = canonicalizeItems(reservationItems);
     const { data: resumableData, error: resumableError } = await serviceClient.rpc('get_resumable_inventory_reservation', { p_user_id: user.id });
     if (resumableError) return NextResponse.json({ success: false, error: 'Unable to check existing checkout state.' }, { status: 500 });
     const resumable = (Array.isArray(resumableData) ? resumableData[0] : resumableData) as ResumableReservation | null;
@@ -205,6 +215,30 @@ export async function POST(request: Request) {
         if (process.env.NODE_ENV !== 'production') console.error('Existing Razorpay checkout lookup failed', error instanceof Error ? error.message : 'unknown error');
         return NextResponse.json({ success: false, code: 'PAYMENT_RECONCILIATION_REQUIRED', error: "We're checking your payment status. Please wait a moment before retrying." }, { status: 409 });
       }
+    }
+
+    const requestedProductIds = canonicalRequestedItems.map((item) => item.product_id);
+    const { data: authoritativeProducts, error: authoritativeProductsError } = await serviceClient
+      .from('products')
+      .select('id,vendor_id,price,quantity,in_stock')
+      .in('id', requestedProductIds);
+    if (authoritativeProductsError) return NextResponse.json({ success: false, error: 'Unable to verify checkout products.' }, { status: 500 });
+    const productsById = new Map((authoritativeProducts || []).map((product) => [String(product.id), product]));
+    if (productsById.size !== requestedProductIds.length || requestedProductIds.some((id) => !productsById.has(id))) {
+      return reservationErrorResponse('PRODUCT_UNAVAILABLE');
+    }
+    const products = requestedProductIds.map((id) => productsById.get(id)!);
+    if (products.some((product) => !product.vendor_id || product.price === null || product.price === undefined || product.in_stock !== true)) {
+      return reservationErrorResponse('PRODUCT_UNAVAILABLE');
+    }
+    if (new Set(products.map((product) => String(product.vendor_id))).size !== 1) {
+      return reservationErrorResponse('MULTI_VENDOR_CART');
+    }
+    if (canonicalRequestedItems.some((item) => {
+      const product = productsById.get(item.product_id);
+      return product?.quantity === null || product?.quantity === undefined || Number(product.quantity) < item.quantity;
+    })) {
+      return reservationErrorResponse('INSUFFICIENT_STOCK');
     }
 
     const { data: reservationData, error: reservationError } = await serviceClient.rpc('create_inventory_reservation', {
