@@ -204,6 +204,12 @@ export default function ZeshuSuperApp() {
   const [electricityBill, setElectricityBill] = useState<Record<string, string> | null>(null);
   const [electricityBillerInfo, setElectricityBillerInfo] = useState<any>(null);
   const [electricityLoading, setElectricityLoading] = useState(false);
+  const [fastagOperators, setFastagOperators] = useState<any[]>([]);
+  const [fastagSearch, setFastagSearch] = useState('');
+  const [fastagOperator, setFastagOperator] = useState<any>(null);
+  const [fastagVehicleNumber, setFastagVehicleNumber] = useState('');
+  const [fastagInfo, setFastagInfo] = useState<Record<string, string> | null>(null);
+  const [fastagLoading, setFastagLoading] = useState(false);
 
   const [medSearchQuery, setMedSearchQuery] = useState('');
   const [medResults, setMedResults] = useState<any>(null);
@@ -664,6 +670,9 @@ export default function ZeshuSuperApp() {
     if (activeService !== 'electricity') {
       setElectricityOperators([]); setElectricitySearch(''); setElectricityOperator(null); setElectricityBillNumber(''); setElectricityBill(null); setElectricityBillerInfo(null);
     }
+    if (activeService !== 'fastag') {
+      setFastagOperators([]); setFastagSearch(''); setFastagOperator(null); setFastagVehicleNumber(''); setFastagInfo(null);
+    }
     setFetchedBill(null);
   }, [activeService]);
 
@@ -677,6 +686,24 @@ export default function ZeshuSuperApp() {
       setElectricityOperators(data.operators || []);
     } catch { showToast('Electricity providers are temporarily unavailable.'); }
     finally { setElectricityLoading(false); }
+  };
+
+  const loadFastagOperators = async () => {
+    if (fastagOperators.length) return;
+    const headers = await getUtilityAuthHeaders(); if (!headers) return;
+    setFastagLoading(true);
+    try { const response = await fetch('/api/fastag/operators', { headers }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setFastagOperators(data.operators || []); }
+    catch { showToast('FASTag providers are temporarily unavailable.'); }
+    finally { setFastagLoading(false); }
+  };
+
+  const fetchFastagDetails = async () => {
+    if (!fastagOperator) return showToast('Select a FASTag provider first.');
+    const headers = await getUtilityAuthHeaders(); if (!headers) return;
+    setFastagLoading(true); setFastagInfo(null);
+    try { const response = await fetch('/api/fastag/fetch-info', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ operatorCode: fastagOperator.operatorCode, vehicleNumber: fastagVehicleNumber }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setFastagInfo(data.info || {}); }
+    catch (error) { showToast(error instanceof Error ? error.message : "We couldn't fetch FASTag details. Check the provider and vehicle number and try again."); }
+    finally { setFastagLoading(false); }
   };
 
   const fetchElectricityBillDetails = async () => {
@@ -1166,6 +1193,14 @@ export default function ZeshuSuperApp() {
                      <h2 className="text-xl font-black text-[#183524]">{activeService === 'pharmacy' ? 'Medicine ordering is being prepared for your area.' : `${currentServiceObj.label} is not available yet`}</h2>
                      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#587065]">{activeService === 'pharmacy' ? 'You can return to groceries while our verified pharmacy fulfillment network is being prepared.' : 'We&apos;re connecting verified providers before enabling this service. No payment can be started from this screen.'}</p>
                      <button onClick={() => setActiveTab('home')} className="mt-6 rounded-xl bg-[#087443] px-5 py-3 text-sm font-bold text-white active:scale-[.98]">Continue shopping</button>
+                   </div>
+                 ) : activeService === 'fastag' ? (
+                   <div className="space-y-5">
+                     <button type="button" onClick={() => void loadFastagOperators()} disabled={fastagLoading} className="w-full rounded-2xl border-2 border-dashed border-[#C7D2FE] bg-[#EEF2FF] p-4 text-sm font-black text-[#4F46E5] disabled:opacity-50">{fastagLoading ? 'Loading providers...' : 'Load FASTag providers'}</button>
+                     {fastagOperators.length > 0 && <div className="space-y-2"><label htmlFor="fastag-search" className="sr-only">Search FASTag providers</label><input id="fastag-search" value={fastagSearch} onChange={(event) => setFastagSearch(event.target.value)} placeholder="Search providers..." className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold outline-none focus:border-[#087443]" /><div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200">{fastagOperators.filter((operator: any) => operator.name.toLowerCase().includes(fastagSearch.toLowerCase())).map((operator: any) => <button type="button" key={operator.operatorCode} onClick={() => { setFastagOperator(operator); setFastagVehicleNumber(''); setFastagInfo(null); }} className={`block w-full px-4 py-3 text-left text-sm font-bold hover:bg-emerald-50 ${fastagOperator?.operatorCode === operator.operatorCode ? 'bg-emerald-50 text-[#087443]' : ''}`}>{operator.name}</button>)}</div></div>}
+                     <div><label htmlFor="fastag-vehicle" className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#6B7280]">Vehicle registration number</label><input id="fastag-vehicle" value={fastagVehicleNumber} onChange={(event) => setFastagVehicleNumber(event.target.value.slice(0, 15))} placeholder="Enter vehicle number" className="w-full rounded-2xl border border-gray-200 bg-[#F8F9FC] p-4 text-lg font-bold uppercase outline-none focus:border-[#6366F1]" /></div>
+                     <button type="button" onClick={() => void fetchFastagDetails()} disabled={fastagLoading || !fastagOperator} className="w-full rounded-2xl bg-[#087443] p-4 text-sm font-black text-white disabled:opacity-50">{fastagLoading ? 'Checking details...' : 'Check FASTag details'}</button>
+                     {fastagInfo && <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5"><p className="mb-3 text-sm font-black text-[#173d27]">FASTag details</p>{Object.entries(fastagInfo).map(([key, value]) => <div key={key} className="flex justify-between gap-3 border-b border-emerald-100 py-2 text-sm last:border-0"><span className="font-bold text-slate-600">{electricityLabels[key] || key}</span><span className="text-right font-black text-slate-900">{value}</span></div>)}<p className="mt-4 rounded-xl bg-amber-50 p-3 text-center text-sm font-black text-amber-900">FASTag payment is not enabled yet.</p></div>}
                    </div>
                  ) : activeService === 'electricity' ? (
                    <div className="space-y-5">

@@ -42,7 +42,8 @@ export type DthPlan = {
   lastUpdated: string;
   pricingOptions: DthPricingOption[];
 };
-export type ElectricityOperator = { name: string; operatorCode: string; type: 'ELECTRICITY' };
+export type UtilityOperator = { name: string; operatorCode: string; type: string };
+export type ElectricityOperator = UtilityOperator & { type: 'ELECTRICITY' };
 export type BbpsField = { label: string; minLength: number | null; maxLength: number | null; fieldType: string };
 export type BbpsBillInfo = { billFetchAvailable: boolean; fields: BbpsField[] };
 
@@ -102,6 +103,40 @@ export async function fetchElectricityOperators() {
   const data = await getProvider('OperatorList', { ApiUserID: memberId, ApiPassword: password });
   if (providerErrorCode(data) !== '0') throw providerError('Electricity providers are temporarily unavailable.');
   return normalizeElectricityOperators(data);
+}
+
+export async function fetchFastagOperators(): Promise<UtilityOperator[]> {
+  const { memberId, password } = credentials();
+  const data = await getProvider('OperatorList', { ApiUserID: memberId, ApiPassword: password });
+  if (providerErrorCode(data) !== '0') throw providerError('FASTag providers are temporarily unavailable.');
+  const source: unknown[] = [];
+  const walk = (value: unknown) => { if (!value || typeof value !== 'object') return; if (Array.isArray(value)) return value.forEach(walk); const item = value as Record<string, unknown>; if (Object.keys(item).some((key) => ['type', 'operatorcode', 'opcode', 'code'].includes(key.toLowerCase()))) source.push(item); else Object.values(item).forEach(walk); };
+  walk(data?.RDATA ?? data?.DATA ?? data);
+  return source.flatMap((entry) => { const item = entry as Record<string, unknown>; const type = firstValue(item, ['Type', 'type']); const operatorCode = firstValue(item, ['Opcode', 'OpCode', 'operatorcode', 'operator_code', 'code']); const name = firstValue(item, ['Name', 'Operator', 'operatorname', 'operator_name']); return type.toLowerCase() === 'fastag' && operatorCode && name ? [{ name, operatorCode, type: 'FASTAG' as const }] : []; });
+}
+
+function normalizeVehicleNumber(value: string) {
+  const normalized = value.trim().toUpperCase().replace(/[\s-]/g, '');
+  if (!/^[A-Z0-9]{6,15}$/.test(normalized)) throw new Error('INVALID_VEHICLE_NUMBER');
+  return normalized;
+}
+
+export async function fetchFastagInfo(operatorCode: string, vehicleNumber: string) {
+  const { memberId, password } = credentials();
+  const vehicle = normalizeVehicleNumber(vehicleNumber);
+  if (!operatorCode || operatorCode.length > 40) throw providerError('FASTag provider is unavailable.');
+  const operators = await fetchFastagOperators();
+  if (!operators.some((operator) => operator.operatorCode === operatorCode)) throw providerError('FASTag provider is unavailable.');
+  const data = await getProvider('FastagInfoFetch', { apimember_id: memberId, api_password: password, VehicleNo: vehicle, operator_code: operatorCode });
+  if (providerErrorCode(data) !== '0') throw providerError('FASTag details could not be fetched.');
+  const result = normalizeElectricityBill(data);
+  if (!Object.keys(result).length) throw providerError('No FASTag details were found for these details.');
+  return result;
+}
+
+export function fastagNormalizationSelfCheck() {
+  const normalized = normalizeElectricityBill({ ERROR: '0', STATUS: '1', BILLDEATILS: { Name: 'TEST CUSTOMER', DueAmount: '100.00', DueDate: '2026-10-01', BillNumber: 'TESTREF', BillDate: '2026-09-15', Balance: '115', BillPeriod: null } });
+  return normalized.customerName === 'TEST CUSTOMER' && normalized.dueAmount === '100.00' && normalized.dueDate === '2026-10-01' && normalized.billNumber === 'TESTREF' && normalized.balance === '115' && !('billPeriod' in normalized) && providerErrorCode({ ERROR: '1' }) !== '0';
 }
 
 export function normalizeElectricityBill(data: any) {
