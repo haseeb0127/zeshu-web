@@ -115,6 +115,54 @@ export async function fetchFastagOperators(): Promise<UtilityOperator[]> {
   return source.flatMap((entry) => { const item = entry as Record<string, unknown>; const type = firstValue(item, ['Type', 'type']); const operatorCode = firstValue(item, ['Opcode', 'OpCode', 'operatorcode', 'operator_code', 'code']); const name = firstValue(item, ['Name', 'Operator', 'operatorname', 'operator_name']); return type.toLowerCase() === 'fastag' && operatorCode && name ? [{ name, operatorCode, type: 'FASTAG' as const }] : []; });
 }
 
+async function fetchOperatorsByExactType(expectedType: string): Promise<UtilityOperator[]> {
+  const { memberId, password } = credentials();
+  const data = await getProvider('OperatorList', { ApiUserID: memberId, ApiPassword: password });
+  if (providerErrorCode(data) !== '0') throw providerError('Gas providers are temporarily unavailable.');
+  const source: unknown[] = [];
+  const walk = (value: unknown) => { if (!value || typeof value !== 'object') return; if (Array.isArray(value)) return value.forEach(walk); const item = value as Record<string, unknown>; if (Object.keys(item).some((key) => ['type', 'operatorcode', 'opcode', 'code'].includes(key.toLowerCase()))) source.push(item); else Object.values(item).forEach(walk); };
+  walk(data?.RDATA ?? data?.DATA ?? data);
+  return source.flatMap((entry) => { const item = entry as Record<string, unknown>; const type = firstValue(item, ['Type', 'type']); const operatorCode = firstValue(item, ['Opcode', 'OpCode', 'operatorcode', 'operator_code', 'code']); const name = firstValue(item, ['Name', 'Operator', 'operatorname', 'operator_name']); return type.toLowerCase() === expectedType.toLowerCase() && operatorCode && name ? [{ name, operatorCode, type: expectedType }] : []; });
+}
+
+export const fetchPipedGasOperators = () => fetchOperatorsByExactType('GASPIPELINE');
+export const fetchLpgOperators = () => fetchOperatorsByExactType('lpg');
+
+export async function fetchPipedGasInfo(operatorCode: string, consumerNumber: string) {
+  const { memberId, password } = credentials();
+  const consumer = normalizePipedGasConsumerNumber(consumerNumber);
+  if (!operatorCode || operatorCode.length > 40) throw providerError('Piped Gas provider is unavailable.');
+  const operators = await fetchPipedGasOperators();
+  if (!operators.some((operator) => operator.operatorCode === operatorCode)) throw providerError('Piped Gas provider is unavailable.');
+  const data = await getProvider('GasPipeInfoFetch', { apimember_id: memberId, api_password: password, ConsumerNo: consumer, operator_code: operatorCode });
+  if (providerErrorCode(data) !== '0') throw providerError('Piped Gas details could not be fetched.');
+  const result = normalizeElectricityBill(data);
+  if (!Object.keys(result).length) throw providerError('No Piped Gas details were found for these details.');
+  return result;
+}
+
+export function gasNormalizationSelfCheck() {
+  const normalized = normalizeElectricityBill({ ERROR: '0', BILLDEATILS: { Name: 'TEST CUSTOMER', DueAmount: '100.00', DueDate: '2026-10-01', BillNumber: 'TEST', BillDate: '2026-09-15', Balance: '115', BillPeriod: null } });
+  return normalized.customerName === 'TEST CUSTOMER' && normalized.dueAmount === '100.00' && normalized.billNumber === 'TEST' && !('billPeriod' in normalized) && providerErrorCode({ ERROR: '1' }) !== '0' && Object.keys(normalizeElectricityBill({ BILLDEATILS: {} })).length === 0;
+}
+
+function normalizePipedGasConsumerNumber(value: string) {
+  const normalized = value.trim();
+  if (!normalized || normalized.length > 80 || /[\u0000-\u001F\u007F]/.test(normalized)) throw new Error('INVALID_PIPED_GAS_CONSUMER');
+  return normalized;
+}
+
+export function pipedGasValidationSelfCheck() {
+  const normal = normalizePipedGasConsumerNumber('ABC12345');
+  const longer = normalizePipedGasConsumerNumber('CONNECTION-12345678901234567890');
+  const preserved = normalizePipedGasConsumerNumber('ab-12/xy 34');
+  let controlRejected = false;
+  try { normalizePipedGasConsumerNumber('ABC\n123'); } catch (error) { controlRejected = error instanceof Error && error.message === 'INVALID_PIPED_GAS_CONSUMER'; }
+  let vehicleUnchanged = false;
+  try { vehicleUnchanged = normalizeVehicleNumber('ts 09-ab-1234') === 'TS09AB1234'; } catch { vehicleUnchanged = false; }
+  return normal === 'ABC12345' && longer.length > 15 && preserved === 'ab-12/xy 34' && controlRejected && vehicleUnchanged;
+}
+
 function normalizeVehicleNumber(value: string) {
   const normalized = value.trim().toUpperCase().replace(/[\s-]/g, '');
   if (!/^[A-Z0-9]{6,15}$/.test(normalized)) throw new Error('INVALID_VEHICLE_NUMBER');
