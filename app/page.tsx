@@ -118,6 +118,12 @@ function dedupePlans(plans: any[]) {
   return Array.from(grouped.values()).map((plan) => ({ ...plan, category: plan.categories.join(' · ') || plan.category }));
 }
 
+function formatDthMetric(value: unknown, label: string) {
+  const text = String(value ?? '').trim();
+  if (!text) return '';
+  return /^\d+(?:\.\d+)?$/.test(text) ? `${text} ${label}` : text;
+}
+
 export default function ZeshuSuperApp() {
   const [activeTab, setActiveTab] = useState('home'); 
   const [activeService, setActiveService] = useState('mobile');
@@ -181,6 +187,14 @@ export default function ZeshuSuperApp() {
   const [expandedPlanIds, setExpandedPlanIds] = useState<Set<string>>(new Set());
   const [planSelectionMessage, setPlanSelectionMessage] = useState('');
   const [testRechargeLoading, setTestRechargeLoading] = useState(false);
+  const [dthPlans, setDthPlans] = useState<any[]>([]);
+  const [dthOperator, setDthOperator] = useState<any>(null);
+  const [dthInfo, setDthInfo] = useState<Record<string, string> | null>(null);
+  const [dthLoading, setDthLoading] = useState(false);
+  const [dthSearch, setDthSearch] = useState('');
+  const [dthLanguageFilter, setDthLanguageFilter] = useState('All');
+  const [selectedDthPlanId, setSelectedDthPlanId] = useState('');
+  const [dthSelectionMessage, setDthSelectionMessage] = useState('');
 
   const [medSearchQuery, setMedSearchQuery] = useState('');
   const [medResults, setMedResults] = useState<any>(null);
@@ -635,8 +649,50 @@ export default function ZeshuSuperApp() {
       setPlanDiscovery(null);
       setPlanDiscoveryError('');
     }
+    if (activeService !== 'dth') {
+      setDthPlans([]); setDthOperator(null); setDthInfo(null); setDthSearch(''); setDthLanguageFilter('All'); setSelectedDthPlanId(''); setDthSelectionMessage('');
+    }
     setFetchedBill(null);
   }, [activeService]);
+
+  const detectDthOperator = async () => {
+    if (!/^\d{6,20}$/.test(rechargeNumber)) return showToast('Enter a valid DTH subscriber/customer ID.');
+    const headers = await getUtilityAuthHeaders(); if (!headers) return;
+    setDthLoading(true); setDthInfo(null); setDthPlans([]); setDthLanguageFilter('All'); setDthSelectionMessage('');
+    try {
+      const response = await fetch('/api/dth/operator', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ dthNumber: rechargeNumber }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      setDthOperator(data); showToast(`Detected ${data.operator}`);
+    } catch (error) { showToast(error instanceof Error ? error.message : "We couldn't detect this DTH provider. Check the number and try again."); }
+    finally { setDthLoading(false); }
+  };
+
+  const fetchDthPlansForCustomer = async () => {
+    if (!dthOperator) return showToast('Detect the DTH provider first.');
+    const headers = await getUtilityAuthHeaders(); if (!headers) return;
+    setDthLoading(true); setDthSelectionMessage('');
+    try {
+      const response = await fetch('/api/dth/plans', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ dthNumber: rechargeNumber }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      setDthOperator({ operator: data.operator, operatorCode: data.operatorCode }); setDthPlans(data.plans || []); setDthLanguageFilter('All');
+    } catch (error) { showToast(error instanceof Error ? error.message : 'DTH plans are temporarily unavailable.'); }
+    finally { setDthLoading(false); }
+  };
+
+  const fetchDthAccountInfo = async () => {
+    if (!dthOperator) return showToast('Detect the DTH provider first.');
+    const headers = await getUtilityAuthHeaders(); if (!headers) return;
+    setDthLoading(true);
+    try {
+      const response = await fetch('/api/dth/info', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ dthNumber: rechargeNumber }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      setDthInfo(data.info || {});
+    } catch (error) { showToast(error instanceof Error ? error.message : 'Account details are temporarily unavailable.'); }
+    finally { setDthLoading(false); }
+  };
 
   const autoDetectAndFetchPlans = async (num: string) => {
     if (!/^[6-9]\d{9}$/.test(num)) { setPlanDiscoveryError('Enter a valid 10-digit Indian mobile number.'); return; }
@@ -1061,6 +1117,15 @@ export default function ZeshuSuperApp() {
                      <h2 className="text-xl font-black text-[#183524]">{activeService === 'pharmacy' ? 'Medicine ordering is being prepared for your area.' : `${currentServiceObj.label} is not available yet`}</h2>
                      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#587065]">{activeService === 'pharmacy' ? 'You can return to groceries while our verified pharmacy fulfillment network is being prepared.' : 'We&apos;re connecting verified providers before enabling this service. No payment can be started from this screen.'}</p>
                      <button onClick={() => setActiveTab('home')} className="mt-6 rounded-xl bg-[#087443] px-5 py-3 text-sm font-bold text-white active:scale-[.98]">Continue shopping</button>
+                   </div>
+                 ) : activeService === 'dth' ? (
+                   <div className="space-y-5">
+                     <div><label htmlFor="dth-number" className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#6B7280]">DTH Subscriber / Customer ID</label><input id="dth-number" type="tel" inputMode="numeric" maxLength={20} placeholder="Enter your DTH customer ID" value={rechargeNumber} onChange={(event) => setRechargeNumber(event.target.value.replace(/\D/g, '').slice(0, 20))} className="w-full rounded-2xl border border-gray-200 bg-[#F8F9FC] p-4 text-lg font-bold outline-none focus:border-[#6366F1]" /></div>
+                     <button type="button" onClick={() => void detectDthOperator()} disabled={dthLoading} className="w-full rounded-2xl border-2 border-dashed border-[#C7D2FE] bg-[#EEF2FF] p-4 text-sm font-bold text-[#4F46E5] disabled:opacity-50">{dthLoading ? 'Checking provider...' : 'Detect Operator'}</button>
+                     {dthOperator && <div className="space-y-3 rounded-2xl bg-[#F4FBF6] p-4"><p className="text-xs font-black uppercase tracking-wider text-[#087443]">Detected provider</p><p className="font-black text-slate-900">{dthOperator.operator}</p><div className="flex flex-col gap-2 sm:flex-row"><button type="button" onClick={() => void fetchDthPlansForCustomer()} disabled={dthLoading} className="flex-1 rounded-xl bg-[#087443] px-4 py-3 text-sm font-black text-white disabled:opacity-50">View Plans</button><button type="button" onClick={() => void fetchDthAccountInfo()} disabled={dthLoading} className="flex-1 rounded-xl border border-[#087443] px-4 py-3 text-sm font-black text-[#087443] disabled:opacity-50">Check account details</button></div><p className="text-xs text-slate-500">Account lookup uses a provider verification request.</p></div>}
+                     {dthInfo && <div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="mb-3 text-sm font-black text-slate-900">Account details</p>{Object.entries(dthInfo).map(([key, value]) => <div key={key} className="flex justify-between gap-3 border-b border-slate-100 py-2 text-sm last:border-0"><span className="font-bold text-slate-500">{key}</span><span className="text-right font-black text-slate-900">{value}</span></div>)}</div>}
+                     {dthPlans.length > 0 && <div className="space-y-3"><label htmlFor="dth-search" className="sr-only">Search DTH packs</label><input id="dth-search" value={dthSearch} onChange={(event) => setDthSearch(event.target.value)} placeholder="Search DTH packs..." className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold outline-none focus:border-[#087443]" />{Array.from(new Set(dthPlans.map((plan: any) => String(plan.language || '').trim()).filter(Boolean))).length > 0 && <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">{['All', ...Array.from(new Set(dthPlans.map((plan: any) => String(plan.language || '').trim()).filter(Boolean)))].map((language) => <button type="button" key={language} onClick={() => setDthLanguageFilter(language)} className={`shrink-0 rounded-full px-3 py-2 text-xs font-black ${dthLanguageFilter === language ? 'bg-[#087443] text-white' : 'bg-slate-100 text-slate-600'}`}>{language}</button>)}</div>}{dthSelectionMessage && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm font-black text-emerald-700">{dthSelectionMessage}</p>}{dthPlans.filter((plan: any) => (dthLanguageFilter === 'All' || plan.language === dthLanguageFilter) && `${plan.name} ${plan.language} ${plan.channels} ${plan.paidChannels} ${plan.hdChannels} ${plan.pricingOptions?.map((option: any) => `${option.amount} ${option.duration}`).join(' ')}`.toLowerCase().includes(dthSearch.toLowerCase())).map((plan: any) => <div key={plan.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"><p className="text-lg font-black text-slate-900">{plan.name}</p><p className="mt-1 text-sm font-bold text-slate-600">{[plan.language, plan.channels && `${plan.channels} channels`, plan.paidChannels && `${plan.paidChannels} paid`, plan.hdChannels && `${plan.hdChannels} HD`].filter(Boolean).join(' · ')}</p>{plan.lastUpdated && <p className="mt-1 text-xs text-slate-500">Last updated: {plan.lastUpdated}</p>}<div className="mt-3 flex flex-wrap gap-2">{plan.pricingOptions.map((option: any) => <button type="button" key={`${plan.id}-${option.amount}-${option.duration}`} onClick={() => { setSelectedDthPlanId(`${plan.id}-${option.amount}-${option.duration}`); setDthSelectionMessage(`₹${option.amount} / ${option.duration} selected`); }} className={`rounded-xl px-3 py-2 text-xs font-black ${selectedDthPlanId === `${plan.id}-${option.amount}-${option.duration}` ? 'bg-[#087443] text-white' : 'border border-[#087443] text-[#087443]'}`}>₹{option.amount} / {option.duration} · Select</button>)}</div></div>)}</div>}
+                     {dthPlans.length > 0 && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-center text-sm font-black text-amber-900">DTH payment is not enabled yet.</p>}
                    </div>
                  ) : activeService === 'pharmacy' ? (
                    <div className="space-y-5">

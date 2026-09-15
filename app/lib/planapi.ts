@@ -28,6 +28,21 @@ export type PlanDiscoveryResult = {
   specialOffers: NormalizedSpecialOffer[];
 };
 
+export type DthPricingOption = { amount: number; duration: string };
+export type DthPlan = {
+  id: string;
+  name: string;
+  language: string;
+  channels: string;
+  paidChannels: string;
+  hdChannels: string;
+  channelsRaw: string;
+  paidChannelsRaw: string;
+  hdChannelsRaw: string;
+  lastUpdated: string;
+  pricingOptions: DthPricingOption[];
+};
+
 function credentials() {
   const memberId = process.env.PLANAPI_MEMBER_ID;
   const password = process.env.PLANAPI_PASSWORD;
@@ -53,6 +68,134 @@ async function getProvider(path: string, params: Record<string, string>) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function dthDigits(value: string) {
+  const digits = value.replace(/\D/g, '');
+  if (digits.length < 6 || digits.length > 20 || /^0+$/.test(digits)) throw new Error('INVALID_DTH_NUMBER');
+  return digits;
+}
+
+function firstValue(value: Record<string, unknown>, keys: string[]) {
+  for (const wanted of keys) {
+    const key = Object.keys(value).find((candidate) => candidate.toLowerCase() === wanted.toLowerCase());
+    if (key && value[key] !== null && value[key] !== undefined) return String(value[key]).trim();
+  }
+  return '';
+}
+
+function normalizeDthOperator(data: any) {
+  const candidates: unknown[] = [];
+  const walk = (value: unknown) => {
+    if (!value || typeof value !== 'object') return;
+    if (Array.isArray(value)) return value.forEach(walk);
+    candidates.push(value);
+    Object.values(value as Record<string, unknown>).forEach(walk);
+  };
+  walk(data?.RDATA ?? data);
+  const value = (candidates.find((candidate) => {
+    const record = candidate as Record<string, unknown>;
+    return Object.keys(record).some((key) => ['dthopcode', 'opcode', 'operatorcode', 'operator_code', 'code'].includes(key.toLowerCase()));
+  }) || {}) as Record<string, unknown>;
+  const operatorCode = firstValue(value, ['DthOpCode', 'OpCode', 'operatorCode', 'operator_code', 'code']);
+  const operator = firstValue(value, ['DthName', 'Operator', 'operatorName', 'operator_name', 'opname', 'name']);
+  if (!operatorCode) throw providerError('DTH provider could not be detected.');
+  return { operator: operator || 'DTH provider', operatorCode };
+}
+
+function collectDthPackages(value: unknown, path: string[] = [], metadata: Record<string, string> = {}, output: Array<{ item: Record<string, unknown>; path: string[]; metadata: Record<string, string> }> = []) {
+  if (!value || typeof value !== 'object') return output;
+  if (Array.isArray(value)) { value.forEach((entry, index) => collectDthPackages(entry, [...path, String(index)], metadata, output)); return output; }
+  const item = value as Record<string, unknown>;
+  const inherited = { ...metadata };
+  const language = firstValue(item, ['Language', 'language', 'lang']);
+  if (language) inherited.language = language;
+  const lastUpdated = firstValue(item, ['last_update', 'lastupdate', 'lastupdated', 'updatedat']);
+  if (lastUpdated) inherited.lastUpdated = lastUpdated;
+  const hasPricing = Object.keys(item).some((key) => ['pricinglist', 'pricing_list', 'price', 'amount', 'rs'].includes(key.toLowerCase()));
+  const hasPlanIdentity = Object.keys(item).some((key) => ['planname', 'name', 'channels', 'language', 'pack'].includes(key.toLowerCase()));
+  if (hasPricing && hasPlanIdentity) output.push({ item, path, metadata: inherited });
+  Object.entries(item).forEach(([key, child]) => collectDthPackages(child, [...path, key], inherited, output));
+  return output;
+}
+
+function normalizeDthPlans(rdata: unknown): DthPlan[] {
+  const packages = collectDthPackages(rdata);
+  const plans: DthPlan[] = [];
+  for (const { item, path, metadata } of packages) {
+    const name = firstValue(item, ['PlanName', 'planname', 'name', 'packname']);
+    if (!name) continue;
+    const language = firstValue(item, ['Language', 'language', 'lang']) || metadata.language || '';
+    const channelsRaw = firstValue(item, ['Channels', 'channels', 'totalchannels', 'channelcount']);
+    const paidChannelsRaw = firstValue(item, ['PaidChannels', 'paidchannels', 'paid_channel', 'paychannels']);
+    const hdChannelsRaw = firstValue(item, ['HdChannels', 'hdchannels', 'hd_channel', 'hd']);
+    const metric = (raw: string) => raw.replace(/\s*(?:paid\s+)?channels?\s*$/i, '').trim();
+    const channels = metric(channelsRaw);
+    const paidChannels = metric(paidChannelsRaw);
+    const hdChannels = metric(hdChannelsRaw);
+    const lastUpdated = firstValue(item, ['last_update', 'lastupdate', 'lastupdated', 'updatedat']) || metadata.lastUpdated || '';
+    const pricingSource = Object.entries(item).find(([key, value]) => ['pricinglist', 'pricing_list'].includes(key.toLowerCase()) && Array.isArray(value))?.[1];
+    const rawOptions = Array.isArray(pricingSource) ? pricingSource : [item];
+    const pricingOptions = rawOptions.map((raw) => {
+      const option = raw && typeof raw === 'object' ? raw as Record<string, unknown> : item;
+      const rawAmount = firstValue(option, ['amount', 'price', 'rs', 'pricing']);
+      const parsedAmount = Number(rawAmount.replace(/[^0-9.]/g, ''));
+      const duration = firstValue(option, ['month', 'months', 'duration', 'validity']) || firstValue(item, ['month', 'months', 'duration', 'validity']);
+      return Number.isFinite(parsedAmount) && parsedAmount > 0 ? { amount: parsedAmount, duration: duration || 'Duration not provided' } : null;
+    }).filter((entry): entry is DthPricingOption => Boolean(entry));
+    if (!pricingOptions.length) continue;
+    const id = stableId(['dth', name, language, channels, paidChannels, hdChannels, lastUpdated, JSON.stringify(pricingOptions)]);
+    plans.push({ id, name, language, channels, paidChannels, hdChannels, channelsRaw, paidChannelsRaw, hdChannelsRaw, lastUpdated, pricingOptions });
+  }
+  return plans;
+}
+
+export async function discoverDthOperator(dthNumber: string) {
+  const { memberId, password } = credentials();
+  const number = dthDigits(dthNumber);
+  const data = await getProvider('DthOperatorFetch', { apimember_id: memberId, api_password: password, dth_number: number });
+  if (String(data?.ERROR ?? '') !== '0') throw providerError('DTH provider could not be detected.');
+  return normalizeDthOperator(data);
+}
+
+export async function fetchDthPlans(operatorCode: string) {
+  const { memberId, password } = credentials();
+  if (!operatorCode || operatorCode.length > 40) throw providerError('DTH plans are temporarily unavailable.');
+  const data = await getProvider('DthPlans', { apimember_id: memberId, api_password: password, operatorcode: operatorCode });
+  if (String(data?.ERROR ?? '') !== '0') throw providerError('DTH plans are temporarily unavailable.');
+  return normalizeDthPlans(data?.RDATA);
+}
+
+export async function fetchDthInfo(dthNumber: string, operatorCode: string) {
+  const { memberId, password } = credentials();
+  const number = dthDigits(dthNumber);
+  if (!operatorCode || operatorCode.length > 40) throw providerError('Account details are temporarily unavailable.');
+  const data = await getProvider('DTHINFOCheck', { apimember_id: memberId, api_password: password, mobile_no: number, Opcode: operatorCode });
+  if (String(data?.ERROR ?? data?.error ?? '') !== '0') throw providerError('Account details are temporarily unavailable.');
+  const source = data?.RDATA && typeof data.RDATA === 'object' ? data.RDATA : data?.DATA && typeof data.DATA === 'object' ? data.DATA : {};
+  const safe: Record<string, string> = {};
+  if (source && typeof source === 'object' && !Array.isArray(source)) {
+    const allowed = /^(name|customername|balance|monthly|monthlyamount|nextrechargedate|nextrecharge|plan|planname|status)$/i;
+    for (const [key, value] of Object.entries(source as Record<string, unknown>)) {
+      if (allowed.test(key) && (typeof value === 'string' || typeof value === 'number')) safe[key] = String(value);
+    }
+  }
+  return safe;
+}
+
+export function dthNormalizationSelfCheck() {
+  const operator = normalizeDthOperator({ ERROR: '0', DthName: 'SUN DIRECT', DthOpCode: '27' });
+  const plans = normalizeDthPlans({ Combo: [{ Language: 'Hindi', Details: [{ PlanName: 'Hindi Entertainment', Channels: '361 Channels', PaidChannels: '360 Paid Channels', HdChannels: '1 HD Channels', last_update: '2026-01-01', PricingList: [{ Amount: '279', Month: '1 Month' }, { Amount: '1549', Month: '6 Months' }, { Amount: '3099', Month: '12 Months' }] }] }] });
+  const infoResponse: any = { error: '0', DATA: { Name: 'Customer', Rmn: 'secret', Address: 'secret', PIN: 'secret', VC: 'secret', Balance: '10' } };
+  const info = fetchDthInfoShapeForTest(infoResponse);
+  return String(infoResponse.ERROR ?? infoResponse.error ?? '') === '0' && operator.operator === 'SUN DIRECT' && operator.operatorCode === '27' && plans[0]?.language === 'Hindi' && plans[0]?.pricingOptions.length === 3 && plans[0]?.lastUpdated === '2026-01-01' && info.Name === 'Customer' && !('Rmn' in info) && !('Address' in info) && !('PIN' in info) && !('VC' in info);
+}
+
+function fetchDthInfoShapeForTest(data: any) {
+  const source = data?.DATA && typeof data.DATA === 'object' ? data.DATA : {};
+  const safe: Record<string, string> = {};
+  for (const [key, value] of Object.entries(source)) if (/^(name|customername|balance|monthly|monthlyamount|nextrechargedate|nextrecharge|plan|planname|status)$/i.test(key) && (typeof value === 'string' || typeof value === 'number')) safe[key] = String(value);
+  return safe;
 }
 
 function stableId(parts: string[]) {
