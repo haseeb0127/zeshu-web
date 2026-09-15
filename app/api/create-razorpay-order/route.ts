@@ -127,19 +127,71 @@ export async function POST(request: Request) {
     if (resumableError) return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to check existing checkout state.', 500, resumableError);
     const resumable = (Array.isArray(resumableData) ? resumableData[0] : resumableData) as ResumableReservation | null;
 
-    const { data: expiredBoundReservation, error: expiredReservationError } = await serviceClient
+    const { data: expiredBoundReservations, error: expiredReservationError } = await serviceClient
       .from('inventory_reservations')
-      .select('id')
+      .select('id,status,razorpay_order_id')
       .eq('user_id', user.id)
       .in('status', ['EXPIRED', 'PAYMENT_PENDING'])
       .lte('expires_at', new Date().toISOString())
       .not('razorpay_order_id', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .order('created_at', { ascending: true });
     if (expiredReservationError) return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to check previous payment state.', 500, expiredReservationError);
-    if (expiredBoundReservation) {
-      return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "That payment session expired. We're checking the previous payment before starting a new checkout.", 409);
+    for (const expiredBoundReservation of expiredBoundReservations || []) {
+      stage = 'ABANDONED_PAYMENT_VERIFY';
+      if (expiredBoundReservation.status !== 'EXPIRED' || !expiredBoundReservation.razorpay_order_id) {
+        return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "That payment session expired. We're checking the previous payment before starting a new checkout.", 409);
+      }
+
+      let abandonedOrder: any;
+      let abandonedPaymentsResponse: any;
+      try {
+        abandonedOrder = await razorpay.orders.fetch(expiredBoundReservation.razorpay_order_id);
+        abandonedPaymentsResponse = await razorpay.orders.fetchPayments(expiredBoundReservation.razorpay_order_id);
+      } catch (error) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('[checkout]', { requestId, stage, code: 'PAYMENT_RECONCILIATION_REQUIRED', errorType: error instanceof Error ? error.name : typeof error });
+        }
+        return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, error);
+      }
+
+      const abandonedPayments = Array.isArray(abandonedPaymentsResponse?.items)
+        ? abandonedPaymentsResponse.items
+        : null;
+      const abandonedOrderStatus = String(abandonedOrder?.status || '').toLowerCase();
+      const definitelyAbandoned = abandonedOrder?.id === expiredBoundReservation.razorpay_order_id
+        && abandonedPayments !== null
+        && ((abandonedOrderStatus === 'created' && abandonedPayments.length === 0)
+          || (abandonedOrderStatus === 'attempted'
+            && abandonedPayments.length > 0
+            && abandonedPayments.every((payment: any) => String(payment?.status || '').toLowerCase() === 'failed')));
+
+      if (!definitelyAbandoned) {
+        return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409);
+      }
+
+      stage = 'ABANDONED_RELEASE';
+      const { data: releaseResult, error: releaseError } = await serviceClient.rpc('release_abandoned_unpaid_checkout', {
+        p_reservation_id: expiredBoundReservation.id,
+        p_razorpay_order_id: expiredBoundReservation.razorpay_order_id,
+      });
+      if (releaseError) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('[checkout]', { requestId, stage, code: 'PAYMENT_RECONCILIATION_REQUIRED', errorType: releaseError.name || 'SupabaseError' });
+        }
+        return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, releaseError);
+      }
+      const releaseRow = Array.isArray(releaseResult) ? releaseResult[0] : releaseResult;
+      if (!releaseRow || releaseRow.released !== true) {
+        return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409);
+      }
+      if (process.env.NODE_ENV !== 'production') {
+        console.info('[checkout]', {
+          requestId,
+          stage: 'ABANDONED_RELEASE_COMPLETE',
+          released: Boolean(releaseRow.released),
+          redemptionReleased: Boolean(releaseRow.redemption_released),
+        });
+      }
     }
 
     if (resumable?.reservation_id) {
