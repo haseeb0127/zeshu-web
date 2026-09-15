@@ -3,6 +3,7 @@
 import React, { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { adminSupabase } from "../../lib/browser-supabase";
+import OrderAlertManager from "../../components/OrderAlertManager";
 import { LogOut, Package, Plus, Send, Store, Users, X } from "lucide-react";
 
 const supabase = adminSupabase();
@@ -197,6 +198,7 @@ export default function AdminDashboard() {
   if (accessError) return <div className="min-h-screen grid place-items-center p-6 text-center"><div><h1 className="text-2xl font-black">Admin access required</h1><p className="mt-2 text-slate-500">This account is not authorized for Zeshu HQ.</p></div></div>;
 
   return <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+    <OrderAlertManager supabaseClient={supabase} channelName="admin-order-alerts" />
     <header className="sticky top-0 z-20 flex items-center justify-between bg-slate-950 px-5 py-4 text-white shadow-xl"><div className="flex items-center gap-3"><Store className="text-violet-400" /><div><h1 className="font-black tracking-tight">ZESHU HQ</h1><p className="text-[10px] font-bold uppercase tracking-widest text-violet-300">Operations</p></div></div><button type="button" aria-label="Sign out of admin dashboard" onClick={async () => { await supabase.auth.signOut(); router.replace("/admin/login"); }} className="min-h-10 min-w-10 rounded-xl bg-white/10 p-2"><LogOut size={18} /></button></header>
     <main className="mx-auto max-w-7xl p-5">
       {error && <div role="alert" className="mb-4 flex justify-between rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}<button onClick={() => setError("")}><X size={16} /></button></div>}

@@ -23,6 +23,7 @@ import {
   X,
 } from "lucide-react";
 import StatusBadge from "../components/StatusBadge";
+import OrderAlertManager from "../components/OrderAlertManager";
 import { vendorSupabase } from "../lib/browser-supabase";
 
 const supabase = vendorSupabase();
@@ -396,6 +397,7 @@ export default function VendorDashboard() {
   ];
 
   return <div className="min-h-screen bg-slate-950 text-slate-100">
+    <OrderAlertManager supabaseClient={supabase} channelName="vendor-order-alerts" filter={vendor?.id ? `vendor_id=eq.${vendor.id}` : undefined} />
     <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 md:px-6">
         <div className="flex min-w-0 items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 font-black text-xl">Z</div><div className="min-w-0"><p className="truncate font-black">{vendor?.business_name || "Vendor store"}</p><p className="text-xs font-bold text-slate-400">Zeshu vendor operations</p></div></div>

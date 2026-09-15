@@ -11,6 +11,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { riderSupabase } from "../lib/browser-supabase";
+import OrderAlertManager from "../components/OrderAlertManager";
 
 const supabase = riderSupabase();
 
@@ -324,6 +325,7 @@ export default function RiderDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
+      <OrderAlertManager supabaseClient={supabase} channelName="rider-order-alerts" filter={sessionUserId ? `assigned_rider_id=eq.${sessionUserId}` : undefined} />
       <div className="bg-slate-900 pt-8 pb-6 px-6 rounded-b-[40px] shadow-xl">
         <div className="flex justify-between items-start mb-6">
           <div>

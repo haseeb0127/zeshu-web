@@ -186,6 +186,11 @@ export default function ZeshuSuperApp() {
   const [useZeshuCash, setUseZeshuCash] = useState(false);
   const [zeshuCashAmount, setZeshuCashAmount] = useState('');
   const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [supportSubject, setSupportSubject] = useState('Order issue');
+  const [supportMessage, setSupportMessage] = useState('');
+  const [supportBusy, setSupportBusy] = useState(false);
+  const [supportNotice, setSupportNotice] = useState('');
+  const [supportConversations, setSupportConversations] = useState<any[]>([]);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [trackedOrder, setTrackedOrder] = useState<any>(null);
   const [liveRider, setLiveRider] = useState<any>(null);
@@ -446,6 +451,23 @@ export default function ZeshuSuperApp() {
       return () => { supabase.removeChannel(orderChannel); };
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!isAccountOpen || !user) return;
+    let mounted = true;
+    const loadSupportConversations = async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) return;
+      const response = await fetch('/api/support/conversations', { headers: { Authorization: `Bearer ${token}` } });
+      if (!mounted) return;
+      if (!response.ok) return;
+      const payload = await response.json().catch(() => ({}));
+      setSupportConversations(Array.isArray(payload.conversations) ? payload.conversations : []);
+    };
+    void loadSupportConversations();
+    return () => { mounted = false; };
+  }, [isAccountOpen, user]);
 
   useEffect(() => {
     if (!user) {
@@ -1042,6 +1064,27 @@ export default function ZeshuSuperApp() {
   const handleSendOtp = async () => { if (!/^\d{10}$/.test(phoneNumber)) return showToast('Enter a valid 10-digit mobile number.'); setIsLoading(true); const { error } = await supabase.auth.signInWithOtp({ phone: `+91${phoneNumber}` }); setIsLoading(false); if (!error) setOtpSent(true); else showToast('We could not start OTP delivery. Check the number and try again later.'); };
   const handleVerifyOtp = async () => { setIsLoading(true); const { data, error } = await supabase.auth.verifyOtp({ phone: `+91${phoneNumber}`, token: otp, type: 'sms' }); setIsLoading(false); if (data.session && data.user && !error) { setUser(data.session.user); setIsAuthModalOpen(false); void loadGrowthData(); showToast("Welcome back!"); } else showToast('Incorrect or expired OTP. Please try again.'); };
   const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); setRewardBalance(0); setRewardHistory([]); setReferralCode(''); setUseZeshuCash(false); setZeshuCashAmount(''); setIsAccountOpen(false); showToast("Logged out."); };
+  const submitSupportConversation = async () => {
+    if (!supportMessage.trim() || supportBusy) return;
+    setSupportBusy(true); setSupportNotice('');
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) { setSupportNotice('Your customer session has expired. Please sign in again.'); return; }
+      const response = await fetch('/api/support/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ subject: supportSubject, message: supportMessage.trim() }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof payload.error === 'string' ? payload.error : 'Support is temporarily unavailable.');
+      setSupportMessage('');
+      setSupportNotice('Your message was saved for the support team.');
+      setSupportConversations((current) => [payload.conversation, ...current.filter((item) => item.id !== payload.conversation?.id)]);
+    } catch (error) {
+      setSupportNotice(error instanceof Error && error.message.includes('prepared') ? 'Support chat is being prepared. Please email support@zeshu.in.' : 'Support is temporarily unavailable. Please try again or email support@zeshu.in.');
+    } finally { setSupportBusy(false); }
+  };
   const applyReferral = async () => { const code = referralInput.trim().toUpperCase(); if (!code || referralApplying) return; setReferralApplying(true); setReferralMessage(''); const { error } = await supabase.rpc('apply_referral_code', { p_code: code }); setReferralApplying(false); if (error) { if (process.env.NODE_ENV === 'development') console.error('Referral code failed:', error.message); setReferralMessage('This referral code could not be applied.'); return; } setReferralInput(''); setReferralMessage('Referral applied. Complete your first delivered order to unlock the reward.'); };
   const copyReferralCode = async () => { if (!referralCode) return; try { await navigator.clipboard?.writeText(referralCode); setReferralCopied(true); setReferralMessage('Invite code copied.'); window.setTimeout(() => setReferralCopied(false), 1800); } catch { setReferralMessage(`Your invite code: ${referralCode}`); } };
 
@@ -1345,7 +1388,7 @@ export default function ZeshuSuperApp() {
                  {unavailableService && ['pharmacy', 'upi'].includes(activeService) ? (
                    <div className="rounded-3xl border border-[#cfe7d8] bg-[#f4fbf6] p-6 text-center md:p-10">
                      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e1f3e7] text-[#087443]"><Info size={24}/></div>
-                     <h2 className="text-xl font-black text-[#183524]">{activeService === 'pharmacy' ? 'Pharmacy ordering is not available yet.' : `${currentServiceObj.label} is not available yet`}</h2>
+                    <h2 className="text-xl font-black text-[#183524]">{activeService === 'pharmacy' ? 'Licensed pharmacy fulfillment is being onboarded. No medicine payment or prescription transaction is available.' : `${currentServiceObj.label} is not available yet`}</h2>
                      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#587065]">{activeService === 'pharmacy' ? 'You can return to groceries while our verified pharmacy fulfillment network is being prepared. No medicine payment or delivery can be started here.' : 'We&apos;re connecting verified providers before enabling this service. No payment can be started from this screen.'}</p>
                      <button onClick={() => setActiveTab('home')} className="mt-6 rounded-xl bg-[#087443] px-5 py-3 text-sm font-bold text-white active:scale-[.98]">Continue shopping</button>
                    </div>
@@ -1512,6 +1555,19 @@ export default function ZeshuSuperApp() {
                     <button onClick={() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' })} className="mt-6 rounded-xl bg-white px-5 py-3 text-sm font-black text-[#075b36] active:scale-[.98]">Browse groceries</button>
                   </section>
 
+                  <section className="mx-4 grid gap-4 md:mx-0 md:grid-cols-2" aria-labelledby="service-availability-title">
+                    <div className="rounded-2xl border border-[#cfe8d7] bg-white p-5">
+                      <p className="text-[11px] font-black uppercase tracking-[.16em] text-[#087443]">Service availability</p>
+                      <h2 id="service-availability-title" className="mt-2 text-xl font-black text-[#173d27]">30-minute delivery target in supported Jagtial areas</h2>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">Eligible grocery essentials are planned for a 30-minute delivery target where local operations support it. Outside Jagtial, this quick-commerce service is coming soon.</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                      <p className="text-[11px] font-black uppercase tracking-[.16em] text-slate-500">Travel services</p>
+                      <h2 className="mt-2 text-xl font-black text-slate-800">Travel bookings are coming soon</h2>
+                      <div className="mt-3 flex flex-wrap gap-2">{['Bus Tickets', 'Train Tickets', 'Flights', 'Hotels / Rooms'].map((service) => <span key={service} className="rounded-full bg-white px-3 py-2 text-xs font-black text-slate-500">{service} · Coming Soon</span>)}</div>
+                    </div>
+                  </section>
+
                   {activeOrder && <button type="button" onClick={() => { setTrackedOrder(activeOrder); setIsTrackingOpen(true); }} className="mx-4 flex w-[calc(100%-2rem)] items-center justify-between gap-4 rounded-2xl border border-[#cfe8d7] bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md md:mx-0 md:w-full">
                     <span><span className="block text-[10px] font-black uppercase tracking-[.16em] text-[#087443]">Your active order</span><span className="mt-1 block text-lg font-black text-slate-900">{ORDER_STATUS_LABELS[activeOrder.status] || 'Order in progress'}</span><span className="mt-1 block text-xs font-medium text-slate-500">Order #{activeOrder.id?.split('-')[0]?.toUpperCase()} · Tap to view details</span></span><ChevronRight className="shrink-0 text-[#087443]" size={22}/>
                   </button>}
@@ -1528,7 +1584,7 @@ export default function ZeshuSuperApp() {
                     </div>
                   </div>
                   <section className="mx-4 rounded-[24px] border border-emerald-100 bg-emerald-50 p-5 md:mx-0" aria-labelledby="pharmacy-health-title">
-                    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 id="pharmacy-health-title" className="text-xl font-black text-[#173d27]">Pharmacy &amp; Health</h2><p className="mt-1 text-sm text-[#587065]">Pharmacy ordering is not available yet.</p></div><button type="button" onClick={() => { setActiveTab('recharge'); setActiveService('pharmacy'); }} className="rounded-xl bg-[#087443] px-4 py-2.5 text-sm font-black text-white">View availability</button></div>
+                    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 id="pharmacy-health-title" className="text-xl font-black text-[#173d27]">Pharmacy &amp; Health</h2><p className="mt-1 text-sm text-[#587065]">Licensed pharmacy fulfillment is being onboarded. No medicine payment or prescription transaction is available.</p></div><button type="button" onClick={() => { setActiveTab('recharge'); setActiveService('pharmacy'); }} className="rounded-xl bg-[#087443] px-4 py-2.5 text-sm font-black text-white">View availability</button></div>
                   </section>
                   <section className="mx-4 rounded-[24px] border border-slate-200 bg-white p-5 md:mx-0" aria-labelledby="upcoming-tools-title"><h2 id="upcoming-tools-title" className="text-lg font-black text-slate-900">More tools</h2><p className="mt-1 text-sm text-slate-500">UPI Tools are coming soon. Merchant QR payments and transfers are not enabled.</p></section>
                 </div>
@@ -1787,9 +1843,9 @@ export default function ZeshuSuperApp() {
               <section className="rounded-[24px] border border-slate-200 bg-white p-5"><h3 className="font-black text-slate-900">Buy again</h3><p className="mt-1 text-xs text-slate-500">Use current prices and availability from delivered orders.</p><div className="mt-3 space-y-2">{myOrders.filter((order) => order.status === 'DELIVERED').slice(0, 5).length === 0 ? <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-500">No delivered orders yet.</p> : myOrders.filter((order) => order.status === 'DELIVERED').slice(0, 5).map((order) => <button type="button" key={`reorder-${order.id}`} disabled={reorderingId === order.id} onClick={() => void reorder(order)} className="flex w-full items-center justify-between rounded-xl border border-slate-100 p-3 text-left text-xs font-black disabled:opacity-60"><span>Order #{order.id?.split('-')[0]?.toUpperCase()}</span><span className="text-indigo-700">{reorderingId === order.id ? 'Adding...' : 'Reorder'}</span></button>)}</div></section>
               <section className="rounded-[24px] border border-slate-200 bg-white p-5" aria-labelledby="support-title">
                 <h3 id="support-title" className="font-black text-slate-900">Support</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">Choose a category and describe the issue so you have the details ready for verified human support. No ticket is created from this screen.</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">Start a support conversation with the Zeshu team. Never share OTPs, passwords, or payment credentials.</p>
                 <label htmlFor="support-category" className="sr-only">Support category</label>
-                <select id="support-category" className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700">
+                <select id="support-category" value={supportSubject} onChange={(event) => setSupportSubject(event.target.value)} className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700">
                   <option>Order issue</option>
                   <option>Delivery issue</option>
                   <option>Payment issue</option>
@@ -1799,9 +1855,11 @@ export default function ZeshuSuperApp() {
                   <option>Other</option>
                 </select>
                 <label htmlFor="support-details" className="sr-only">Support details</label>
-                <textarea id="support-details" rows={3} maxLength={1000} placeholder="Describe what you need help with" className="mt-2 w-full resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#087443]" />
-                <button type="button" disabled className="mt-3 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-500">Support tickets coming soon</button>
-                <p className="mt-2 text-xs font-medium text-slate-500">For urgent payment, refund, or safety issues, use the verified support channel in your order communication.</p>
+                <textarea id="support-details" rows={3} maxLength={4000} value={supportMessage} onChange={(event) => setSupportMessage(event.target.value)} placeholder="Describe what you need help with" className="mt-2 w-full resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#087443]" />
+                <button type="button" disabled={supportBusy || !supportMessage.trim()} onClick={() => void submitSupportConversation()} className="mt-3 w-full rounded-xl bg-[#087443] px-4 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500">{supportBusy ? 'Saving...' : 'Send to support'}</button>
+                {supportNotice && <p role="status" className="mt-2 text-xs font-bold text-slate-600">{supportNotice}</p>}
+                {supportConversations.length > 0 && <div className="mt-4 space-y-2"><p className="text-[11px] font-black uppercase tracking-wider text-slate-500">Your conversations</p>{supportConversations.slice(0, 5).map((conversation) => <div key={conversation.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-xs"><span className="font-bold text-slate-700">{conversation.subject}</span><span className="font-black text-slate-500">{conversation.status}</span></div>)}</div>}
+                <p className="mt-2 text-xs font-medium text-slate-500">For urgent safety issues, contact support@zeshu.in. Never share OTPs or full payment credentials.</p>
               </section>
               <section className="rounded-[24px] border border-slate-200 bg-white p-5"><h3 className="font-black text-slate-900">Help &amp; policies</h3><p className="mt-2 text-sm leading-6 text-slate-600">Read the customer-facing policies and service availability notes in the Trust Center.</p><Link href="/policies" className="mt-3 inline-flex rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-black text-[#087443]">Open Trust Center</Link></section>
             </div>
