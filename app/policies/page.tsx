@@ -1,16 +1,120 @@
 import Link from 'next/link';
 
-const POLICIES = [
-  ['Terms & Conditions', 'These terms describe use of Zeshu, product listings, checkout, delivery, and account responsibilities. Orders are accepted only after successful payment verification and provider confirmation.'],
-  ['Privacy Policy', 'Zeshu uses account, delivery, order, and device information only to provide and secure the services. We do not publish private customer details or payment credentials.'],
-  ['Payments Policy', 'Grocery payments are processed through the displayed payment provider. Zeshu records verified payment identifiers for order reconciliation; card, bank, and OTP details are handled by the payment provider.'],
-  ['Cancellation & Refund Policy', 'Cancellation and refund availability depends on order state, payment status, inventory reservation, and the applicable workflow. A payment receipt is not by itself a promise of a refund.'],
-  ['Returns & Replacement Policy', 'Report damaged, missing, or incorrect grocery items through the verified support channel as soon as possible. Eligibility depends on the item and evidence available for the order.'],
-  ['Shipping & Delivery Policy', 'Delivery estimates are informational. The order timeline reflects the latest verified order status; live rider location appears only during eligible delivery states and only when real location data is available.'],
-  ['Zeshu Cash Terms', 'Zeshu Cash is a promotional reward balance earned only through eligible, verified workflows. Availability, limits, expiry, and redemption are determined by the applicable server-side rules shown at checkout.'],
-  ['Grievance & Support', 'For unresolved, payment, refund, safety, or account issues, use the verified support channel in your order communication and request human assistance. No ticket is created by this page.'],
-  ['Seller / Vendor Policy', 'Vendors must provide accurate product, stock, and store information and follow the approved order-preparation lifecycle. Zeshu may restrict access for policy or safety reasons.'],
-  ['Sponsored Advertising Policy', 'Zeshu does not currently operate a sponsored-placement system. Any future paid placement will be clearly labelled “Sponsored”.'],
+const sections = [
+  {
+    id: 'terms',
+    title: 'Terms & Conditions',
+    body: [
+      'Zeshu is a sole proprietorship trading as Zeshu. You must be 18 years or older to independently create an account or place an order. Zeshu does not currently sell age-restricted products.',
+      'Use accurate account, address, and order information. Orders are accepted only after successful payment verification and applicable provider confirmation. Zeshu may restrict access where necessary for security, misuse prevention, or operational safety.',
+      'Where third-party sellers participate, the seller is responsible for accurate product information, quality, statutory declarations, and applicable warranty or guarantee information. Customer statutory rights are not excluded.',
+    ],
+  },
+  {
+    id: 'privacy',
+    title: 'Privacy Policy',
+    body: [
+      'Zeshu may process name or profile information, phone or email, authentication identifiers, delivery addresses, location information when permission is granted or a location feature is used, cart and favorites, order history, payment transaction references and status, support communications, device and security logs, and necessary cookies or browser storage for sessions, cart, and preferences.',
+      'We use this information for account access, fulfilment, checkout and payment reconciliation, fraud and security, customer support, rewards, service improvement, and legal or accounting obligations. Zeshu does not need to store card numbers, CVV, or UPI PIN. Payment information is handled through the configured payment provider where applicable.',
+      'Information is retained only for as long as reasonably necessary for the relevant purpose, legal or accounting obligations, fraud prevention, dispute resolution, and security, after which it may be deleted or anonymized as appropriate. Privacy requests may be sent to privacy@zeshu.in. Requests are handled subject to applicable Indian law and mandatory retention requirements.',
+    ],
+  },
+  {
+    id: 'payments',
+    title: 'Payments',
+    body: [
+      'Grocery payments use the displayed Razorpay checkout. Zeshu records verified payment identifiers and status for order reconciliation; payment credentials are handled by the payment provider.',
+      'Mobile recharge plan discovery may be available, but any Razorpay flow exposed for mobile recharge is TEST-mode only. A successful test payment is not a successful telecom recharge, and no real telecom fulfilment is submitted. Real utility bill payments are currently unavailable.',
+      'No payment is currently available for Pharmacy & Health, UPI Tools, or unavailable utility services.',
+    ],
+  },
+  {
+    id: 'cancellation-refunds',
+    title: 'Cancellation & Refunds',
+    body: [
+      'Before vendor or order confirmation, a customer may request cancellation. After confirmation, an order is normally not cancellable once fulfilment has materially started, although Zeshu may consider a request case by case where operationally possible. No cancellation fee is charged unless a future product rule expressly introduces one in accordance with applicable law.',
+      'If Zeshu or a vendor cancels an accepted paid order, the applicable monetary refund is made to the original payment method where supported. Approved monetary refunds are normally processed within 5–7 business days after approval; actual credit timing may also depend on the bank or payment provider. Zeshu Cash is never silently substituted for a monetary refund. It may be used only when the customer explicitly chooses it and the relevant flow supports it.',
+    ],
+  },
+  {
+    id: 'returns',
+    title: 'Returns & Replacements',
+    body: [
+      'For food, groceries, and fresh or perishable goods, report a wrong, missing, damaged, expired, spoiled, or materially poor-quality item within 24 hours of delivery where reasonably possible. Opened or perishable items are normally non-returnable merely because of a change of mind, but genuine quality or fulfilment issues remain eligible for review.',
+      'Reasonable evidence, such as photographs, may be requested where appropriate. Depending on the verified issue and applicable law, a replacement, partial refund, or full refund may be available.',
+      'For electronics and clothing, report a wrong product, damage, manufacturing defect, missing component, or materially different item within 7 working days of delivery. Manufacturer or seller warranty may apply. Return eligibility is not promised for every opened or used electronics product.',
+    ],
+  },
+  {
+    id: 'delivery',
+    title: 'Shipping & Delivery',
+    body: [
+      'Quick-commerce groceries and food are currently offered within supported areas of Jagtial. Estimated delivery times shown in the app are estimates and may vary because of availability, traffic, weather, address accuracy, order volume, safety conditions, and operational factors. Zeshu does not promise universal 10-minute delivery.',
+      'Other eligible standard-delivery products may show an estimated 3–5 business day delivery option where that option is explicitly offered. Not every product can be shipped nationwide. Keep your delivery address accurate and available for delivery updates.',
+    ],
+  },
+  {
+    id: 'zeshu-cash',
+    title: 'Zeshu Cash Terms',
+    body: [
+      'Zeshu Cash is a promotional reward value, not bank money. ₹1 Zeshu Cash has ₹1 redemption value. It is non-transferable unless Zeshu explicitly enables transfer and cannot be withdrawn as cash.',
+      'For a grocery order, the maximum redemption is the lowest of available balance, the amount requested, ₹20, 10% of merchandise subtotal, and the amount that keeps final payable at least ₹1. There is no minimum redemption amount; fractional redemption down to ₹0.01 is supported where the flow permits it.',
+      'Current delivered-grocery earning rules are: ₹99–₹198.99 earns ₹1; ₹199–₹298.99 earns ₹2; ₹299–₹499.99 earns ₹3; ₹500 or more earns ₹5; below ₹99 earns ₹0. The third delivered eligible order may earn a ₹5 monthly milestone bonus and the fifth may earn ₹10. Referral rewards are ₹20 for the referrer and ₹10 for the referred customer after the referred customer’s qualifying first delivered order, subject to current program rules.',
+      'Reward terms may be changed prospectively. Already-earned valid balances should not be arbitrarily removed. Cancelled, refunded, or invalid orders may cause associated rewards to be reversed. Reserved redemption holds are released when an unpaid checkout is safely abandoned or reconciled. Contact support for balance disputes. No expiry date is stated because none is currently published.',
+    ],
+  },
+  {
+    id: 'pharmacy',
+    title: 'Pharmacy & Health',
+    body: [
+      'Pharmacy & Health is currently an informational or upcoming category. Medicine fulfilment and medicine payment are disabled, and no prescription medicine transaction can currently be completed through Zeshu. Zeshu does not currently dispense medicines through this service.',
+    ],
+  },
+  {
+    id: 'utilities',
+    title: 'Recharge & Utility Services',
+    body: [
+      'Read-only discovery may be available for mobile plans, DTH, Electricity, FASTag, Piped Gas, LPG, Water, and Broadband. Real utility bill payments are currently OFF. Provider information or bill lookup must not be understood as payment or settlement confirmation.',
+      'Mobile recharge discovery may be available for plans, but no real telecom recharge fulfilment is submitted. A1Topup execution is OFF. UPI Tools are coming soon or unavailable, and Zeshu does not currently support WhatsApp ordering or integration.',
+    ],
+  },
+  {
+    id: 'grievance',
+    title: 'Grievance & Customer Support',
+    body: [
+      'Haseeb, Proprietor / Grievance Officer, Zeshu, handles consumer complaints and grievance escalation. Email: grievance@zeshu.in. Phone: +91 79772 04533. Postal address: 1-2-210/A/1, Sai Ram Nagar, Jagtial, Telangana – 505327, India.',
+      'Consumer complaints will be acknowledged within 48 hours of receipt and Zeshu will endeavour to resolve or redress them within one month, subject to applicable law and the complexity of the matter. General support: support@zeshu.in and +91 79772 04533. Privacy requests: privacy@zeshu.in.',
+    ],
+  },
+  {
+    id: 'seller',
+    title: 'Seller / Vendor Terms',
+    body: [
+      'Where third-party sellers or vendors participate, they must provide accurate product, stock, quality, statutory-declaration, warranty, and guarantee information applicable to their products. Zeshu may facilitate ordering, payment, support, and delivery depending on the product. Customer rights under applicable law remain unaffected.',
+    ],
+  },
+  {
+    id: 'sponsored',
+    title: 'Sponsored Content',
+    body: [
+      'Zeshu does not currently operate sponsored placements. If sponsored or promoted placements are introduced later, they will be clearly identified as Sponsored or Promoted where required.',
+    ],
+  },
+  {
+    id: 'law',
+    title: 'Governing Law & Jurisdiction',
+    body: [
+      'These terms are governed by the applicable laws of India. Customer statutory consumer rights are not excluded. The terms remain subject to mandatory jurisdiction under applicable law; competent courts or authorities in Jagtial, Telangana may have jurisdiction where legally applicable.',
+    ],
+  },
+  {
+    id: 'contact',
+    title: 'Contact Details',
+    body: [
+      'Trading / business name: Zeshu. Business form: Sole Proprietorship. Correspondence address: 1-2-210/A/1, Sai Ram Nagar, Jagtial, Telangana – 505327, India.',
+      'Customer support: support@zeshu.in and +91 79772 04533. Privacy: privacy@zeshu.in. Grievance: grievance@zeshu.in, Haseeb, Proprietor / Grievance Officer, +91 79772 04533.',
+    ],
+  },
 ];
 
 export default function PoliciesPage() {
@@ -21,12 +125,16 @@ export default function PoliciesPage() {
         <header className="mt-8 rounded-3xl bg-[#083b27] p-7 text-white md:p-10">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-[#a6dfba]">Zeshu Trust Center</p>
           <h1 className="mt-2 text-3xl font-black tracking-tight md:text-5xl">Policies &amp; customer information</h1>
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-[#d9f3e3]">These are working customer-facing drafts. Where Zeshu does not yet have a published legal contact or a supported workflow, this page does not invent one.</p>
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-[#d9f3e3]">Clear information about ordering, delivery, payments, rewards, service availability, privacy, and support.</p>
+          <p className="mt-3 text-xs font-bold text-[#b9e8c8]">Last updated: September 2026</p>
         </header>
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          {POLICIES.map(([title, body]) => <section key={title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-lg font-black">{title}</h2><p className="mt-2 text-sm leading-6 text-slate-600">{body}</p></section>)}
+        <nav aria-label="Policy sections" className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
+          <p className="text-xs font-black uppercase tracking-wider text-slate-500">On this page</p>
+          <div className="mt-3 flex flex-wrap gap-2">{sections.map((section) => <a key={section.id} href={`#${section.id}`} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-black text-[#087443]">{section.title}</a>)}</div>
+        </nav>
+        <div className="mt-6 space-y-4">
+          {sections.map((section) => <section id={section.id} key={section.id} className="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-lg font-black">{section.title}</h2>{section.body.map((paragraph) => <p key={paragraph} className="mt-3 text-sm leading-6 text-slate-600">{paragraph}</p>)}</section>)}
         </div>
-        <p className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold leading-6 text-amber-900">Business/legal contact details, registered entity information, and jurisdiction-specific terms still require review before public launch.</p>
       </div>
     </main>
   );
