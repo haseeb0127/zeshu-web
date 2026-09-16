@@ -115,6 +115,7 @@ export async function POST(request: Request) {
   const cartItems = body.cartItems as CartItem[];
   const deliveryAddress = typeof body.deliveryAddress === 'string' ? body.deliveryAddress.trim() : '';
   const deliveryAddressId = typeof body.deliveryAddressId === 'string' && body.deliveryAddressId.trim() ? body.deliveryAddressId.trim() : null;
+  const abandonPreviousCheckout = body.abandonPreviousCheckout === true;
   // Legacy pricing inputs remain accepted for request compatibility, but the
   // authoritative reservation now ignores pass/tip/donation pricing.
   const tip = 0;
@@ -226,9 +227,10 @@ export async function POST(request: Request) {
       const sameRecoveryCoordinates = !recoveryLocationSnapshot || (deliveryCoordinates
         && Number(recoveryLocationSnapshot.latitude) === deliveryCoordinates.latitude
         && Number(recoveryLocationSnapshot.longitude) === deliveryCoordinates.longitude);
-      if (!recoveryItems.length || !sameRecoveryItems || !sameRecoveryAddress || !sameRecoveryCoordinates) {
-        return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', 'Your previous payment attempt is tied to another checkout. Resume that checkout to continue safely.', 409);
-      }
+      const recoveryMatchesCurrentCheckout = recoveryItems.length > 0
+        && sameRecoveryItems
+        && sameRecoveryAddress
+        && sameRecoveryCoordinates;
 
       let recoveryOrder: any;
       let recoveryPaymentsResponse: any;
@@ -242,6 +244,25 @@ export async function POST(request: Request) {
       const recoveryPayments = Array.isArray(recoveryPaymentsResponse?.items) ? recoveryPaymentsResponse.items : null;
       if (recoveryOrder?.id !== expiredBoundReservation.razorpay_order_id || recoveryPayments === null || !isRetryableProviderOrder(recoveryOrder, recoveryPayments, Math.round(Number(recoveryReservation.expected_total_paid) * 100))) {
         return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409);
+      }
+
+      if (!recoveryMatchesCurrentCheckout) {
+        if (!abandonPreviousCheckout) {
+          return NextResponse.json({
+            success: false,
+            code: 'ABANDONABLE_PAYMENT_CHECKOUT',
+            message: 'Your previous payment attempt belongs to an older basket. We can safely close that checkout before starting this one.',
+            requestId,
+          }, { status: 409 });
+        }
+        stage = 'ABANDON_PREVIOUS_CHECKOUT';
+        const { error: abandonError } = await serviceClient.rpc('abandon_mismatched_payment_pending_checkout', {
+          p_reservation_id: expiredBoundReservation.id,
+          p_razorpay_order_id: expiredBoundReservation.razorpay_order_id,
+        });
+        if (abandonError) return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', 'We could not safely close the previous checkout. Please check payment status again.', 409, abandonError);
+        resumable = null;
+        continue;
       }
 
       stage = 'ABANDONED_RENEW';

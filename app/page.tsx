@@ -70,7 +70,9 @@ const CHECKOUT_ERROR_MESSAGES: Record<string, string> = {
   CHECKOUT_INTERNAL_ERROR: "We couldn't prepare your checkout. Please try again.",
 };
 
-const checkoutFailureMessage = (code: unknown) => CHECKOUT_ERROR_MESSAGES[String(code || '')] || CHECKOUT_ERROR_MESSAGES.CHECKOUT_INTERNAL_ERROR;
+const checkoutFailureMessage = (code: unknown) => String(code || '') === 'ABANDONABLE_PAYMENT_CHECKOUT'
+  ? 'Your previous payment attempt belongs to an older basket. We can safely close that checkout before starting this one.'
+  : CHECKOUT_ERROR_MESSAGES[String(code || '')] || CHECKOUT_ERROR_MESSAGES.CHECKOUT_INTERNAL_ERROR;
 
 type CustomerAddress = {
   id: string;
@@ -1293,7 +1295,7 @@ export default function ZeshuSuperApp() {
 
   const validateCartFreshness = refreshCartAvailability;
 
-  const handleCartCheckout = async () => {
+  const handleCartCheckout = async (abandonPreviousCheckout = false) => {
     if (process.env.NODE_ENV === 'development') {
       console.info('Checkout button pressed', {
         cartLength: cart.length,
@@ -1322,7 +1324,7 @@ export default function ZeshuSuperApp() {
     setIsLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const orderResponse = await fetch('/api/create-razorpay-order', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` }, body: JSON.stringify({ cartItems: cart, deliveryAddress: currentAddress, deliveryAddressId: selectedAddressId, zeshuCashAmount: requestedZeshuCash }) });
+      const orderResponse = await fetch('/api/create-razorpay-order', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` }, body: JSON.stringify({ cartItems: cart, deliveryAddress: currentAddress, deliveryAddressId: selectedAddressId, zeshuCashAmount: requestedZeshuCash, abandonPreviousCheckout }) });
       let orderData: any;
       try {
         orderData = await orderResponse.json();
@@ -1397,6 +1399,16 @@ export default function ZeshuSuperApp() {
     setIsCheckingPaymentStatus(true);
     try {
       await handleCartCheckout();
+    } finally {
+      setIsCheckingPaymentStatus(false);
+    }
+  };
+
+  const handleContinueCurrentBasket = async () => {
+    if (isCheckoutOpening || isCheckingPaymentStatus) return;
+    setIsCheckingPaymentStatus(true);
+    try {
+      await handleCartCheckout(true);
     } finally {
       setIsCheckingPaymentStatus(false);
     }
@@ -1865,6 +1877,7 @@ export default function ZeshuSuperApp() {
       {publicReviewProduct && <div className="fixed inset-0 z-[125] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="public-reviews-title"><div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"><div className="flex shrink-0 items-center justify-between border-b p-5"><div><h2 id="public-reviews-title" className="text-xl font-black">Reviews for {publicReviewProduct.name}</h2><p className="mt-1 text-xs text-slate-500">Verified purchases only</p></div><button type="button" aria-label="Close reviews" onClick={() => setPublicReviewProduct(null)} className="rounded-xl bg-slate-100 p-2"><X size={18} /></button></div><div className="min-h-0 flex-1 overflow-y-auto p-5">{publicReviewsLoading ? <p className="py-8 text-center text-sm text-slate-500">Loading reviews…</p> : publicReviews.length === 0 ? <p className="py-8 text-center text-sm text-slate-500">No written reviews yet.</p> : <div className="space-y-3">{publicReviews.map((review: any, index) => <article key={`${review.updated_at || review.created_at}-${index}`} className="rounded-2xl border border-slate-100 p-4"><p className="text-amber-500">{'★'.repeat(Number(review.rating || 0))}</p><p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{review.comment}</p><div className="mt-3 flex items-center justify-between text-[11px] text-slate-500"><span>Verified purchase</span><time>{new Date(review.updated_at || review.created_at).toLocaleDateString()}</time></div></article>)}</div>}</div></div></div>}
 
       {/* --- CART DRAWER WITH SMOOTH EDGES --- */}
+      {checkoutError?.code === 'ABANDONABLE_PAYMENT_CHECKOUT' && isCartOpen && <div role="status" className="fixed bottom-24 left-1/2 z-[115] w-[min(92vw,32rem)] -translate-x-1/2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950 shadow-2xl"><p className="font-black">Previous checkout found</p><p className="mt-1 text-xs font-medium leading-5 text-amber-800">Your previous payment attempt belongs to an older basket. We can safely close that checkout before starting this one.</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => void handleContinueCurrentBasket()} disabled={isCheckingPaymentStatus || isCheckoutOpening} className="rounded-xl bg-amber-700 px-3 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-60">{isCheckingPaymentStatus ? 'Closing previous checkout...' : 'Continue current basket'}</button><button type="button" onClick={() => setCheckoutError({ message: 'Previous checkout kept. Check its payment status before retrying.', code: 'PAYMENT_RECONCILIATION_REQUIRED' })} disabled={isCheckingPaymentStatus || isCheckoutOpening} className="rounded-xl border border-amber-700 px-3 py-2 text-xs font-black text-amber-800 disabled:opacity-60">Keep previous checkout</button></div></div>}
       {isCartOpen && (
         <>
           <div className="fixed inset-0 bg-[#111827]/40 backdrop-blur-sm z-[60]" onClick={() => setIsCartOpen(false)}></div>
@@ -1905,7 +1918,7 @@ export default function ZeshuSuperApp() {
               {checkoutError?.code === 'PAYMENT_RECONCILIATION_REQUIRED' && <div role="status" className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950"><div className="flex items-start gap-3"><div className="mt-0.5 rounded-full bg-amber-100 p-2 text-amber-700"><Clock size={16} aria-hidden="true" /></div><div><p className="font-black">Checking previous payment</p><p className="mt-1 text-xs font-medium leading-5 text-amber-800">We&apos;re confirming the status of your previous payment before starting another one. This prevents duplicate charges.</p></div></div><button type="button" onClick={() => void handleCheckPaymentStatus()} disabled={isCheckingPaymentStatus || isCheckoutOpening} className="mt-3 rounded-xl bg-amber-700 px-3 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-60">{isCheckingPaymentStatus ? 'Checking payment status…' : 'Check payment status'}</button>{checkoutError.requestId && <p className="mt-2 text-[10px] font-medium text-amber-700">Reference: {checkoutError.requestId}</p>}</div>}
               {checkoutError && checkoutError.code !== 'PAYMENT_RECONCILIATION_REQUIRED' && <div role="alert" aria-live="assertive" className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-sm font-bold text-red-700"><p>{checkoutError.message}</p>{checkoutError.code && <p className="mt-1 text-xs font-semibold text-red-600">Code: {checkoutError.code}{checkoutError.requestId ? ` · Reference: ${checkoutError.requestId}` : ''}</p>}</div>}
               <p className="mb-3 text-center text-[11px] leading-5 text-slate-500">By proceeding, you agree to Zeshu&apos;s <Link href="/policies#terms" className="font-black text-[#087443] underline underline-offset-2">Terms</Link>, <Link href="/policies#privacy" className="font-black text-[#087443] underline underline-offset-2">Privacy Policy</Link>, and <Link href="/policies#cancellation-refunds" className="font-black text-[#087443] underline underline-offset-2">Cancellation &amp; Refund Policy</Link>.</p>
-              <button disabled={cart.length === 0 || isLoading || isCheckoutOpening} onClick={handleCartCheckout} className="w-full bg-[#087443] disabled:bg-[#a7b6ac] text-white font-bold py-4 rounded-2xl flex justify-between px-6 items-center">
+              <button disabled={cart.length === 0 || isLoading || isCheckoutOpening} onClick={() => void handleCartCheckout()} className="w-full bg-[#087443] disabled:bg-[#a7b6ac] text-white font-bold py-4 rounded-2xl flex justify-between px-6 items-center">
                 <span>{isLoading ? 'Preparing secure checkout…' : 'Proceed to secure payment'}</span><span>₹{finalCartTotal}</span>
               </button>
             </div>
