@@ -258,7 +258,6 @@ export async function POST(request: Request) {
           p_razorpay_order_id: expiredBoundReservation.razorpay_order_id,
         });
         if (abandonError) return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', 'We could not safely close the previous checkout. Please check payment status again.', 409, abandonError);
-        resumable = null;
         continue;
       }
 
