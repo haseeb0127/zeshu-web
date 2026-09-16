@@ -1,37 +1,79 @@
 import 'server-only';
 
-type ServiceAreaConfig = {
-  centerLatitude: number;
-  centerLongitude: number;
-  radiusKm: number;
+import fs from 'node:fs';
+import path from 'node:path';
+
+export type ServiceAreaResult = 'ELIGIBLE' | 'OUTSIDE_SERVICE_AREA' | 'SERVICE_AREA_UNAVAILABLE';
+
+type Position = [number, number];
+type Ring = Position[];
+type PolygonGeometry = { type: 'Polygon'; coordinates: Ring[] } | { type: 'MultiPolygon'; coordinates: Ring[][] };
+let cachedGeometry: PolygonGeometry | null | undefined;
+
+const validPosition = (position: unknown): position is Position => {
+  if (!Array.isArray(position) || position.length < 2) return false;
+  const longitude = Number(position[0]);
+  const latitude = Number(position[1]);
+  return Number.isFinite(longitude) && longitude >= -180 && longitude <= 180
+    && Number.isFinite(latitude) && latitude >= -90 && latitude <= 90;
 };
 
-const finiteCoordinate = (value: string | undefined, min: number, max: number) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= min && parsed <= max ? parsed : null;
+const validRing = (ring: unknown): ring is Ring => Array.isArray(ring)
+  && ring.length >= 4
+  && ring.every(validPosition)
+  && ring[0][0] === ring[ring.length - 1][0]
+  && ring[0][1] === ring[ring.length - 1][1];
+
+const loadStaticGeometry = (): PolygonGeometry | null => {
+  if (cachedGeometry !== undefined) return cachedGeometry;
+  try {
+    const filePath = path.join(process.cwd(), 'app', 'config', 'service-areas', 'jagtial.geojson');
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8')) as { type?: string; geometry?: unknown };
+    const geometry = (parsed.type === 'Feature' ? parsed.geometry : parsed) as { type?: string; coordinates?: unknown };
+    if (geometry?.type === 'Polygon' && Array.isArray(geometry.coordinates) && geometry.coordinates.every(validRing)) {
+      cachedGeometry = { type: 'Polygon', coordinates: geometry.coordinates as Ring[] };
+    } else if (geometry?.type === 'MultiPolygon' && Array.isArray(geometry.coordinates)
+      && geometry.coordinates.every((polygon) => Array.isArray(polygon) && polygon.every(validRing))) {
+      cachedGeometry = { type: 'MultiPolygon', coordinates: geometry.coordinates as Ring[][] };
+    } else {
+      cachedGeometry = null;
+    }
+  } catch {
+    cachedGeometry = null;
+  }
+  return cachedGeometry;
 };
 
-/**
- * Returns the configured Jagtial service area only when all three server-side
- * values are present and valid. Missing configuration deliberately means that
- * coordinate-based eligibility is unavailable rather than broadly enabled.
- */
-export const getJagtialServiceAreaConfig = (): ServiceAreaConfig | null => {
-  const centerLatitude = finiteCoordinate(process.env.JAGTIAL_SERVICE_CENTER_LAT, -90, 90);
-  const centerLongitude = finiteCoordinate(process.env.JAGTIAL_SERVICE_CENTER_LNG, -180, 180);
-  const radiusKm = Number(process.env.JAGTIAL_SERVICE_RADIUS_KM);
-  if (centerLatitude === null || centerLongitude === null || !Number.isFinite(radiusKm) || radiusKm <= 0) return null;
-  return { centerLatitude, centerLongitude, radiusKm };
+const pointInRing = (longitude: number, latitude: number, ring: Ring) => {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    const intersects = ((yi > latitude) !== (yj > latitude))
+      && longitude < ((xj - xi) * (latitude - yi)) / (yj - yi) + xi;
+    if (intersects) inside = !inside;
+  }
+  return inside;
 };
 
-export const isWithinConfiguredJagtialServiceArea = (latitude: number, longitude: number) => {
-  const config = getJagtialServiceAreaConfig();
-  if (!config || !Number.isFinite(latitude) || !Number.isFinite(longitude)) return false;
-  const toRadians = (degrees: number) => degrees * Math.PI / 180;
-  const dLat = toRadians(latitude - config.centerLatitude);
-  const dLng = toRadians(longitude - config.centerLongitude);
-  const a = Math.sin(dLat / 2) ** 2
-    + Math.cos(toRadians(config.centerLatitude)) * Math.cos(toRadians(latitude)) * Math.sin(dLng / 2) ** 2;
-  const distanceKm = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return distanceKm <= config.radiusKm;
+const pointInPolygon = (longitude: number, latitude: number, polygon: Ring[]) => {
+  if (!pointInRing(longitude, latitude, polygon[0])) return false;
+  return !polygon.slice(1).some((hole) => pointInRing(longitude, latitude, hole));
 };
+
+export const evaluateJagtialServiceArea = (latitude: number, longitude: number): ServiceAreaResult => {
+  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+    return 'SERVICE_AREA_UNAVAILABLE';
+  }
+  const geometry = loadStaticGeometry();
+  if (geometry) {
+    const eligible = geometry.type === 'Polygon'
+      ? pointInPolygon(longitude, latitude, geometry.coordinates)
+      : geometry.coordinates.some((polygon) => pointInPolygon(longitude, latitude, polygon));
+    return eligible ? 'ELIGIBLE' : 'OUTSIDE_SERVICE_AREA';
+  }
+  return 'SERVICE_AREA_UNAVAILABLE';
+};
+
+export const isWithinConfiguredJagtialServiceArea = (latitude: number, longitude: number) =>
+  evaluateJagtialServiceArea(latitude, longitude) === 'ELIGIBLE';

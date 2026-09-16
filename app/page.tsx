@@ -1608,8 +1608,8 @@ export default function ZeshuSuperApp() {
                   <section className="mx-4 grid gap-4 md:mx-0 md:grid-cols-2" aria-labelledby="service-availability-title">
                     <div className="rounded-2xl border border-[#cfe8d7] bg-white p-5">
                       <p className="text-[11px] font-black uppercase tracking-[.16em] text-[#087443]">Service availability</p>
-                      <h2 id="service-availability-title" className="mt-2 text-xl font-black text-[#173d27]">30-minute delivery target in supported Jagtial areas</h2>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">Eligible grocery essentials are planned for a 30-minute delivery target where local operations support it. Outside Jagtial, this quick-commerce service is coming soon.</p>
+                      <h2 id="service-availability-title" className="mt-2 text-xl font-black text-[#173d27]">Daily essentials in supported Jagtial areas</h2>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">Confirm your delivery pin at checkout for service-area eligibility. Delivery estimates vary with traffic, weather, availability, and local operations. Outside Jagtial, this quick-commerce service is coming soon.</p>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                       <p className="text-[11px] font-black uppercase tracking-[.16em] text-slate-500">Travel services</p>
