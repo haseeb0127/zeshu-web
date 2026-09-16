@@ -1295,7 +1295,7 @@ export default function ZeshuSuperApp() {
 
   const validateCartFreshness = refreshCartAvailability;
 
-  const handleCartCheckout = async (abandonPreviousCheckout = false) => {
+  const handleCartCheckout = async (abandonPreviousCheckout = false, bypassOpeningGuard = false) => {
     if (process.env.NODE_ENV === 'development') {
       console.info('Checkout button pressed', {
         cartLength: cart.length,
@@ -1306,7 +1306,7 @@ export default function ZeshuSuperApp() {
         hasAuthenticatedUser: Boolean(user),
       });
     }
-    if (isCheckoutOpening) return;
+    if (isCheckoutOpening && !bypassOpeningGuard) return;
     setCheckoutError(null);
     if (!cart.length || finalCartTotal === 0) return showCheckoutError('Add an available product before checkout.', 'INVALID_CHECKOUT_DATA');
     if (!user) return setIsAuthModalOpen(true);
@@ -1336,6 +1336,10 @@ export default function ZeshuSuperApp() {
       }
       if (!orderResponse.ok || !orderData?.success) {
         const code = typeof orderData?.code === 'string' ? orderData.code : 'CHECKOUT_INTERNAL_ERROR';
+        if (code === 'ABANDONABLE_PAYMENT_CHECKOUT' && !abandonPreviousCheckout) {
+          showToast('Checking previous payment...');
+          return await handleCartCheckout(true, true);
+        }
         setIsLoading(false);
         setIsCheckoutOpening(false);
         showCheckoutError(checkoutFailureMessage(code), code, typeof orderData?.requestId === 'string' ? orderData.requestId : undefined);

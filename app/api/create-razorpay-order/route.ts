@@ -203,7 +203,7 @@ export async function POST(request: Request) {
     }
     for (const expiredBoundReservation of expiredBoundReservations || []) {
       stage = 'ABANDONED_PAYMENT_VERIFY';
-      if (expiredBoundReservation.status !== 'PAYMENT_PENDING' || !expiredBoundReservation.razorpay_order_id) {
+      if (!['PAYMENT_PENDING', 'EXPIRED'].includes(expiredBoundReservation.status) || !expiredBoundReservation.razorpay_order_id) {
         return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', 'Your previous payment is still being reconciled. Resume that checkout before trying another payment.', 409);
       }
 
