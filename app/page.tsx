@@ -183,6 +183,7 @@ export default function ZeshuSuperApp() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckoutOpening, setIsCheckoutOpening] = useState(false);
   const [checkoutError, setCheckoutError] = useState<CheckoutErrorState | null>(null);
+  const [isCheckingPaymentStatus, setIsCheckingPaymentStatus] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All'); 
   
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -286,6 +287,8 @@ export default function ZeshuSuperApp() {
   const [addressFormOpen, setAddressFormOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState<CustomerAddress | null>(null);
   const [addressSaving, setAddressSaving] = useState(false);
+  const [addressDeleting, setAddressDeleting] = useState(false);
+  const [addressPendingDelete, setAddressPendingDelete] = useState<CustomerAddress | null>(null);
   const [addressForm, setAddressForm] = useState({ label: 'Home', recipient_name: '', phone: '', address_line: '', landmark: '', city: '', state: '', postal_code: '', latitude: '', longitude: '', is_default: false });
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
@@ -1074,12 +1077,31 @@ export default function ZeshuSuperApp() {
     if (error) return showToast('Could not update the default address.');
     setSelectedAddressId(addressId); await loadAddresses(); showToast('Default address updated.');
   };
-  const deleteAddress = async (addressId: string) => {
-    if (!window.confirm('Delete this saved address?')) return;
-    const { error } = await supabase.rpc('customer_delete_address', { p_address_id: addressId });
-    if (error) return showToast('Could not delete this address.');
-    if (selectedAddressId === addressId) setSelectedAddressId(null);
-    await loadAddresses(); showToast('Address deleted.');
+  const requestDeleteAddress = (address: CustomerAddress) => {
+    if (address.is_default && addresses.some((candidate) => candidate.id !== address.id)) {
+      showToast('Set another address as default before removing this one.');
+      return;
+    }
+    setAddressPendingDelete(address);
+  };
+  const deleteAddress = async (addressId?: string) => {
+    if (addressId) {
+      const address = addresses.find((candidate) => candidate.id === addressId);
+      if (address) requestDeleteAddress(address);
+      return;
+    }
+    if (!addressPendingDelete || addressDeleting) return;
+    setAddressDeleting(true);
+    const { error } = await supabase.rpc('customer_delete_address', { p_address_id: addressPendingDelete.id });
+    setAddressDeleting(false);
+    if (error) return showToast('Couldn\'t remove this address. Please try again.');
+    if (selectedAddressId === addressPendingDelete.id) {
+      setSelectedAddressId(null);
+      setCurrentAddress('Location not set');
+    }
+    setAddressPendingDelete(null);
+    await loadAddresses();
+    showToast('Address removed.');
   };
   const formatAddress = (address: CustomerAddress) => [address.address_line, address.landmark, address.city, address.state, address.postal_code].filter(Boolean).join(', ');
   const reorder = async (order: any) => {
@@ -1318,6 +1340,7 @@ export default function ZeshuSuperApp() {
         return;
       }
       if (orderData.abandonedCheckoutReleased) showToast('Previous payment was cancelled. You can continue with a new checkout.');
+      if (orderData.resumed) showToast('Previous checkout found. We will safely resume the same payment.');
       const orderId = orderData.orderId || orderData.id || orderData.order?.id;
       const reservationId = orderData.reservationId;
       if (typeof orderId !== 'string' || typeof reservationId !== 'string' || !Number.isSafeInteger(Number(orderData.amount)) || Number(orderData.amount) <= 0) throw new Error('Unable to prepare a verified payment checkout.');
@@ -1367,6 +1390,16 @@ export default function ZeshuSuperApp() {
       setIsCheckoutOpening(false);
     }
     setIsLoading(false);
+  };
+
+  const handleCheckPaymentStatus = async () => {
+    if (isCheckingPaymentStatus || isCheckoutOpening) return;
+    setIsCheckingPaymentStatus(true);
+    try {
+      await handleCartCheckout();
+    } finally {
+      setIsCheckingPaymentStatus(false);
+    }
   };
 
   const handleRechargeCheckout = () => {
@@ -1851,7 +1884,7 @@ export default function ZeshuSuperApp() {
               ))}
               {cart.length > 0 && <div className="rounded-2xl border border-[#dce8df] bg-white p-4">
                 {addresses.length > 0 && <div className="mb-3"><p className="text-xs font-black uppercase tracking-wider text-[#52645a]">Saved addresses</p><div className="mt-2 flex gap-2 overflow-x-auto pb-1">{addresses.map((address) => <button type="button" key={address.id} onClick={() => { setSelectedAddressId(address.id); setCurrentAddress(formatAddress(address)); }} className={`min-w-[180px] rounded-xl border p-3 text-left text-xs ${selectedAddressId === address.id ? 'border-[#087443] bg-[#f1faf4]' : 'border-slate-200 bg-white'}`}><span className="block font-black">{address.label}{address.is_default ? ' · Default' : ''}</span><span className="mt-1 block line-clamp-2 text-slate-500">{formatAddress(address)}</span></button>)}</div></div>}
-                <button type="button" onClick={() => openAddressForm()} className="mb-2 text-xs font-black text-[#087443]">+ Add a saved address</button><label htmlFor="delivery-address" className="block text-xs font-black uppercase tracking-wider text-[#52645a]">Delivery address</label>
+                <div className="mb-2 flex flex-wrap items-center gap-3"><button type="button" onClick={() => openAddressForm()} className="text-xs font-black text-[#087443]">+ Add a saved address</button>{selectedAddressId && <button type="button" onClick={() => { const selected = addresses.find((address) => address.id === selectedAddressId); if (selected) requestDeleteAddress(selected); }} className="text-xs font-black text-red-600">Remove selected address</button>}</div><label htmlFor="delivery-address" className="block text-xs font-black uppercase tracking-wider text-[#52645a]">Delivery address</label>
                 <textarea id="delivery-address" value={currentAddress === 'Location not set' ? '' : currentAddress} onChange={(event) => setCurrentAddress(event.target.value)} rows={3} placeholder="House / flat, street, area and landmark" className="mt-2 w-full resize-none rounded-xl border border-[#dce8df] bg-[#f8fbf8] p-3 text-sm font-medium outline-none focus:border-[#087443]" />
                 <p className="mt-2 text-[11px] text-slate-500">Your address is used only for this checkout and is validated again on the server.</p>
               </div>}
@@ -1869,7 +1902,8 @@ export default function ZeshuSuperApp() {
             <div className="bg-white p-6 border-t shadow-2xl">
               <div className="mb-3 flex items-center justify-between gap-3"><button type="button" onClick={clearCart} disabled={!cart.length || isCheckoutOpening} className="text-xs font-black text-red-600 disabled:text-slate-300">Clear cart</button><span className="text-[11px] font-medium text-slate-500">Stock and price are checked again before payment.</span></div>
               <p className="mb-3 text-center text-[11px] font-bold text-slate-500">Secure payment powered by Razorpay. Your total and stock are checked again before payment.</p>
-              {checkoutError && <div role="alert" aria-live="assertive" className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-sm font-bold text-red-700"><p>{checkoutError.message}</p>{checkoutError.code && <p className="mt-1 text-xs font-semibold text-red-600">Code: {checkoutError.code}{checkoutError.requestId ? ` · Reference: ${checkoutError.requestId}` : ''}</p>}</div>}
+              {checkoutError?.code === 'PAYMENT_RECONCILIATION_REQUIRED' && <div role="status" className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950"><div className="flex items-start gap-3"><div className="mt-0.5 rounded-full bg-amber-100 p-2 text-amber-700"><Clock size={16} aria-hidden="true" /></div><div><p className="font-black">Checking previous payment</p><p className="mt-1 text-xs font-medium leading-5 text-amber-800">We&apos;re confirming the status of your previous payment before starting another one. This prevents duplicate charges.</p></div></div><button type="button" onClick={() => void handleCheckPaymentStatus()} disabled={isCheckingPaymentStatus || isCheckoutOpening} className="mt-3 rounded-xl bg-amber-700 px-3 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-60">{isCheckingPaymentStatus ? 'Checking payment status…' : 'Check payment status'}</button>{checkoutError.requestId && <p className="mt-2 text-[10px] font-medium text-amber-700">Reference: {checkoutError.requestId}</p>}</div>}
+              {checkoutError && checkoutError.code !== 'PAYMENT_RECONCILIATION_REQUIRED' && <div role="alert" aria-live="assertive" className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-sm font-bold text-red-700"><p>{checkoutError.message}</p>{checkoutError.code && <p className="mt-1 text-xs font-semibold text-red-600">Code: {checkoutError.code}{checkoutError.requestId ? ` · Reference: ${checkoutError.requestId}` : ''}</p>}</div>}
               <p className="mb-3 text-center text-[11px] leading-5 text-slate-500">By proceeding, you agree to Zeshu&apos;s <Link href="/policies#terms" className="font-black text-[#087443] underline underline-offset-2">Terms</Link>, <Link href="/policies#privacy" className="font-black text-[#087443] underline underline-offset-2">Privacy Policy</Link>, and <Link href="/policies#cancellation-refunds" className="font-black text-[#087443] underline underline-offset-2">Cancellation &amp; Refund Policy</Link>.</p>
               <button disabled={cart.length === 0 || isLoading || isCheckoutOpening} onClick={handleCartCheckout} className="w-full bg-[#087443] disabled:bg-[#a7b6ac] text-white font-bold py-4 rounded-2xl flex justify-between px-6 items-center">
                 <span>{isLoading ? 'Preparing secure checkout…' : 'Proceed to secure payment'}</span><span>₹{finalCartTotal}</span>
@@ -1879,6 +1913,7 @@ export default function ZeshuSuperApp() {
         </>
       )}
 
+      {addressPendingDelete && <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/60 p-4"><div role="dialog" aria-modal="true" aria-labelledby="remove-address-title" className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl"><h2 id="remove-address-title" className="text-xl font-black text-slate-900">Remove saved address?</h2><p className="mt-3 text-sm font-bold text-slate-700">{addressPendingDelete.label} · {formatAddress(addressPendingDelete)}</p><p className="mt-2 text-sm leading-6 text-slate-600">This address will be removed from your saved addresses.</p><div className="mt-6 flex justify-end gap-3"><button type="button" disabled={addressDeleting} onClick={() => setAddressPendingDelete(null)} className="rounded-xl px-4 py-3 text-sm font-black text-slate-600">Cancel</button><button type="button" disabled={addressDeleting} onClick={() => void deleteAddress()} className="rounded-xl bg-red-600 px-4 py-3 text-sm font-black text-white disabled:opacity-60">{addressDeleting ? 'Removing…' : 'Remove address'}</button></div></div></div>}
       {addressFormOpen && <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 p-4"><form onSubmit={saveAddress} role="dialog" aria-modal="true" aria-labelledby="address-form-title" className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl"><div className="mb-5 flex items-center justify-between"><h2 id="address-form-title" className="text-xl font-black">{editingAddress ? 'Edit address' : 'Add address'}</h2><button type="button" aria-label="Close address form" onClick={() => setAddressFormOpen(false)} className="min-h-10 min-w-10 rounded-xl bg-slate-100"><X size={18} /></button></div><div className="grid gap-3 sm:grid-cols-2"><input required aria-label="Address label" placeholder="Label (Home, Work)" value={addressForm.label} onChange={(event) => setAddressForm({ ...addressForm, label: event.target.value })} className="rounded-xl border p-3 text-sm" /><input aria-label="Recipient name" placeholder="Recipient name (optional)" value={addressForm.recipient_name} onChange={(event) => setAddressForm({ ...addressForm, recipient_name: event.target.value })} className="rounded-xl border p-3 text-sm" /><input aria-label="Phone" placeholder="Phone (optional)" value={addressForm.phone} onChange={(event) => setAddressForm({ ...addressForm, phone: event.target.value })} className="rounded-xl border p-3 text-sm" /><input required aria-label="Address line" placeholder="House / flat and street" value={addressForm.address_line} onChange={(event) => setAddressForm({ ...addressForm, address_line: event.target.value })} className="rounded-xl border p-3 text-sm sm:col-span-2" /><input aria-label="Landmark" placeholder="Landmark (optional)" value={addressForm.landmark} onChange={(event) => setAddressForm({ ...addressForm, landmark: event.target.value })} className="rounded-xl border p-3 text-sm" /><input required aria-label="City" placeholder="City" value={addressForm.city} onChange={(event) => setAddressForm({ ...addressForm, city: event.target.value })} className="rounded-xl border p-3 text-sm" /><input required aria-label="State" placeholder="State" value={addressForm.state} onChange={(event) => setAddressForm({ ...addressForm, state: event.target.value })} className="rounded-xl border p-3 text-sm" /><input aria-label="Postal code" placeholder="Postal code (optional)" value={addressForm.postal_code} onChange={(event) => setAddressForm({ ...addressForm, postal_code: event.target.value })} className="rounded-xl border p-3 text-sm" /><input aria-label="Latitude" inputMode="decimal" placeholder="Latitude (optional)" value={addressForm.latitude} onChange={(event) => setAddressForm({ ...addressForm, latitude: event.target.value })} className="rounded-xl border p-3 text-sm" /><input aria-label="Longitude" inputMode="decimal" placeholder="Longitude (optional)" value={addressForm.longitude} onChange={(event) => setAddressForm({ ...addressForm, longitude: event.target.value })} className="rounded-xl border p-3 text-sm" /></div><label className="mt-4 flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={addressForm.is_default} onChange={(event) => setAddressForm({ ...addressForm, is_default: event.target.checked })} /> Make this my default address</label><div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setAddressFormOpen(false)} className="rounded-xl px-4 py-3 text-sm font-black text-slate-600">Cancel</button><button disabled={addressSaving} className="rounded-xl bg-[#087443] px-5 py-3 text-sm font-black text-white disabled:opacity-60">{addressSaving ? 'Saving...' : 'Save address'}</button></div></form></div>}
 
       {/* --- AUTH MODAL WITH SMOOTH EDGES --- */}
