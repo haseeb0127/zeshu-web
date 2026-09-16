@@ -355,7 +355,7 @@ export async function POST(request: Request) {
       const existingItems = canonicalizeItems((resumable.reservation_items || []).map((item) => ({ product_id: String(item.product_id), quantity: Number(item.quantity) })));
       const sameItems = JSON.stringify(existingItems) === JSON.stringify(canonicalRequestedItems);
       const requestedProductIds = canonicalRequestedItems.map((item) => item.product_id);
-      const { data: currentProducts, error: currentProductsError } = await serviceClient.from('products').select('id,price,vendor_id').in('id', requestedProductIds);
+      const { data: currentProducts, error: currentProductsError } = await serviceClient.from('products').select('id,price,vendor_id,quantity,in_stock').in('id', requestedProductIds);
       if (currentProductsError) return checkoutError(requestId, stage, 'PRODUCT_LOOKUP_FAILED', 'Unable to verify checkout products.', 500, currentProductsError);
       const products = currentProducts || [];
       const productsById = new Map(products.map((product) => [String(product.id), product]));
@@ -388,24 +388,81 @@ export async function POST(request: Request) {
         && samePricing
         && sameNumber(existingCashDiscount, requestedZeshuCash)
         && sameNumber(resumable.expected_total_paid, expectedTotal - existingCashDiscount);
-      if (!sameCheckout) return reservationErrorResponse(requestId, stage, 'an active payment checkout already exists');
-
-      // Reconcile the already-bound Razorpay order before any recovery RPC can
-      // mutate the reservation or its reward hold. A resumable checkout must
-      // remain the exact same payable, zero-payment provider order.
-      try {
-        const [preflightOrder, preflightPaymentsResponse] = await Promise.all([
-          razorpay.orders.fetch(resumable.razorpay_order_id),
-          razorpay.orders.fetchPayments(resumable.razorpay_order_id),
-        ]);
-        const preflightPayments = Array.isArray(preflightPaymentsResponse?.items) ? preflightPaymentsResponse.items : null;
-        const preflightAmountPaise = Math.round(Number(resumable.expected_total_paid) * 100);
-        if (preflightPayments === null || !isRetryableProviderOrder(preflightOrder, preflightPayments, preflightAmountPaise)) {
-          return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, undefined, getProviderDiagnostics(preflightOrder, preflightPayments));
+      if (!sameCheckout) {
+        stage = 'PRODUCT_VALIDATION';
+        const newProductSet = products.length === requestedProductIds.length
+          && requestedProductIds.every((id) => productsById.has(id));
+        if (!newProductSet) return reservationErrorResponse(requestId, stage, 'PRODUCT_UNAVAILABLE');
+        if (products.some((product) => !product.vendor_id || product.price === null || product.price === undefined || !Number.isFinite(Number(product.price)) || product.in_stock !== true)) {
+          return reservationErrorResponse(requestId, stage, 'PRODUCT_UNAVAILABLE');
         }
-      } catch (error) {
-        return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, error);
+        if (new Set(products.map((product) => String(product.vendor_id))).size !== 1) {
+          return reservationErrorResponse(requestId, stage, 'MULTI_VENDOR_CART');
+        }
+        if (canonicalRequestedItems.some((item) => {
+          const product = productsById.get(item.product_id);
+          return product?.quantity === null
+            || product?.quantity === undefined
+            || !Number.isFinite(Number(product.quantity))
+            || Number(product.quantity) < item.quantity;
+        })) {
+          return reservationErrorResponse(requestId, stage, 'INSUFFICIENT_STOCK');
+        }
+
+        stage = 'ACTIVE_CHECKOUT_SUPERSEDE_VERIFY';
+        let supersedeOrder: any;
+        let supersedePaymentsResponse: any;
+        try {
+          [supersedeOrder, supersedePaymentsResponse] = await Promise.all([
+            razorpay.orders.fetch(resumable.razorpay_order_id),
+            razorpay.orders.fetchPayments(resumable.razorpay_order_id),
+          ]);
+        } catch (error) {
+          return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, error);
+        }
+        const supersedePayments = Array.isArray(supersedePaymentsResponse?.items) ? supersedePaymentsResponse.items : null;
+        const supersedeDiagnostics = getProviderDiagnostics(supersedeOrder, supersedePayments);
+        const supersedeAmountPaise = Math.round(Number(resumable.expected_total_paid) * 100);
+        if (supersedeOrder?.id !== resumable.razorpay_order_id
+          || supersedePayments === null
+          || !isRetryableProviderOrder(supersedeOrder, supersedePayments, supersedeAmountPaise)) {
+          return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, undefined, supersedeDiagnostics);
+        }
+
+        stage = 'ACTIVE_CHECKOUT_SUPERSEDE';
+        const { data: supersedeData, error: supersedeError } = await serviceClient.rpc('supersede_active_unpaid_checkout', {
+          p_reservation_id: resumable.reservation_id,
+          p_razorpay_order_id: resumable.razorpay_order_id,
+        });
+        const supersedeRows = Array.isArray(supersedeData)
+          ? supersedeData
+          : supersedeData && typeof supersedeData === 'object' ? [supersedeData] : [];
+        if (supersedeError
+          || supersedeRows.length !== 1
+          || supersedeRows[0]?.superseded !== true
+          || typeof supersedeRows[0]?.redemption_released !== 'boolean') {
+          return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', 'We could not safely close the previous checkout. Please check payment status again.', 409, supersedeError, supersedeDiagnostics);
+        }
+        resumable = null;
       }
+
+      if (resumable?.reservation_id) {
+        // Reconcile the already-bound Razorpay order before any recovery RPC can
+        // mutate the reservation or its reward hold. A resumable checkout must
+        // remain the exact same payable, zero-payment provider order.
+        try {
+          const [preflightOrder, preflightPaymentsResponse] = await Promise.all([
+            razorpay.orders.fetch(resumable.razorpay_order_id),
+            razorpay.orders.fetchPayments(resumable.razorpay_order_id),
+          ]);
+          const preflightPayments = Array.isArray(preflightPaymentsResponse?.items) ? preflightPaymentsResponse.items : null;
+          const preflightAmountPaise = Math.round(Number(resumable.expected_total_paid) * 100);
+          if (preflightPayments === null || !isRetryableProviderOrder(preflightOrder, preflightPayments, preflightAmountPaise)) {
+            return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, undefined, getProviderDiagnostics(preflightOrder, preflightPayments));
+          }
+        } catch (error) {
+          return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, error);
+        }
 
       const { data: resumedCashData, error: resumedCashError } = await serviceClient.rpc('reserve_zeshu_cash_redemption', {
         p_user_id: user.id,
@@ -447,6 +504,7 @@ export async function POST(request: Request) {
       } catch (error) {
         if (process.env.NODE_ENV !== 'production') console.error('[checkout]', { requestId, stage, code: 'PAYMENT_RECONCILIATION_REQUIRED', errorType: error instanceof Error ? error.name : typeof error });
         return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, error);
+      }
       }
     }
 
