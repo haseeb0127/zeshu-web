@@ -94,6 +94,12 @@ export async function POST(req: Request) {
     const orderId = Array.isArray(finalizedOrderId) ? finalizedOrderId[0] : finalizedOrderId;
     if (typeof orderId !== 'string' || !orderId) return NextResponse.json({ success: false, error: 'Verified payment did not return an order reference. Retry confirmation with the same payment; do not pay again.' }, { status: 500 });
 
+    const { data: destinationSnapshot } = await supabase.from('inventory_reservation_location_snapshots').select('latitude,longitude,accuracy_meters,source').eq('reservation_id', reservationId).eq('user_id', user.id).maybeSingle();
+    if (destinationSnapshot) {
+      const { error: destinationError } = await supabase.from('orders').update({ delivery_latitude: destinationSnapshot.latitude, delivery_longitude: destinationSnapshot.longitude, delivery_location_accuracy_meters: destinationSnapshot.accuracy_meters, delivery_location_source: destinationSnapshot.source }).eq('id', orderId).eq('user_id', user.id).is('delivery_latitude', null);
+      if (destinationError && isDevelopment) console.error('[checkout] destination snapshot update failed', destinationError.message);
+    }
+
     const { error: redemptionError } = await supabase.rpc('consume_zeshu_cash_redemption', {
       p_reservation_id: reservationId,
       p_order_id: orderId,

@@ -195,9 +195,12 @@ export default function ZeshuSuperApp() {
   const [trackedOrder, setTrackedOrder] = useState<any>(null);
   const [liveRider, setLiveRider] = useState<any>(null);
   const [riderLocationState, setRiderLocationState] = useState<'idle' | 'loading' | 'available' | 'unavailable'>('idle');
+  const [etaState, setEtaState] = useState<'idle' | 'loading' | 'available' | 'fallback' | 'unavailable'>('idle');
+  const [etaDetails, setEtaDetails] = useState<{ durationSeconds?: number; distanceMeters?: number; source?: string } | null>(null);
   
   const [currentAddress, setCurrentAddress] = useState('Location not set');
   const [isDetectingLoc, setIsDetectingLoc] = useState(true);
+  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   
   const [rechargeNumber, setRechargeNumber] = useState('');
   const [rechargeAmount, setRechargeAmount] = useState('');
@@ -620,6 +623,47 @@ export default function ZeshuSuperApp() {
     };
   }, [isTrackingOpen, trackedOrder?.id, trackedOrder?.rider_id, trackedOrder?.status, trackedOrder?.user_id, user?.id]);
 
+  useEffect(() => {
+    const deliveryIsActive = ['PICKED_UP', 'OUT_FOR_DELIVERY'].includes(trackedOrder?.status);
+    if (!isTrackingOpen || !deliveryIsActive || !trackedOrder?.id || !user?.id) {
+      setEtaState('idle');
+      setEtaDetails(null);
+      return;
+    }
+    let mounted = true;
+    let timer: number | undefined;
+    const loadEta = async () => {
+      if (!mounted) return;
+      setEtaState((current) => current === 'available' || current === 'fallback' ? current : 'loading');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        if (mounted) setEtaState('unavailable');
+        return;
+      }
+      try {
+        const response = await fetch(`/api/orders/${encodeURIComponent(trackedOrder.id)}/eta`, { headers: { Authorization: `Bearer ${session.access_token}` } });
+        const payload = await response.json().catch(() => ({}));
+        if (!mounted) return;
+        if (payload?.source === 'GOOGLE_ROUTES') {
+          setEtaDetails({ durationSeconds: Number(payload.durationSeconds), distanceMeters: Number(payload.distanceMeters), source: payload.source });
+          setEtaState('available');
+        } else if (payload?.source === 'FALLBACK') {
+          setEtaDetails({ durationSeconds: Number(payload.durationSeconds), distanceMeters: Number(payload.distanceMeters), source: payload.source });
+          setEtaState('fallback');
+        } else {
+          setEtaDetails(null);
+          setEtaState('unavailable');
+        }
+      } catch {
+        if (mounted) { setEtaDetails(null); setEtaState('unavailable'); }
+      } finally {
+        if (mounted) timer = window.setTimeout(() => void loadEta(), 60_000);
+      }
+    };
+    void loadEta();
+    return () => { mounted = false; if (timer) window.clearTimeout(timer); };
+  }, [isTrackingOpen, trackedOrder?.id, trackedOrder?.status, user?.id]);
+
   const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); };
   const showCheckoutError = (message: string, code?: string, requestId?: string) => {
     setCheckoutError({ message, code, requestId });
@@ -694,7 +738,7 @@ export default function ZeshuSuperApp() {
     setIsDetectingLoc(true);
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
-        (position) => { setTimeout(() => { setCurrentAddress((previous) => previous === 'Location not set' ? '' : previous); setIsDetectingLoc(false); showToast("GPS location synced. Confirm your delivery address."); }, 1000); },
+        (position) => { setLocationAccuracy(position.coords.accuracy); setAddressForm((current) => ({ ...current, latitude: String(position.coords.latitude), longitude: String(position.coords.longitude) })); setIsDetectingLoc(false); showToast(position.coords.accuracy <= 25 ? 'Location accuracy looks good. Confirm your delivery address.' : position.coords.accuracy <= 75 ? 'Please verify the delivery pin.' : 'Location accuracy is low. Move the pin or try again.'); },
         () => { showToast("Location access denied."); setIsDetectingLoc(false); }
       );
     } else { setIsDetectingLoc(false); }
@@ -968,7 +1012,13 @@ export default function ZeshuSuperApp() {
     const longitude = addressForm.longitude.trim() ? Number(addressForm.longitude) : null;
     if ((latitude !== null && (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)) || (longitude !== null && (!Number.isFinite(longitude) || longitude < -180 || longitude > 180))) return showToast('Enter valid map coordinates or leave them blank.');
     setAddressSaving(true);
-    const { error } = await supabase.rpc('customer_upsert_address', { p_address_id: editingAddress?.id || null, p_label: addressForm.label.trim(), p_recipient_name: addressForm.recipient_name.trim() || null, p_phone: addressForm.phone.trim() || null, p_address_line: addressForm.address_line.trim(), p_landmark: addressForm.landmark.trim() || null, p_city: addressForm.city.trim(), p_state: addressForm.state.trim(), p_postal_code: addressForm.postal_code.trim() || null, p_latitude: latitude, p_longitude: longitude, p_is_default: addressForm.is_default });
+    const locationPayload = { p_address_id: editingAddress?.id || null, p_label: addressForm.label.trim(), p_recipient_name: addressForm.recipient_name.trim() || null, p_phone: addressForm.phone.trim() || null, p_address_line: addressForm.address_line.trim(), p_landmark: addressForm.landmark.trim() || null, p_city: addressForm.city.trim(), p_state: addressForm.state.trim(), p_postal_code: addressForm.postal_code.trim() || null, p_latitude: latitude, p_longitude: longitude, p_is_default: addressForm.is_default, p_location_accuracy_meters: locationAccuracy, p_location_source: locationAccuracy !== null ? 'DEVICE' : (latitude !== null && longitude !== null ? 'MANUAL_PIN' : 'LEGACY') };
+    let { error } = await supabase.rpc('customer_upsert_address_with_location', locationPayload);
+    if (error?.code === 'PGRST202' || /function .*customer_upsert_address_with_location/i.test(error?.message || '')) {
+      const { p_location_accuracy_meters: _accuracy, p_location_source: _source, ...legacyPayload } = locationPayload;
+      const fallback = await supabase.rpc('customer_upsert_address', legacyPayload);
+      error = fallback.error;
+    }
     setAddressSaving(false);
     if (error) { if (process.env.NODE_ENV === 'development') console.error('Customer address save failed:', error.message); return showToast('Could not save this address. Please try again.'); }
     setAddressFormOpen(false); showToast('Address saved.'); await loadAddresses();
@@ -1204,7 +1254,7 @@ export default function ZeshuSuperApp() {
     setIsLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const orderResponse = await fetch('/api/create-razorpay-order', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` }, body: JSON.stringify({ cartItems: cart, deliveryAddress: currentAddress, zeshuCashAmount: requestedZeshuCash }) });
+      const orderResponse = await fetch('/api/create-razorpay-order', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` }, body: JSON.stringify({ cartItems: cart, deliveryAddress: currentAddress, deliveryAddressId: selectedAddressId, zeshuCashAmount: requestedZeshuCash }) });
       let orderData: any;
       try {
         orderData = await orderResponse.json();
@@ -1320,7 +1370,7 @@ export default function ZeshuSuperApp() {
                 <div className="hidden md:flex flex-col text-left"><span className="text-[22px] font-black tracking-tighter leading-none">ZESHU</span><span className="text-[10px] font-extrabold text-[#087443] tracking-[0.2em] uppercase mt-0.5">Everyday, simply</span></div>
               </button>
               <button type="button" aria-label="Detect or change delivery location" className="flex max-w-[160px] flex-col cursor-pointer text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443] md:max-w-[220px]" onClick={handleAutoDetectLocation}>
-                <div className="font-black text-[13px] md:text-[15px] flex items-center gap-1.5">Delivering to <MapPin size={14} className="text-[#087443]"/></div>
+                <div className="font-black text-[13px] md:text-[15px] flex items-center gap-1.5">Use my current location <MapPin size={14} className="text-[#087443]"/></div>
                 <div className="flex items-center text-[10px] md:text-xs text-[#6B7280] mt-0.5 font-medium truncate">{currentAddress}<ChevronDown size={14} className="ml-1"/></div>
               </button>
             </div>
@@ -1703,7 +1753,11 @@ export default function ZeshuSuperApp() {
               <p className="mt-2 text-sm font-bold text-[#26372b]">{trackedOrder.status.replaceAll('_', ' ')}</p>
               {riderLocationState === 'loading' ? <p className="mt-3 text-sm text-[#587065]">Location updating...</p> : liveRider ? <>
                 <div className="mt-3 flex items-center gap-2 text-sm"><span className={`h-2.5 w-2.5 rounded-full ${liveRider.is_active ? 'bg-[#13a657]' : 'bg-slate-400'}`}/><span className="font-bold text-[#26372b]">{liveRider.full_name || 'Your rider'} is {liveRider.is_active ? 'online' : 'offline'}</span></div>
-                {hasLiveRiderCoordinates ? <a href={liveRiderMapUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#087443] px-4 py-3 text-sm font-black text-white active:scale-95"><MapPin size={16}/>Open rider location in Maps</a> : <p className="mt-3 text-sm text-[#587065]">Rider location not available yet.</p>}
+              {hasLiveRiderCoordinates ? <a href={liveRiderMapUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#087443] px-4 py-3 text-sm font-black text-white active:scale-95"><MapPin size={16}/>Open rider location in Maps</a> : <p className="mt-3 text-sm text-[#587065]">Rider location not available yet.</p>}
+                {etaState === 'loading' && <p className="mt-3 text-sm font-bold text-[#587065]">Updating arrival estimate…</p>}
+                {etaState === 'available' && etaDetails && <p className="mt-3 text-sm font-black text-[#075b36]">Estimated arrival: {Math.max(1, Math.round(Number(etaDetails.durationSeconds || 0) / 60))} min · {Math.max(0, (Number(etaDetails.distanceMeters || 0) / 1000)).toFixed(1)} km</p>}
+                {etaState === 'fallback' && etaDetails && <p className="mt-3 text-sm font-bold text-[#587065]">Estimated arrival: about {Math.max(1, Math.round(Number(etaDetails.durationSeconds || 0) / 60))} min (approximate)</p>}
+                {etaState === 'unavailable' && <p className="mt-3 text-sm text-[#587065]">Arrival estimate is temporarily unavailable.</p>}
               </> : <p className="mt-3 text-sm text-[#587065]">Rider location not available yet.</p>}
             </div>}
             {trackedOrder.status === 'READY_FOR_PICKUP' && <p className="mx-auto mt-5 max-w-sm rounded-2xl border border-slate-200 bg-white p-4 text-sm font-bold text-slate-600">A rider is assigned. Live tracking starts after pickup.</p>}
@@ -1812,7 +1866,7 @@ export default function ZeshuSuperApp() {
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               <section className="rounded-[24px] border border-slate-200 bg-white p-5" aria-labelledby="saved-addresses-title">
-                <div className="flex items-center justify-between gap-3"><div><h3 id="saved-addresses-title" className="font-black text-slate-900">Saved Addresses</h3><p className="mt-1 text-xs text-slate-500">Choose a saved address at checkout.</p></div><button type="button" onClick={() => openAddressForm()} className="rounded-xl bg-[#087443] px-3 py-2 text-xs font-black text-white">+ Add Address</button></div>
+                <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 id="saved-addresses-title" className="font-black text-slate-900">Saved Addresses</h3><p className="mt-1 text-xs text-slate-500">Choose a saved address at checkout.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => { openAddressForm(); handleAutoDetectLocation(); }} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">Use my current location</button><button type="button" onClick={() => openAddressForm()} className="rounded-xl bg-[#087443] px-3 py-2 text-xs font-black text-white">+ Add Address</button></div></div>
                 <div className="mt-4 space-y-3">{addresses.length === 0 ? <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No saved addresses yet.</p> : addresses.map((address) => <div key={address.id} className="rounded-xl border border-slate-100 p-3"><div className="flex items-start justify-between gap-3"><div><p className="font-black text-slate-900">{address.label} {address.is_default && <span className="ml-1 rounded bg-emerald-100 px-2 py-1 text-[10px] text-emerald-700">Default</span>}</p><p className="mt-1 text-xs text-slate-600">{address.recipient_name || 'Recipient'} · {formatAddress(address)}</p></div><button type="button" onClick={() => void deleteAddress(address.id)} className="text-xs font-black text-red-600">Delete</button></div><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => openAddressForm(address)} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black">Edit</button>{!address.is_default && <button type="button" onClick={() => void setDefaultAddress(address.id)} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">Set default</button>}<button type="button" onClick={() => { setSelectedAddressId(address.id); setCurrentAddress(formatAddress(address)); setIsAccountOpen(false); setIsCartOpen(true); }} className="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700">Use for checkout</button></div></div>)}</div>
               </section>
               <div className="bg-gradient-to-br from-[#4F46E5] to-[#4338CA] p-6 rounded-[24px] text-white shadow-lg">

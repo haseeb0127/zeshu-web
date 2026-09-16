@@ -249,12 +249,14 @@ export default function RiderDashboard() {
 
   const actionLabel = (status: string) => status === 'READY_FOR_PICKUP' ? 'Confirm Pickup' : status === 'PICKED_UP' ? 'Start Delivery' : status === 'OUT_FOR_DELIVERY' ? 'Complete Delivery' : null;
 
-  const openGoogleMaps = (address: string) => {
-    if (!address) return;
+  const openGoogleMaps = (latitude?: unknown, longitude?: unknown) => {
+    const hasCoordinates = Number.isFinite(Number(latitude)) && Number(latitude) >= -90 && Number(latitude) <= 90
+      && Number.isFinite(Number(longitude)) && Number(longitude) >= -180 && Number(longitude) <= 180;
+    if (!hasCoordinates) return;
 
     window.open(
       `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-        address
+        `${Number(latitude)},${Number(longitude)}`
       )}`,
       "_blank"
     );
@@ -439,10 +441,11 @@ export default function RiderDashboard() {
 
               <div className="flex gap-3">
                 <button
+                  disabled={!Number.isFinite(Number(order.delivery_latitude)) || !Number.isFinite(Number(order.delivery_longitude))}
                   onClick={() =>
-                    openGoogleMaps(order.delivery_address)
+                    openGoogleMaps(order.delivery_latitude, order.delivery_longitude)
                   }
-                  className="flex-1 bg-slate-900 text-white font-black py-4 rounded-xl flex items-center justify-center gap-2"
+                  className="flex-1 bg-slate-900 text-white font-black py-4 rounded-xl flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Navigation size={18} />
                   Navigate

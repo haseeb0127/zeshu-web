@@ -29,6 +29,32 @@ const canonicalizeItems = (items: ReservationItem[]) => {
 
 const sameNumber = (left: unknown, right: number) => Number.isFinite(Number(left)) && Number(left) === right;
 
+const saveReservationLocationSnapshot = async (
+  serviceClient: any,
+  reservationId: string,
+  userId: string,
+  coordinates: { latitude: number; longitude: number; accuracyMeters: number | null; source: 'DEVICE' | 'MANUAL_PIN' | 'LEGACY' },
+) => {
+  // Service-role access bypasses RLS, so explicitly re-check ownership before
+  // writing the server-side location snapshot.
+  const { data: reservation, error: reservationLookupError } = await serviceClient
+    .from('inventory_reservations')
+    .select('id,user_id')
+    .eq('id', reservationId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (reservationLookupError || !reservation) return false;
+  const { error } = await serviceClient.from('inventory_reservation_location_snapshots').upsert({
+    reservation_id: reservationId,
+    user_id: userId,
+    latitude: coordinates.latitude,
+    longitude: coordinates.longitude,
+    accuracy_meters: coordinates.accuracyMeters,
+    source: coordinates.source,
+  }, { onConflict: 'reservation_id' });
+  return !error;
+};
+
 const checkoutError = (requestId: string, stage: string, code: string, message: string, status: number, error?: unknown) => {
   if (process.env.NODE_ENV !== 'production') {
     console.error('[checkout]', {
@@ -77,6 +103,7 @@ export async function POST(request: Request) {
 
   const cartItems = body.cartItems as CartItem[];
   const deliveryAddress = typeof body.deliveryAddress === 'string' ? body.deliveryAddress.trim() : '';
+  const deliveryAddressId = typeof body.deliveryAddressId === 'string' && body.deliveryAddressId.trim() ? body.deliveryAddressId.trim() : null;
   // Legacy pricing inputs remain accepted for request compatibility, but the
   // authoritative reservation now ignores pass/tip/donation pricing.
   const tip = 0;
@@ -100,7 +127,7 @@ export async function POST(request: Request) {
         hasDeliveryAddress: deliveryAddress.length > 0,
         deliveryAddressLength: deliveryAddress.length,
         hasAuthenticatedUser: Boolean(user),
-        hasCoordinates: false,
+        hasCoordinates: Boolean(deliveryAddressId),
       });
     }
 
@@ -114,6 +141,17 @@ export async function POST(request: Request) {
     const { data: customerProfile, error: customerProfileError } = await serviceClient.from('users').select('id').eq('id', user.id).maybeSingle();
     if (customerProfileError) return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to verify customer profile.', 500, customerProfileError);
     if (!customerProfile) return checkoutError(requestId, stage, 'CUSTOMER_PROFILE_REQUIRED', 'Customer profile required before checkout. Please sign in with your customer account.', 403);
+
+    let deliveryCoordinates: { latitude: number; longitude: number; accuracyMeters: number | null; source: 'DEVICE' | 'MANUAL_PIN' | 'LEGACY' } | null = null;
+    if (deliveryAddressId) {
+      const { data: savedAddress } = await serviceClient.from('customer_addresses').select('id,user_id,latitude,longitude,location_accuracy_meters,location_source').eq('id', deliveryAddressId).eq('user_id', user.id).maybeSingle();
+      const latitude = Number(savedAddress?.latitude);
+      const longitude = Number(savedAddress?.longitude);
+      if (savedAddress && Number.isFinite(latitude) && latitude >= -90 && latitude <= 90 && Number.isFinite(longitude) && longitude >= -180 && longitude <= 180) {
+        const accuracy = Number(savedAddress.location_accuracy_meters);
+        deliveryCoordinates = { latitude, longitude, accuracyMeters: Number.isFinite(accuracy) && accuracy >= 0 ? accuracy : null, source: savedAddress.location_source === 'DEVICE' || savedAddress.location_source === 'MANUAL_PIN' ? savedAddress.location_source : 'LEGACY' };
+      }
+    }
 
     const canonicalRequestedItems = canonicalizeItems(reservationItems);
 
@@ -266,7 +304,8 @@ export async function POST(request: Request) {
         const payable = (orderStatus === 'created' && payments.length === 0)
           || (orderStatus === 'attempted' && payments.length > 0 && payments.every((payment) => String(payment?.status || '').toLowerCase() === 'failed'));
         if (!payable) return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409);
-        if (resumedCash?.redemption_id) await serviceClient.rpc('bind_zeshu_cash_redemption', { p_redemption_id: resumedCash.redemption_id, p_razorpay_order_id: existingOrder.id });
+      if (deliveryCoordinates) await saveReservationLocationSnapshot(serviceClient, resumable.reservation_id, user.id, deliveryCoordinates);
+      if (resumedCash?.redemption_id) await serviceClient.rpc('bind_zeshu_cash_redemption', { p_redemption_id: resumedCash.redemption_id, p_razorpay_order_id: existingOrder.id });
         stage = 'COMPLETE';
         return NextResponse.json({ success: true, resumed: true, resumePayment: true, orderId: existingOrder.id, amount: existingOrder.amount, currency: existingOrder.currency, totalAmount: resumedExpectedTotal, zeshuCashUsed: Number(resumedCash?.approved_amount || 0), redemptionId: resumedCash?.redemption_id || null, reservationId: resumable.reservation_id, requestId });
       } catch (error) {
@@ -333,6 +372,7 @@ export async function POST(request: Request) {
     if (typeof reservationId !== 'string' || !Number.isFinite(reservationExpectedTotal) || reservationExpectedTotal <= 0) {
       return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to prepare the database-verified checkout total.', 500);
     }
+    if (deliveryCoordinates) await saveReservationLocationSnapshot(serviceClient, reservationId, user.id, deliveryCoordinates);
     stage = 'CASH_RESERVATION';
     const { data: cashData, error: cashError } = await serviceClient.rpc('reserve_zeshu_cash_redemption', {
       p_user_id: user.id,
