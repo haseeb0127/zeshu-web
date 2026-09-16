@@ -108,8 +108,32 @@ const reservationErrorResponse = (requestId: string, stage: string, message?: st
   return checkoutError(requestId, stage, 'RESERVATION_CREATE_FAILED', "We couldn't prepare your checkout. Please try again.", 500, error);
 };
 
+const checkoutTimingNow = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+
+const logCheckoutTiming = (requestId: string, stage: string, startedAt: number) => {
+  console.info('[checkout-timing]', {
+    requestId,
+    stage,
+    durationMs: Math.max(0, Math.round(checkoutTimingNow() - startedAt)),
+  });
+};
+
+const measureCheckoutStage = async <T>(
+  requestId: string,
+  stage: string,
+  operation: () => PromiseLike<T> | Promise<T>,
+): Promise<T> => {
+  const startedAt = checkoutTimingNow();
+  try {
+    return await operation();
+  } finally {
+    logCheckoutTiming(requestId, stage, startedAt);
+  }
+};
+
 export async function POST(request: Request) {
   const requestId = randomUUID();
+  const totalRequestStartedAt = checkoutTimingNow();
   let stage = 'REQUEST_PARSE';
   try {
     stage = 'AUTH';
@@ -119,7 +143,7 @@ export async function POST(request: Request) {
     const accessToken = authorization.slice('Bearer '.length).trim();
     if (!accessToken) return checkoutError(requestId, stage, 'SESSION_EXPIRED', 'Your customer session has expired. Please sign in again.', 401);
     const authClient = createClient(url, anonKey);
-    const { data: { user }, error: authError } = await authClient.auth.getUser(accessToken);
+    const { data: { user }, error: authError } = await measureCheckoutStage(requestId, 'AUTH', () => authClient.auth.getUser(accessToken));
     if (authError || !user) return checkoutError(requestId, stage, 'SESSION_EXPIRED', 'Your customer session has expired. Please sign in again.', 401, authError);
 
     stage = 'REQUEST_PARSE';
@@ -158,24 +182,29 @@ export async function POST(request: Request) {
 
     const serviceClient = createClient(url, serviceRoleKey);
     stage = 'CUSTOMER_PROFILE';
-    await serviceClient.rpc('release_expired_zeshu_cash_redemptions');
-    const { data: adminRole, error: adminRoleError } = await serviceClient.from('admin_roles').select('user_id').eq('user_id', user.id).eq('role', 'admin').maybeSingle();
-    if (adminRoleError) return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to verify checkout identity.', 500, adminRoleError);
-    if (adminRole) return checkoutError(requestId, stage, 'ADMIN_CHECKOUT_FORBIDDEN', 'Admin sessions cannot be used for customer checkout. Sign in with a customer account.', 403);
-
-    const { data: customerProfile, error: customerProfileError } = await serviceClient.from('users').select('id').eq('id', user.id).maybeSingle();
-    if (customerProfileError) return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to verify customer profile.', 500, customerProfileError);
-    if (!customerProfile) return checkoutError(requestId, stage, 'CUSTOMER_PROFILE_REQUIRED', 'Customer profile required before checkout. Please sign in with your customer account.', 403);
-
     let deliveryCoordinates: { latitude: number; longitude: number; accuracyMeters: number | null; source: 'DEVICE' | 'MANUAL_PIN' | 'LEGACY' } | null = null;
-    if (deliveryAddressId) {
-      const { data: savedAddress } = await serviceClient.from('customer_addresses').select('id,user_id,latitude,longitude,location_accuracy_meters,location_source').eq('id', deliveryAddressId).eq('user_id', user.id).maybeSingle();
-      const latitude = Number(savedAddress?.latitude);
-      const longitude = Number(savedAddress?.longitude);
-      if (savedAddress && Number.isFinite(latitude) && latitude >= -90 && latitude <= 90 && Number.isFinite(longitude) && longitude >= -180 && longitude <= 180) {
-        const accuracy = Number(savedAddress.location_accuracy_meters);
-        deliveryCoordinates = { latitude, longitude, accuracyMeters: Number.isFinite(accuracy) && accuracy >= 0 ? accuracy : null, source: savedAddress.location_source === 'DEVICE' || savedAddress.location_source === 'MANUAL_PIN' ? savedAddress.location_source : 'LEGACY' };
+    const customerPrecheckStartedAt = checkoutTimingNow();
+    try {
+      await serviceClient.rpc('release_expired_zeshu_cash_redemptions');
+      const { data: adminRole, error: adminRoleError } = await serviceClient.from('admin_roles').select('user_id').eq('user_id', user.id).eq('role', 'admin').maybeSingle();
+      if (adminRoleError) return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to verify checkout identity.', 500, adminRoleError);
+      if (adminRole) return checkoutError(requestId, stage, 'ADMIN_CHECKOUT_FORBIDDEN', 'Admin sessions cannot be used for customer checkout. Sign in with a customer account.', 403);
+
+      const { data: customerProfile, error: customerProfileError } = await serviceClient.from('users').select('id').eq('id', user.id).maybeSingle();
+      if (customerProfileError) return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to verify customer profile.', 500, customerProfileError);
+      if (!customerProfile) return checkoutError(requestId, stage, 'CUSTOMER_PROFILE_REQUIRED', 'Customer profile required before checkout. Please sign in with your customer account.', 403);
+
+      if (deliveryAddressId) {
+        const { data: savedAddress } = await serviceClient.from('customer_addresses').select('id,user_id,latitude,longitude,location_accuracy_meters,location_source').eq('id', deliveryAddressId).eq('user_id', user.id).maybeSingle();
+        const latitude = Number(savedAddress?.latitude);
+        const longitude = Number(savedAddress?.longitude);
+        if (savedAddress && Number.isFinite(latitude) && latitude >= -90 && latitude <= 90 && Number.isFinite(longitude) && longitude >= -180 && longitude <= 180) {
+          const accuracy = Number(savedAddress.location_accuracy_meters);
+          deliveryCoordinates = { latitude, longitude, accuracyMeters: Number.isFinite(accuracy) && accuracy >= 0 ? accuracy : null, source: savedAddress.location_source === 'DEVICE' || savedAddress.location_source === 'MANUAL_PIN' ? savedAddress.location_source : 'LEGACY' };
+        }
       }
+    } finally {
+      logCheckoutTiming(requestId, 'CUSTOMER_PRECHECK', customerPrecheckStartedAt);
     }
 
     if (isJagtialServiceAreaEnforced()) {
@@ -198,7 +227,7 @@ export async function POST(request: Request) {
     const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
 
     stage = 'EXISTING_CHECKOUT';
-    const [resumableResult, expiredReservationResult] = await Promise.all([
+    const [resumableResult, expiredReservationResult] = await measureCheckoutStage(requestId, 'EXISTING_CHECKOUT_READS', () => Promise.all([
       Promise.resolve(serviceClient.rpc('get_resumable_inventory_reservation', { p_user_id: user.id }))
         .catch((error) => ({ data: null, error })),
       Promise.resolve(serviceClient
@@ -211,14 +240,16 @@ export async function POST(request: Request) {
         .is('abandoned_at', null)
         .order('created_at', { ascending: true }))
         .catch((error) => ({ data: null, error })),
-    ]);
+    ]));
     const { data: resumableData, error: resumableError } = resumableResult;
     if (resumableError) return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to check existing checkout state.', 500, resumableError);
     let resumable = (Array.isArray(resumableData) ? resumableData[0] : resumableData) as ResumableReservation | null;
 
     const { data: expiredBoundReservations, error: expiredReservationError } = expiredReservationResult;
     if (expiredReservationError) return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to check previous payment state.', 500, expiredReservationError);
-    for (const expiredBoundReservation of expiredBoundReservations || []) {
+    const staleReconciliationStartedAt = checkoutTimingNow();
+    try {
+      for (const expiredBoundReservation of expiredBoundReservations || []) {
       stage = 'ABANDONED_PAYMENT_VERIFY';
       if (!['PAYMENT_PENDING', 'EXPIRED'].includes(expiredBoundReservation.status) || !expiredBoundReservation.razorpay_order_id) {
         return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', 'Your previous payment is still being reconciled. Resume that checkout before trying another payment.', 409);
@@ -349,13 +380,17 @@ export async function POST(request: Request) {
       if (renewedLookupError) return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', 'We could not safely resume the previous checkout. Please check payment status again.', 409, renewedLookupError);
       resumable = (Array.isArray(renewedData) ? renewedData[0] : renewedData) as ResumableReservation | null;
       if (!resumable || resumable.reservation_id !== expiredBoundReservation.id || resumable.razorpay_order_id !== expiredBoundReservation.razorpay_order_id) return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', 'We could not safely resume the previous checkout. Please check payment status again.', 409);
+      }
+    } finally {
+      logCheckoutTiming(requestId, 'STALE_RECONCILIATION', staleReconciliationStartedAt);
     }
 
     if (resumable?.reservation_id) {
-      const existingItems = canonicalizeItems((resumable.reservation_items || []).map((item) => ({ product_id: String(item.product_id), quantity: Number(item.quantity) })));
+      const activeResumable = resumable;
+      const existingItems = canonicalizeItems((activeResumable.reservation_items || []).map((item) => ({ product_id: String(item.product_id), quantity: Number(item.quantity) })));
       const sameItems = JSON.stringify(existingItems) === JSON.stringify(canonicalRequestedItems);
       const requestedProductIds = canonicalRequestedItems.map((item) => item.product_id);
-      const { data: currentProducts, error: currentProductsError } = await serviceClient.from('products').select('id,price,vendor_id,quantity,in_stock').in('id', requestedProductIds);
+      const { data: currentProducts, error: currentProductsError } = await measureCheckoutStage(requestId, 'PRODUCT_LOOKUP', () => serviceClient.from('products').select('id,price,vendor_id,quantity,in_stock').in('id', requestedProductIds));
       if (currentProductsError) return checkoutError(requestId, stage, 'PRODUCT_LOOKUP_FAILED', 'Unable to verify checkout products.', 500, currentProductsError);
       const products = currentProducts || [];
       const productsById = new Map(products.map((product) => [String(product.id), product]));
@@ -375,7 +410,7 @@ export async function POST(request: Request) {
         pass_fee: 0,
         discount_total: 0,
       };
-      const snapshot = resumable.pricing_snapshot || {};
+      const snapshot = activeResumable.pricing_snapshot || {};
       const samePricing = Object.entries(expectedPricing).filter(([key]) => key !== 'discount_total').every(([key, value]) => sameNumber(snapshot[key], value));
       const existingCashDiscount = Number(snapshot.zeshu_cash_redemption || snapshot.discount_total || 0);
       const expectedTotal = Number.isFinite(merchandiseSubtotal)
@@ -383,11 +418,11 @@ export async function POST(request: Request) {
         : NaN;
       const sameCheckout = sameItems
         && sameProductSet
-        && currentVendorId === resumable.vendor_id
-        && resumable.delivery_address === deliveryAddress
+        && currentVendorId === activeResumable.vendor_id
+        && activeResumable.delivery_address === deliveryAddress
         && samePricing
         && sameNumber(existingCashDiscount, requestedZeshuCash)
-        && sameNumber(resumable.expected_total_paid, expectedTotal - existingCashDiscount);
+        && sameNumber(activeResumable.expected_total_paid, expectedTotal - existingCashDiscount);
       if (!sameCheckout) {
         stage = 'PRODUCT_VALIDATION';
         const newProductSet = products.length === requestedProductIds.length
@@ -413,27 +448,27 @@ export async function POST(request: Request) {
         let supersedeOrder: any;
         let supersedePaymentsResponse: any;
         try {
-          [supersedeOrder, supersedePaymentsResponse] = await Promise.all([
-            razorpay.orders.fetch(resumable.razorpay_order_id),
-            razorpay.orders.fetchPayments(resumable.razorpay_order_id),
-          ]);
+          [supersedeOrder, supersedePaymentsResponse] = await measureCheckoutStage(requestId, 'ACTIVE_SUPERSEDE_PROVIDER_VERIFY', () => Promise.all([
+            razorpay.orders.fetch(activeResumable.razorpay_order_id),
+            razorpay.orders.fetchPayments(activeResumable.razorpay_order_id),
+          ]));
         } catch (error) {
           return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, error);
         }
         const supersedePayments = Array.isArray(supersedePaymentsResponse?.items) ? supersedePaymentsResponse.items : null;
         const supersedeDiagnostics = getProviderDiagnostics(supersedeOrder, supersedePayments);
-        const supersedeAmountPaise = Math.round(Number(resumable.expected_total_paid) * 100);
-        if (supersedeOrder?.id !== resumable.razorpay_order_id
+        const supersedeAmountPaise = Math.round(Number(activeResumable.expected_total_paid) * 100);
+        if (supersedeOrder?.id !== activeResumable.razorpay_order_id
           || supersedePayments === null
           || !isRetryableProviderOrder(supersedeOrder, supersedePayments, supersedeAmountPaise)) {
           return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, undefined, supersedeDiagnostics);
         }
 
         stage = 'ACTIVE_CHECKOUT_SUPERSEDE';
-        const { data: supersedeData, error: supersedeError } = await serviceClient.rpc('supersede_active_unpaid_checkout', {
-          p_reservation_id: resumable.reservation_id,
-          p_razorpay_order_id: resumable.razorpay_order_id,
-        });
+        const { data: supersedeData, error: supersedeError } = await measureCheckoutStage(requestId, 'ACTIVE_SUPERSEDE_RPC', () => serviceClient.rpc('supersede_active_unpaid_checkout', {
+          p_reservation_id: activeResumable.reservation_id,
+          p_razorpay_order_id: activeResumable.razorpay_order_id,
+        }));
         const supersedeRows = Array.isArray(supersedeData)
           ? supersedeData
           : supersedeData && typeof supersedeData === 'object' ? [supersedeData] : [];
@@ -451,12 +486,12 @@ export async function POST(request: Request) {
         // mutate the reservation or its reward hold. A resumable checkout must
         // remain the exact same payable, zero-payment provider order.
         try {
-          const [preflightOrder, preflightPaymentsResponse] = await Promise.all([
-            razorpay.orders.fetch(resumable.razorpay_order_id),
-            razorpay.orders.fetchPayments(resumable.razorpay_order_id),
-          ]);
+          const [preflightOrder, preflightPaymentsResponse] = await measureCheckoutStage(requestId, 'ACTIVE_PROVIDER_PREFLIGHT', () => Promise.all([
+            razorpay.orders.fetch(activeResumable.razorpay_order_id),
+            razorpay.orders.fetchPayments(activeResumable.razorpay_order_id),
+          ]));
           const preflightPayments = Array.isArray(preflightPaymentsResponse?.items) ? preflightPaymentsResponse.items : null;
-          const preflightAmountPaise = Math.round(Number(resumable.expected_total_paid) * 100);
+          const preflightAmountPaise = Math.round(Number(activeResumable.expected_total_paid) * 100);
           if (preflightPayments === null || !isRetryableProviderOrder(preflightOrder, preflightPayments, preflightAmountPaise)) {
             return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, undefined, getProviderDiagnostics(preflightOrder, preflightPayments));
           }
@@ -464,21 +499,21 @@ export async function POST(request: Request) {
           return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, error);
         }
 
-      const { data: resumedCashData, error: resumedCashError } = await serviceClient.rpc('reserve_zeshu_cash_redemption', {
+      const { data: resumedCashData, error: resumedCashError } = await measureCheckoutStage(requestId, 'ACTIVE_CASH_RECOVERY', () => serviceClient.rpc('reserve_zeshu_cash_redemption', {
         p_user_id: user.id,
-        p_reservation_id: resumable.reservation_id,
+        p_reservation_id: activeResumable.reservation_id,
         p_requested_amount: requestedZeshuCash,
-      });
+      }));
       if (resumedCashError) {
         if (process.env.NODE_ENV === 'development') {
           const { data: reservationDiagnostics } = await serviceClient
             .from('inventory_reservations')
             .select('status,merchandise_subtotal,expected_total_paid,pre_reward_total_paid,expires_at')
-            .eq('id', resumable.reservation_id)
+            .eq('id', activeResumable.reservation_id)
             .maybeSingle();
           console.error('[checkout]', { requestId, stage: 'CASH_RESERVATION', code: 'CASH_RESERVATION_FAILED', errorType: resumedCashError.name || 'SupabaseError' });
           console.error('[checkout] cash diagnostics', {
-            reservationId: String(resumable.reservation_id),
+            reservationId: String(activeResumable.reservation_id),
             reservationStatus: String(reservationDiagnostics?.status ?? ''),
             merchandiseSubtotal: String(reservationDiagnostics?.merchandise_subtotal ?? ''),
             requestedZeshuCash: String(requestedZeshuCash),
@@ -487,20 +522,20 @@ export async function POST(request: Request) {
         return checkoutError(requestId, 'CASH_RESERVATION', 'CASH_RESERVATION_FAILED', 'Unable to reserve Zeshu Cash for checkout.', 409, resumedCashError);
       }
       const resumedCash = Array.isArray(resumedCashData) ? resumedCashData[0] : resumedCashData;
-      const resumedExpectedTotal = Number(resumedCash?.expected_total_paid ?? resumable.expected_total_paid);
+      const resumedExpectedTotal = Number(resumedCash?.expected_total_paid ?? activeResumable.expected_total_paid);
 
       try {
-        const [existingOrder, paymentsResponse] = await Promise.all([
-          razorpay.orders.fetch(resumable.razorpay_order_id),
-          razorpay.orders.fetchPayments(resumable.razorpay_order_id),
-        ]);
+        const [existingOrder, paymentsResponse] = await measureCheckoutStage(requestId, 'ACTIVE_PROVIDER_FINAL', () => Promise.all([
+          razorpay.orders.fetch(activeResumable.razorpay_order_id),
+          razorpay.orders.fetchPayments(activeResumable.razorpay_order_id),
+        ]));
         const payments = Array.isArray(paymentsResponse?.items) ? paymentsResponse.items : [];
         const expectedAmountPaise = Math.round(resumedExpectedTotal * 100);
         if (!isRetryableProviderOrder(existingOrder, payments, expectedAmountPaise)) return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, undefined, getProviderDiagnostics(existingOrder, payments));
-      if (deliveryCoordinates) await saveReservationLocationSnapshot(serviceClient, resumable.reservation_id, user.id, deliveryCoordinates);
+      if (deliveryCoordinates) await saveReservationLocationSnapshot(serviceClient, activeResumable.reservation_id, user.id, deliveryCoordinates);
       if (resumedCash?.redemption_id) await serviceClient.rpc('bind_zeshu_cash_redemption', { p_redemption_id: resumedCash.redemption_id, p_razorpay_order_id: existingOrder.id });
         stage = 'COMPLETE';
-        return NextResponse.json({ success: true, resumed: true, resumePayment: true, orderId: existingOrder.id, amount: existingOrder.amount, currency: existingOrder.currency, totalAmount: resumedExpectedTotal, zeshuCashUsed: Number(resumedCash?.approved_amount || 0), redemptionId: resumedCash?.redemption_id || null, reservationId: resumable.reservation_id, requestId });
+        return NextResponse.json({ success: true, resumed: true, resumePayment: true, orderId: existingOrder.id, amount: existingOrder.amount, currency: existingOrder.currency, totalAmount: resumedExpectedTotal, zeshuCashUsed: Number(resumedCash?.approved_amount || 0), redemptionId: resumedCash?.redemption_id || null, reservationId: activeResumable.reservation_id, requestId });
       } catch (error) {
         if (process.env.NODE_ENV !== 'production') console.error('[checkout]', { requestId, stage, code: 'PAYMENT_RECONCILIATION_REQUIRED', errorType: error instanceof Error ? error.name : typeof error });
         return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, error);
@@ -510,10 +545,10 @@ export async function POST(request: Request) {
 
     stage = 'PRODUCT_LOOKUP';
     const requestedProductIds = canonicalRequestedItems.map((item) => item.product_id);
-    const { data: authoritativeProducts, error: authoritativeProductsError } = await serviceClient
+    const { data: authoritativeProducts, error: authoritativeProductsError } = await measureCheckoutStage(requestId, 'PRODUCT_LOOKUP', () => serviceClient
       .from('products')
       .select('id,vendor_id,price,quantity,in_stock')
-      .in('id', requestedProductIds);
+      .in('id', requestedProductIds));
     if (authoritativeProductsError) return checkoutError(requestId, stage, 'PRODUCT_LOOKUP_FAILED', 'Unable to verify checkout products.', 500, authoritativeProductsError);
     stage = 'PRODUCT_VALIDATION';
     const productsById = new Map((authoritativeProducts || []).map((product) => [String(product.id), product]));
@@ -535,14 +570,14 @@ export async function POST(request: Request) {
     }
 
     stage = 'RESERVATION_CREATE';
-    const { data: reservationData, error: reservationError } = await serviceClient.rpc('create_inventory_reservation', {
+    const { data: reservationData, error: reservationError } = await measureCheckoutStage(requestId, 'RESERVATION_CREATE', () => serviceClient.rpc('create_inventory_reservation', {
       p_user_id: user.id,
       p_items: reservationItems,
       p_delivery_address: deliveryAddress,
       p_has_zeshu_pass: hasZeshuPass,
       p_is_donating: isDonating,
       p_tip: tip,
-    });
+    }));
     if (reservationError) {
       if (process.env.NODE_ENV === 'development') {
         console.error('[checkout]', {
@@ -568,11 +603,11 @@ export async function POST(request: Request) {
     }
     if (deliveryCoordinates) await saveReservationLocationSnapshot(serviceClient, reservationId, user.id, deliveryCoordinates);
     stage = 'CASH_RESERVATION';
-    const { data: cashData, error: cashError } = await serviceClient.rpc('reserve_zeshu_cash_redemption', {
+    const { data: cashData, error: cashError } = await measureCheckoutStage(requestId, 'CASH_RESERVATION', () => serviceClient.rpc('reserve_zeshu_cash_redemption', {
       p_user_id: user.id,
       p_reservation_id: reservationId,
       p_requested_amount: requestedZeshuCash,
-    });
+    }));
     if (cashError) {
       if (process.env.NODE_ENV === 'development') {
         const { data: reservationDiagnostics } = await serviceClient
@@ -600,27 +635,34 @@ export async function POST(request: Request) {
     stage = 'RAZORPAY_CREATE';
     let order;
     try {
-      order = await razorpay.orders.create({ amount: amountPaise, currency: 'INR', receipt: `zeshu_${Date.now()}`, notes: { user_id: user.id, transaction_type: 'grocery', zeshu_cash_used: String(cashReservation?.approved_amount || 0) } });
+      order = await measureCheckoutStage(requestId, 'RAZORPAY_ORDER_CREATE', () => razorpay.orders.create({ amount: amountPaise, currency: 'INR', receipt: `zeshu_${Date.now()}`, notes: { user_id: user.id, transaction_type: 'grocery', zeshu_cash_used: String(cashReservation?.approved_amount || 0) } }));
     } catch (error) {
       return checkoutError(requestId, stage, 'RAZORPAY_CREATE_FAILED', "We couldn't start the payment service. Please try again.", 502, error);
     }
 
     stage = 'RESERVATION_BIND';
-    if (cashReservation?.redemption_id) {
-      const { error: cashBindError } = await serviceClient.rpc('bind_zeshu_cash_redemption', { p_redemption_id: cashReservation.redemption_id, p_razorpay_order_id: order.id });
-      if (cashBindError) return checkoutError(requestId, stage, 'RESERVATION_BIND_FAILED', 'Unable to bind the checkout reservation. Please try again.', 500, cashBindError);
-    }
+    const reservationBindStartedAt = checkoutTimingNow();
+    try {
+      if (cashReservation?.redemption_id) {
+        const { error: cashBindError } = await serviceClient.rpc('bind_zeshu_cash_redemption', { p_redemption_id: cashReservation.redemption_id, p_razorpay_order_id: order.id });
+        if (cashBindError) return checkoutError(requestId, stage, 'RESERVATION_BIND_FAILED', 'Unable to bind the checkout reservation. Please try again.', 500, cashBindError);
+      }
 
-    const { error: bindError } = await serviceClient.rpc('bind_reservation_razorpay_order', {
-      p_user_id: user.id,
-      p_reservation_id: reservationId,
-      p_razorpay_order_id: order.id,
-    });
-    if (bindError) return checkoutError(requestId, stage, 'RESERVATION_BIND_FAILED', 'Unable to bind the checkout reservation. Please try again.', 500, bindError);
+      const { error: bindError } = await serviceClient.rpc('bind_reservation_razorpay_order', {
+        p_user_id: user.id,
+        p_reservation_id: reservationId,
+        p_razorpay_order_id: order.id,
+      });
+      if (bindError) return checkoutError(requestId, stage, 'RESERVATION_BIND_FAILED', 'Unable to bind the checkout reservation. Please try again.', 500, bindError);
+    } finally {
+      logCheckoutTiming(requestId, 'RESERVATION_BIND', reservationBindStartedAt);
+    }
 
     stage = 'COMPLETE';
     return NextResponse.json({ success: true, orderId: order.id, amount: order.amount, currency: order.currency, totalAmount: expectedTotalPaid, zeshuCashUsed: Number(cashReservation?.approved_amount || 0), redemptionId: cashReservation?.redemption_id || null, reservationId, requestId });
   } catch (error) {
     return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'We couldn\'t prepare your checkout. Please try again.', 500, error);
+  } finally {
+    logCheckoutTiming(requestId, 'TOTAL_REQUEST', totalRequestStartedAt);
   }
 }
