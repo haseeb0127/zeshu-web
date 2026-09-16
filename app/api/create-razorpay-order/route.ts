@@ -30,6 +30,20 @@ const canonicalizeItems = (items: ReservationItem[]) => {
 
 const sameNumber = (left: unknown, right: number) => Number.isFinite(Number(left)) && Number(left) === right;
 
+type ProviderDiagnostics = {
+  providerOrderStatus?: string;
+  paymentStatusCategories?: string[];
+  paymentCount?: number;
+};
+
+const getProviderDiagnostics = (order: any, payments: any[] | null): ProviderDiagnostics => ({
+  providerOrderStatus: typeof order?.status === 'string' ? order.status.toUpperCase() : undefined,
+  paymentStatusCategories: Array.isArray(payments)
+    ? Array.from(new Set(payments.map((payment) => String(payment?.status || 'UNKNOWN').toUpperCase())))
+    : undefined,
+  paymentCount: Array.isArray(payments) ? payments.length : undefined,
+});
+
 const isRetryableProviderOrder = (order: any, payments: any[], expectedAmountPaise: number) => {
   if (!order || Number(order.amount) !== expectedAmountPaise || String(order.currency || '').toUpperCase() !== 'INR') return false;
   if (Number(order.amount_paid) !== 0 || Number(order.amount_due) !== expectedAmountPaise || order.partial_payment === true) return false;
@@ -66,15 +80,15 @@ const saveReservationLocationSnapshot = async (
   return !error;
 };
 
-const checkoutError = (requestId: string, stage: string, code: string, message: string, status: number, error?: unknown) => {
-  if (process.env.NODE_ENV !== 'production') {
-    console.error('[checkout]', {
-      requestId,
-      stage,
-      code,
-      errorType: error instanceof Error ? error.name : error ? typeof error : undefined,
-    });
-  }
+const checkoutError = (requestId: string, stage: string, code: string, message: string, status: number, error?: unknown, diagnostics?: ProviderDiagnostics) => {
+  console.error('[checkout]', {
+    requestId,
+    stage,
+    code,
+    httpStatus: status,
+    ...diagnostics,
+    errorType: error instanceof Error ? error.name : error ? typeof error : undefined,
+  });
   return NextResponse.json({ success: false, code, message, requestId }, { status });
 };
 
@@ -115,7 +129,6 @@ export async function POST(request: Request) {
   const cartItems = body.cartItems as CartItem[];
   const deliveryAddress = typeof body.deliveryAddress === 'string' ? body.deliveryAddress.trim() : '';
   const deliveryAddressId = typeof body.deliveryAddressId === 'string' && body.deliveryAddressId.trim() ? body.deliveryAddressId.trim() : null;
-  const abandonPreviousCheckout = body.abandonPreviousCheckout === true;
   // Legacy pricing inputs remain accepted for request compatibility, but the
   // authoritative reservation now ignores pass/tip/donation pricing.
   const tip = 0;
@@ -191,11 +204,12 @@ export async function POST(request: Request) {
 
     const { data: expiredBoundReservations, error: expiredReservationError } = await serviceClient
       .from('inventory_reservations')
-      .select('id,status,razorpay_order_id')
+      .select('id,status,razorpay_order_id,abandoned_at')
       .eq('user_id', user.id)
       .in('status', ['EXPIRED', 'PAYMENT_PENDING'])
       .lte('expires_at', new Date().toISOString())
       .not('razorpay_order_id', 'is', null)
+      .is('abandoned_at', null)
       .order('created_at', { ascending: true });
     if (expiredReservationError) return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to check previous payment state.', 500, expiredReservationError);
     for (const expiredBoundReservation of expiredBoundReservations || []) {
@@ -215,6 +229,47 @@ export async function POST(request: Request) {
       const recoveryItems = canonicalizeItems((recoveryReservation.inventory_reservation_items || []).map((item: any) => ({ product_id: String(item.product_id), quantity: Number(item.quantity) })));
       const sameRecoveryItems = JSON.stringify(recoveryItems) === JSON.stringify(canonicalRequestedItems);
       const sameRecoveryAddress = recoveryReservation.delivery_address === deliveryAddress;
+      const recoveryProductIds = recoveryItems.map((item) => item.product_id);
+      const { data: recoveryProducts, error: recoveryProductsError } = await serviceClient
+        .from('products')
+        .select('id,vendor_id,price,quantity,in_stock')
+        .in('id', recoveryProductIds);
+      if (recoveryProductsError) return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', 'We could not safely verify the previous checkout. Please check payment status again.', 409, recoveryProductsError);
+      const recoveryProductsById = new Map((recoveryProducts || []).map((product: any) => [String(product.id), product]));
+      const sameRecoveryProductSet = recoveryProductsById.size === recoveryProductIds.length
+        && recoveryProductIds.every((productId) => recoveryProductsById.has(productId));
+      const recoveryVendors = (recoveryProducts || []).map((product: any) => product.vendor_id).filter(Boolean);
+      const recoveryVendorId = recoveryVendors.length > 0 && recoveryVendors.every((vendorId: string) => vendorId === recoveryVendors[0]) ? recoveryVendors[0] : null;
+      const sameRecoveryVendor = recoveryVendorId === recoveryReservation.vendor_id;
+      const sameRecoveryPrices = sameRecoveryProductSet && recoveryItems.every((item) => {
+        const product = recoveryProductsById.get(item.product_id);
+        return product && product.price !== null && product.price !== undefined && sameNumber(product.price, Number((recoveryReservation.inventory_reservation_items || []).find((recoveryItem: any) => String(recoveryItem.product_id) === item.product_id)?.unit_price));
+      });
+      const recoveryMerchandiseSubtotal = sameRecoveryProductSet && recoveryVendorId
+        ? canonicalRequestedItems.reduce((sum, item) => sum + Number(recoveryProductsById.get(item.product_id)?.price || 0) * item.quantity, 0)
+        : NaN;
+      const recoveryDeliveryFee = Number.isFinite(recoveryMerchandiseSubtotal) && recoveryMerchandiseSubtotal >= 299 ? 0 : 30;
+      const recoveryExpectedPricing = {
+        small_cart_fee: 0,
+        delivery_fee: recoveryDeliveryFee,
+        handling_fee: 0,
+        donation: 0,
+        tip: 0,
+        pass_fee: 0,
+        discount_total: 0,
+      };
+      const recoverySnapshot = recoveryReservation.pricing_snapshot || {};
+      const sameRecoveryPricing = Object.entries(recoveryExpectedPricing)
+        .filter(([key]) => key !== 'discount_total')
+        .every(([key, value]) => sameNumber(recoverySnapshot[key], value));
+      const recoveryCashDiscount = Number(recoverySnapshot.zeshu_cash_redemption ?? recoverySnapshot.discount_total ?? 0);
+      const recoveryExpectedTotal = Number.isFinite(recoveryMerchandiseSubtotal)
+        ? recoveryMerchandiseSubtotal + recoveryDeliveryFee
+        : NaN;
+      const sameRecoveryAvailability = sameRecoveryProductSet && recoveryItems.every((item) => {
+        const product = recoveryProductsById.get(item.product_id);
+        return product?.in_stock === true && product.quantity !== null && product.quantity !== undefined && Number(product.quantity) >= item.quantity;
+      });
       const { data: recoveryLocationSnapshot, error: recoveryLocationError } = await serviceClient
         .from('inventory_reservation_location_snapshots')
         .select('latitude,longitude')
@@ -226,8 +281,14 @@ export async function POST(request: Request) {
         && Number(recoveryLocationSnapshot.longitude) === deliveryCoordinates.longitude);
       const recoveryMatchesCurrentCheckout = recoveryItems.length > 0
         && sameRecoveryItems
+        && sameRecoveryPrices
+        && sameRecoveryVendor
         && sameRecoveryAddress
         && sameRecoveryCoordinates;
+      const recoveryMatchesCurrentPricing = sameRecoveryPricing
+        && sameNumber(recoveryCashDiscount, requestedZeshuCash)
+        && sameNumber(recoveryReservation.expected_total_paid, recoveryExpectedTotal - recoveryCashDiscount);
+      const recoveryCanRenew = recoveryMatchesCurrentCheckout && recoveryMatchesCurrentPricing && sameRecoveryAvailability;
 
       let recoveryOrder: any;
       let recoveryPaymentsResponse: any;
@@ -239,25 +300,25 @@ export async function POST(request: Request) {
       }
 
       const recoveryPayments = Array.isArray(recoveryPaymentsResponse?.items) ? recoveryPaymentsResponse.items : null;
+      const recoveryDiagnostics = getProviderDiagnostics(recoveryOrder, recoveryPayments);
       if (recoveryOrder?.id !== expiredBoundReservation.razorpay_order_id || recoveryPayments === null || !isRetryableProviderOrder(recoveryOrder, recoveryPayments, Math.round(Number(recoveryReservation.expected_total_paid) * 100))) {
-        return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409);
+        return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, undefined, recoveryDiagnostics);
       }
 
-      if (!recoveryMatchesCurrentCheckout) {
-        if (!abandonPreviousCheckout) {
-          return NextResponse.json({
-            success: false,
-            code: 'ABANDONABLE_PAYMENT_CHECKOUT',
-            message: 'Your previous payment attempt belongs to an older basket. We can safely close that checkout before starting this one.',
-            requestId,
-          }, { status: 409 });
-        }
+      // Terminal EXPIRED rows are historical even if their old basket happens
+      // to resemble today's basket. They must be safely closed, never renewed.
+      if (expiredBoundReservation.status === 'EXPIRED' || !recoveryCanRenew) {
         stage = 'ABANDON_PREVIOUS_CHECKOUT';
-        const { error: abandonError } = await serviceClient.rpc('abandon_mismatched_payment_pending_checkout', {
+        const { data: abandonData, error: abandonError } = await serviceClient.rpc('abandon_mismatched_payment_pending_checkout', {
           p_reservation_id: expiredBoundReservation.id,
           p_razorpay_order_id: expiredBoundReservation.razorpay_order_id,
         });
-        if (abandonError) return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', 'We could not safely close the previous checkout. Please check payment status again.', 409, abandonError);
+        const abandonRows = Array.isArray(abandonData)
+          ? abandonData
+          : abandonData && typeof abandonData === 'object' ? [abandonData] : [];
+        if (abandonError || abandonRows.length !== 1 || abandonRows[0]?.abandoned !== true) {
+          return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', 'We could not safely close the previous checkout. Please check payment status again.', 409, abandonError, recoveryDiagnostics);
+        }
         continue;
       }
 
@@ -324,7 +385,7 @@ export async function POST(request: Request) {
         const preflightPayments = Array.isArray(preflightPaymentsResponse?.items) ? preflightPaymentsResponse.items : null;
         const preflightAmountPaise = Math.round(Number(resumable.expected_total_paid) * 100);
         if (preflightPayments === null || !isRetryableProviderOrder(preflightOrder, preflightPayments, preflightAmountPaise)) {
-          return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409);
+          return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, undefined, getProviderDiagnostics(preflightOrder, preflightPayments));
         }
       } catch (error) {
         return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, error);
@@ -360,7 +421,7 @@ export async function POST(request: Request) {
         const paymentsResponse = await razorpay.orders.fetchPayments(resumable.razorpay_order_id);
         const payments = Array.isArray(paymentsResponse?.items) ? paymentsResponse.items : [];
         const expectedAmountPaise = Math.round(resumedExpectedTotal * 100);
-        if (!isRetryableProviderOrder(existingOrder, payments, expectedAmountPaise)) return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409);
+        if (!isRetryableProviderOrder(existingOrder, payments, expectedAmountPaise)) return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, undefined, getProviderDiagnostics(existingOrder, payments));
       if (deliveryCoordinates) await saveReservationLocationSnapshot(serviceClient, resumable.reservation_id, user.id, deliveryCoordinates);
       if (resumedCash?.redemption_id) await serviceClient.rpc('bind_zeshu_cash_redemption', { p_redemption_id: resumedCash.redemption_id, p_razorpay_order_id: existingOrder.id });
         stage = 'COMPLETE';

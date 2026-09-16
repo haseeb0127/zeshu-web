@@ -1353,6 +1353,7 @@ export default function ZeshuSuperApp() {
       let paymentSucceeded = false;
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, amount: Number(orderData.amount), currency: orderData.currency || 'INR', name: "Zeshu Super App", order_id: orderId,
+        retry: { enabled: true },
         handler: async function (response: any) {
           paymentSucceeded = true;
           setIsLoading(true);
@@ -1378,7 +1379,8 @@ export default function ZeshuSuperApp() {
         modal: {
           ondismiss: () => {
             if (paymentSucceeded) return;
-            showToast('Payment cancelled. Your cart is still available. You can retry payment.');
+            setCheckoutError(null);
+            showToast('Payment cancelled. You can retry whenever you\'re ready.');
             setIsLoading(false);
             setIsCheckoutOpening(false);
           },
