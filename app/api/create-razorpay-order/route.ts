@@ -198,9 +198,6 @@ export async function POST(request: Request) {
       .not('razorpay_order_id', 'is', null)
       .order('created_at', { ascending: true });
     if (expiredReservationError) return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to check previous payment state.', 500, expiredReservationError);
-    if ((expiredBoundReservations || []).length > 1) {
-      return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', 'Multiple previous payment attempts need reconciliation before another checkout can start.', 409);
-    }
     for (const expiredBoundReservation of expiredBoundReservations || []) {
       stage = 'ABANDONED_PAYMENT_VERIFY';
       if (!['PAYMENT_PENDING', 'EXPIRED'].includes(expiredBoundReservation.status) || !expiredBoundReservation.razorpay_order_id) {
