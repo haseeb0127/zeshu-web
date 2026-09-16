@@ -7,6 +7,7 @@ import Link from 'next/link';
 import OrderStatusTimeline from './components/OrderStatusTimeline';
 import ProductCard from './components/ProductCard';
 import ReviewForm, { ReviewProduct } from './components/ReviewForm';
+import LocationSelector from './components/LocationSelector';
 import { 
   Mic, MapPin, Search, User, ChevronRight, Zap, Smartphone, 
   Tv, HeartHandshake, Plus, Minus, ShoppingBag, X, LogOut, Ticket, QrCode,
@@ -203,6 +204,8 @@ export default function ZeshuSuperApp() {
   const [currentAddress, setCurrentAddress] = useState('Location not set');
   const [isDetectingLoc, setIsDetectingLoc] = useState(true);
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
+  const [locationSelectorOpen, setLocationSelectorOpen] = useState(false);
+  const [locationSelection, setLocationSelection] = useState<{ latitude: number; longitude: number; accuracy: number | null; source: 'DEVICE' | 'MANUAL_PIN' } | null>(null);
   const locationWatchRef = useRef<number | null>(null);
   const locationRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const locationRequestRef = useRef(0);
@@ -761,47 +764,28 @@ export default function ZeshuSuperApp() {
     const requestId = locationRequestRef.current;
     clearLocationWatcher();
     setIsDetectingLoc(true);
-    if (!("geolocation" in navigator)) {
+    const fallbackAddress = addresses.find((item) => item.id === selectedAddressId) || addresses.find((item) => item.is_default);
+    const fallbackCoordinates = fallbackAddress && Number.isFinite(Number(fallbackAddress.latitude)) && Number.isFinite(Number(fallbackAddress.longitude))
+      ? { latitude: Number(fallbackAddress.latitude), longitude: Number(fallbackAddress.longitude), accuracy: fallbackAddress.location_accuracy_meters ?? null, source: 'MANUAL_PIN' as const }
+      : null;
+    const openSelector = (selection: { latitude: number; longitude: number; accuracy: number | null; source: 'DEVICE' | 'MANUAL_PIN' } | null) => {
+      if (requestId !== locationRequestRef.current) return;
+      setLocationSelection(selection);
       setIsDetectingLoc(false);
-      showToast('Location is not available in this browser. Please enter your delivery address.');
+      setLocationSelectorOpen(true);
+    };
+    if (!("geolocation" in navigator)) {
+      openSelector(fallbackCoordinates);
+      showToast('Location is not available. Search or place the pin manually.');
       return;
     }
-
-    const options: PositionOptions = { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 };
-    let bestAccuracy = Number.POSITIVE_INFINITY;
-    const applyPosition = (position: GeolocationPosition) => {
-      if (requestId !== locationRequestRef.current) return;
-      const accuracy = Number(position.coords.accuracy);
-      if (!Number.isFinite(accuracy) || accuracy < 0 || accuracy >= bestAccuracy) return;
-      bestAccuracy = accuracy;
-      setLocationAccuracy(accuracy);
-      setAddressForm((current) => ({ ...current, latitude: String(position.coords.latitude), longitude: String(position.coords.longitude) }));
-      if (accuracy <= 50) {
-        clearLocationWatcher();
-        setIsDetectingLoc(false);
-        showToast('Location detected accurately.');
-      }
-    };
-    const finishRetry = () => {
-      if (requestId !== locationRequestRef.current) return;
-      clearLocationWatcher();
-      setIsDetectingLoc(false);
-      if (bestAccuracy !== Number.POSITIVE_INFINITY) {
-        showToast(bestAccuracy <= 150 ? 'Approximate location detected. Please confirm your delivery address.' : 'We could only detect an approximate location. Please confirm your delivery address or try location again.');
-      }
-    };
-
     navigator.geolocation.getCurrentPosition((position) => {
-      applyPosition(position);
-      if (Number(position.coords.accuracy) <= 50) return;
-      locationWatchRef.current = navigator.geolocation.watchPosition(applyPosition, () => undefined, options);
-      locationRetryTimerRef.current = setTimeout(finishRetry, 10000);
+      const accuracy = Number(position.coords.accuracy);
+      openSelector({ latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: Number.isFinite(accuracy) && accuracy >= 0 ? accuracy : null, source: 'DEVICE' });
     }, () => {
-      if (requestId !== locationRequestRef.current) return;
-      clearLocationWatcher();
-      setIsDetectingLoc(false);
-      showToast('Location access was unavailable. Please enter your delivery address or try again.');
-    }, options);
+      openSelector(fallbackCoordinates);
+      showToast('We couldn\'t get a precise GPS location. Search or place the pin on the map.');
+    }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 3000 });
   };
 
   const handleContactPicker = async () => {
@@ -1058,6 +1042,7 @@ export default function ZeshuSuperApp() {
     setAddresses(next);
     const defaultAddress = next.find((address) => address.is_default);
     if (!selectedAddressId && defaultAddress) setSelectedAddressId(defaultAddress.id);
+    if (defaultAddress) setCurrentAddress(formatAddress(defaultAddress));
   };
   const openAddressForm = (address?: CustomerAddress) => {
     setEditingAddress(address || null);
@@ -1418,6 +1403,7 @@ export default function ZeshuSuperApp() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FC] font-sans antialiased text-[#111827] overflow-x-hidden relative">
+      <LocationSelector open={locationSelectorOpen} initial={locationSelection} onClose={() => setLocationSelectorOpen(false)} onConfirm={(selection, address) => { setLocationSelection(selection); setLocationAccuracy(selection.accuracy); setAddressForm((current) => ({ ...current, latitude: String(selection.latitude), longitude: String(selection.longitude) })); setCurrentAddress(address); setLocationSelectorOpen(false); setAddressFormOpen(true); showToast('Delivery location confirmed. Add your house or flat details.'); }} />
       <div className={`fixed bottom-32 left-1/2 -translate-x-1/2 z-[150] transition-all duration-500 ${toastMessage ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-95 pointer-events-none'}`}>
         <div className="bg-[#1F2937]/95 backdrop-blur-xl text-white px-6 py-3.5 rounded-full font-bold text-sm shadow-2xl flex items-center gap-2.5 border border-white/10"><CheckCircle size={18} className="text-[#10B981]"/>{toastMessage}</div>
       </div>
