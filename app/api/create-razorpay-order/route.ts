@@ -198,19 +198,25 @@ export async function POST(request: Request) {
     const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
 
     stage = 'EXISTING_CHECKOUT';
-    const { data: resumableData, error: resumableError } = await serviceClient.rpc('get_resumable_inventory_reservation', { p_user_id: user.id });
+    const [resumableResult, expiredReservationResult] = await Promise.all([
+      Promise.resolve(serviceClient.rpc('get_resumable_inventory_reservation', { p_user_id: user.id }))
+        .catch((error) => ({ data: null, error })),
+      Promise.resolve(serviceClient
+        .from('inventory_reservations')
+        .select('id,status,razorpay_order_id,abandoned_at')
+        .eq('user_id', user.id)
+        .in('status', ['EXPIRED', 'PAYMENT_PENDING'])
+        .lte('expires_at', new Date().toISOString())
+        .not('razorpay_order_id', 'is', null)
+        .is('abandoned_at', null)
+        .order('created_at', { ascending: true }))
+        .catch((error) => ({ data: null, error })),
+    ]);
+    const { data: resumableData, error: resumableError } = resumableResult;
     if (resumableError) return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to check existing checkout state.', 500, resumableError);
     let resumable = (Array.isArray(resumableData) ? resumableData[0] : resumableData) as ResumableReservation | null;
 
-    const { data: expiredBoundReservations, error: expiredReservationError } = await serviceClient
-      .from('inventory_reservations')
-      .select('id,status,razorpay_order_id,abandoned_at')
-      .eq('user_id', user.id)
-      .in('status', ['EXPIRED', 'PAYMENT_PENDING'])
-      .lte('expires_at', new Date().toISOString())
-      .not('razorpay_order_id', 'is', null)
-      .is('abandoned_at', null)
-      .order('created_at', { ascending: true });
+    const { data: expiredBoundReservations, error: expiredReservationError } = expiredReservationResult;
     if (expiredReservationError) return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to check previous payment state.', 500, expiredReservationError);
     for (const expiredBoundReservation of expiredBoundReservations || []) {
       stage = 'ABANDONED_PAYMENT_VERIFY';
@@ -230,10 +236,21 @@ export async function POST(request: Request) {
       const sameRecoveryItems = JSON.stringify(recoveryItems) === JSON.stringify(canonicalRequestedItems);
       const sameRecoveryAddress = recoveryReservation.delivery_address === deliveryAddress;
       const recoveryProductIds = recoveryItems.map((item) => item.product_id);
-      const { data: recoveryProducts, error: recoveryProductsError } = await serviceClient
-        .from('products')
-        .select('id,vendor_id,price,quantity,in_stock')
-        .in('id', recoveryProductIds);
+      const [recoveryProductsResult, recoveryLocationResult] = await Promise.all([
+        Promise.resolve(serviceClient
+          .from('products')
+          .select('id,vendor_id,price,quantity,in_stock')
+          .in('id', recoveryProductIds))
+          .catch((error) => ({ data: null, error })),
+        Promise.resolve(serviceClient
+          .from('inventory_reservation_location_snapshots')
+          .select('latitude,longitude')
+          .eq('reservation_id', expiredBoundReservation.id)
+          .maybeSingle())
+          .catch((error) => ({ data: null, error })),
+      ]);
+      const { data: recoveryProducts, error: recoveryProductsError } = recoveryProductsResult;
+      const { data: recoveryLocationSnapshot, error: recoveryLocationError } = recoveryLocationResult;
       if (recoveryProductsError) return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', 'We could not safely verify the previous checkout. Please check payment status again.', 409, recoveryProductsError);
       const recoveryProductsById = new Map((recoveryProducts || []).map((product: any) => [String(product.id), product]));
       const sameRecoveryProductSet = recoveryProductsById.size === recoveryProductIds.length
@@ -270,11 +287,6 @@ export async function POST(request: Request) {
         const product = recoveryProductsById.get(item.product_id);
         return product?.in_stock === true && product.quantity !== null && product.quantity !== undefined && Number(product.quantity) >= item.quantity;
       });
-      const { data: recoveryLocationSnapshot, error: recoveryLocationError } = await serviceClient
-        .from('inventory_reservation_location_snapshots')
-        .select('latitude,longitude')
-        .eq('reservation_id', expiredBoundReservation.id)
-        .maybeSingle();
       if (recoveryLocationError) return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', 'We could not safely verify the previous delivery destination. Please check payment status again.', 409, recoveryLocationError);
       const sameRecoveryCoordinates = !recoveryLocationSnapshot || (deliveryCoordinates
         && Number(recoveryLocationSnapshot.latitude) === deliveryCoordinates.latitude
@@ -293,8 +305,10 @@ export async function POST(request: Request) {
       let recoveryOrder: any;
       let recoveryPaymentsResponse: any;
       try {
-        recoveryOrder = await razorpay.orders.fetch(expiredBoundReservation.razorpay_order_id);
-        recoveryPaymentsResponse = await razorpay.orders.fetchPayments(expiredBoundReservation.razorpay_order_id);
+        [recoveryOrder, recoveryPaymentsResponse] = await Promise.all([
+          razorpay.orders.fetch(expiredBoundReservation.razorpay_order_id),
+          razorpay.orders.fetchPayments(expiredBoundReservation.razorpay_order_id),
+        ]);
       } catch (error) {
         return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, error);
       }
@@ -380,8 +394,10 @@ export async function POST(request: Request) {
       // mutate the reservation or its reward hold. A resumable checkout must
       // remain the exact same payable, zero-payment provider order.
       try {
-        const preflightOrder = await razorpay.orders.fetch(resumable.razorpay_order_id);
-        const preflightPaymentsResponse = await razorpay.orders.fetchPayments(resumable.razorpay_order_id);
+        const [preflightOrder, preflightPaymentsResponse] = await Promise.all([
+          razorpay.orders.fetch(resumable.razorpay_order_id),
+          razorpay.orders.fetchPayments(resumable.razorpay_order_id),
+        ]);
         const preflightPayments = Array.isArray(preflightPaymentsResponse?.items) ? preflightPaymentsResponse.items : null;
         const preflightAmountPaise = Math.round(Number(resumable.expected_total_paid) * 100);
         if (preflightPayments === null || !isRetryableProviderOrder(preflightOrder, preflightPayments, preflightAmountPaise)) {
@@ -417,8 +433,10 @@ export async function POST(request: Request) {
       const resumedExpectedTotal = Number(resumedCash?.expected_total_paid ?? resumable.expected_total_paid);
 
       try {
-        const existingOrder = await razorpay.orders.fetch(resumable.razorpay_order_id);
-        const paymentsResponse = await razorpay.orders.fetchPayments(resumable.razorpay_order_id);
+        const [existingOrder, paymentsResponse] = await Promise.all([
+          razorpay.orders.fetch(resumable.razorpay_order_id),
+          razorpay.orders.fetchPayments(resumable.razorpay_order_id),
+        ]);
         const payments = Array.isArray(paymentsResponse?.items) ? paymentsResponse.items : [];
         const expectedAmountPaise = Math.round(resumedExpectedTotal * 100);
         if (!isRetryableProviderOrder(existingOrder, payments, expectedAmountPaise)) return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, undefined, getProviderDiagnostics(existingOrder, payments));
