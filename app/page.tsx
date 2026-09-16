@@ -83,6 +83,8 @@ type CustomerAddress = {
   postal_code: string | null;
   latitude: number | null;
   longitude: number | null;
+  location_accuracy_meters?: number | null;
+  location_source?: 'DEVICE' | 'MANUAL_PIN' | 'LEGACY' | null;
   is_default: boolean;
 };
 
@@ -201,6 +203,9 @@ export default function ZeshuSuperApp() {
   const [currentAddress, setCurrentAddress] = useState('Location not set');
   const [isDetectingLoc, setIsDetectingLoc] = useState(true);
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
+  const locationWatchRef = useRef<number | null>(null);
+  const locationRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const locationRequestRef = useRef(0);
   
   const [rechargeNumber, setRechargeNumber] = useState('');
   const [rechargeAmount, setRechargeAmount] = useState('');
@@ -357,6 +362,22 @@ export default function ZeshuSuperApp() {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const clearLocationWatcher = () => {
+    if (locationWatchRef.current !== null && 'geolocation' in navigator) {
+      navigator.geolocation.clearWatch(locationWatchRef.current);
+      locationWatchRef.current = null;
+    }
+    if (locationRetryTimerRef.current !== null) {
+      clearTimeout(locationRetryTimerRef.current);
+      locationRetryTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => () => {
+    locationRequestRef.current += 1;
+    clearLocationWatcher();
   }, []);
 
   useEffect(() => {
@@ -735,13 +756,52 @@ export default function ZeshuSuperApp() {
   }, [user]);
 
   const handleAutoDetectLocation = () => {
+    if (isDetectingLoc) return;
+    locationRequestRef.current += 1;
+    const requestId = locationRequestRef.current;
+    clearLocationWatcher();
     setIsDetectingLoc(true);
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => { setLocationAccuracy(position.coords.accuracy); setAddressForm((current) => ({ ...current, latitude: String(position.coords.latitude), longitude: String(position.coords.longitude) })); setIsDetectingLoc(false); showToast(position.coords.accuracy <= 25 ? 'Location accuracy looks good. Confirm your delivery address.' : position.coords.accuracy <= 75 ? 'Please verify the delivery pin.' : 'Location accuracy is low. Move the pin or try again.'); },
-        () => { showToast("Location access denied."); setIsDetectingLoc(false); }
-      );
-    } else { setIsDetectingLoc(false); }
+    if (!("geolocation" in navigator)) {
+      setIsDetectingLoc(false);
+      showToast('Location is not available in this browser. Please enter your delivery address.');
+      return;
+    }
+
+    const options: PositionOptions = { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 };
+    let bestAccuracy = Number.POSITIVE_INFINITY;
+    const applyPosition = (position: GeolocationPosition) => {
+      if (requestId !== locationRequestRef.current) return;
+      const accuracy = Number(position.coords.accuracy);
+      if (!Number.isFinite(accuracy) || accuracy < 0 || accuracy >= bestAccuracy) return;
+      bestAccuracy = accuracy;
+      setLocationAccuracy(accuracy);
+      setAddressForm((current) => ({ ...current, latitude: String(position.coords.latitude), longitude: String(position.coords.longitude) }));
+      if (accuracy <= 50) {
+        clearLocationWatcher();
+        setIsDetectingLoc(false);
+        showToast('Location detected accurately.');
+      }
+    };
+    const finishRetry = () => {
+      if (requestId !== locationRequestRef.current) return;
+      clearLocationWatcher();
+      setIsDetectingLoc(false);
+      if (bestAccuracy !== Number.POSITIVE_INFINITY) {
+        showToast(bestAccuracy <= 150 ? 'Approximate location detected. Please confirm your delivery address.' : 'We could only detect an approximate location. Please confirm your delivery address or try location again.');
+      }
+    };
+
+    navigator.geolocation.getCurrentPosition((position) => {
+      applyPosition(position);
+      if (Number(position.coords.accuracy) <= 50) return;
+      locationWatchRef.current = navigator.geolocation.watchPosition(applyPosition, () => undefined, options);
+      locationRetryTimerRef.current = setTimeout(finishRetry, 10000);
+    }, () => {
+      if (requestId !== locationRequestRef.current) return;
+      clearLocationWatcher();
+      setIsDetectingLoc(false);
+      showToast('Location access was unavailable. Please enter your delivery address or try again.');
+    }, options);
   };
 
   const handleContactPicker = async () => {
@@ -1001,6 +1061,7 @@ export default function ZeshuSuperApp() {
   };
   const openAddressForm = (address?: CustomerAddress) => {
     setEditingAddress(address || null);
+    setLocationAccuracy(address?.location_accuracy_meters ?? null);
     setAddressForm(address ? { label: address.label, recipient_name: address.recipient_name || '', phone: address.phone || '', address_line: address.address_line, landmark: address.landmark || '', city: address.city, state: address.state, postal_code: address.postal_code || '', latitude: address.latitude === null ? '' : String(address.latitude), longitude: address.longitude === null ? '' : String(address.longitude), is_default: address.is_default } : { label: 'Home', recipient_name: '', phone: '', address_line: '', landmark: '', city: '', state: '', postal_code: '', latitude: '', longitude: '', is_default: addresses.length === 0 });
     setAddressFormOpen(true);
   };
@@ -1370,7 +1431,7 @@ export default function ZeshuSuperApp() {
                 <div className="hidden md:flex flex-col text-left"><span className="text-[22px] font-black tracking-tighter leading-none">ZESHU</span><span className="text-[10px] font-extrabold text-[#087443] tracking-[0.2em] uppercase mt-0.5">Everyday, simply</span></div>
               </button>
               <button type="button" aria-label="Detect or change delivery location" className="flex max-w-[160px] flex-col cursor-pointer text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443] md:max-w-[220px]" onClick={handleAutoDetectLocation}>
-                <div className="font-black text-[13px] md:text-[15px] flex items-center gap-1.5">Use my current location <MapPin size={14} className="text-[#087443]"/></div>
+                <div className="font-black text-[13px] md:text-[15px] flex items-center gap-1.5">{locationAccuracy !== null ? 'Try location again' : 'Use my current location'} <MapPin size={14} className="text-[#087443]"/></div>
                 <div className="flex items-center text-[10px] md:text-xs text-[#6B7280] mt-0.5 font-medium truncate">{currentAddress}<ChevronDown size={14} className="ml-1"/></div>
               </button>
             </div>
