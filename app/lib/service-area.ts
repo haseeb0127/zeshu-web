@@ -3,7 +3,12 @@ import 'server-only';
 import fs from 'node:fs';
 import path from 'node:path';
 
-export type ServiceAreaResult = 'ELIGIBLE' | 'OUTSIDE_SERVICE_AREA' | 'SERVICE_AREA_UNAVAILABLE';
+export type ServiceAreaResult = 'ELIGIBLE' | 'OUTSIDE_SERVICE_AREA' | 'SERVICE_AREA_UNAVAILABLE' | 'SERVICE_AREA_ENFORCEMENT_DISABLED';
+
+// This is intentionally server-only.  The polygon gate is opt-in so that a
+// missing government boundary file cannot accidentally take checkout down.
+export const isJagtialServiceAreaEnforced = () =>
+  process.env.ENFORCE_JAGTIAL_SERVICE_AREA?.trim().toLowerCase() === 'true';
 
 type Position = [number, number];
 type Ring = Position[];
@@ -62,6 +67,7 @@ const pointInPolygon = (longitude: number, latitude: number, polygon: Ring[]) =>
 };
 
 export const evaluateJagtialServiceArea = (latitude: number, longitude: number): ServiceAreaResult => {
+  if (!isJagtialServiceAreaEnforced()) return 'SERVICE_AREA_ENFORCEMENT_DISABLED';
   if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
     return 'SERVICE_AREA_UNAVAILABLE';
   }

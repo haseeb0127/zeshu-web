@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Razorpay from 'razorpay';
 import { randomUUID } from 'node:crypto';
-import { evaluateJagtialServiceArea } from '../../lib/service-area';
+import { evaluateJagtialServiceArea, isJagtialServiceAreaEnforced } from '../../lib/service-area';
 
 export const dynamic = 'force-dynamic';
 
@@ -154,14 +154,16 @@ export async function POST(request: Request) {
       }
     }
 
-    const serviceAreaResult = deliveryCoordinates
-      ? evaluateJagtialServiceArea(deliveryCoordinates.latitude, deliveryCoordinates.longitude)
-      : 'SERVICE_AREA_UNAVAILABLE';
-    if (serviceAreaResult === 'SERVICE_AREA_UNAVAILABLE') {
-      return checkoutError(requestId, 'SERVICE_AREA', 'SERVICE_AREA_UNAVAILABLE', 'We could not verify this delivery location yet. Confirm a delivery pin in supported Jagtial areas and try again.', 409);
-    }
-    if (serviceAreaResult === 'OUTSIDE_SERVICE_AREA') {
-      return checkoutError(requestId, 'SERVICE_AREA', 'OUTSIDE_SERVICE_AREA', '30-minute essentials delivery is coming soon in your area.', 409);
+    if (isJagtialServiceAreaEnforced()) {
+      const serviceAreaResult = deliveryCoordinates
+        ? evaluateJagtialServiceArea(deliveryCoordinates.latitude, deliveryCoordinates.longitude)
+        : 'SERVICE_AREA_UNAVAILABLE';
+      if (serviceAreaResult === 'SERVICE_AREA_UNAVAILABLE') {
+        return checkoutError(requestId, 'SERVICE_AREA', 'SERVICE_AREA_UNAVAILABLE', 'We could not verify this delivery location yet. Confirm a delivery pin in supported Jagtial areas and try again.', 409);
+      }
+      if (serviceAreaResult === 'OUTSIDE_SERVICE_AREA') {
+        return checkoutError(requestId, 'SERVICE_AREA', 'OUTSIDE_SERVICE_AREA', '30-minute essentials delivery is coming soon in your area.', 409);
+      }
     }
 
     const canonicalRequestedItems = canonicalizeItems(reservationItems);
