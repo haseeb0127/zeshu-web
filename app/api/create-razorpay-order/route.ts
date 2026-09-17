@@ -117,11 +117,6 @@ const logCheckoutTiming = (requestId: string, stage: string, startedAt: number, 
   if (timingSummary) {
     (timingSummary[stage] ||= []).push(durationMs);
   }
-  console.info('[checkout-timing]', {
-    requestId,
-    stage,
-    durationMs,
-  });
   return durationMs;
 };
 
