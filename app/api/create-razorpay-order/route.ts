@@ -617,13 +617,18 @@ export async function POST(request: Request) {
     if (typeof reservationId !== 'string' || !Number.isFinite(reservationExpectedTotal) || reservationExpectedTotal <= 0) {
       return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to prepare the database-verified checkout total.', 500);
     }
-    if (deliveryCoordinates) await saveReservationLocationSnapshot(serviceClient, reservationId, user.id, deliveryCoordinates);
     stage = 'CASH_RESERVATION';
-    const { data: cashData, error: cashError } = await measureCheckoutStage(requestId, 'CASH_RESERVATION', () => serviceClient.rpc('reserve_zeshu_cash_redemption', {
-      p_user_id: user.id,
-      p_reservation_id: reservationId,
-      p_requested_amount: requestedZeshuCash,
-    }), timingSummary);
+    const [, cashResult] = await measureCheckoutStage(requestId, 'POST_RESERVATION_PREP', () => Promise.all([
+      deliveryCoordinates
+        ? saveReservationLocationSnapshot(serviceClient, reservationId, user.id, deliveryCoordinates)
+        : Promise.resolve(true),
+      measureCheckoutStage(requestId, 'CASH_RESERVATION', () => serviceClient.rpc('reserve_zeshu_cash_redemption', {
+        p_user_id: user.id,
+        p_reservation_id: reservationId,
+        p_requested_amount: requestedZeshuCash,
+      }), timingSummary),
+    ]), timingSummary);
+    const { data: cashData, error: cashError } = cashResult;
     if (cashError) {
       if (process.env.NODE_ENV === 'development') {
         const { data: reservationDiagnostics } = await serviceClient
