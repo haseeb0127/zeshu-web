@@ -12,7 +12,7 @@ import {
   Mic, MapPin, Search, User, ChevronRight, Zap, Smartphone, 
   Tv, HeartHandshake, Plus, Minus, ShoppingBag, X, LogOut, Ticket, QrCode,
   Droplets, Wifi, Car, Landmark, ShieldCheck, PhoneCall, Phone, Package, Flame, BadgeCheck,
-  History, ChevronDown, CheckSquare, Square, Clock, CheckCircle, Menu, Info, AlertCircle, BookUser, Truck, Receipt,
+  History, ChevronDown, CheckSquare, Square, Clock, CheckCircle, Menu, Info, AlertCircle, BookUser, Truck, Receipt, SlidersHorizontal,
   Crown 
 } from 'lucide-react';
 import { customerSupabase } from './lib/browser-supabase';
@@ -170,6 +170,9 @@ export default function ZeshuSuperApp() {
   const [favoriteBusyId, setFavoriteBusyId] = useState<string | null>(null);
   const [frequentCategories, setFrequentCategories] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState(''); 
+  const [isVoiceListening, setIsVoiceListening] = useState(false);
+  const [voiceSearchMessage, setVoiceSearchMessage] = useState('');
+  const speechRecognitionRef = useRef<any>(null);
   const [cart, setCart] = useState<{item: any, qty: number}[]>([]);
   
   const [user, setUser] = useState<any>(null);
@@ -189,6 +192,10 @@ export default function ZeshuSuperApp() {
   const [checkoutError, setCheckoutError] = useState<CheckoutErrorState | null>(null);
   const [isCheckingPaymentStatus, setIsCheckingPaymentStatus] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All'); 
+  const [priceFilter, setPriceFilter] = useState<'ALL' | 'UNDER_100' | '100_299' | '300_499' | '500_PLUS'>('ALL');
+  const [availabilityFilter, setAvailabilityFilter] = useState<'ALL' | 'AVAILABLE'>('ALL');
+  const [productSort, setProductSort] = useState<'recommended' | 'price_asc' | 'price_desc' | 'name'>('recommended');
+  const [isProductFiltersOpen, setIsProductFiltersOpen] = useState(false);
   
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [expandedCartSection, setExpandedCartSection] = useState<'ADDRESS' | 'CASH' | 'PRICE' | null>(null);
@@ -325,13 +332,40 @@ export default function ZeshuSuperApp() {
   }, [products]);
 
   const normalizedSearch = searchQuery.trim().replace(/\s+/g, ' ').toLowerCase();
-  const filteredProducts = products.filter(p => {
-    if (!p || !p.name) return false; 
-    const haystack = [p.name, p.category, p.weight, p.unit].filter(Boolean).join(' ').replace(/\s+/g, ' ').toLowerCase();
-    const matchesSearch = !normalizedSearch || haystack.includes(normalizedSearch);
-    const matchesCategory = activeCategory === 'All' || String(p.category || '').trim() === activeCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredProducts = useMemo(() => {
+    const matchingProducts = products.filter((p) => {
+      if (!p || !p.name) return false;
+      const haystack = [p.name, p.category, p.weight, p.unit].filter(Boolean).join(' ').replace(/\s+/g, ' ').toLowerCase();
+      const matchesSearch = !normalizedSearch || haystack.includes(normalizedSearch);
+      const matchesCategory = activeCategory === 'All' || String(p.category || '').trim() === activeCategory;
+      const numericPrice = Number(p.price);
+      const matchesPrice = priceFilter === 'ALL'
+        || (priceFilter === 'UNDER_100' && Number.isFinite(numericPrice) && numericPrice < 100)
+        || (priceFilter === '100_299' && Number.isFinite(numericPrice) && numericPrice >= 100 && numericPrice < 300)
+        || (priceFilter === '300_499' && Number.isFinite(numericPrice) && numericPrice >= 300 && numericPrice < 500)
+        || (priceFilter === '500_PLUS' && Number.isFinite(numericPrice) && numericPrice >= 500);
+      const matchesAvailability = availabilityFilter === 'ALL'
+        || (Boolean(p.vendor_id) && p.in_stock !== false && !(Number(p.quantity) <= 0));
+      return matchesSearch && matchesCategory && matchesPrice && matchesAvailability;
+    });
+    if (productSort === 'recommended') return matchingProducts;
+    return [...matchingProducts].sort((a, b) => {
+      if (productSort === 'name') return String(a.name || '').localeCompare(String(b.name || ''));
+      const priceA = Number(a.price);
+      const priceB = Number(b.price);
+      if (!Number.isFinite(priceA) && Number.isFinite(priceB)) return 1;
+      if (Number.isFinite(priceA) && !Number.isFinite(priceB)) return -1;
+      if (!Number.isFinite(priceA) && !Number.isFinite(priceB)) return 0;
+      return productSort === 'price_asc' ? priceA - priceB : priceB - priceA;
+    });
+  }, [products, normalizedSearch, activeCategory, priceFilter, availabilityFilter, productSort]);
+  const activeProductFilterCount = (activeCategory !== 'All' ? 1 : 0) + (priceFilter !== 'ALL' ? 1 : 0) + (availabilityFilter !== 'ALL' ? 1 : 0);
+  const clearProductFilters = () => {
+    setActiveCategory('All');
+    setPriceFilter('ALL');
+    setAvailabilityFilter('ALL');
+    setProductSort('recommended');
+  };
 
   const smartAddOns = useMemo(() => {
     const vendorId = cart[0]?.item?.vendor_id;
@@ -390,6 +424,17 @@ export default function ZeshuSuperApp() {
   useEffect(() => () => {
     locationRequestRef.current += 1;
     clearLocationWatcher();
+  }, []);
+
+  useEffect(() => () => {
+    const recognition = speechRecognitionRef.current;
+    if (!recognition) return;
+    recognition.onstart = null;
+    recognition.onresult = null;
+    recognition.onerror = null;
+    recognition.onend = null;
+    try { recognition.abort(); } catch { /* best-effort cleanup */ }
+    speechRecognitionRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -1187,6 +1232,62 @@ export default function ZeshuSuperApp() {
   };
 
   const handleSendOtp = async () => { if (!/^\d{10}$/.test(phoneNumber)) return showToast('Enter a valid 10-digit mobile number.'); setIsLoading(true); const { error } = await supabase.auth.signInWithOtp({ phone: `+91${phoneNumber}` }); setIsLoading(false); if (!error) setOtpSent(true); else showToast('We could not start OTP delivery. Check the number and try again later.'); };
+
+  const toggleVoiceSearch = () => {
+    if (isVoiceListening) {
+      const recognition = speechRecognitionRef.current;
+      try { recognition?.stop(); } catch { /* recognition may already be ending */ }
+      setIsVoiceListening(false);
+      return;
+    }
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setVoiceSearchMessage("Voice search isn't supported on this browser. You can still type your search.");
+      return;
+    }
+    let receivedResult = false;
+    let hadError = false;
+    let recognition: any;
+    try {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'en-IN';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.onstart = () => { setVoiceSearchMessage(''); setIsVoiceListening(true); };
+      recognition.onresult = (event: any) => {
+        const transcript = Array.from(event?.results || []).map((result: any) => result?.[0]?.transcript || '').join(' ').trim();
+        receivedResult = Boolean(transcript);
+        if (transcript) setSearchQuery(transcript);
+        else setVoiceSearchMessage('No speech detected. Try again.');
+      };
+      recognition.onerror = (event: any) => {
+        hadError = true;
+        const errorCode = String(event?.error || '');
+        setVoiceSearchMessage(errorCode === 'not-allowed' || errorCode === 'service-not-allowed'
+          ? 'Microphone permission was denied. You can still type your search.'
+          : errorCode === 'no-speech'
+            ? 'No speech detected. Try again.'
+            : 'Voice search is unavailable right now. You can still type your search.');
+        setIsVoiceListening(false);
+      };
+      recognition.onend = () => {
+        setIsVoiceListening(false);
+        speechRecognitionRef.current = null;
+        if (!receivedResult && !hadError) setVoiceSearchMessage('No speech detected. Try again.');
+      };
+      speechRecognitionRef.current = recognition;
+      setVoiceSearchMessage('');
+      setIsVoiceListening(true);
+      recognition.start();
+    } catch {
+      speechRecognitionRef.current = null;
+      setIsVoiceListening(false);
+      setVoiceSearchMessage('Voice search is unavailable right now. You can still type your search.');
+    }
+  };
+
   const handleVerifyOtp = async () => { setIsLoading(true); const { data, error } = await supabase.auth.verifyOtp({ phone: `+91${phoneNumber}`, token: otp, type: 'sms' }); setIsLoading(false); if (data.session && data.user && !error) { setUser(data.session.user); setIsAuthModalOpen(false); void loadGrowthData(); showToast("Welcome back!"); } else showToast('Incorrect or expired OTP. Please try again.'); };
   const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); setRewardBalance(0); setRewardHistory([]); setReferralCode(''); setUseZeshuCash(false); setZeshuCashAmount(''); setIsAccountOpen(false); showToast("Logged out."); };
   const openAccountHome = () => { setAccountView('HOME'); setIsAccountOpen(true); };
@@ -1505,9 +1606,11 @@ export default function ZeshuSuperApp() {
           <div className="w-full md:flex-1 max-w-3xl order-last md:order-none mt-1 md:mt-0">
             <div className="bg-[#f1f4f1] transition-all rounded-[14px] md:rounded-[20px] flex items-center px-4 py-3 md:py-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#087443]/25">
               <Search className="text-[#9CA3AF] w-[18px] h-[18px] md:w-[22px] md:h-[22px]" />
-              <input aria-label="Search products" type="search" placeholder="Search products" className="bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-              {searchQuery ? <button aria-label="Clear search" className="text-gray-500 p-1" onClick={() => setSearchQuery('')}><X size={16}/></button> : <Mic size={18} className="text-[#087443]" aria-hidden="true"/>}
+              <input aria-label="Search products" type="search" placeholder="Search products" className="bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setVoiceSearchMessage(''); }} />
+              {searchQuery && <button type="button" aria-label="Clear search" className="text-gray-500 p-1" onClick={() => setSearchQuery('')}><X size={16}/></button>}
+              <button type="button" aria-label={isVoiceListening ? 'Stop voice search' : 'Search by voice'} aria-pressed={isVoiceListening} className={`ml-1 rounded-full p-1.5 text-[#087443] transition ${isVoiceListening ? 'bg-[#d9f4e3] animate-pulse' : 'hover:bg-[#e5f4ea]'}`} onClick={toggleVoiceSearch}><Mic size={18} aria-hidden="true" /></button>
             </div>
+            {(isVoiceListening || voiceSearchMessage) && <p className="mt-1 px-2 text-xs font-bold text-[#087443]" role="status" aria-live="polite">{isVoiceListening ? 'Listening…' : voiceSearchMessage}</p>}
           </div>
 
           <div className="hidden md:flex items-center gap-4 shrink-0">
@@ -1538,7 +1641,22 @@ export default function ZeshuSuperApp() {
         )}
 
         <div className="flex-1 min-w-0 pb-32">
-          {activeTab === 'home' && <div className="mb-5 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar md:px-0" aria-label="Product categories">{productCategories.map((category) => <button type="button" key={category} onClick={() => setActiveCategory(category)} aria-pressed={activeCategory === category} className={`whitespace-nowrap rounded-full border px-4 py-2 text-xs font-black transition ${activeCategory === category ? 'border-[#087443] bg-[#087443] text-white' : 'border-[#dce8df] bg-white text-[#52645a]'}`}>{category}</button>)}</div>}
+           {activeTab === 'home' && <div className="mb-5 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar md:px-0" aria-label="Product categories">{productCategories.map((category) => <button type="button" key={category} onClick={() => setActiveCategory(category)} aria-pressed={activeCategory === category} className={`whitespace-nowrap rounded-full border px-4 py-2 text-xs font-black transition ${activeCategory === category ? 'border-[#087443] bg-[#087443] text-white' : 'border-[#dce8df] bg-white text-[#52645a]'}`}>{category}</button>)}</div>}
+           {activeTab === 'home' && <>
+             <div className="mb-5 flex items-center justify-between gap-3 px-4 md:px-0">
+               <button type="button" aria-expanded={isProductFiltersOpen} aria-controls="product-filters" onClick={() => setIsProductFiltersOpen((current) => !current)} className="inline-flex items-center gap-2 rounded-xl border border-[#dce8df] bg-white px-3 py-2.5 text-xs font-black text-[#087443] shadow-sm"><SlidersHorizontal size={16} aria-hidden="true" /> Filters{activeProductFilterCount > 0 && <span className="rounded-full bg-[#087443] px-1.5 py-0.5 text-[10px] text-white">{activeProductFilterCount}</span>}</button>
+               {productSort !== 'recommended' && <span className="text-xs font-bold text-slate-500">Sorted by {productSort === 'name' ? 'name' : productSort === 'price_asc' ? 'lowest price' : 'highest price'}</span>}
+             </div>
+             {isProductFiltersOpen && <div id="product-filters" className="mb-5 rounded-2xl border border-[#dce8df] bg-white p-4 shadow-sm">
+               <div className="mb-3 flex items-center justify-between gap-3"><h3 className="text-sm font-black text-slate-900">Filter products</h3><button type="button" onClick={clearProductFilters} className="text-xs font-black text-[#087443]">Clear all</button></div>
+               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                 <label className="text-xs font-black text-slate-600">Category<select value={activeCategory} onChange={(event) => setActiveCategory(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="All">All categories</option>{productCategories.filter((category) => category !== 'All').map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
+                 <label className="text-xs font-black text-slate-600">Price<select value={priceFilter} onChange={(event) => setPriceFilter(event.target.value as typeof priceFilter)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="ALL">Any price</option><option value="UNDER_100">Under ₹100</option><option value="100_299">₹100–₹299</option><option value="300_499">₹300–₹499</option><option value="500_PLUS">₹500+</option></select></label>
+                 <label className="text-xs font-black text-slate-600">Availability<select value={availabilityFilter} onChange={(event) => setAvailabilityFilter(event.target.value as typeof availabilityFilter)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="ALL">All products</option><option value="AVAILABLE">In stock / available</option></select></label>
+                 <label className="text-xs font-black text-slate-600">Sort<select value={productSort} onChange={(event) => setProductSort(event.target.value as typeof productSort)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="recommended">Recommended</option><option value="price_asc">Price: Low to High</option><option value="price_desc">Price: High to Low</option><option value="name">Name A-Z</option></select></label>
+               </div>
+             </div>}
+           </>}
           {activeTab === 'recharge' ? (
              <div className="bg-white rounded-[32px] shadow-xl border border-gray-100 max-w-2xl mx-auto overflow-hidden animate-in slide-in-from-bottom-4">
                <div className="flex overflow-x-auto bg-[#F8F9FC] p-3 gap-2 border-b border-gray-100 no-scrollbar">
@@ -1789,9 +1907,9 @@ export default function ZeshuSuperApp() {
                 </section>
               )}
               <div id="products" className="px-4 md:px-0">
-                <div className="flex justify-between items-end mb-6 md:mb-8 border-b pb-4 md:pb-5">
+                <div className="flex flex-wrap items-end justify-between gap-3 mb-6 md:mb-8 border-b pb-4 md:pb-5">
                   <h2 className="text-2xl md:text-3xl font-black tracking-tighter">{activeCategory} Items</h2>
-                  <span className="text-[#6B7280] font-bold text-xs md:text-sm bg-gray-100 px-3 py-1 rounded-xl">{filteredProducts.length} items</span>
+                  <div className="flex items-center gap-2"><span className="text-[#6B7280] font-bold text-xs md:text-sm bg-gray-100 px-3 py-1 rounded-xl">{filteredProducts.length} items</span></div>
                 </div>
                 
                 {productsLoading ? (
@@ -1800,6 +1918,7 @@ export default function ZeshuSuperApp() {
                   <div className="bg-white p-12 md:p-20 rounded-[32px] border border-[#dce8df] text-center flex flex-col items-center justify-center gap-4"><AlertCircle size={32} className="text-[#087443]"/><h3 className="text-xl font-black">Couldn&apos;t load products</h3><p className="text-gray-500 text-sm">Check your connection and try again.</p><button onClick={() => { setContentError(false); window.location.reload(); }} className="rounded-xl bg-[#087443] px-4 py-2.5 text-sm font-bold text-white">Try again</button></div>
                 ) : filteredProducts.length === 0 ? (
                   <div className="bg-white p-12 md:p-20 rounded-[32px] border-2 border-dashed border-gray-200 text-center flex flex-col items-center justify-center gap-4">
+                     {activeProductFilterCount > 0 && <button type="button" onClick={clearProductFilters} className="order-3 rounded-xl border border-[#087443] px-4 py-2 text-xs font-black text-[#087443]">Clear filters</button>}
                      <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center"><Search size={32} className="text-gray-300"/></div>
                      <h3 className="text-xl font-black">{['Fruits', 'Vegetables', 'Chicken', 'Mutton', 'Fish & Seafood', 'Eggs'].includes(activeCategory) && !normalizedSearch ? 'Products coming soon.' : `No products found${normalizedSearch ? ` for “${searchQuery.trim()}”` : ''}.`}</h3>
                      <p className="text-gray-500 text-sm">{['Fruits', 'Vegetables', 'Chicken', 'Mutton', 'Fish & Seafood', 'Eggs'].includes(activeCategory) && !normalizedSearch ? 'We will add verified products here when they are available.' : 'Try clearing search or browsing another category.'}</p>
