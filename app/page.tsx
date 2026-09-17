@@ -93,6 +93,55 @@ type CustomerAddress = {
   is_default: boolean;
 };
 
+type ConfirmedLocationCache = {
+  latitude: number;
+  longitude: number;
+  displayAddress?: string;
+  accuracy?: number | null;
+  source?: 'DEVICE' | 'MANUAL_PIN';
+  confirmed_at: string;
+};
+
+const LAST_CONFIRMED_LOCATION_KEY = 'zeshu:last-confirmed-location:v1';
+
+const isValidLocationCoordinate = (latitude: unknown, longitude: unknown) => {
+  return typeof latitude === 'number' && typeof longitude === 'number'
+    && Number.isFinite(latitude) && Number.isFinite(longitude)
+    && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
+};
+
+const parseConfirmedLocationCache = (value: string | null): ConfirmedLocationCache | null => {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown>;
+    if (typeof parsed.latitude !== 'number' || typeof parsed.longitude !== 'number' || !isValidLocationCoordinate(parsed.latitude, parsed.longitude) || typeof parsed.confirmed_at !== 'string' || !Number.isFinite(new Date(parsed.confirmed_at).getTime())) return null;
+    if (parsed.displayAddress !== undefined && typeof parsed.displayAddress !== 'string') return null;
+    if (parsed.accuracy !== undefined && parsed.accuracy !== null && (typeof parsed.accuracy !== 'number' || !Number.isFinite(parsed.accuracy) || parsed.accuracy < 0)) return null;
+    if (parsed.source !== undefined && parsed.source !== 'DEVICE' && parsed.source !== 'MANUAL_PIN') return null;
+    const result: ConfirmedLocationCache = {
+      latitude: parsed.latitude,
+      longitude: parsed.longitude,
+      confirmed_at: parsed.confirmed_at,
+    };
+    if (typeof parsed.displayAddress === 'string' && parsed.displayAddress.trim()) result.displayAddress = parsed.displayAddress.trim();
+    if (parsed.accuracy === null) result.accuracy = null;
+    else if (typeof parsed.accuracy === 'number') result.accuracy = parsed.accuracy;
+    if (parsed.source === 'DEVICE' || parsed.source === 'MANUAL_PIN') result.source = parsed.source;
+    return result;
+  } catch {
+    return null;
+  }
+};
+
+const readConfirmedLocationCache = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    return parseConfirmedLocationCache(window.localStorage.getItem(LAST_CONFIRMED_LOCATION_KEY));
+  } catch {
+    return null;
+  }
+};
+
 const parseHistoricalOrderItems = (order: any): Array<{ productId: string; quantity: number }> => {
   if (!Array.isArray(order?.items)) return [];
   const quantities = new Map<string, number>();
@@ -212,6 +261,7 @@ export default function ZeshuSuperApp() {
   const [trackedOrder, setTrackedOrder] = useState<any>(null);
   const [liveRider, setLiveRider] = useState<any>(null);
   const [riderLocationState, setRiderLocationState] = useState<'idle' | 'loading' | 'available' | 'unavailable'>('idle');
+  const [isOffline, setIsOffline] = useState(false);
   const [etaState, setEtaState] = useState<'idle' | 'loading' | 'available' | 'fallback' | 'unavailable'>('idle');
   const [etaDetails, setEtaDetails] = useState<{ durationSeconds?: number; distanceMeters?: number; source?: string } | null>(null);
   
@@ -219,7 +269,7 @@ export default function ZeshuSuperApp() {
   const [isDetectingLoc, setIsDetectingLoc] = useState(true);
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const [locationSelectorOpen, setLocationSelectorOpen] = useState(false);
-  const [locationSelection, setLocationSelection] = useState<{ latitude: number; longitude: number; accuracy: number | null; source: 'DEVICE' | 'MANUAL_PIN' } | null>(null);
+  const [locationSelection, setLocationSelection] = useState<{ latitude: number; longitude: number; accuracy: number | null; source: 'DEVICE' | 'MANUAL_PIN'; displayAddress?: string } | null>(null);
   const locationWatchRef = useRef<number | null>(null);
   const locationRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const locationRequestRef = useRef(0);
@@ -297,6 +347,7 @@ export default function ZeshuSuperApp() {
   const [productsLoading, setProductsLoading] = useState(true);
   const [ordersLoadError, setOrdersLoadError] = useState(false);
   const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
+  const [addressesLoaded, setAddressesLoaded] = useState(false);
   const [addressFormOpen, setAddressFormOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState<CustomerAddress | null>(null);
   const [addressSaving, setAddressSaving] = useState(false);
@@ -410,6 +461,17 @@ export default function ZeshuSuperApp() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    const updateOnlineState = () => setIsOffline(!window.navigator.onLine);
+    updateOnlineState();
+    window.addEventListener('online', updateOnlineState);
+    window.addEventListener('offline', updateOnlineState);
+    return () => {
+      window.removeEventListener('online', updateOnlineState);
+      window.removeEventListener('offline', updateOnlineState);
+    };
+  }, []);
+
   const clearLocationWatcher = () => {
     if (locationWatchRef.current !== null && 'geolocation' in navigator) {
       navigator.geolocation.clearWatch(locationWatchRef.current);
@@ -506,6 +568,10 @@ export default function ZeshuSuperApp() {
   }, []);
 
   useEffect(() => {
+    if (!user) {
+      setAddressesLoaded(false);
+      return;
+    }
     if (user) {
       void loadAddresses();
       const fetchMyOrders = async () => {
@@ -821,16 +887,19 @@ export default function ZeshuSuperApp() {
     setIsDetectingLoc(true);
     const fallbackAddress = addresses.find((item) => item.id === selectedAddressId) || addresses.find((item) => item.is_default);
     const fallbackCoordinates = fallbackAddress && Number.isFinite(Number(fallbackAddress.latitude)) && Number.isFinite(Number(fallbackAddress.longitude))
-      ? { latitude: Number(fallbackAddress.latitude), longitude: Number(fallbackAddress.longitude), accuracy: fallbackAddress.location_accuracy_meters ?? null, source: 'MANUAL_PIN' as const }
+      ? { latitude: Number(fallbackAddress.latitude), longitude: Number(fallbackAddress.longitude), accuracy: fallbackAddress.location_accuracy_meters ?? null, source: 'MANUAL_PIN' as const, displayAddress: formatAddress(fallbackAddress) }
       : null;
-    const openSelector = (selection: { latitude: number; longitude: number; accuracy: number | null; source: 'DEVICE' | 'MANUAL_PIN' } | null) => {
+    const cachedLocation = (!user || (addressesLoaded && addresses.length === 0)) ? readConfirmedLocationCache() : null;
+    const cachedCoordinates = cachedLocation ? { latitude: cachedLocation.latitude, longitude: cachedLocation.longitude, accuracy: cachedLocation.accuracy ?? null, source: cachedLocation.source || 'MANUAL_PIN' as const, displayAddress: cachedLocation.displayAddress } : null;
+    const fallbackSelection = fallbackCoordinates || cachedCoordinates;
+    const openSelector = (selection: { latitude: number; longitude: number; accuracy: number | null; source: 'DEVICE' | 'MANUAL_PIN'; displayAddress?: string } | null) => {
       if (requestId !== locationRequestRef.current) return;
       setLocationSelection(selection);
       setIsDetectingLoc(false);
       setLocationSelectorOpen(true);
     };
     if (!("geolocation" in navigator)) {
-      openSelector(fallbackCoordinates);
+      openSelector(fallbackSelection);
       showToast('Location is not available. Search or place the pin manually.');
       return;
     }
@@ -838,7 +907,7 @@ export default function ZeshuSuperApp() {
       const accuracy = Number(position.coords.accuracy);
       openSelector({ latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: Number.isFinite(accuracy) && accuracy >= 0 ? accuracy : null, source: 'DEVICE' });
     }, () => {
-      openSelector(fallbackCoordinates);
+      openSelector(fallbackSelection);
       showToast('We couldn\'t get a precise GPS location. Search or place the pin on the map.');
     }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 3000 });
   };
@@ -1095,6 +1164,7 @@ export default function ZeshuSuperApp() {
     if (error) { if (process.env.NODE_ENV === 'development') console.error('Customer addresses load failed:', error.message); return; }
     const next = (data || []) as CustomerAddress[];
     setAddresses(next);
+    setAddressesLoaded(true);
     const defaultAddress = next.find((address) => address.is_default);
     if (!selectedAddressId && defaultAddress) setSelectedAddressId(defaultAddress.id);
     if (defaultAddress) setCurrentAddress(formatAddress(defaultAddress));
@@ -1572,7 +1642,8 @@ export default function ZeshuSuperApp() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FC] font-sans antialiased text-[#111827] overflow-x-hidden relative">
-      <LocationSelector open={locationSelectorOpen} initial={locationSelection} onClose={() => setLocationSelectorOpen(false)} onConfirm={(selection, address) => { setLocationSelection(selection); setLocationAccuracy(selection.accuracy); setAddressForm((current) => ({ ...current, latitude: String(selection.latitude), longitude: String(selection.longitude) })); setCurrentAddress(address); setLocationSelectorOpen(false); setAddressFormOpen(true); showToast('Delivery location confirmed. Add your house or flat details.'); }} />
+      <LocationSelector open={locationSelectorOpen} initial={locationSelection} onClose={() => setLocationSelectorOpen(false)} onConfirm={(selection, address) => { setLocationSelection(selection); setLocationAccuracy(selection.accuracy); setAddressForm((current) => ({ ...current, latitude: String(selection.latitude), longitude: String(selection.longitude) })); setCurrentAddress(address); try { const displayAddress = (selection.displayAddress || address).trim(); window.localStorage.setItem(LAST_CONFIRMED_LOCATION_KEY, JSON.stringify({ latitude: selection.latitude, longitude: selection.longitude, ...(displayAddress && displayAddress !== 'Move the map to your delivery location' && displayAddress !== 'Selected location' ? { displayAddress } : {}), accuracy: selection.accuracy, source: selection.source, confirmed_at: new Date().toISOString() })); } catch { /* localStorage may be unavailable */ } setLocationSelectorOpen(false); setAddressFormOpen(true); showToast('Delivery location confirmed. Add your house or flat details.'); }} />
+      {isOffline && <div role="status" aria-live="polite" className="fixed left-1/2 top-20 z-[145] -translate-x-1/2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs font-bold text-amber-900 shadow-sm">You&apos;re offline. Live location and ETA may be delayed.</div>}
       <div className={`fixed bottom-32 left-1/2 -translate-x-1/2 z-[150] transition-all duration-500 ${toastMessage ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-95 pointer-events-none'}`}>
         <div className="bg-[#1F2937]/95 backdrop-blur-xl text-white px-6 py-3.5 rounded-full font-bold text-sm shadow-2xl flex items-center gap-2.5 border border-white/10"><CheckCircle size={18} className="text-[#10B981]"/>{toastMessage}</div>
       </div>

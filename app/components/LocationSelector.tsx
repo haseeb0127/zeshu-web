@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-type Coordinates = { latitude: number; longitude: number; accuracy: number | null; source: 'DEVICE' | 'MANUAL_PIN' };
+type Coordinates = { latitude: number; longitude: number; accuracy: number | null; source: 'DEVICE' | 'MANUAL_PIN'; displayAddress?: string };
 
 type Props = {
   open: boolean;
@@ -12,6 +12,13 @@ type Props = {
 };
 
 const JAGTIAL_VIEWPORT = { lat: 18.7989, lng: 78.9117 };
+const LOCATION_PROMPT = 'Move the map to your delivery location';
+const SELECTED_LOCATION_PROMPT = 'Selected location';
+
+const isUsableDisplayAddress = (value?: string) => {
+  const trimmed = value?.trim();
+  return Boolean(trimmed && trimmed !== LOCATION_PROMPT && trimmed !== SELECTED_LOCATION_PROMPT);
+};
 
 const loadGoogleMaps = (key: string) => new Promise<any>((resolve, reject) => {
   if ((window as any).google?.maps) return resolve((window as any).google.maps);
@@ -38,11 +45,12 @@ export default function LocationSelector({ open, initial, onClose, onConfirm }: 
   const geocoderRef = useRef<any>(null);
   const autocompleteRef = useRef<any>(null);
   const movedRef = useRef(false);
+  const initialAddressRef = useRef(false);
   const reverseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [mapsReady, setMapsReady] = useState(false);
   const [mapsError, setMapsError] = useState(false);
   const [center, setCenter] = useState(initial ? { lat: initial.latitude, lng: initial.longitude } : JAGTIAL_VIEWPORT);
-  const [address, setAddress] = useState('Move the map to your delivery location');
+  const [address, setAddress] = useState(LOCATION_PROMPT);
 
   useEffect(() => {
     if (!open) return;
@@ -50,6 +58,9 @@ export default function LocationSelector({ open, initial, onClose, onConfirm }: 
     setMapsError(false);
     setCenter(initial ? { lat: initial.latitude, lng: initial.longitude } : JAGTIAL_VIEWPORT);
     movedRef.current = false;
+    const initialAddress = initial?.displayAddress?.trim();
+    initialAddressRef.current = isUsableDisplayAddress(initialAddress);
+    setAddress(initialAddress || LOCATION_PROMPT);
     const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY;
     if (!key) { setMapsError(true); return; }
     let cancelled = false;
@@ -58,13 +69,14 @@ export default function LocationSelector({ open, initial, onClose, onConfirm }: 
       const map = new maps.Map(mapElement.current, { center: initial ? { lat: initial.latitude, lng: initial.longitude } : JAGTIAL_VIEWPORT, zoom: initial ? 17 : 13, disableDefaultUI: true, clickableIcons: false, gestureHandling: 'greedy' });
       mapRef.current = map;
       geocoderRef.current = new maps.Geocoder();
-      map.addListener('dragstart', () => { movedRef.current = true; });
-      map.addListener('click', (event: any) => { if (event.latLng) { movedRef.current = true; map.panTo(event.latLng); } });
+      map.addListener('dragstart', () => { movedRef.current = true; initialAddressRef.current = false; });
+      map.addListener('click', (event: any) => { if (event.latLng) { movedRef.current = true; initialAddressRef.current = false; map.panTo(event.latLng); } });
       map.addListener('idle', () => {
         const next = map.getCenter();
         if (!next) return;
         const nextCenter = { lat: next.lat(), lng: next.lng() };
         setCenter(nextCenter);
+        if (initialAddressRef.current && !movedRef.current) return;
         if (reverseTimerRef.current) clearTimeout(reverseTimerRef.current);
         reverseTimerRef.current = setTimeout(() => {
           geocoderRef.current?.geocode({ location: nextCenter }, (results: any[], status: string) => {
@@ -87,8 +99,9 @@ export default function LocationSelector({ open, initial, onClose, onConfirm }: 
           const location = place.location;
           if (!location) return;
           movedRef.current = true;
+          initialAddressRef.current = false;
           const nextCenter = { lat: location.lat(), lng: location.lng() };
-          map.panTo(nextCenter); map.setZoom(17); setCenter(nextCenter); setAddress(place.formattedAddress || 'Selected location');
+          map.panTo(nextCenter); map.setZoom(17); setCenter(nextCenter); setAddress(place.formattedAddress || SELECTED_LOCATION_PROMPT);
         });
       }
       setMapsReady(true);
@@ -97,7 +110,7 @@ export default function LocationSelector({ open, initial, onClose, onConfirm }: 
   }, [open, initial]);
 
   if (!open) return null;
-  const confirm = () => onConfirm({ latitude: center.lat, longitude: center.lng, accuracy: initial && !movedRef.current ? initial.accuracy : null, source: initial && !movedRef.current && initial.accuracy !== null ? 'DEVICE' : 'MANUAL_PIN' }, address);
+  const confirm = () => onConfirm({ latitude: center.lat, longitude: center.lng, accuracy: initial && !movedRef.current ? initial.accuracy : null, source: initial && !movedRef.current && initial.accuracy !== null ? 'DEVICE' : 'MANUAL_PIN', ...(isUsableDisplayAddress(address) ? { displayAddress: address.trim() } : {}) }, address);
   return <div className="fixed inset-0 z-[180] flex flex-col bg-white" role="dialog" aria-modal="true" aria-labelledby="location-selector-title">
     <div className="flex items-center gap-3 border-b bg-white px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
       <button type="button" aria-label="Close location selector" onClick={onClose} className="min-h-11 min-w-11 rounded-full bg-slate-100 text-xl">×</button>
