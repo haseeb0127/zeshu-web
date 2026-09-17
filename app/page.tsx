@@ -164,6 +164,23 @@ const ORDER_STATUS_LABELS: Record<string, string> = {
 const ACTIVE_ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'PICKED_UP', 'OUT_FOR_DELIVERY'];
 const PRIMARY_PLAN_FILTERS = ['All', 'Popular', 'Unlimited', 'Data', 'Talktime', 'Entertainment', 'Annual', 'Special Offers'] as const;
 
+type RiderLocationFreshness = {
+  label: 'Live location' | 'Location delayed' | 'Last known location';
+  ageMinutes?: number;
+};
+
+const getRiderLocationFreshness = (locationUpdatedAt: unknown, now: number): RiderLocationFreshness | null => {
+  if (typeof locationUpdatedAt !== 'string' || !locationUpdatedAt.trim()) return null;
+  const timestamp = Date.parse(locationUpdatedAt);
+  if (!Number.isFinite(timestamp)) return null;
+  const ageMs = now - timestamp;
+  if (ageMs < 0) return null;
+  if (ageMs <= 2 * 60 * 1000) return { label: 'Live location' };
+  const ageMinutes = Math.floor(ageMs / 60_000);
+  if (ageMs <= 5 * 60 * 1000) return { label: 'Location delayed', ageMinutes };
+  return { label: 'Last known location', ageMinutes };
+};
+
 function planText(plan: any) {
   return `${plan?.category || ''} ${plan?.description || ''} ${plan?.validity || ''}`.toLowerCase();
 }
@@ -261,6 +278,7 @@ export default function ZeshuSuperApp() {
   const [trackedOrder, setTrackedOrder] = useState<any>(null);
   const [liveRider, setLiveRider] = useState<any>(null);
   const [riderLocationState, setRiderLocationState] = useState<'idle' | 'loading' | 'available' | 'unavailable'>('idle');
+  const [riderFreshnessNow, setRiderFreshnessNow] = useState(0);
   const [isOffline, setIsOffline] = useState(false);
   const [etaState, setEtaState] = useState<'idle' | 'loading' | 'available' | 'fallback' | 'unavailable'>('idle');
   const [etaDetails, setEtaDetails] = useState<{ durationSeconds?: number; distanceMeters?: number; source?: string } | null>(null);
@@ -738,7 +756,7 @@ export default function ZeshuSuperApp() {
     const loadRider = async () => {
       const { data, error } = await supabase
         .from('rider_location_feed')
-        .select('rider_id,full_name,is_active,current_latitude,current_longitude')
+        .select('rider_id,full_name,is_active,current_latitude,current_longitude,location_updated_at')
         .eq('rider_id', riderId)
         .maybeSingle();
 
@@ -749,6 +767,7 @@ export default function ZeshuSuperApp() {
         return;
       }
       setLiveRider(data);
+      setRiderFreshnessNow(Date.now());
       setRiderLocationState('available');
     };
     void loadRider();
@@ -757,7 +776,9 @@ export default function ZeshuSuperApp() {
       .channel(`customer-rider-location-${trackedOrder.id}-${riderId}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rider_location_feed', filter: `rider_id=eq.${riderId}` }, (payload) => {
         if (!mounted) return;
-        setLiveRider(payload.new);
+        const nextRider = payload.new as any;
+        setLiveRider((current: any) => ({ ...current, ...nextRider, location_updated_at: nextRider?.location_updated_at }));
+        setRiderFreshnessNow(Date.now());
         setRiderLocationState('available');
       })
       .subscribe();
@@ -766,6 +787,18 @@ export default function ZeshuSuperApp() {
       mounted = false;
       supabase.removeChannel(riderChannel);
     };
+  }, [isTrackingOpen, trackedOrder?.id, trackedOrder?.rider_id, trackedOrder?.status, trackedOrder?.user_id, user?.id]);
+
+  useEffect(() => {
+    const deliveryIsActive = ['PICKED_UP', 'OUT_FOR_DELIVERY'].includes(trackedOrder?.status);
+    const riderId = trackedOrder?.rider_id;
+    const isOrderOwner = Boolean(user?.id && trackedOrder?.user_id === user.id);
+    if (!isTrackingOpen || !deliveryIsActive || !riderId || !isOrderOwner) return;
+
+    const updateFreshnessClock = () => setRiderFreshnessNow(Date.now());
+    updateFreshnessClock();
+    const timer = window.setInterval(updateFreshnessClock, 30_000);
+    return () => window.clearInterval(timer);
   }, [isTrackingOpen, trackedOrder?.id, trackedOrder?.rider_id, trackedOrder?.status, trackedOrder?.user_id, user?.id]);
 
   useEffect(() => {
@@ -1452,6 +1485,7 @@ export default function ZeshuSuperApp() {
   const liveDeliveryStatus = ['PICKED_UP', 'OUT_FOR_DELIVERY'].includes(trackedOrder?.status);
   const hasLiveRiderCoordinates = Number.isFinite(Number(liveRider?.current_latitude)) && Number.isFinite(Number(liveRider?.current_longitude));
   const liveRiderMapUrl = hasLiveRiderCoordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${liveRider.current_latitude},${liveRider.current_longitude}`)}` : '';
+  const riderFreshness = hasLiveRiderCoordinates ? getRiderLocationFreshness(liveRider?.location_updated_at, riderFreshnessNow) : null;
   const activeOrder = myOrders.find((order) => ACTIVE_ORDER_STATUSES.includes(order?.status));
 
   const refreshCartAvailability = async () => {
@@ -2054,10 +2088,11 @@ export default function ZeshuSuperApp() {
           <div className="p-6 text-center text-gray-500">
             <div className="mx-auto max-w-sm rounded-3xl border border-[#dce9e0] bg-[#f4fbf6] p-6"><Truck size={36} className="mx-auto mb-3 text-[#087443]"/><p className="font-bold text-[#183524]">{trackedOrder.status === 'CANCELLED' ? 'This order was cancelled.' : 'Your order updates here as it progresses.'}</p><p className="text-xs mt-2">{trackedOrder.status === 'CANCELLED' ? 'No delivery is scheduled.' : 'Status updates are based on the latest order record.'}</p></div>
             {liveDeliveryStatus && <div className="mx-auto mt-5 max-w-sm rounded-3xl border border-[#cfe8d7] bg-white p-5 text-left shadow-sm">
-              <div className="flex items-center gap-2 text-[#075b36]"><MapPin size={18}/><h3 className="font-black">Live rider location</h3></div>
+              <div className="flex items-center gap-2 text-[#075b36]"><MapPin size={18}/><h3 className="font-black">Rider location</h3></div>
               <p className="mt-2 text-sm font-bold text-[#26372b]">{trackedOrder.status.replaceAll('_', ' ')}</p>
               {riderLocationState === 'loading' ? <p className="mt-3 text-sm text-[#587065]">Location updating...</p> : liveRider ? <>
                 <div className="mt-3 flex items-center gap-2 text-sm"><span className={`h-2.5 w-2.5 rounded-full ${liveRider.is_active ? 'bg-[#13a657]' : 'bg-slate-400'}`}/><span className="font-bold text-[#26372b]">{liveRider.full_name || 'Your rider'} is {liveRider.is_active ? 'online' : 'offline'}</span></div>
+                {riderFreshness ? <p className="mt-2 text-sm font-bold text-[#075b36]">{riderFreshness.label}{riderFreshness.ageMinutes !== undefined ? ` · Updated ${riderFreshness.ageMinutes} min ago` : ''}</p> : <p className="mt-2 text-sm text-[#587065]">Location freshness unavailable.</p>}
               {hasLiveRiderCoordinates ? <a href={liveRiderMapUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#087443] px-4 py-3 text-sm font-black text-white active:scale-95"><MapPin size={16}/>Open rider location in Maps</a> : <p className="mt-3 text-sm text-[#587065]">Rider location not available yet.</p>}
                 {etaState === 'loading' && <p className="mt-3 text-sm font-bold text-[#587065]">Updating arrival estimate…</p>}
                 {etaState === 'available' && etaDetails && <p className="mt-3 text-sm font-black text-[#075b36]">Estimated arrival: {Math.max(1, Math.round(Number(etaDetails.durationSeconds || 0) / 60))} min · {Math.max(0, (Number(etaDetails.distanceMeters || 0) / 1000)).toFixed(1)} km</p>}
