@@ -194,17 +194,24 @@ export async function POST(request: Request) {
     let deliveryCoordinates: { latitude: number; longitude: number; accuracyMeters: number | null; source: 'DEVICE' | 'MANUAL_PIN' | 'LEGACY' } | null = null;
     const customerPrecheckStartedAt = checkoutTimingNow();
     try {
-      await serviceClient.rpc('release_expired_zeshu_cash_redemptions');
-      const { data: adminRole, error: adminRoleError } = await serviceClient.from('admin_roles').select('user_id').eq('user_id', user.id).eq('role', 'admin').maybeSingle();
+      const [, adminRoleResult, customerProfileResult, savedAddressResult] = await Promise.all([
+        serviceClient.rpc('release_expired_zeshu_cash_redemptions'),
+        Promise.resolve(serviceClient.from('admin_roles').select('user_id').eq('user_id', user.id).eq('role', 'admin').maybeSingle()),
+        Promise.resolve(serviceClient.from('users').select('id').eq('id', user.id).maybeSingle()),
+        deliveryAddressId
+          ? Promise.resolve(serviceClient.from('customer_addresses').select('id,user_id,latitude,longitude,location_accuracy_meters,location_source').eq('id', deliveryAddressId).eq('user_id', user.id).maybeSingle())
+          : Promise.resolve({ data: null }),
+      ]);
+      const { data: adminRole, error: adminRoleError } = adminRoleResult;
       if (adminRoleError) return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to verify checkout identity.', 500, adminRoleError);
       if (adminRole) return checkoutError(requestId, stage, 'ADMIN_CHECKOUT_FORBIDDEN', 'Admin sessions cannot be used for customer checkout. Sign in with a customer account.', 403);
 
-      const { data: customerProfile, error: customerProfileError } = await serviceClient.from('users').select('id').eq('id', user.id).maybeSingle();
+      const { data: customerProfile, error: customerProfileError } = customerProfileResult;
       if (customerProfileError) return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to verify customer profile.', 500, customerProfileError);
       if (!customerProfile) return checkoutError(requestId, stage, 'CUSTOMER_PROFILE_REQUIRED', 'Customer profile required before checkout. Please sign in with your customer account.', 403);
 
       if (deliveryAddressId) {
-        const { data: savedAddress } = await serviceClient.from('customer_addresses').select('id,user_id,latitude,longitude,location_accuracy_meters,location_source').eq('id', deliveryAddressId).eq('user_id', user.id).maybeSingle();
+        const { data: savedAddress } = savedAddressResult;
         const latitude = Number(savedAddress?.latitude);
         const longitude = Number(savedAddress?.longitude);
         if (savedAddress && Number.isFinite(latitude) && latitude >= -90 && latitude <= 90 && Number.isFinite(longitude) && longitude >= -180 && longitude <= 180) {
