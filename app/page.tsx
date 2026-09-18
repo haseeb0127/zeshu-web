@@ -274,6 +274,13 @@ export default function ZeshuSuperApp() {
   const [supportBusy, setSupportBusy] = useState(false);
   const [supportNotice, setSupportNotice] = useState('');
   const [supportConversations, setSupportConversations] = useState<any[]>([]);
+  const [selectedSupportConversationId, setSelectedSupportConversationId] = useState<string | null>(null);
+  const [supportThread, setSupportThread] = useState<{ conversation: any; messages: any[] } | null>(null);
+  const [supportThreadMessage, setSupportThreadMessage] = useState('');
+  const [supportThreadBusy, setSupportThreadBusy] = useState(false);
+  const [supportThreadLoading, setSupportThreadLoading] = useState(false);
+  const [supportThreadRefreshToken, setSupportThreadRefreshToken] = useState(0);
+  const supportThreadRequestRef = useRef(false);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [trackedOrder, setTrackedOrder] = useState<any>(null);
   const [liveRider, setLiveRider] = useState<any>(null);
@@ -619,21 +626,64 @@ export default function ZeshuSuperApp() {
   }, [user]);
 
   useEffect(() => {
-    if (!isAccountOpen || !user) return;
+    if (!isAccountOpen || accountView !== 'SUPPORT' || !user) return;
     let mounted = true;
+    let inFlight = false;
     const loadSupportConversations = async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) return;
-      const response = await fetch('/api/support/conversations', { headers: { Authorization: `Bearer ${token}` } });
-      if (!mounted) return;
-      if (!response.ok) return;
-      const payload = await response.json().catch(() => ({}));
-      setSupportConversations(Array.isArray(payload.conversations) ? payload.conversations : []);
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (!token) return;
+        const response = await fetch('/api/support/conversations', { headers: { Authorization: `Bearer ${token}` } });
+        if (!mounted || !response.ok) return;
+        const payload = await response.json().catch(() => ({}));
+        setSupportConversations(Array.isArray(payload.conversations) ? payload.conversations : []);
+      } finally {
+        inFlight = false;
+      }
     };
     void loadSupportConversations();
-    return () => { mounted = false; };
-  }, [isAccountOpen, user]);
+    const timer = window.setInterval(() => void loadSupportConversations(), 12000);
+    return () => { mounted = false; window.clearInterval(timer); };
+  }, [accountView, isAccountOpen, user]);
+
+  useEffect(() => {
+    if (!isAccountOpen || accountView !== 'SUPPORT' || !selectedSupportConversationId || !user) return;
+    let mounted = true;
+    let inFlight = false;
+    const loadSupportThread = async () => {
+      if (inFlight || supportThreadRequestRef.current) return;
+      inFlight = true;
+      supportThreadRequestRef.current = true;
+      setSupportThreadLoading(true);
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (!token) return;
+        const response = await fetch(`/api/support/conversations/${selectedSupportConversationId}`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!mounted || !response.ok) return;
+        const payload = await response.json().catch(() => ({}));
+        if (payload.conversation) {
+          setSupportThread({ conversation: payload.conversation, messages: Array.isArray(payload.messages) ? payload.messages : [] });
+          setSupportNotice((currentNotice) => payload.conversation.status === 'WAITING' || currentNotice !== 'A support agent has been requested.' ? currentNotice : '');
+        }
+      } finally {
+        inFlight = false;
+        supportThreadRequestRef.current = false;
+        if (mounted) setSupportThreadLoading(false);
+      }
+    };
+    void loadSupportThread();
+    const timer = window.setInterval(() => void loadSupportThread(), 12000);
+    return () => { mounted = false; window.clearInterval(timer); };
+  }, [accountView, isAccountOpen, selectedSupportConversationId, supportThreadRefreshToken, user]);
+
+  useEffect(() => {
+    if (isAccountOpen && accountView === 'SUPPORT' && selectedSupportConversationId) return;
+    setSupportNotice((currentNotice) => currentNotice === 'A support agent has been requested.' ? '' : currentNotice);
+  }, [accountView, isAccountOpen, selectedSupportConversationId]);
 
   useEffect(() => {
     if (!user) {
@@ -1412,9 +1462,66 @@ export default function ZeshuSuperApp() {
       setSupportMessage('');
       setSupportNotice('Your message was saved for the support team.');
       setSupportConversations((current) => [payload.conversation, ...current.filter((item) => item.id !== payload.conversation?.id)]);
+      if (payload.conversation?.id) {
+        setSelectedSupportConversationId(payload.conversation.id);
+        setSupportThread(null);
+      }
     } catch (error) {
       setSupportNotice(error instanceof Error && error.message.includes('prepared') ? 'Support chat is being prepared. Please email support@zeshu.in.' : 'Support is temporarily unavailable. Please try again or email support@zeshu.in.');
     } finally { setSupportBusy(false); }
+  };
+  const sendSupportThreadMessage = async () => {
+    if (!selectedSupportConversationId || !supportThreadMessage.trim() || supportThreadBusy || supportThread?.conversation?.status === 'RESOLVED') return;
+    setSupportThreadBusy(true); setSupportNotice('');
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error('Your customer session has expired. Please sign in again.');
+      const response = await fetch(`/api/support/conversations/${selectedSupportConversationId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'message', message: supportThreadMessage.trim() }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof payload.error === 'string' ? payload.error : 'Support is temporarily unavailable.');
+      setSupportThreadMessage('');
+      setSupportNotice('Your message was sent to the support team.');
+      if (payload.message && supportThread) setSupportThread({ ...supportThread, conversation: { ...supportThread.conversation, status: 'OPEN', updated_at: payload.message.created_at }, messages: [...supportThread.messages, payload.message] });
+      setSupportConversations((current) => current.map((item) => item.id === selectedSupportConversationId ? { ...item, status: 'OPEN', updated_at: payload.message?.created_at, last_message: { body: payload.message?.body || '', sender_role: 'CUSTOMER', created_at: payload.message?.created_at } } : item));
+      setSupportThreadRefreshToken((value) => value + 1);
+    } catch (error) {
+      setSupportNotice(error instanceof Error ? error.message : 'Support is temporarily unavailable.');
+    } finally { setSupportThreadBusy(false); }
+  };
+  const escalateSupportConversation = async () => {
+    if (!selectedSupportConversationId || supportThreadBusy || !supportThread || supportThread.conversation.status === 'WAITING' || supportThread.conversation.status === 'RESOLVED') return;
+    setSupportThreadBusy(true); setSupportNotice('');
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error('Your customer session has expired. Please sign in again.');
+      const response = await fetch(`/api/support/conversations/${selectedSupportConversationId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'escalate' }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof payload.error === 'string' ? payload.error : 'Support is temporarily unavailable.');
+      if (payload.conversation) setSupportThread({ ...supportThread, conversation: payload.conversation });
+      setSupportNotice('A support agent has been requested.');
+      setSupportConversations((current) => current.map((item) => item.id === selectedSupportConversationId ? { ...item, ...payload.conversation } : item));
+    } catch (error) {
+      setSupportNotice(error instanceof Error ? error.message : 'Support is temporarily unavailable.');
+    } finally { setSupportThreadBusy(false); }
+  };
+  const openSupportConversation = (conversationId: string) => {
+    setSelectedSupportConversationId(conversationId);
+    setSupportThread(null);
+    setSupportNotice('');
+  };
+  const startNewSupportConversation = () => {
+    setSelectedSupportConversationId(null);
+    setSupportThread(null);
+    setSupportThreadMessage('');
+    setSupportNotice('');
   };
   const applyReferral = async () => { const code = referralInput.trim().toUpperCase(); if (!code || referralApplying) return; setReferralApplying(true); setReferralMessage(''); const { error } = await supabase.rpc('apply_referral_code', { p_code: code }); setReferralApplying(false); if (error) { if (process.env.NODE_ENV === 'development') console.error('Referral code failed:', error.message); setReferralMessage('This referral code could not be applied.'); return; } setReferralInput(''); setReferralMessage('Referral applied. Complete your first delivered order to unlock the reward.'); };
   const copyReferralCode = async () => { if (!referralCode) return; try { await navigator.clipboard?.writeText(referralCode); setReferralCopied(true); setReferralMessage('Invite code copied.'); window.setTimeout(() => setReferralCopied(false), 1800); } catch { setReferralMessage(`Your invite code: ${referralCode}`); } };
@@ -2282,24 +2389,26 @@ export default function ZeshuSuperApp() {
               </section>}
               {accountView === 'ORDERS' && <section className="rounded-[24px] border border-slate-200 bg-white p-5"><h3 className="font-black text-slate-900">Buy again</h3><p className="mt-1 text-xs text-slate-500">Use current prices and availability from delivered orders.</p><div className="mt-3 space-y-2">{myOrders.filter((order) => order.status === 'DELIVERED').slice(0, 5).length === 0 ? <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-500">No delivered orders yet.</p> : myOrders.filter((order) => order.status === 'DELIVERED').slice(0, 5).map((order) => <button type="button" key={`reorder-${order.id}`} disabled={reorderingId === order.id} onClick={() => void reorder(order)} className="flex w-full items-center justify-between rounded-xl border border-slate-100 p-3 text-left text-xs font-black disabled:opacity-60"><span>Order #{order.id?.split('-')[0]?.toUpperCase()}</span><span className="text-indigo-700">{reorderingId === order.id ? 'Adding...' : 'Reorder'}</span></button>)}</div></section>}
               {accountView === 'SUPPORT' && <section className="rounded-[24px] border border-slate-200 bg-white p-5" aria-labelledby="support-title">
-                <h3 id="support-title" className="font-black text-slate-900">Help &amp; Support</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">Start a support conversation with the Zeshu team. Never share OTPs, passwords, or payment credentials.</p>
-                <label htmlFor="support-category" className="sr-only">Support category</label>
-                <select id="support-category" value={supportSubject} onChange={(event) => setSupportSubject(event.target.value)} className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700">
-                  <option>Order issue</option>
-                  <option>Delivery issue</option>
-                  <option>Payment issue</option>
-                  <option>Refund issue</option>
-                  <option>Recharge/Bill issue</option>
-                  <option>Account issue</option>
-                  <option>Other</option>
-                </select>
-                <label htmlFor="support-details" className="sr-only">Support details</label>
-                <textarea id="support-details" rows={3} maxLength={4000} value={supportMessage} onChange={(event) => setSupportMessage(event.target.value)} placeholder="Describe what you need help with" className="mt-2 w-full resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#087443]" />
-                <button type="button" disabled={supportBusy || !supportMessage.trim()} onClick={() => void submitSupportConversation()} className="mt-3 w-full rounded-xl bg-[#087443] px-4 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500">{supportBusy ? 'Saving...' : 'Send to support'}</button>
+                <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 id="support-title" className="font-black text-slate-900">Help &amp; Support</h3><p className="mt-2 text-sm leading-6 text-slate-600">Start a support conversation with the Zeshu team. Never share OTPs, passwords, or payment credentials.</p></div>{selectedSupportConversationId && <button type="button" onClick={startNewSupportConversation} className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-[#087443]">New conversation</button>}</div>
+                {!selectedSupportConversationId ? <>
+                  <label htmlFor="support-category" className="sr-only">Support category</label>
+                  <select id="support-category" value={supportSubject} onChange={(event) => setSupportSubject(event.target.value)} className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700">
+                    <option>Order issue</option><option>Delivery issue</option><option>Payment issue</option><option>Refund issue</option><option>Recharge/Bill issue</option><option>Account issue</option><option>Other</option>
+                  </select>
+                  <label htmlFor="support-details" className="sr-only">Support details</label>
+                  <textarea id="support-details" rows={3} maxLength={4000} value={supportMessage} onChange={(event) => setSupportMessage(event.target.value)} placeholder="Describe what you need help with" className="mt-2 w-full resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#087443]" />
+                  <button type="button" disabled={supportBusy || !supportMessage.trim()} onClick={() => void submitSupportConversation()} className="mt-3 w-full rounded-xl bg-[#087443] px-4 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500">{supportBusy ? 'Saving...' : 'Send to support'}</button>
+                </> : <div className="mt-4">
+                  <button type="button" onClick={startNewSupportConversation} className="text-xs font-black text-indigo-700">← Back to conversations</button>
+                  {supportThreadLoading && !supportThread ? <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Loading conversation…</p> : supportThread ? <>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2"><div><p className="font-black text-slate-900">{supportThread.conversation.subject}</p><p className="mt-1 text-xs font-bold text-slate-500">{supportThread.conversation.status === 'WAITING' ? 'WAITING FOR SUPPORT' : supportThread.conversation.status}</p></div>{supportThread.conversation.status !== 'RESOLVED' && <button type="button" disabled={supportThreadBusy || supportThread.conversation.status === 'WAITING'} onClick={() => void escalateSupportConversation()} className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-black text-amber-800 disabled:opacity-60">{supportThread.conversation.status === 'WAITING' ? 'Agent requested' : 'Talk to a person'}</button>}</div>
+                    <div className="mt-3 max-h-72 space-y-2 overflow-y-auto rounded-xl bg-slate-50 p-3">{supportThread.messages.length === 0 ? <p className="text-sm text-slate-500">No messages yet.</p> : supportThread.messages.map((message) => <div key={message.id} className={`rounded-xl p-3 text-sm ${message.sender_role === 'CUSTOMER' ? 'ml-6 bg-indigo-50 text-indigo-950' : 'mr-6 bg-white text-slate-800 shadow-sm'}`}><p className="mb-1 text-[10px] font-black uppercase tracking-wider text-slate-500">{message.sender_role === 'CUSTOMER' ? 'You' : message.sender_role === 'ADMIN' ? 'Zeshu support' : 'Support'}</p><p className="whitespace-pre-wrap break-words">{message.body}</p></div>)}</div>
+                    {supportThread.conversation.status === 'RESOLVED' ? <p className="mt-3 rounded-xl bg-emerald-50 p-3 text-xs font-bold text-emerald-800">This conversation is resolved. Start a new conversation if you need more help.</p> : <><label htmlFor="support-thread-message" className="sr-only">Reply to support</label><textarea id="support-thread-message" rows={3} maxLength={4000} value={supportThreadMessage} onChange={(event) => setSupportThreadMessage(event.target.value)} placeholder="Reply to support" className="mt-3 w-full resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#087443]" /><button type="button" disabled={supportThreadBusy || !supportThreadMessage.trim()} onClick={() => void sendSupportThreadMessage()} className="mt-2 w-full rounded-xl bg-[#087443] px-4 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500">{supportThreadBusy ? 'Sending...' : 'Send message'}</button></>}
+                  </> : <p className="mt-4 rounded-xl bg-red-50 p-4 text-sm font-bold text-red-700">This conversation could not be loaded.</p>}
+                </div>}
                 {supportNotice && <p role="status" className="mt-2 text-xs font-bold text-slate-600">{supportNotice}</p>}
-                {supportConversations.length > 0 && <div className="mt-4 space-y-2"><p className="text-[11px] font-black uppercase tracking-wider text-slate-500">Your conversations</p>{supportConversations.slice(0, 5).map((conversation) => <div key={conversation.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-xs"><span className="font-bold text-slate-700">{conversation.subject}</span><span className="font-black text-slate-500">{conversation.status}</span></div>)}</div>}
-                <p className="mt-2 text-xs font-medium text-slate-500">For urgent safety issues, contact support@zeshu.in. Never share OTPs or full payment credentials.</p>
+                {!selectedSupportConversationId && supportConversations.length > 0 && <div className="mt-4 space-y-2"><p className="text-[11px] font-black uppercase tracking-wider text-slate-500">Your conversations</p>{supportConversations.slice(0, 10).map((conversation) => <button type="button" key={conversation.id} onClick={() => openSupportConversation(conversation.id)} className="flex w-full items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-3 text-left text-xs transition hover:bg-slate-100"><span className="min-w-0"><span className="block truncate font-bold text-slate-700">{conversation.subject}</span><span className="mt-1 block text-[11px] text-slate-500">{conversation.status === 'WAITING' ? 'WAITING FOR SUPPORT' : conversation.status}</span></span><ChevronRight size={16} className="shrink-0 text-slate-400" aria-hidden="true" /></button>)}</div>}
+                <p className="mt-3 text-xs font-medium text-slate-500">For urgent safety issues, contact support@zeshu.in. Never share OTPs or full payment credentials.</p>
               </section>}
               {accountView === 'POLICIES' && <section className="rounded-[24px] border border-slate-200 bg-white p-5"><h3 className="font-black text-slate-900">Policies &amp; Trust</h3><p className="mt-2 text-sm leading-6 text-slate-600">Review customer-facing policies and service availability in the Trust Center.</p><Link href="/policies" className="mt-3 inline-flex rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-black text-[#087443]">Open Trust Center</Link></section>}
               {accountView === 'PASS' && <section className="rounded-[24px] border border-indigo-100 bg-indigo-50 p-5"><div className="flex items-start justify-between gap-3"><div><h3 className="font-black text-slate-900">Zeshu Pass</h3><p className="mt-1 text-sm leading-6 text-slate-600">Membership benefits are being prepared for a future launch.</p></div><span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-wider text-indigo-700">Coming soon</span></div></section>}

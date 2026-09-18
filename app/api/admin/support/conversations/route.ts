@@ -17,5 +17,21 @@ export async function GET(request: Request) {
   if (!admin) return NextResponse.json({ error: 'Admin access required.' }, { status: 403 });
   const { data, error } = await service.from('support_conversations').select('id,user_id,status,subject,order_id,created_at,updated_at').order('updated_at', { ascending: false });
   if (error) return NextResponse.json({ error: 'Support inbox is temporarily unavailable.' }, { status: 503 });
-  return NextResponse.json({ conversations: data || [] });
+  const conversations = data || [];
+  const ids = conversations.map((conversation) => conversation.id);
+  const { data: messages, error: messagesError } = ids.length
+    ? await service.from('support_messages').select('conversation_id,body,sender_role,created_at').in('conversation_id', ids).order('created_at', { ascending: false })
+    : { data: [], error: null };
+  if (messagesError) return NextResponse.json({ error: 'Support inbox is temporarily unavailable.' }, { status: 503 });
+  const latestByConversation = new Map<string, { body: string; sender_role: string; created_at: string }>();
+  for (const message of messages || []) {
+    if (!latestByConversation.has(message.conversation_id)) {
+      latestByConversation.set(message.conversation_id, {
+        body: String(message.body || '').slice(0, 160),
+        sender_role: String(message.sender_role || ''),
+        created_at: message.created_at,
+      });
+    }
+  }
+  return NextResponse.json({ conversations: conversations.map((conversation) => ({ ...conversation, last_message: latestByConversation.get(conversation.id) || null })) });
 }
