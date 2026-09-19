@@ -18,6 +18,7 @@ import {
 import { customerSupabase } from './lib/browser-supabase';
 
 const supabase = customerSupabase();
+const SUPPORT_WHATSAPP_UI_ENABLED = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED === 'true';
 
 const SERVICES = [
   { id: 'mobile', label: 'Prepaid', icon: <Smartphone size={28} strokeWidth={1.5}/>, color: 'bg-[#EEF2FF] text-[#4F46E5] group-hover:bg-[#4F46E5] group-hover:text-white', inputLabel: 'Mobile Number' },
@@ -281,6 +282,13 @@ export default function ZeshuSuperApp() {
   const [supportThreadLoading, setSupportThreadLoading] = useState(false);
   const [supportThreadRefreshToken, setSupportThreadRefreshToken] = useState(0);
   const supportThreadRequestRef = useRef(false);
+  const [supportWhatsappEnabled, setSupportWhatsappEnabled] = useState(false);
+  const [supportWhatsappPhoneAvailable, setSupportWhatsappPhoneAvailable] = useState(false);
+  const [supportWhatsappPreferenceLoading, setSupportWhatsappPreferenceLoading] = useState(false);
+  const [supportWhatsappPreferenceLoaded, setSupportWhatsappPreferenceLoaded] = useState(false);
+  const [supportWhatsappPreferenceSaving, setSupportWhatsappPreferenceSaving] = useState(false);
+  const [supportWhatsappPreferenceError, setSupportWhatsappPreferenceError] = useState('');
+  const supportWhatsappLoadedUserRef = useRef<string | null>(null);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [trackedOrder, setTrackedOrder] = useState<any>(null);
   const [liveRider, setLiveRider] = useState<any>(null);
@@ -684,6 +692,63 @@ export default function ZeshuSuperApp() {
     if (isAccountOpen && accountView === 'SUPPORT' && selectedSupportConversationId) return;
     setSupportNotice((currentNotice) => currentNotice === 'A support agent has been requested.' ? '' : currentNotice);
   }, [accountView, isAccountOpen, selectedSupportConversationId]);
+
+  useEffect(() => {
+    if (!SUPPORT_WHATSAPP_UI_ENABLED) return;
+    if (!user) {
+      supportWhatsappLoadedUserRef.current = null;
+      setSupportWhatsappEnabled(false);
+      setSupportWhatsappPhoneAvailable(false);
+      setSupportWhatsappPreferenceLoaded(false);
+      setSupportWhatsappPreferenceLoading(false);
+      setSupportWhatsappPreferenceSaving(false);
+      setSupportWhatsappPreferenceError('');
+      return;
+    }
+    if (!isAccountOpen || accountView !== 'SUPPORT') return;
+    if (supportWhatsappLoadedUserRef.current === user.id) return;
+
+    let mounted = true;
+    const controller = new AbortController();
+    setSupportWhatsappEnabled(false);
+    setSupportWhatsappPhoneAvailable(false);
+    setSupportWhatsappPreferenceLoaded(false);
+    setSupportWhatsappPreferenceLoading(true);
+    setSupportWhatsappPreferenceError('');
+
+    const loadSupportWhatsappPreference = async () => {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (!token) throw new Error('Authentication required.');
+        const response = await fetch('/api/support/notifications/whatsapp', {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload || typeof payload.whatsapp_transactional_enabled !== 'boolean' || typeof payload.phone_available !== 'boolean') {
+          throw new Error('Preference unavailable.');
+        }
+        if (!mounted) return;
+        setSupportWhatsappEnabled(payload.whatsapp_transactional_enabled);
+        setSupportWhatsappPhoneAvailable(payload.phone_available);
+        setSupportWhatsappPreferenceLoaded(true);
+        supportWhatsappLoadedUserRef.current = user.id;
+      } catch (error) {
+        if (!mounted || (error instanceof DOMException && error.name === 'AbortError')) return;
+        setSupportWhatsappPreferenceError('WhatsApp preferences are temporarily unavailable. Please try again.');
+      } finally {
+        if (mounted) setSupportWhatsappPreferenceLoading(false);
+      }
+    };
+
+    void loadSupportWhatsappPreference();
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
+  }, [accountView, isAccountOpen, user]);
 
   useEffect(() => {
     if (!user) {
@@ -1522,6 +1587,34 @@ export default function ZeshuSuperApp() {
     setSupportThread(null);
     setSupportThreadMessage('');
     setSupportNotice('');
+  };
+  const updateSupportWhatsappPreference = async (enabled: boolean) => {
+    if (!SUPPORT_WHATSAPP_UI_ENABLED || !supportWhatsappPreferenceLoaded || supportWhatsappPreferenceSaving || (enabled && !supportWhatsappPhoneAvailable)) return;
+    const previousEnabled = supportWhatsappEnabled;
+    setSupportWhatsappEnabled(enabled);
+    setSupportWhatsappPreferenceSaving(true);
+    setSupportWhatsappPreferenceError('');
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error('Authentication required.');
+      const response = await fetch('/api/support/notifications/whatsapp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ enabled }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload || typeof payload.whatsapp_transactional_enabled !== 'boolean' || typeof payload.phone_available !== 'boolean') {
+        throw new Error('Preference update failed.');
+      }
+      setSupportWhatsappEnabled(payload.whatsapp_transactional_enabled);
+      setSupportWhatsappPhoneAvailable(payload.phone_available);
+    } catch {
+      setSupportWhatsappEnabled(previousEnabled);
+      setSupportWhatsappPreferenceError('Could not update WhatsApp preferences. Please try again.');
+    } finally {
+      setSupportWhatsappPreferenceSaving(false);
+    }
   };
   const applyReferral = async () => { const code = referralInput.trim().toUpperCase(); if (!code || referralApplying) return; setReferralApplying(true); setReferralMessage(''); const { error } = await supabase.rpc('apply_referral_code', { p_code: code }); setReferralApplying(false); if (error) { if (process.env.NODE_ENV === 'development') console.error('Referral code failed:', error.message); setReferralMessage('This referral code could not be applied.'); return; } setReferralInput(''); setReferralMessage('Referral applied. Complete your first delivered order to unlock the reward.'); };
   const copyReferralCode = async () => { if (!referralCode) return; try { await navigator.clipboard?.writeText(referralCode); setReferralCopied(true); setReferralMessage('Invite code copied.'); window.setTimeout(() => setReferralCopied(false), 1800); } catch { setReferralMessage(`Your invite code: ${referralCode}`); } };
@@ -2390,6 +2483,18 @@ export default function ZeshuSuperApp() {
               {accountView === 'ORDERS' && <section className="rounded-[24px] border border-slate-200 bg-white p-5"><h3 className="font-black text-slate-900">Buy again</h3><p className="mt-1 text-xs text-slate-500">Use current prices and availability from delivered orders.</p><div className="mt-3 space-y-2">{myOrders.filter((order) => order.status === 'DELIVERED').slice(0, 5).length === 0 ? <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-500">No delivered orders yet.</p> : myOrders.filter((order) => order.status === 'DELIVERED').slice(0, 5).map((order) => <button type="button" key={`reorder-${order.id}`} disabled={reorderingId === order.id} onClick={() => void reorder(order)} className="flex w-full items-center justify-between rounded-xl border border-slate-100 p-3 text-left text-xs font-black disabled:opacity-60"><span>Order #{order.id?.split('-')[0]?.toUpperCase()}</span><span className="text-indigo-700">{reorderingId === order.id ? 'Adding...' : 'Reorder'}</span></button>)}</div></section>}
               {accountView === 'SUPPORT' && <section className="rounded-[24px] border border-slate-200 bg-white p-5" aria-labelledby="support-title">
                 <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 id="support-title" className="font-black text-slate-900">Help &amp; Support</h3><p className="mt-2 text-sm leading-6 text-slate-600">Start a support conversation with the Zeshu team. Never share OTPs, passwords, or payment credentials.</p></div>{selectedSupportConversationId && <button type="button" onClick={startNewSupportConversation} className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-[#087443]">New conversation</button>}</div>
+                {SUPPORT_WHATSAPP_UI_ENABLED && <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div><p className="text-sm font-black text-slate-900">WhatsApp support updates</p><p className="mt-1 text-xs leading-5 text-slate-600">Get transactional WhatsApp notifications when Zeshu Support replies or resolves your support request. No marketing messages.</p></div>
+                    <button type="button" role="switch" aria-label="WhatsApp support updates" aria-checked={supportWhatsappEnabled} disabled={supportWhatsappPreferenceLoading || !supportWhatsappPreferenceLoaded || supportWhatsappPreferenceSaving || (!supportWhatsappPhoneAvailable && !supportWhatsappEnabled)} onClick={() => void updateSupportWhatsappPreference(!supportWhatsappEnabled)} className={`relative h-7 w-12 shrink-0 rounded-full transition ${supportWhatsappEnabled ? 'bg-[#087443]' : 'bg-slate-300'} disabled:cursor-not-allowed disabled:opacity-60`}>
+                      <span aria-hidden="true" className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${supportWhatsappEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                  {supportWhatsappPreferenceLoading && <p className="mt-2 text-xs font-medium text-slate-500">Loading WhatsApp preference...</p>}
+                  {supportWhatsappPreferenceLoaded && !supportWhatsappPhoneAvailable && <p className="mt-2 text-xs font-bold text-amber-800">A verified phone number is required for WhatsApp support updates.</p>}
+                  {supportWhatsappPreferenceSaving && <p className="mt-2 text-xs font-medium text-slate-500">Saving preference...</p>}
+                  {supportWhatsappPreferenceError && <p role="alert" className="mt-2 text-xs font-bold text-red-700">{supportWhatsappPreferenceError}</p>}
+                </div>}
                 {!selectedSupportConversationId ? <>
                   <label htmlFor="support-category" className="sr-only">Support category</label>
                   <select id="support-category" value={supportSubject} onChange={(event) => setSupportSubject(event.target.value)} className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700">
