@@ -7,7 +7,7 @@ import Link from 'next/link';
 import OrderStatusTimeline from './components/OrderStatusTimeline';
 import ProductCard from './components/ProductCard';
 import ReviewForm, { ReviewProduct } from './components/ReviewForm';
-import LocationSelector from './components/LocationSelector';
+import LocationSelector, { type LocationSelection } from './components/LocationSelector';
 import { 
   Mic, MapPin, Search, User, ChevronRight, Zap, Smartphone, 
   Tv, HeartHandshake, Plus, Minus, ShoppingBag, X, LogOut, Ticket, QrCode,
@@ -312,7 +312,7 @@ export default function ZeshuSuperApp() {
   const [isDetectingLoc, setIsDetectingLoc] = useState(true);
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const [locationSelectorOpen, setLocationSelectorOpen] = useState(false);
-  const [locationSelection, setLocationSelection] = useState<{ latitude: number; longitude: number; accuracy: number | null; source: 'DEVICE' | 'MANUAL_PIN'; displayAddress?: string } | null>(null);
+  const [locationSelection, setLocationSelection] = useState<LocationSelection | null>(null);
   const locationWatchRef = useRef<number | null>(null);
   const locationRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const locationRequestRef = useRef(0);
@@ -1349,6 +1349,21 @@ export default function ZeshuSuperApp() {
     setAddressForm(address ? { label: address.label, recipient_name: address.recipient_name || '', phone: address.phone || '', address_line: address.address_line, landmark: address.landmark || '', city: address.city, state: address.state, postal_code: address.postal_code || '', latitude: address.latitude === null ? '' : String(address.latitude), longitude: address.longitude === null ? '' : String(address.longitude), is_default: address.is_default } : { label: 'Home', recipient_name: '', phone: '', address_line: '', landmark: '', city: '', state: '', postal_code: '', latitude: '', longitude: '', is_default: addresses.length === 0 });
     setAddressFormOpen(true);
   };
+  const openAddressMapForForm = () => {
+    const latitude = addressForm.latitude.trim() ? Number(addressForm.latitude) : null;
+    const longitude = addressForm.longitude.trim() ? Number(addressForm.longitude) : null;
+    const displayAddress = [addressForm.address_line, addressForm.landmark, addressForm.city, addressForm.state, addressForm.postal_code].filter(Boolean).join(', ');
+    if (latitude !== null && longitude !== null && isValidLocationCoordinate(latitude, longitude)) {
+      setLocationSelection({
+        latitude,
+        longitude,
+        accuracy: locationAccuracy,
+        source: locationAccuracy !== null ? 'DEVICE' : 'MANUAL_PIN',
+        ...(displayAddress ? { displayAddress } : {}),
+      });
+    }
+    setLocationSelectorOpen(true);
+  };
   const saveAddress = async (event: React.FormEvent) => {
     event.preventDefault();
     if (addressSaving) return;
@@ -1992,7 +2007,35 @@ export default function ZeshuSuperApp() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FC] font-sans antialiased text-[#111827] overflow-x-hidden relative">
-      <LocationSelector open={locationSelectorOpen} initial={locationSelection} onClose={() => setLocationSelectorOpen(false)} onConfirm={(selection, address) => { setLocationSelection(selection); setLocationAccuracy(selection.accuracy); setAddressForm((current) => ({ ...current, latitude: String(selection.latitude), longitude: String(selection.longitude) })); setCurrentAddress(address); try { const displayAddress = (selection.displayAddress || address).trim(); window.localStorage.setItem(LAST_CONFIRMED_LOCATION_KEY, JSON.stringify({ latitude: selection.latitude, longitude: selection.longitude, ...(displayAddress && displayAddress !== 'Move the map to your delivery location' && displayAddress !== 'Selected location' ? { displayAddress } : {}), accuracy: selection.accuracy, source: selection.source, confirmed_at: new Date().toISOString() })); } catch { /* localStorage may be unavailable */ } setLocationSelectorOpen(false); setAddressFormOpen(true); showToast('Delivery location confirmed. Add your house or flat details.'); }} />
+      <LocationSelector open={locationSelectorOpen} initial={locationSelection} onClose={() => setLocationSelectorOpen(false)} onConfirm={(selection, address) => {
+        setLocationSelection(selection);
+        setLocationAccuracy(selection.accuracy);
+        const details = selection.addressDetails;
+        setAddressForm((current) => ({
+          ...current,
+          latitude: String(selection.latitude),
+          longitude: String(selection.longitude),
+          address_line: details?.addressLine || current.address_line,
+          city: details?.city || current.city,
+          state: details?.state || current.state,
+          postal_code: details?.postalCode || current.postal_code,
+        }));
+        const displayAddress = (selection.displayAddress || details?.formattedAddress || address).trim();
+        if (displayAddress) setCurrentAddress(displayAddress);
+        try {
+          window.localStorage.setItem(LAST_CONFIRMED_LOCATION_KEY, JSON.stringify({
+            latitude: selection.latitude,
+            longitude: selection.longitude,
+            ...(displayAddress && displayAddress !== 'Move the map to your delivery location' && displayAddress !== 'Selected location' ? { displayAddress } : {}),
+            accuracy: selection.accuracy,
+            source: selection.source,
+            confirmed_at: new Date().toISOString(),
+          }));
+        } catch { /* localStorage may be unavailable */ }
+        setLocationSelectorOpen(false);
+        setAddressFormOpen(true);
+        showToast(details ? 'Address details filled from the map. Add your house or flat number if needed.' : 'Delivery location confirmed. Add your house or flat details.');
+      }} />
       {isOffline && <div role="status" aria-live="polite" className="fixed left-1/2 top-20 z-[145] -translate-x-1/2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs font-bold text-amber-900 shadow-sm">You&apos;re offline. Live location and ETA may be delayed.</div>}
       <div className={`fixed bottom-32 left-1/2 -translate-x-1/2 z-[150] transition-all duration-500 ${toastMessage ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-95 pointer-events-none'}`}>
         <div className="bg-[#1F2937]/95 backdrop-blur-xl text-white px-6 py-3.5 rounded-full font-bold text-sm shadow-2xl flex items-center gap-2.5 border border-white/10"><CheckCircle size={18} className="text-[#10B981]"/>{toastMessage}</div>
