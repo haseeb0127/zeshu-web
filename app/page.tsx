@@ -13,7 +13,7 @@ import {
   Tv, HeartHandshake, Plus, Minus, ShoppingBag, X, LogOut, Ticket, QrCode,
   Droplets, Wifi, Car, Landmark, ShieldCheck, PhoneCall, Phone, Package, Flame, BadgeCheck,
   History, ChevronDown, CheckSquare, Square, Clock, CheckCircle, Menu, Info, AlertCircle, BookUser, Truck, Receipt, SlidersHorizontal,
-  Crown, MessageCircle, Home 
+  Crown, MessageCircle, Home, Share2
 } from 'lucide-react';
 import { customerSupabase } from './lib/browser-supabase';
 import { isJagtialDeliveryCity } from './lib/service-scope';
@@ -276,10 +276,14 @@ export default function ZeshuSuperApp() {
   const [referralMessage, setReferralMessage] = useState('');
   const [referralApplying, setReferralApplying] = useState(false);
   const [referralCopied, setReferralCopied] = useState(false);
+  const [inviteContact, setInviteContact] = useState<{ name: string; phone: string } | null>(null);
+  const [inviteContactBusy, setInviteContactBusy] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  const [otpAutoFillStatus, setOtpAutoFillStatus] = useState('');
+  const otpAbortRef = useRef<AbortController | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckoutOpening, setIsCheckoutOpening] = useState(false);
   const [checkoutError, setCheckoutError] = useState<CheckoutErrorState | null>(null);
@@ -1267,22 +1271,33 @@ export default function ZeshuSuperApp() {
     }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 3000 });
   };
 
-  const handleContactPicker = async () => {
-    if ('contacts' in navigator && 'ContactsManager' in window) {
-      try {
-        const props = ['name', 'tel'];
-        const contacts: any = await (navigator as any).contacts.select(props, { multiple: false });
-        if (contacts.length > 0 && contacts[0].tel && contacts[0].tel.length > 0) {
-          const phone = contacts[0].tel[0].replace(/\D/g, '').slice(-10);
-          setRechargeNumber(phone);
-          showToast(`Selected contact: ${contacts[0].name || phone}`);
-        }
-      } catch (ex) {
-        showToast("Contact selection cancelled.");
-      }
-    } else {
-      showToast("Contact Search is only supported on Android Chrome Mobile.");
+  const pickSingleContact = async () => {
+    if (!('contacts' in navigator) || !('ContactsManager' in window)) {
+      showToast('Contact picker is not supported on this device. Use the native Share button instead.');
+      return null;
     }
+    try {
+      const contacts: any[] = await (navigator as any).contacts.select(['name', 'tel'], { multiple: false });
+      const selected = contacts?.[0];
+      const rawPhone = String(selected?.tel?.[0] || '');
+      const phone = rawPhone.replace(/\D/g, '').slice(-10);
+      const nameValue = Array.isArray(selected?.name) ? selected.name[0] : selected?.name;
+      const name = String(nameValue || '').trim();
+      if (!phone) {
+        showToast('That contact has no usable mobile number.');
+        return null;
+      }
+      return { name, phone };
+    } catch {
+      return null;
+    }
+  };
+
+  const handleContactPicker = async () => {
+    const selected = await pickSingleContact();
+    if (!selected) return;
+    setRechargeNumber(selected.phone);
+    showToast(`Selected contact: ${selected.name || selected.phone}`);
   };
 
   const handleMedicineSearch = async () => {
@@ -1837,7 +1852,21 @@ export default function ZeshuSuperApp() {
     setRewardBalance(Number(balance || 0)); setRewardHistory(history || []); setReferralCode(String(code || ''));
   };
 
-  const handleSendOtp = async () => { if (!/^\d{10}$/.test(phoneNumber)) return showToast('Enter a valid 10-digit mobile number.'); setIsLoading(true); const { error } = await supabase.auth.signInWithOtp({ phone: `+91${phoneNumber}` }); setIsLoading(false); if (!error) setOtpSent(true); else showToast('We could not start OTP delivery. Check the number and try again later.'); };
+  const handleSendOtp = async () => {
+    if (!/^\d{10}$/.test(phoneNumber)) return showToast('Enter a valid 10-digit mobile number.');
+    otpAbortRef.current?.abort();
+    setOtp('');
+    setOtpAutoFillStatus('');
+    setIsLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({ phone: `+91${phoneNumber}` });
+    setIsLoading(false);
+    if (!error) {
+      setOtpSent(true);
+      setOtpAutoFillStatus('OTP sent. Waiting for secure auto-fill…');
+    } else {
+      showToast('We could not start OTP delivery. Check the number and try again later.');
+    }
+  };
 
   const toggleVoiceSearch = () => {
     if (isVoiceListening) {
@@ -1894,7 +1923,77 @@ export default function ZeshuSuperApp() {
     }
   };
 
-  const handleVerifyOtp = async () => { setIsLoading(true); const { data, error } = await supabase.auth.verifyOtp({ phone: `+91${phoneNumber}`, token: otp, type: 'sms' }); setIsLoading(false); if (data.session && data.user && !error) { setUser(data.session.user); setIsAuthModalOpen(false); void loadGrowthData(); showToast("Welcome back!"); } else showToast('Incorrect or expired OTP. Please try again.'); };
+  const verifyOtpToken = async (token: string, source: 'manual' | 'auto' = 'manual') => {
+    const normalized = String(token || '').replace(/\D/g, '').slice(0, 6);
+    if (!/^\d{6}$/.test(normalized)) {
+      if (source === 'manual') showToast('Enter the 6-digit OTP.');
+      return false;
+    }
+    setIsLoading(true);
+    const { data, error } = await supabase.auth.verifyOtp({ phone: `+91${phoneNumber}`, token: normalized, type: 'sms' });
+    setIsLoading(false);
+    if (data.session && data.user && !error) {
+      otpAbortRef.current?.abort();
+      setOtpAutoFillStatus('');
+      setUser(data.session.user);
+      setIsAuthModalOpen(false);
+      setOtpSent(false);
+      setOtp('');
+      void loadGrowthData();
+      showToast('Welcome back!');
+      return true;
+    }
+    setOtpAutoFillStatus('Auto-fill could not verify this code. Enter the latest OTP from your SMS.');
+    showToast('Incorrect or expired OTP. Please try again.');
+    return false;
+  };
+
+  const handleVerifyOtp = async () => {
+    await verifyOtpToken(otp, 'manual');
+  };
+
+  useEffect(() => {
+    if (!otpSent || !isAuthModalOpen || typeof window === 'undefined') return;
+    otpAbortRef.current?.abort();
+
+    const controller = new AbortController();
+    otpAbortRef.current = controller;
+    const credentials = (navigator as any).credentials;
+
+    if (!window.isSecureContext || !credentials?.get) {
+      setOtpAutoFillStatus('OTP sent. Enter the 6-digit code from your SMS.');
+      return () => controller.abort();
+    }
+
+    let active = true;
+    setOtpAutoFillStatus('OTP sent. Waiting for secure auto-fill…');
+    void (async () => {
+      try {
+        const credential = await credentials.get({
+          otp: { transport: ['sms'] },
+          signal: controller.signal,
+        } as any);
+        if (!active || controller.signal.aborted) return;
+        const code = String((credential as any)?.code || '').replace(/\D/g, '').slice(0, 6);
+        if (!/^\d{6}$/.test(code)) {
+          setOtpAutoFillStatus('OTP sent. Enter the 6-digit code from your SMS.');
+          return;
+        }
+        setOtp(code);
+        setOtpAutoFillStatus('OTP detected securely. Verifying…');
+        await verifyOtpToken(code, 'auto');
+      } catch {
+        if (active && !controller.signal.aborted) {
+          setOtpAutoFillStatus('OTP sent. Enter the 6-digit code from your SMS.');
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [otpSent, isAuthModalOpen, phoneNumber]);
   const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); setRewardBalance(0); setRewardHistory([]); setReferralCode(''); setUseZeshuCash(false); setZeshuCashAmount(''); setIsAccountOpen(false); showToast("Logged out."); };
   const openAccountHome = () => { setAccountView('HOME'); setIsAccountOpen(true); };
   const openAiSupport = () => {
@@ -2091,8 +2190,54 @@ export default function ZeshuSuperApp() {
     }
   };
   const applyReferral = async () => { const code = referralInput.trim().toUpperCase(); if (!code || referralApplying) return; setReferralApplying(true); setReferralMessage(''); const { error } = await supabase.rpc('apply_referral_code', { p_code: code }); setReferralApplying(false); if (error) { if (process.env.NODE_ENV === 'development') console.error('Referral code failed:', error.message); setReferralMessage('This referral code could not be applied.'); return; } setReferralInput(''); setReferralMessage('Referral applied. Complete your first delivered order to unlock the reward.'); };
-  const copyReferralCode = async () => { if (!referralCode) return; try { await navigator.clipboard?.writeText(referralCode); setReferralCopied(true); setReferralMessage('Invite code copied.'); window.setTimeout(() => setReferralCopied(false), 1800); } catch { setReferralMessage(`Your invite code: ${referralCode}`); } };
-  const shareReferralCode = async () => { if (!referralCode) return; try { if (navigator.share) { await navigator.share({ title: 'Join Zeshu', text: `Use my Zeshu invite code ${referralCode}` }); return; } await copyReferralCode(); } catch { /* Sharing was cancelled; keep the account drawer unchanged. */ } };
+  const inviteMessage = () => referralCode
+    ? `Join me on Zeshu. Use my invite code ${referralCode} after signing in. Get Zeshu: https://zeshu.in/app`
+    : 'Get Zeshu: https://zeshu.in/app';
+
+  const copyReferralCode = async () => {
+    if (!referralCode) return;
+    try {
+      await navigator.clipboard?.writeText(referralCode);
+      setReferralCopied(true);
+      setReferralMessage('Invite code copied.');
+      window.setTimeout(() => setReferralCopied(false), 1800);
+    } catch {
+      setReferralMessage(`Your invite code: ${referralCode}`);
+    }
+  };
+
+  const shareReferralCode = async () => {
+    if (!referralCode) return;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Join Zeshu',
+          text: inviteMessage(),
+          url: 'https://zeshu.in/app',
+        });
+        return;
+      }
+      await navigator.clipboard?.writeText(inviteMessage());
+      setReferralMessage('Invite message copied. Share it with a friend.');
+    } catch { /* Native sharing was cancelled. */ }
+  };
+
+  const chooseInviteContact = async () => {
+    if (inviteContactBusy) return;
+    setInviteContactBusy(true);
+    const selected = await pickSingleContact();
+    setInviteContactBusy(false);
+    if (!selected) return;
+    setInviteContact(selected);
+    setReferralMessage(`Ready to invite ${selected.name || selected.phone}. Nothing is sent until you confirm in your messaging app.`);
+  };
+
+  const textInviteContact = () => {
+    if (!inviteContact || !referralCode) return;
+    const destination = inviteContact.phone.replace(/\D/g, '');
+    const body = encodeURIComponent(inviteMessage());
+    window.location.href = `sms:${destination}?body=${body}`;
+  };
 
   const toggleFavorite = async (product: any) => {
     if (!user) { setIsAuthModalOpen(true); return; }
@@ -2979,18 +3124,20 @@ export default function ZeshuSuperApp() {
       {isAuthModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
           <div role="dialog" aria-modal="true" aria-labelledby="auth-title" className="bg-white rounded-[32px] p-8 w-full max-w-sm relative shadow-2xl">
-            <button ref={modalCloseRef} aria-label="Close sign in" onClick={() => setIsAuthModalOpen(false)} className="absolute top-5 right-5 text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F46E5]"><X size={20}/></button>
+            <button ref={modalCloseRef} aria-label="Close sign in" onClick={() => { otpAbortRef.current?.abort(); setIsAuthModalOpen(false); }} className="absolute top-5 right-5 text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F46E5]"><X size={20}/></button>
             <h2 id="auth-title" className="text-2xl font-black text-center">Sign in / Create account</h2>
             <p className="mt-2 mb-6 text-center text-sm font-bold text-slate-500">New to Zeshu? Start here</p>
             {!otpSent ? (
               <div className="space-y-4">
-                <input type="tel" maxLength={10} value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="w-full p-4 bg-[#F8F9FC] border rounded-2xl font-bold text-lg outline-none focus:border-[#6366F1]" placeholder="Mobile Number" />
-                <button onClick={handleSendOtp} className="w-full bg-[#111827] text-white font-bold py-4 rounded-2xl active:scale-95 transition-transform">Get OTP</button>
+                <input type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={10} value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))} className="w-full p-4 bg-[#F8F9FC] border rounded-2xl font-bold text-lg outline-none focus:border-[#6366F1]" placeholder="Mobile Number" />
+                <button disabled={isLoading} onClick={() => void handleSendOtp()} className="w-full bg-[#111827] text-white font-bold py-4 rounded-2xl active:scale-95 transition-transform disabled:opacity-60">{isLoading ? 'Sending OTP…' : 'Get OTP'}</button>
               </div>
             ) : (
               <div className="space-y-4">
-                <input type="number" value={otp} onChange={(e) => setOtp(e.target.value)} className="w-full p-4 bg-[#F8F9FC] border rounded-2xl text-center text-3xl font-black tracking-widest outline-none focus:border-[#6366F1]" placeholder="------" />
-                <button onClick={handleVerifyOtp} className="w-full bg-[#4F46E5] text-white font-bold py-4 rounded-2xl active:scale-95 transition-transform">Verify OTP</button>
+                <input type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} className="w-full p-4 bg-[#F8F9FC] border rounded-2xl text-center text-3xl font-black tracking-widest outline-none focus:border-[#6366F1]" placeholder="------" aria-label="6-digit OTP" />
+                <p className="text-center text-xs font-bold leading-5 text-slate-500" role="status">{otpAutoFillStatus || 'Enter the 6-digit OTP sent to your mobile.'}</p>
+                <p className="text-center text-[10px] leading-4 text-slate-400">On supported Android browsers, Zeshu can securely auto-fill the OTP without reading your SMS inbox.</p>
+                <button disabled={isLoading || otp.length !== 6} onClick={() => void handleVerifyOtp()} className="w-full bg-[#4F46E5] text-white font-bold py-4 rounded-2xl active:scale-95 transition-transform disabled:opacity-60">{isLoading ? 'Verifying…' : 'Verify OTP'}</button>
               </div>
             )}
           </div>
@@ -3039,7 +3186,23 @@ export default function ZeshuSuperApp() {
               {accountView === 'REFERRAL' && <section className="rounded-[24px] border border-emerald-100 bg-white p-5" aria-labelledby="invite-earn-title">
                 <h3 id="invite-earn-title" className="font-black text-slate-900">Invite &amp; Earn</h3>
                 <p className="mt-1 text-xs leading-5 text-slate-600">Invite friends. Earn Zeshu Cash after their first eligible delivered order.</p>
-                {referralCode && <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3"><p className="text-[11px] font-black uppercase tracking-wider text-slate-500">Your invite code</p><div className="mt-2 flex flex-wrap items-center gap-2"><span className="rounded-lg bg-white px-3 py-2 font-mono text-sm font-black text-emerald-800">{referralCode}</span><button type="button" onClick={() => void copyReferralCode()} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-black text-white">{referralCopied ? 'Copied' : 'Copy code'}</button><button type="button" onClick={() => void shareReferralCode()} className="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700">Share</button></div></div>}
+                {referralCode && <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+                  <p className="text-[11px] font-black uppercase tracking-wider text-slate-500">Your invite code</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="rounded-lg bg-white px-3 py-2 font-mono text-sm font-black text-emerald-800">{referralCode}</span>
+                    <button type="button" onClick={() => void copyReferralCode()} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-black text-white">{referralCopied ? 'Copied' : 'Copy code'}</button>
+                    <button type="button" onClick={() => void shareReferralCode()} className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700"><Share2 size={14} aria-hidden="true" /> Share app &amp; code</button>
+                  </div>
+                  <div className="mt-3 rounded-xl border border-emerald-100 bg-white p-3">
+                    <p className="text-xs font-black text-slate-800">Invite someone from your phone</p>
+                    <p className="mt-1 text-[11px] leading-4 text-slate-500">Zeshu only receives the contact you choose. Your full phonebook is never uploaded.</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button type="button" disabled={inviteContactBusy} onClick={() => void chooseInviteContact()} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 disabled:opacity-60">{inviteContactBusy ? 'Opening contacts…' : inviteContact ? 'Choose another contact' : 'Choose contact'}</button>
+                      {inviteContact && <button type="button" onClick={textInviteContact} className="rounded-lg bg-[#087443] px-3 py-2 text-xs font-black text-white">Text invite</button>}
+                    </div>
+                    {inviteContact && <p className="mt-2 text-xs font-bold text-emerald-800">Selected: {inviteContact.name || 'Contact'} · ••••••{inviteContact.phone.slice(-4)}</p>}
+                  </div>
+                </div>}
                 <div className="mt-3 rounded-xl border border-emerald-100 bg-slate-50 p-3"><p className="text-[11px] font-black uppercase tracking-wider text-slate-500">Have a referral code?</p><div className="mt-2 flex flex-col gap-2 sm:flex-row"><input value={referralInput} onChange={(event) => setReferralInput(event.target.value)} placeholder="Enter code" aria-label="Referral code" className="min-w-0 flex-1 rounded-lg border border-emerald-100 bg-white px-3 py-2 text-xs font-bold uppercase outline-none" /><button type="button" disabled={referralApplying} onClick={() => void applyReferral()} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-black text-white disabled:opacity-60">{referralApplying ? 'Applying...' : 'Apply code'}</button></div></div>
                 {referralMessage && <p className="mt-2 text-xs font-bold text-slate-600">{referralMessage}</p>}
               </section>}
