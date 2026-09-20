@@ -1,11 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f8f6;
-  --foreground: #16231d;
+  --background: #f7f9f5;
+  --foreground: #132019;
   --zeshu-green: #087443;
-  --zeshu-green-dark: #075b36;
-  --zeshu-mint: #e9f7ef;
+  --zeshu-green-dark: #065f38;
+  --zeshu-green-fresh: #16a663;
+  --zeshu-mint: #eef8f1;
+  --zeshu-ivory: #f7f9f5;
+  --zeshu-surface: #ffffff;
+  --zeshu-text: #132019;
+  --zeshu-muted: #66736b;
+  --zeshu-border: #dde7df;
+  --zeshu-gold: #f4b740;
+  --zeshu-blue: #2563eb;
+  --zeshu-warning: #d97706;
+  --zeshu-danger: #dc2626;
+  --zeshu-shadow: 0 10px 30px rgba(19, 32, 25, .08);
+  --zeshu-shadow-soft: 0 4px 16px rgba(19, 32, 25, .06);
 }
 
 @theme inline {
@@ -15,18 +27,66 @@
   --font-mono: var(--font-geist-mono);
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+html {
+  background: var(--zeshu-ivory);
 }
 
-button, a, input, select { -webkit-tap-highlight-color: transparent; }
-button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
-  outline: 3px solid #5ab982;
+body {
+  background:
+    radial-gradient(circle at top right, rgba(22, 166, 99, .045), transparent 28rem),
+    var(--zeshu-ivory);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+::selection {
+  background: rgba(8, 116, 67, .16);
+  color: var(--zeshu-text);
+}
+
+button, a, input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(8, 116, 67, .34);
   outline-offset: 2px;
 }
 
+.zeshu-surface {
+  background: var(--zeshu-surface);
+  border: 1px solid var(--zeshu-border);
+  box-shadow: var(--zeshu-shadow-soft);
+}
+
+.zeshu-primary {
+  background: var(--zeshu-green);
+  color: #fff;
+}
+
+.zeshu-primary:hover {
+  background: var(--zeshu-green-dark);
+}
+
+.zeshu-soft {
+  background: var(--zeshu-mint);
+  color: var(--zeshu-green-dark);
+}
+
+.zeshu-gold {
+  background: #fff8df;
+  color: #8a5a00;
+  border-color: #f4d889;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
