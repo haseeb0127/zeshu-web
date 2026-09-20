@@ -280,6 +280,11 @@ export default function ZeshuSuperApp() {
   const [supportThreadMessage, setSupportThreadMessage] = useState('');
   const [supportThreadBusy, setSupportThreadBusy] = useState(false);
   const [supportThreadLoading, setSupportThreadLoading] = useState(false);
+  const [supportAssistantQuestion, setSupportAssistantQuestion] = useState('');
+  const [supportAssistantAnswer, setSupportAssistantAnswer] = useState('');
+  const [supportAssistantBusy, setSupportAssistantBusy] = useState(false);
+  const [supportAssistantResolved, setSupportAssistantResolved] = useState<boolean | null>(null);
+  const [supportAssistantSource, setSupportAssistantSource] = useState<'ai' | 'guided' | ''>('');
   const [supportThreadRefreshToken, setSupportThreadRefreshToken] = useState(0);
   const supportThreadRequestRef = useRef(false);
   const [supportWhatsappEnabled, setSupportWhatsappEnabled] = useState(false);
@@ -1510,6 +1515,58 @@ export default function ZeshuSuperApp() {
   const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); setRewardBalance(0); setRewardHistory([]); setReferralCode(''); setUseZeshuCash(false); setZeshuCashAmount(''); setIsAccountOpen(false); showToast("Logged out."); };
   const openAccountHome = () => { setAccountView('HOME'); setIsAccountOpen(true); };
   const closeAccount = () => { setAccountView('HOME'); setIsAccountOpen(false); };
+  const goToHome = () => {
+    setActiveTab('home');
+    setActiveCategory('All');
+    setSearchQuery('');
+    setVoiceSearchMessage('');
+    setIsCartOpen(false);
+    setIsAccountOpen(false);
+    setIsAuthModalOpen(false);
+    setIsTrackingOpen(false);
+    setLocationSelectorOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  const askSupportAssistant = async () => {
+    const question = supportAssistantQuestion.trim();
+    if (!question || supportAssistantBusy) return;
+    setSupportAssistantBusy(true);
+    setSupportAssistantAnswer('');
+    setSupportAssistantResolved(null);
+    setSupportAssistantSource('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setSupportAssistantAnswer('Please sign in so Zeshu can help safely and connect you to support if needed.');
+        setSupportAssistantResolved(false);
+        return;
+      }
+      const response = await fetch('/api/support/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ message: question }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof payload.error === 'string' ? payload.error : 'Zeshu Assistant is temporarily unavailable.');
+      setSupportAssistantAnswer(String(payload.answer || 'I could not resolve that safely. Please connect to Zeshu Support.'));
+      setSupportAssistantResolved(payload.resolved === true);
+      setSupportAssistantSource(payload.source === 'ai' ? 'ai' : 'guided');
+    } catch (assistantError) {
+      setSupportAssistantAnswer(assistantError instanceof Error ? assistantError.message : 'Zeshu Assistant is temporarily unavailable.');
+      setSupportAssistantResolved(false);
+    } finally {
+      setSupportAssistantBusy(false);
+    }
+  };
+
+  const connectAssistantToHuman = () => {
+    const question = supportAssistantQuestion.trim();
+    if (question) setSupportMessage(question);
+    setSupportSubject('Other');
+    setSelectedSupportConversationId(null);
+    setSupportNotice('Your question is ready below. Add any order details and send it to Zeshu Support.');
+  };
+
   const submitSupportConversation = async () => {
     if (!supportMessage.trim() || supportBusy) return;
     setSupportBusy(true); setSupportNotice('');
@@ -1886,7 +1943,7 @@ export default function ZeshuSuperApp() {
         <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 md:py-0 md:h-[88px] flex flex-col md:flex-row items-center justify-between gap-3 md:gap-8">
           <div className="flex items-center justify-between w-full md:w-auto gap-4">
             <div className="flex items-center gap-4 md:gap-6">
-              <button aria-label="Go to Zeshu home" className="flex items-center gap-2 md:gap-3 md:border-r border-gray-200/60 md:pr-6 active:scale-[0.97] transition-transform" onClick={() => setActiveTab('home')}>
+              <button aria-label="Go to Zeshu home" className="flex items-center gap-2 md:gap-3 md:border-r border-gray-200/60 md:pr-6 active:scale-[0.97] transition-transform" onClick={goToHome}>
                 <div className="bg-[#087443] text-white font-black p-2 md:p-2.5 rounded-xl md:rounded-2xl text-xl md:text-2xl tracking-tighter shadow-sm">Z</div>
                 <div className="hidden md:flex flex-col text-left"><span className="text-[22px] font-black tracking-tighter leading-none">ZESHU</span><span className="text-[10px] font-extrabold text-[#087443] tracking-[0.2em] uppercase mt-0.5">Everyday, simply</span></div>
               </button>
@@ -2483,6 +2540,11 @@ export default function ZeshuSuperApp() {
               {accountView === 'ORDERS' && <section className="rounded-[24px] border border-slate-200 bg-white p-5"><h3 className="font-black text-slate-900">Buy again</h3><p className="mt-1 text-xs text-slate-500">Use current prices and availability from delivered orders.</p><div className="mt-3 space-y-2">{myOrders.filter((order) => order.status === 'DELIVERED').slice(0, 5).length === 0 ? <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-500">No delivered orders yet.</p> : myOrders.filter((order) => order.status === 'DELIVERED').slice(0, 5).map((order) => <button type="button" key={`reorder-${order.id}`} disabled={reorderingId === order.id} onClick={() => void reorder(order)} className="flex w-full items-center justify-between rounded-xl border border-slate-100 p-3 text-left text-xs font-black disabled:opacity-60"><span>Order #{order.id?.split('-')[0]?.toUpperCase()}</span><span className="text-indigo-700">{reorderingId === order.id ? 'Adding...' : 'Reorder'}</span></button>)}</div></section>}
               {accountView === 'SUPPORT' && <section className="rounded-[24px] border border-slate-200 bg-white p-5" aria-labelledby="support-title">
                 <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 id="support-title" className="font-black text-slate-900">Help &amp; Support</h3><p className="mt-2 text-sm leading-6 text-slate-600">Start a support conversation with the Zeshu team. Never share OTPs, passwords, or payment credentials.</p></div>{selectedSupportConversationId && <button type="button" onClick={startNewSupportConversation} className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-[#087443]">New conversation</button>}</div>
+                {!selectedSupportConversationId && <div className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-black text-slate-900">Zeshu Assistant</p><p className="mt-1 text-xs leading-5 text-slate-600">Ask about tracking, delivery, refunds, Zeshu Cash, location, recharge/bill availability or account help. For payment/refund decisions and unresolved order issues, it will direct you to a person.</p></div>{supportAssistantSource && <span className="rounded-full bg-white px-2 py-1 text-[10px] font-black uppercase tracking-wider text-indigo-700">{supportAssistantSource === 'ai' ? 'AI' : 'Guided help'}</span>}</div>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row"><input value={supportAssistantQuestion} maxLength={1200} onChange={(event) => { setSupportAssistantQuestion(event.target.value); setSupportAssistantAnswer(''); setSupportAssistantResolved(null); setSupportAssistantSource(''); }} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void askSupportAssistant(); } }} placeholder="How can Zeshu help?" aria-label="Ask Zeshu Assistant" className="min-w-0 flex-1 rounded-xl border border-indigo-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-400" /><button type="button" disabled={supportAssistantBusy || !supportAssistantQuestion.trim()} onClick={() => void askSupportAssistant()} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-black text-white disabled:opacity-50">{supportAssistantBusy ? 'Thinking…' : 'Ask'}</button></div>
+                  {supportAssistantAnswer && <div className="mt-3 rounded-xl bg-white p-3 text-sm leading-6 text-slate-700"><p>{supportAssistantAnswer}</p>{supportAssistantResolved === false && <button type="button" onClick={connectAssistantToHuman} className="mt-3 rounded-xl bg-[#087443] px-4 py-2.5 text-xs font-black text-white">Connect to a person</button>}</div>}
+                </div>}
                 {SUPPORT_WHATSAPP_UI_ENABLED && <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
                   <div className="flex items-center justify-between gap-4">
                     <div><p className="text-sm font-black text-slate-900">WhatsApp support updates</p><p className="mt-1 text-xs leading-5 text-slate-600">Get transactional WhatsApp notifications when Zeshu Support replies or resolves your support request. No marketing messages.</p></div>
