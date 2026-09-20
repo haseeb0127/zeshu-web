@@ -29,6 +29,16 @@ const sections = [
     ],
   },
   {
+    id: 'payment-gateway',
+    title: 'Payment Gateway & Failed Transaction Policy',
+    body: [
+      'Zeshu displays supported payment methods through the configured payment gateway. Payment credentials such as card CVV and UPI PIN are entered with the payment provider or banking application and should never be shared with Zeshu support.',
+      'A bank debit, UPI debit, or gateway success screen is not by itself proof that a Zeshu order has been finalized. Zeshu confirms an order only after server-side payment verification and order reconciliation. If money is debited but the order is not confirmed, do not pay again; use Help & Support so the existing transaction can be checked safely.',
+      'Where a verified payment must be refunded, an approved monetary refund is returned to the original payment method where supported. Bank or payment-provider processing time may apply. Zeshu does not charge a separate payment-gateway, convenience, or payment-processing fee unless a future charge is clearly disclosed before payment and is permitted by applicable law.',
+      'Payment providers may have their own technical terms, dispute processes, card-network or UPI rules. Those provider terms do not remove Zeshu customer rights or replace Zeshu policies for orders sold or facilitated through Zeshu.',
+    ],
+  },
+  {
     id: 'cancellation-refunds',
     title: 'Cancellation & Refunds',
     body: [
