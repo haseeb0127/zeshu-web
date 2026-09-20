@@ -2046,7 +2046,7 @@ export default function ZeshuSuperApp() {
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto w-full md:px-8 py-4 md:py-8 pt-[126px] lg:pt-[120px] flex gap-8">
+      <main className="max-w-[1400px] mx-auto w-full md:px-8 py-4 md:py-8 pt-[168px] sm:pt-[164px] lg:pt-[120px] flex gap-8">
         {activeTab === 'home' && normalizedSearch === '' && (
           <aside className="hidden lg:block w-[260px] shrink-0 sticky top-[120px] h-[calc(100vh-120px)] overflow-y-auto no-scrollbar pr-4">
             <h3 className="font-black text-[#111827] mb-5 px-3 tracking-tight text-lg">Shop by Category</h3>
