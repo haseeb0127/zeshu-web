@@ -7,13 +7,13 @@ import Link from 'next/link';
 import OrderStatusTimeline from './components/OrderStatusTimeline';
 import ProductCard from './components/ProductCard';
 import ReviewForm, { ReviewProduct } from './components/ReviewForm';
-import LocationSelector from './components/LocationSelector';
+import LocationSelector, { type LocationSelection } from './components/LocationSelector';
 import { 
   Mic, MapPin, Search, User, ChevronRight, Zap, Smartphone, 
   Tv, HeartHandshake, Plus, Minus, ShoppingBag, X, LogOut, Ticket, QrCode,
   Droplets, Wifi, Car, Landmark, ShieldCheck, PhoneCall, Phone, Package, Flame, BadgeCheck,
   History, ChevronDown, CheckSquare, Square, Clock, CheckCircle, Menu, Info, AlertCircle, BookUser, Truck, Receipt, SlidersHorizontal,
-  Crown, MessageCircle 
+  Crown, MessageCircle, Home 
 } from 'lucide-react';
 import { customerSupabase } from './lib/browser-supabase';
 import { isJagtialDeliveryCity } from './lib/service-scope';
@@ -312,7 +312,7 @@ export default function ZeshuSuperApp() {
   const [isDetectingLoc, setIsDetectingLoc] = useState(true);
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const [locationSelectorOpen, setLocationSelectorOpen] = useState(false);
-  const [locationSelection, setLocationSelection] = useState<{ latitude: number; longitude: number; accuracy: number | null; source: 'DEVICE' | 'MANUAL_PIN'; displayAddress?: string } | null>(null);
+  const [locationSelection, setLocationSelection] = useState<LocationSelection | null>(null);
   const locationWatchRef = useRef<number | null>(null);
   const locationRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const locationRequestRef = useRef(0);
@@ -1349,6 +1349,23 @@ export default function ZeshuSuperApp() {
     setAddressForm(address ? { label: address.label, recipient_name: address.recipient_name || '', phone: address.phone || '', address_line: address.address_line, landmark: address.landmark || '', city: address.city, state: address.state, postal_code: address.postal_code || '', latitude: address.latitude === null ? '' : String(address.latitude), longitude: address.longitude === null ? '' : String(address.longitude), is_default: address.is_default } : { label: 'Home', recipient_name: '', phone: '', address_line: '', landmark: '', city: '', state: '', postal_code: '', latitude: '', longitude: '', is_default: addresses.length === 0 });
     setAddressFormOpen(true);
   };
+  const openAddressMapForForm = () => {
+    const latitude = addressForm.latitude.trim() ? Number(addressForm.latitude) : null;
+    const longitude = addressForm.longitude.trim() ? Number(addressForm.longitude) : null;
+    const displayAddress = [addressForm.address_line, addressForm.landmark, addressForm.city, addressForm.state, addressForm.postal_code].filter(Boolean).join(', ');
+    if (latitude !== null && longitude !== null && isValidLocationCoordinate(latitude, longitude)) {
+      setLocationSelection({
+        latitude,
+        longitude,
+        accuracy: locationAccuracy,
+        source: locationAccuracy !== null ? 'DEVICE' : 'MANUAL_PIN',
+        ...(displayAddress ? { displayAddress } : {}),
+      });
+    } else {
+      setLocationSelection(null);
+    }
+    setLocationSelectorOpen(true);
+  };
   const saveAddress = async (event: React.FormEvent) => {
     event.preventDefault();
     if (addressSaving) return;
@@ -1992,7 +2009,35 @@ export default function ZeshuSuperApp() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FC] font-sans antialiased text-[#111827] overflow-x-hidden relative">
-      <LocationSelector open={locationSelectorOpen} initial={locationSelection} onClose={() => setLocationSelectorOpen(false)} onConfirm={(selection, address) => { setLocationSelection(selection); setLocationAccuracy(selection.accuracy); setAddressForm((current) => ({ ...current, latitude: String(selection.latitude), longitude: String(selection.longitude) })); setCurrentAddress(address); try { const displayAddress = (selection.displayAddress || address).trim(); window.localStorage.setItem(LAST_CONFIRMED_LOCATION_KEY, JSON.stringify({ latitude: selection.latitude, longitude: selection.longitude, ...(displayAddress && displayAddress !== 'Move the map to your delivery location' && displayAddress !== 'Selected location' ? { displayAddress } : {}), accuracy: selection.accuracy, source: selection.source, confirmed_at: new Date().toISOString() })); } catch { /* localStorage may be unavailable */ } setLocationSelectorOpen(false); setAddressFormOpen(true); showToast('Delivery location confirmed. Add your house or flat details.'); }} />
+      <LocationSelector open={locationSelectorOpen} initial={locationSelection} onClose={() => setLocationSelectorOpen(false)} onConfirm={(selection, address) => {
+        setLocationSelection(selection);
+        setLocationAccuracy(selection.accuracy);
+        const details = selection.addressDetails;
+        setAddressForm((current) => ({
+          ...current,
+          latitude: String(selection.latitude),
+          longitude: String(selection.longitude),
+          address_line: details?.addressLine || current.address_line,
+          city: details?.city || current.city,
+          state: details?.state || current.state,
+          postal_code: details?.postalCode || current.postal_code,
+        }));
+        const displayAddress = (selection.displayAddress || details?.formattedAddress || address).trim();
+        if (displayAddress) setCurrentAddress(displayAddress);
+        try {
+          window.localStorage.setItem(LAST_CONFIRMED_LOCATION_KEY, JSON.stringify({
+            latitude: selection.latitude,
+            longitude: selection.longitude,
+            ...(displayAddress && displayAddress !== 'Move the map to your delivery location' && displayAddress !== 'Selected location' ? { displayAddress } : {}),
+            accuracy: selection.accuracy,
+            source: selection.source,
+            confirmed_at: new Date().toISOString(),
+          }));
+        } catch { /* localStorage may be unavailable */ }
+        setLocationSelectorOpen(false);
+        setAddressFormOpen(true);
+        showToast(details ? 'Address details filled from the map. Add your house or flat number if needed.' : 'Delivery location confirmed. Add your house or flat details.');
+      }} />
       {isOffline && <div role="status" aria-live="polite" className="fixed left-1/2 top-20 z-[145] -translate-x-1/2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs font-bold text-amber-900 shadow-sm">You&apos;re offline. Live location and ETA may be delayed.</div>}
       <div className={`fixed bottom-32 left-1/2 -translate-x-1/2 z-[150] transition-all duration-500 ${toastMessage ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-95 pointer-events-none'}`}>
         <div className="bg-[#1F2937]/95 backdrop-blur-xl text-white px-6 py-3.5 rounded-full font-bold text-sm shadow-2xl flex items-center gap-2.5 border border-white/10"><CheckCircle size={18} className="text-[#10B981]"/>{toastMessage}</div>
@@ -2006,22 +2051,12 @@ export default function ZeshuSuperApp() {
                 <div className="bg-[#087443] text-white font-black p-2 md:p-2.5 rounded-xl md:rounded-2xl text-xl md:text-2xl tracking-tighter shadow-sm">Z</div>
                 <div className="hidden lg:flex flex-col text-left"><span className="text-[22px] font-black tracking-tighter leading-none">ZESHU</span><span className="text-[10px] font-extrabold text-[#087443] tracking-[0.2em] uppercase mt-0.5">Everyday, simply</span></div>
               </button>
-              <button type="button" aria-label="Detect or change delivery location" className="flex min-w-0 max-w-[150px] flex-col cursor-pointer text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443] sm:max-w-[190px] md:max-w-[220px]" onClick={handleAutoDetectLocation}>
+              <button type="button" aria-label="Detect or change delivery location" className="flex min-w-0 max-w-[240px] flex-col cursor-pointer text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443] sm:max-w-[360px] lg:max-w-[220px]" onClick={handleAutoDetectLocation}>
                 <div className="flex items-center gap-1.5 whitespace-nowrap text-[12px] font-black md:text-[15px]">{currentAddress !== 'Location not set' ? 'Deliver to' : 'Set delivery location'} <MapPin size={14} className="shrink-0 text-[#087443]"/></div>
                 <div className="mt-0.5 flex min-w-0 items-center text-[10px] font-medium text-[#6B7280] md:text-xs"><span className="truncate">{currentAddress}</span><ChevronDown size={14} className="ml-1 shrink-0"/></div>
               </button>
             </div>
 
-            <div className="lg:hidden flex items-center gap-2">
-              <Link href="/scanner" aria-label="Open QR scanner" className="p-2 bg-[#087443] text-white rounded-full active:scale-95 shadow-md flex items-center justify-center">
-                <QrCode size={18} />
-              </Link>
-              <button aria-label={user ? 'Open account' : 'Sign in'} onClick={() => user ? openAccountHome() : setIsAuthModalOpen(true)} className="p-2 bg-gray-100 rounded-full active:scale-95 text-gray-700 border border-gray-200"><User size={18} /></button>
-              <button aria-label="Open cart" onClick={() => setIsCartOpen(true)} className="relative p-2 bg-gray-100 rounded-full active:scale-95 border border-gray-200">
-                <ShoppingBag size={18} className="text-gray-700" />
-                {cart.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full text-[9px] font-black w-4 h-4 flex items-center justify-center border border-white">{cart.length}</span>}
-              </button>
-            </div>
           </div>
 
           <div className="w-full lg:flex-1 max-w-3xl order-last lg:order-none mt-1 lg:mt-0">
@@ -2366,9 +2401,19 @@ export default function ZeshuSuperApp() {
         </div>
       </main>
 
-      {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && cart.length === 0 && <button type="button" onClick={openAiSupport} aria-label="Chat with Zeshu Assistant" className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-30 inline-flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-sm font-black text-white shadow-xl transition hover:bg-indigo-700 active:scale-95 sm:h-auto sm:w-auto sm:min-h-12 sm:gap-2 sm:px-4 sm:py-3 md:bottom-8 md:right-8"><MessageCircle size={20} aria-hidden="true" /><span className="hidden sm:inline">Ask Zeshu</span></button>}
+      {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(15,23,42,.08)] backdrop-blur lg:hidden" aria-label="Primary navigation">
+        <div className="mx-auto grid max-w-md grid-cols-5 items-end">
+          <button type="button" onClick={goToHome} aria-current={activeTab === 'home' ? 'page' : undefined} className={"flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black " + (activeTab === 'home' ? 'text-[#087443]' : 'text-slate-500')}><Home size={19} aria-hidden="true" /><span>Home</span></button>
+          <button type="button" onClick={() => setActiveTab('recharge')} aria-current={activeTab === 'recharge' ? 'page' : undefined} className={"flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black " + (activeTab === 'recharge' ? 'text-[#087443]' : 'text-slate-500')}><Smartphone size={19} aria-hidden="true" /><span>Services</span></button>
+          <Link href="/scanner" aria-label="Scan QR" className="mx-auto -mt-5 flex min-h-16 flex-col items-center justify-end gap-1 text-[10px] font-black text-[#087443]"><span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#087443] text-white shadow-lg shadow-emerald-900/20 active:scale-95"><QrCode size={24} aria-hidden="true" /></span><span>Scan</span></Link>
+          <button type="button" onClick={() => user ? openAccountHome() : setIsAuthModalOpen(true)} className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black text-slate-500"><User size={19} aria-hidden="true" /><span>{user ? 'Account' : 'Login'}</span></button>
+          <button type="button" onClick={() => setIsCartOpen(true)} className="relative flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black text-slate-500"><span className="relative"><ShoppingBag size={19} aria-hidden="true" />{cart.length > 0 && <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black text-white">{cart.reduce((sum, entry) => sum + entry.qty, 0)}</span>}</span><span>Cart</span></button>
+        </div>
+      </nav>}
 
-      <footer className="border-t border-[#dce8df] bg-white px-4 py-8 text-sm text-slate-600 md:px-8">
+      {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && cart.length === 0 && <button type="button" onClick={openAiSupport} aria-label="Chat with Zeshu Assistant" className="fixed bottom-[5.75rem] right-4 z-30 inline-flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-sm font-black text-white shadow-xl transition hover:bg-indigo-700 active:scale-95 lg:bottom-8 lg:right-8 lg:h-auto lg:w-auto lg:min-h-12 lg:gap-2 lg:px-4 lg:py-3"><MessageCircle size={20} aria-hidden="true" /><span className="hidden lg:inline">Ask Zeshu</span></button>}
+
+      <footer className="border-t border-[#dce8df] bg-white px-4 pb-28 pt-8 text-sm text-slate-600 lg:px-8 lg:py-8">
         <div className="mx-auto flex max-w-[1400px] flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <span className="font-bold">© Zeshu · Everyday, simply</span>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -2522,7 +2567,54 @@ export default function ZeshuSuperApp() {
       )}
 
       {addressPendingDelete && <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/60 p-4"><div role="dialog" aria-modal="true" aria-labelledby="remove-address-title" className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl"><h2 id="remove-address-title" className="text-xl font-black text-slate-900">Remove saved address?</h2><p className="mt-3 text-sm font-bold text-slate-700">{addressPendingDelete.label} · {formatAddress(addressPendingDelete)}</p><p className="mt-2 text-sm leading-6 text-slate-600">This address will be removed from your saved addresses.</p><div className="mt-6 flex justify-end gap-3"><button type="button" disabled={addressDeleting} onClick={() => setAddressPendingDelete(null)} className="rounded-xl px-4 py-3 text-sm font-black text-slate-600">Cancel</button><button type="button" disabled={addressDeleting} onClick={() => void deleteAddress()} className="rounded-xl bg-red-600 px-4 py-3 text-sm font-black text-white disabled:opacity-60">{addressDeleting ? 'Removing…' : 'Remove address'}</button></div></div></div>}
-      {addressFormOpen && <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 p-4"><form onSubmit={saveAddress} role="dialog" aria-modal="true" aria-labelledby="address-form-title" className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl"><div className="mb-5 flex items-center justify-between"><h2 id="address-form-title" className="text-xl font-black">{editingAddress ? 'Edit address' : 'Add address'}</h2><button type="button" aria-label="Close address form" onClick={() => setAddressFormOpen(false)} className="min-h-10 min-w-10 rounded-xl bg-slate-100"><X size={18} /></button></div><div className="grid gap-3 sm:grid-cols-2"><input required aria-label="Address label" placeholder="Label (Home, Work)" value={addressForm.label} onChange={(event) => setAddressForm({ ...addressForm, label: event.target.value })} className="rounded-xl border p-3 text-sm" /><input aria-label="Recipient name" placeholder="Recipient name (optional)" value={addressForm.recipient_name} onChange={(event) => setAddressForm({ ...addressForm, recipient_name: event.target.value })} className="rounded-xl border p-3 text-sm" /><input aria-label="Phone" placeholder="Phone (optional)" value={addressForm.phone} onChange={(event) => setAddressForm({ ...addressForm, phone: event.target.value })} className="rounded-xl border p-3 text-sm" /><input required aria-label="Address line" placeholder="House / flat and street" value={addressForm.address_line} onChange={(event) => setAddressForm({ ...addressForm, address_line: event.target.value })} className="rounded-xl border p-3 text-sm sm:col-span-2" /><input aria-label="Landmark" placeholder="Landmark (optional)" value={addressForm.landmark} onChange={(event) => setAddressForm({ ...addressForm, landmark: event.target.value })} className="rounded-xl border p-3 text-sm" /><input required aria-label="City" placeholder="City" value={addressForm.city} onChange={(event) => setAddressForm({ ...addressForm, city: event.target.value })} className="rounded-xl border p-3 text-sm" /><input required aria-label="State" placeholder="State" value={addressForm.state} onChange={(event) => setAddressForm({ ...addressForm, state: event.target.value })} className="rounded-xl border p-3 text-sm" /><input aria-label="Postal code" placeholder="Postal code (optional)" value={addressForm.postal_code} onChange={(event) => setAddressForm({ ...addressForm, postal_code: event.target.value })} className="rounded-xl border p-3 text-sm" /><input aria-label="Latitude" inputMode="decimal" placeholder="Latitude (optional)" value={addressForm.latitude} onChange={(event) => setAddressForm({ ...addressForm, latitude: event.target.value })} className="rounded-xl border p-3 text-sm" /><input aria-label="Longitude" inputMode="decimal" placeholder="Longitude (optional)" value={addressForm.longitude} onChange={(event) => setAddressForm({ ...addressForm, longitude: event.target.value })} className="rounded-xl border p-3 text-sm" /></div><label className="mt-4 flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={addressForm.is_default} onChange={(event) => setAddressForm({ ...addressForm, is_default: event.target.checked })} /> Make this my default address</label><div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setAddressFormOpen(false)} className="rounded-xl px-4 py-3 text-sm font-black text-slate-600">Cancel</button><button disabled={addressSaving} className="rounded-xl bg-[#087443] px-5 py-3 text-sm font-black text-white disabled:opacity-60">{addressSaving ? 'Saving...' : 'Save address'}</button></div></form></div>}
+      {addressFormOpen && <div className="fixed inset-0 z-[130] flex items-end bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4">
+        <form onSubmit={saveAddress} role="dialog" aria-modal="true" aria-labelledby="address-form-title" className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] bg-white shadow-2xl sm:rounded-3xl">
+          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:rounded-t-3xl">
+            <div><h2 id="address-form-title" className="text-xl font-black text-slate-900">{editingAddress ? 'Edit address' : 'Add delivery address'}</h2><p className="mt-1 text-xs font-medium text-slate-500">Pin the entrance once, then confirm the details below.</p></div>
+            <button type="button" aria-label="Close address form" onClick={() => setAddressFormOpen(false)} className="flex min-h-10 min-w-10 items-center justify-center rounded-xl bg-slate-100"><X size={18} /></button>
+          </div>
+
+          <div className="space-y-5 p-5 sm:p-6">
+            <section className={"rounded-2xl border p-4 " + (addressForm.latitude && addressForm.longitude ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50')} aria-label="Pinned delivery location">
+              <div className="flex items-start gap-3">
+                <span className={"mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl " + (addressForm.latitude && addressForm.longitude ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}><MapPin size={20} aria-hidden="true" /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-black text-slate-900">{addressForm.latitude && addressForm.longitude ? 'Delivery entrance pinned' : 'Choose your delivery entrance'}</p>
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">{[addressForm.address_line, addressForm.landmark, addressForm.city, addressForm.state, addressForm.postal_code].filter(Boolean).join(', ') || 'Use the map so Zeshu can fill your area, city, state and PIN code automatically.'}</p>
+                </div>
+              </div>
+              <button type="button" onClick={openAddressMapForForm} className="mt-3 w-full rounded-xl border border-[#087443] bg-white px-4 py-3 text-sm font-black text-[#087443]">{addressForm.latitude && addressForm.longitude ? 'Change pin on map' : 'Choose on map'}</button>
+            </section>
+
+            <div>
+              <p className="mb-2 text-xs font-black uppercase tracking-wider text-slate-500">Save as</p>
+              <div className="flex gap-2">
+                {['Home', 'Work', 'Other'].map((label) => <button type="button" key={label} onClick={() => setAddressForm({ ...addressForm, label })} className={'rounded-full px-4 py-2 text-xs font-black transition ' + (addressForm.label === label ? 'bg-[#087443] text-white' : 'border border-slate-200 bg-white text-slate-600')}>{label}</button>)}
+              </div>
+              {!['Home', 'Work', 'Other'].includes(addressForm.label) && <label className="mt-3 block text-xs font-black text-slate-600">Custom label<input required aria-label="Address label" value={addressForm.label} onChange={(event) => setAddressForm({ ...addressForm, label: event.target.value })} className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-[#087443]" /></label>}
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="text-xs font-black text-slate-600">Recipient name <span className="font-medium text-slate-400">(optional)</span><input autoComplete="name" aria-label="Recipient name" placeholder="Who should receive the order?" value={addressForm.recipient_name} onChange={(event) => setAddressForm({ ...addressForm, recipient_name: event.target.value })} className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-[#087443]" /></label>
+              <label className="text-xs font-black text-slate-600">Phone <span className="font-medium text-slate-400">(optional)</span><input type="tel" inputMode="tel" autoComplete="tel" maxLength={15} aria-label="Phone" placeholder="Delivery contact number" value={addressForm.phone} onChange={(event) => setAddressForm({ ...addressForm, phone: event.target.value })} className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-[#087443]" /></label>
+
+              <label className="text-xs font-black text-slate-600 sm:col-span-2">House / flat, street or area<input required autoComplete="street-address" aria-label="Address line" placeholder="Add house / flat number if the map did not include it" value={addressForm.address_line} onChange={(event) => setAddressForm({ ...addressForm, address_line: event.target.value })} className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-[#087443]" /><span className="mt-1.5 block text-[11px] font-medium leading-4 text-slate-400">The map fills the street/area when available. Please add your exact house or flat number.</span></label>
+              <label className="text-xs font-black text-slate-600 sm:col-span-2">Landmark <span className="font-medium text-slate-400">(optional)</span><input aria-label="Landmark" placeholder="Near school, hospital, shop, mosque, etc." value={addressForm.landmark} onChange={(event) => setAddressForm({ ...addressForm, landmark: event.target.value })} className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-[#087443]" /></label>
+
+              <label className="text-xs font-black text-slate-600">City<input required autoComplete="address-level2" aria-label="City" placeholder="City" value={addressForm.city} onChange={(event) => setAddressForm({ ...addressForm, city: event.target.value })} className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-[#087443]" /></label>
+              <label className="text-xs font-black text-slate-600">State<input required autoComplete="address-level1" aria-label="State" placeholder="State" value={addressForm.state} onChange={(event) => setAddressForm({ ...addressForm, state: event.target.value })} className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-[#087443]" /></label>
+              <label className="text-xs font-black text-slate-600 sm:col-span-2">PIN code <span className="font-medium text-slate-400">(optional)</span><input inputMode="numeric" autoComplete="postal-code" maxLength={6} aria-label="Postal code" placeholder="6-digit PIN code" value={addressForm.postal_code} onChange={(event) => setAddressForm({ ...addressForm, postal_code: event.target.value.replace(/\D/g, '').slice(0, 6) })} className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-[#087443]" /></label>
+            </div>
+
+            <label className="flex min-h-12 items-center gap-3 rounded-xl bg-slate-50 px-3 py-2 text-sm font-bold text-slate-700"><input type="checkbox" checked={addressForm.is_default} onChange={(event) => setAddressForm({ ...addressForm, is_default: event.target.checked })} className="h-5 w-5 accent-[#087443]" /> Make this my default address</label>
+          </div>
+
+          <div className="sticky bottom-0 flex gap-3 border-t border-slate-100 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-b-3xl">
+            <button type="button" onClick={() => setAddressFormOpen(false)} className="min-h-12 flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-600">Cancel</button>
+            <button disabled={addressSaving} className="min-h-12 flex-[1.4] rounded-xl bg-[#087443] px-5 py-3 text-sm font-black text-white disabled:opacity-60">{addressSaving ? 'Saving...' : 'Save address'}</button>
+          </div>
+        </form>
+      </div>}
 
       {/* --- AUTH MODAL WITH SMOOTH EDGES --- */}
       {isAuthModalOpen && (
