@@ -38,6 +38,7 @@ type Product = {
   image_url: string | null;
   in_stock: boolean | null;
   category: string | null;
+  brand: string | null;
   quantity: number | string | null;
   weight: string | null;
 };
@@ -47,6 +48,7 @@ const EMPTY_PRODUCT = {
   name: "",
   price: "",
   category: "",
+  brand: "",
   quantity: "",
   weight: "",
   unit: "",
@@ -121,7 +123,7 @@ export default function VendorDashboard() {
     const [vendorResult, ordersResult, productsResult] = await Promise.all([
       supabase.from("vendors").select("id,business_name,is_open").eq("id", activeVendor.id).maybeSingle(),
       supabase.from("orders").select("*").eq("vendor_id", activeVendor.id).order("created_at", { ascending: false }).limit(100),
-      supabase.from("products").select("id,name,price,unit,image_url,in_stock,category,quantity,weight").eq("vendor_id", activeVendor.id).order("created_at", { ascending: false }),
+      supabase.from("products").select("id,name,price,unit,image_url,in_stock,category,brand,quantity,weight").eq("vendor_id", activeVendor.id).order("created_at", { ascending: false }),
     ]);
     const firstError = vendorResult.error || ordersResult.error || productsResult.error;
     if (firstError) {
@@ -237,7 +239,7 @@ export default function VendorDashboard() {
   const openProductForm = (product?: Product) => {
     setEditingProduct(product || null);
     setProductForm(product ? {
-      name: product.name || "", price: String(product.price ?? ""), category: product.category || "", quantity: String(product.quantity ?? ""),
+      name: product.name || "", price: String(product.price ?? ""), category: product.category || "", brand: product.brand || "", quantity: String(product.quantity ?? ""),
       weight: product.weight || "", unit: product.unit || "", image_url: product.image_url || "", in_stock: product.in_stock !== false,
     } : { ...EMPTY_PRODUCT });
     setIsProductFormOpen(true);
@@ -256,11 +258,11 @@ export default function VendorDashboard() {
     setSavingProduct(true);
     setError("");
     const payload = {
-      name: productForm.name.trim(), price, category: productForm.category.trim() || null, quantity,
+      name: productForm.name.trim(), price, category: productForm.category.trim() || null, brand: productForm.brand.trim() || null, quantity,
       weight: productForm.weight.trim() || null, unit,
       image_url: productForm.image_url.trim() || null, in_stock: productForm.in_stock,
     };
-    const result = editingProduct
+    let result = editingProduct
       ? await supabase.rpc("vendor_update_product", {
           p_product_id: editingProduct.id,
           p_name: payload.name,
@@ -281,6 +283,13 @@ export default function VendorDashboard() {
           p_set_in_stock: true,
         })
       : await supabase.from("products").insert({ ...payload, vendor_id: vendor.id });
+    if (!result.error && editingProduct) {
+      const brandResult = await supabase.rpc("vendor_update_product_brand", {
+        p_product_id: editingProduct.id,
+        p_brand: payload.brand,
+      });
+      if (brandResult.error) result = brandResult as typeof result;
+    }
     if (result.error) {
       console.error("Product save failed:", result.error);
       setError("Product could not be saved. Please review the fields and try again.");
@@ -455,5 +464,5 @@ function ProductForm({ form, editing, saving, onClose, onChange, onSubmit }: { f
   }, [onClose, saving]);
   const unitField = <label className="block text-sm font-bold text-slate-300">Unit <span className="text-red-300">*</span><select required value={form.unit} onChange={(event) => onChange((current) => ({ ...current, unit: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-white outline-none focus:border-indigo-400"><option value="">Select unit</option>{form.unit && !PRODUCT_UNITS.includes(form.unit as typeof PRODUCT_UNITS[number]) && <option value={form.unit}>{form.unit}</option>}{PRODUCT_UNITS.map((unit) => <option key={unit} value={unit}>{unit}</option>)}</select></label>;
   const field = (key: keyof typeof EMPTY_PRODUCT, label: string, type = "text", required = false) => <label className="block text-sm font-bold text-slate-300">{label}<input required={required} type={type} min={type === "number" ? 0 : undefined} step={key === "price" ? "0.01" : undefined} value={String(form[key] ?? "")} onChange={(event) => onChange((current) => ({ ...current, [key]: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-white outline-none focus:border-indigo-400" /></label>;
-  return <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="product-form-title" className="fixed inset-0 z-50 flex items-end bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4"><form onSubmit={onSubmit} className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-white/10 bg-slate-900 p-5 shadow-2xl sm:rounded-3xl"><div className="mb-5 flex items-center justify-between"><div><h2 id="product-form-title" className="text-xl font-black">{editing ? "Edit product" : "Add product"}</h2><p className="text-sm text-slate-400">This product is saved only to your vendor store.</p></div><button type="button" aria-label="Close product form" onClick={onClose} disabled={saving} className="rounded-xl bg-slate-800 p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"><X size={18} /></button></div><div className="grid gap-4 sm:grid-cols-2">{field("name", "Product name", "text", true)}{field("price", "Price (₹)", "number", true)}{field("category", "Category")}{field("quantity", "Quantity", "number")}{field("weight", "Weight")}{unitField}</div><div className="mt-4">{field("image_url", "Image URL")}</div><label className="mt-4 flex items-center justify-between rounded-xl border border-white/10 bg-slate-800 p-3"><span><span className="block font-black">Available for sale</span><span className="text-xs text-slate-400">Inventory is not reserved during checkout.</span></span><input type="checkbox" checked={form.in_stock} onChange={(event) => onChange((current) => ({ ...current, in_stock: event.target.checked }))} className="h-5 w-5 accent-indigo-500" /></label><div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" onClick={onClose} disabled={saving} className="rounded-xl px-4 py-3 font-black text-slate-300">Cancel</button><button disabled={saving} className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-500 px-5 py-3 font-black text-white disabled:opacity-60">{saving && <Loader2 className="animate-spin" size={17} />}{saving ? "Saving..." : editing ? "Save changes" : "Add product"}</button></div></form></div>;
+  return <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="product-form-title" className="fixed inset-0 z-50 flex items-end bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4"><form onSubmit={onSubmit} className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-white/10 bg-slate-900 p-5 shadow-2xl sm:rounded-3xl"><div className="mb-5 flex items-center justify-between"><div><h2 id="product-form-title" className="text-xl font-black">{editing ? "Edit product" : "Add product"}</h2><p className="text-sm text-slate-400">This product is saved only to your vendor store.</p></div><button type="button" aria-label="Close product form" onClick={onClose} disabled={saving} className="rounded-xl bg-slate-800 p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"><X size={18} /></button></div><div className="grid gap-4 sm:grid-cols-2">{field("name", "Product name", "text", true)}{field("price", "Price (₹)", "number", true)}{field("category", "Category")}{field("brand", "Brand")}{field("quantity", "Quantity", "number")}{field("weight", "Weight")}{unitField}</div><div className="mt-4">{field("image_url", "Image URL")}</div><label className="mt-4 flex items-center justify-between rounded-xl border border-white/10 bg-slate-800 p-3"><span><span className="block font-black">Available for sale</span><span className="text-xs text-slate-400">Inventory is not reserved during checkout.</span></span><input type="checkbox" checked={form.in_stock} onChange={(event) => onChange((current) => ({ ...current, in_stock: event.target.checked }))} className="h-5 w-5 accent-indigo-500" /></label><div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" onClick={onClose} disabled={saving} className="rounded-xl px-4 py-3 font-black text-slate-300">Cancel</button><button disabled={saving} className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-500 px-5 py-3 font-black text-white disabled:opacity-60">{saving && <Loader2 className="animate-spin" size={17} />}{saving ? "Saving..." : editing ? "Save changes" : "Add product"}</button></div></form></div>;
 }
