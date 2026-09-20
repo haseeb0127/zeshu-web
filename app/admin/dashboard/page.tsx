@@ -215,6 +215,27 @@ export default function AdminDashboard() {
     return () => window.clearInterval(timer);
   }, [tab]);
 
+  useEffect(() => {
+    if (tab !== "support" || !selectedSupportConversation?.id) return;
+    const conversationId = selectedSupportConversation.id;
+    const channel = supabase
+      .channel(`admin-support-live-${conversationId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "support_messages", filter: `conversation_id=eq.${conversationId}` }, (payload: any) => {
+        const message = payload?.new;
+        if (!message?.id) return;
+        setSupportMessages((current) => current.some((item) => item.id === message.id) ? current : [...current, message]);
+        void loadSupportConversations();
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "support_conversations", filter: `id=eq.${conversationId}` }, (payload: any) => {
+        const conversation = payload?.new;
+        if (!conversation?.id) return;
+        setSelectedSupportConversation((current) => current?.id === conversation.id ? { ...current, ...conversation } : current);
+        setSupportConversations((current) => current.map((item) => item.id === conversation.id ? { ...item, ...conversation } : item));
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [selectedSupportConversation?.id, tab]);
+
   useEffect(() => () => {
     supportDetailAbortRef.current?.abort();
   }, []);
