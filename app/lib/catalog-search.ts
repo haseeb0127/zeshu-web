@@ -140,8 +140,21 @@ const tokenMatchScore = (queryToken: string, targetToken: string) => {
     if (targetToken.startsWith(variant) || variant.startsWith(targetToken)) best = Math.max(best, 24);
     else if (variant.length >= 4 && targetToken.includes(variant)) best = Math.max(best, 19);
 
+    if (variant.length === targetToken.length && variant.length >= 4) {
+      for (let index = 0; index < variant.length - 1; index += 1) {
+        if (variant[index] === targetToken[index + 1]
+          && variant[index + 1] === targetToken[index]
+          && variant.slice(0, index) === targetToken.slice(0, index)
+          && variant.slice(index + 2) === targetToken.slice(index + 2)) {
+          best = Math.max(best, 20);
+          break;
+        }
+      }
+    }
+
     if (variant.length >= 4 && targetToken.length >= 4) {
-      const maxDistance = Math.max(1, Math.min(2, Math.floor(Math.max(variant.length, targetToken.length) * 0.28)));
+      const longest = Math.max(variant.length, targetToken.length);
+      const maxDistance = longest >= 5 ? 2 : 1;
       const distance = boundedLevenshtein(variant, targetToken, maxDistance);
       if (distance <= maxDistance) best = Math.max(best, 20 - distance * 3);
     }
