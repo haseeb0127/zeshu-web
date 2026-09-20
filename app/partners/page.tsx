@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 const opportunities = [
-  { title: 'Sponsored products', body: 'Clearly labelled Sponsored placements in relevant shopping results or category discovery. Organic results remain distinguishable from paid placements.' },
+  { title: 'Sponsored products', body: 'Clearly labelled Sponsored placements in relevant shopping results or digital discovery. Nationwide digital campaigns can run independently from Jagtial-only physical fulfilment. Organic results remain distinguishable from paid placements.' },
   { title: 'Brand-funded cashback', body: 'Brands can fund customer rewards on eligible products so shoppers receive a visible benefit while Zeshu earns campaign revenue.' },
   { title: 'Featured collections', body: 'Time-bound festival, launch, bundle and category campaigns with clear commercial labelling where applicable.' },
   { title: 'Sampling & bundles', body: 'Brands can sponsor samples or bundles tied to genuine customer orders without forcing unrelated products into the cart.' },
@@ -41,7 +41,7 @@ export default function PartnersPage() {
 
         <section className="mt-6 rounded-3xl bg-emerald-50 p-6 md:p-8">
           <h2 className="text-xl font-black">Become a Zeshu partner</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Supplier and campaign onboarding is reviewed manually while the partner portal is being prepared. Include your business name, category, Jagtial service capability, GST/FSSAI/drug-licence details where applicable, product catalogue and commercial proposal.</p>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Supplier and campaign onboarding is reviewed manually while the partner portal is being prepared. Physical fulfilment partners should include their Jagtial service capability. Digital sponsors can propose India-wide campaigns. Include GST/FSSAI/drug-licence details where applicable, product catalogue and commercial proposal.</p>
           <a href="mailto:support@zeshu.in?subject=Zeshu%20brand%20or%20supplier%20partnership" className="mt-4 inline-flex rounded-xl bg-[#087443] px-5 py-3 text-sm font-black text-white">Contact Zeshu</a>
         </section>
       </div>
