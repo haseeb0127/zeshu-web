@@ -43,6 +43,7 @@ jobs:
         run: |
           set -euo pipefail
           body="$(curl -L -sS "https://zeshu.in/api/support/assistant")"
+          echo "Assistant readiness: $body"
           echo "$body" | grep -Eq '"mode":"(ai|guided)"' || { echo "Assistant readiness mode missing"; exit 1; }
           echo "$body" | grep -q '"automatic_handoff":true' || { echo "Automatic support handoff is not configured"; exit 1; }
 
