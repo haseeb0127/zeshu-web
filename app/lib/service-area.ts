@@ -5,10 +5,26 @@ import path from 'node:path';
 
 export type ServiceAreaResult = 'ELIGIBLE' | 'OUTSIDE_SERVICE_AREA' | 'SERVICE_AREA_UNAVAILABLE' | 'SERVICE_AREA_ENFORCEMENT_DISABLED';
 
-// This is intentionally server-only.  The polygon gate is opt-in so that a
-// missing government boundary file cannot accidentally take checkout down.
+// Physical delivery is a Jagtial-only business rule in production.
+// Local development can still opt out explicitly for isolated UI work.
 export const isJagtialServiceAreaEnforced = () =>
-  process.env.ENFORCE_JAGTIAL_SERVICE_AREA?.trim().toLowerCase() === 'true';
+  process.env.NODE_ENV === 'production'
+  || process.env.ENFORCE_JAGTIAL_SERVICE_AREA?.trim().toLowerCase() !== 'false';
+
+const JAGTIAL_FALLBACK_CENTER = { latitude: 18.80, longitude: 78.93 };
+const JAGTIAL_FALLBACK_RADIUS_KM = 6;
+
+const distanceKm = (latitude: number, longitude: number, targetLatitude: number, targetLongitude: number) => {
+  const toRadians = (value: number) => value * Math.PI / 180;
+  const earthRadiusKm = 6371;
+  const deltaLatitude = toRadians(targetLatitude - latitude);
+  const deltaLongitude = toRadians(targetLongitude - longitude);
+  const lat1 = toRadians(latitude);
+  const lat2 = toRadians(targetLatitude);
+  const a = Math.sin(deltaLatitude / 2) ** 2
+    + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLongitude / 2) ** 2;
+  return 2 * earthRadiusKm * Math.asin(Math.min(1, Math.sqrt(a)));
+};
 
 type Position = [number, number];
 type Ring = Position[];
@@ -78,7 +94,17 @@ export const evaluateJagtialServiceArea = (latitude: number, longitude: number):
       : geometry.coordinates.some((polygon) => pointInPolygon(longitude, latitude, polygon));
     return eligible ? 'ELIGIBLE' : 'OUTSIDE_SERVICE_AREA';
   }
-  return 'SERVICE_AREA_UNAVAILABLE';
+
+  // The committed municipality polygon is preferred. Until it is available,
+  // use a conservative Jagtial-city radius so production never becomes
+  // nationwide merely because a boundary file is missing.
+  const fallbackDistanceKm = distanceKm(
+    latitude,
+    longitude,
+    JAGTIAL_FALLBACK_CENTER.latitude,
+    JAGTIAL_FALLBACK_CENTER.longitude,
+  );
+  return fallbackDistanceKm <= JAGTIAL_FALLBACK_RADIUS_KM ? 'ELIGIBLE' : 'OUTSIDE_SERVICE_AREA';
 };
 
 export const isWithinConfiguredJagtialServiceArea = (latitude: number, longitude: number) =>

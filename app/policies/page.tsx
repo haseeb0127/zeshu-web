@@ -60,8 +60,8 @@ const sections = [
     id: 'delivery',
     title: 'Shipping & Delivery',
     body: [
-      'Quick-commerce groceries and food are currently offered within supported areas of Jagtial. Estimated delivery times shown in the app are estimates and may vary because of availability, traffic, weather, address accuracy, order volume, safety conditions, and operational factors. Zeshu does not promise universal 10-minute delivery.',
-      'Other eligible standard-delivery products may show an estimated 3–5 business day delivery option where that option is explicitly offered. Not every product can be shipped nationwide. Keep your delivery address accurate and available for delivery updates.',
+      'Physical delivery for groceries, fresh food, essentials and other eligible physical products is currently limited to the supported Jagtial delivery zone. Estimated delivery times are estimates and may vary because of availability, traffic, weather, address accuracy, order volume, safety conditions, and operational factors. Zeshu does not promise universal 10-minute delivery.',
+      'Zeshu does not currently offer nationwide physical shipping. Digital services can be used across India where the relevant provider integration is available. Keep delivery addresses accurate for Jagtial physical orders.',
     ],
   },
   {
@@ -86,7 +86,7 @@ const sections = [
     title: 'Recharge & Utility Services',
     body: [
       'Read-only discovery may be available for mobile plans, DTH, Electricity, FASTag, Piped Gas, LPG, Water, and Broadband. Real utility bill payments are currently OFF. Provider information or bill lookup must not be understood as payment or settlement confirmation.',
-      'Mobile recharge discovery may be available for plans, but no real telecom recharge fulfilment is submitted. A1Topup execution is OFF. UPI Tools are coming soon or unavailable, and Zeshu does not currently support WhatsApp ordering or integration.',
+      'Recharge, bill, QR, rewards, referral and sponsored digital services are intended for India-wide use and do not depend on the Jagtial delivery zone. Mobile recharge discovery may be available for plans, but real telecom fulfilment and utility payment execution remain enabled only where explicitly stated. A1Topup execution is OFF. UPI merchant payment/cashback execution is not yet enabled, and WhatsApp ordering remains disabled.',
     ],
   },
   {

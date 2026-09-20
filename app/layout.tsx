@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import PwaBoot from "./components/PwaBoot";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,8 +14,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://zeshu.in"),
   title: "Zeshu",
-  description: "Shop everyday essentials and manage services with Zeshu.",
+  applicationName: "Zeshu",
+  description: "Jagtial fast delivery and India-wide digital services with Zeshu.",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/zeshu-icon.svg",
+    apple: "/zeshu-icon.svg",
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Zeshu",
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({
@@ -28,6 +41,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
+  <PwaBoot />
   {children}
 </body>
     </html>

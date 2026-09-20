@@ -16,6 +16,7 @@ import {
   Crown, MessageCircle 
 } from 'lucide-react';
 import { customerSupabase } from './lib/browser-supabase';
+import { isJagtialDeliveryCity } from './lib/service-scope';
 
 const supabase = customerSupabase();
 const SUPPORT_WHATSAPP_UI_ENABLED = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED === 'true';
@@ -71,6 +72,8 @@ const CHECKOUT_ERROR_MESSAGES: Record<string, string> = {
   RAZORPAY_CREATE_FAILED: "We couldn't start the payment service. Please try again.",
   RESERVATION_BIND_FAILED: 'Unable to bind the checkout reservation. Please try again.',
   CHECKOUT_INTERNAL_ERROR: "We couldn't prepare your checkout. Please try again.",
+  OUTSIDE_SERVICE_AREA: 'Fast physical delivery is currently available only in Jagtial. Digital services remain available across India.',
+  SERVICE_AREA_UNAVAILABLE: 'Confirm a delivery pin inside the Jagtial delivery zone before checkout.',
 };
 
 const checkoutFailureMessage = (code: unknown) => String(code || '') === 'ABANDONABLE_PAYMENT_CHECKOUT'
@@ -1846,6 +1849,10 @@ export default function ZeshuSuperApp() {
       return showCheckoutError('Enter a delivery address before checkout.', 'INVALID_CHECKOUT_DATA');
     }
     if (currentAddress === 'Fetching precise location...') return showCheckoutError('Enter a delivery address before checkout.', 'INVALID_CHECKOUT_DATA');
+    if (selectedDeliveryAddress?.city && !isJagtialDeliveryCity(selectedDeliveryAddress.city)) {
+      setIsCartOpen(true);
+      return showCheckoutError(CHECKOUT_ERROR_MESSAGES.OUTSIDE_SERVICE_AREA, 'OUTSIDE_SERVICE_AREA');
+    }
     if (!(await validateCartFreshness())) return showCheckoutError('Some items in your cart have changed availability. Please review the updated quantities.', 'PRODUCT_UNAVAILABLE');
     const checkoutVendorIds = cart.map((entry) => entry.item?.vendor_id).filter(Boolean).map(String);
     if (checkoutVendorIds.length !== cart.length || new Set(checkoutVendorIds).size !== 1) {
@@ -1999,9 +2006,9 @@ export default function ZeshuSuperApp() {
                 <div className="bg-[#087443] text-white font-black p-2 md:p-2.5 rounded-xl md:rounded-2xl text-xl md:text-2xl tracking-tighter shadow-sm">Z</div>
                 <div className="hidden lg:flex flex-col text-left"><span className="text-[22px] font-black tracking-tighter leading-none">ZESHU</span><span className="text-[10px] font-extrabold text-[#087443] tracking-[0.2em] uppercase mt-0.5">Everyday, simply</span></div>
               </button>
-              <button type="button" aria-label="Detect or change delivery location" className="flex max-w-[160px] flex-col cursor-pointer text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443] md:max-w-[220px]" onClick={handleAutoDetectLocation}>
-                <div className="font-black text-[13px] md:text-[15px] flex items-center gap-1.5">{locationAccuracy !== null ? 'Try location again' : 'Use my current location'} <MapPin size={14} className="text-[#087443]"/></div>
-                <div className="flex items-center text-[10px] md:text-xs text-[#6B7280] mt-0.5 font-medium truncate">{currentAddress}<ChevronDown size={14} className="ml-1"/></div>
+              <button type="button" aria-label="Detect or change delivery location" className="flex min-w-0 max-w-[150px] flex-col cursor-pointer text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443] sm:max-w-[190px] md:max-w-[220px]" onClick={handleAutoDetectLocation}>
+                <div className="flex items-center gap-1.5 whitespace-nowrap text-[12px] font-black md:text-[15px]">{currentAddress !== 'Location not set' ? 'Deliver to' : 'Set delivery location'} <MapPin size={14} className="shrink-0 text-[#087443]"/></div>
+                <div className="mt-0.5 flex min-w-0 items-center text-[10px] font-medium text-[#6B7280] md:text-xs"><span className="truncate">{currentAddress}</span><ChevronDown size={14} className="ml-1 shrink-0"/></div>
               </button>
             </div>
 
@@ -2039,7 +2046,7 @@ export default function ZeshuSuperApp() {
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto w-full md:px-8 py-8 pt-[130px] lg:pt-[120px] flex gap-8">
+      <main className="max-w-[1400px] mx-auto w-full md:px-8 py-4 md:py-8 pt-[168px] sm:pt-[164px] lg:pt-[120px] flex gap-8">
         {activeTab === 'home' && normalizedSearch === '' && (
           <aside className="hidden lg:block w-[260px] shrink-0 sticky top-[120px] h-[calc(100vh-120px)] overflow-y-auto no-scrollbar pr-4">
             <h3 className="font-black text-[#111827] mb-5 px-3 tracking-tight text-lg">Shop by Category</h3>
@@ -2241,29 +2248,34 @@ export default function ZeshuSuperApp() {
           ) : (
             <>
               {normalizedSearch === '' && (
-                <div className="mb-12 space-y-8">
-                  <div className="flex gap-4 md:gap-5 overflow-x-auto no-scrollbar pb-4 px-4 md:px-0 snap-x">
-                    {banners.map((img, idx) => (<img key={idx} src={img} alt="Promo" className="h-[140px] md:h-[240px] rounded-[16px] md:rounded-[28px] object-cover min-w-[280px] md:min-w-[480px] cursor-pointer shadow-lg hover:-translate-y-1.5 transition-all snap-center border border-gray-100/50" />))}
-                  </div>
+                <div className="mb-10 space-y-5 md:space-y-8">
+                  {banners.length > 0 && <div className="flex gap-4 overflow-x-auto px-4 pb-2 no-scrollbar snap-x md:gap-5 md:px-0 md:pb-4">
+                    {banners.map((img, idx) => (<img key={idx} src={img} alt="Promo" className="h-[140px] min-w-[280px] cursor-pointer snap-center rounded-[16px] border border-gray-100/50 object-cover shadow-lg transition-all hover:-translate-y-1.5 md:h-[240px] md:min-w-[480px] md:rounded-[28px]" />))}
+                  </div>}
 
-                  <section className="mx-4 rounded-[28px] bg-[#083b27] p-6 text-white md:mx-0 md:p-10">
-                    <p className="text-xs font-bold uppercase tracking-[.18em] text-[#a6dfba]">Zeshu groceries</p>
-                    <h1 className="mt-2 max-w-xl text-3xl font-black tracking-tight md:text-5xl">Everyday essentials, simply delivered.</h1>
-                    <p className="mt-3 max-w-lg text-sm leading-6 text-[#d9f3e3]">Browse products in the live Zeshu catalogue. Prices and availability are confirmed securely at checkout.</p>
-                    <button onClick={() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' })} className="mt-6 rounded-xl bg-white px-5 py-3 text-sm font-black text-[#075b36] active:scale-[.98]">Browse groceries</button>
+                  <section className="mx-4 grid gap-3 md:mx-0 md:grid-cols-2" aria-label="Where Zeshu is available">
+                    <div className="rounded-2xl border border-[#bfe0ca] bg-[#eef8f1] p-4 md:p-5">
+                      <div className="flex items-center gap-2 text-[#087443]"><MapPin size={18} aria-hidden="true"/><p className="text-[11px] font-black uppercase tracking-[.16em]">Jagtial delivery</p></div>
+                      <p className="mt-2 text-lg font-black text-[#173d27]">Fast physical delivery stays local.</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">Groceries, fruits, vegetables, meat, eggs and other physical items are limited to the Jagtial delivery zone. Target delivery is roughly 30–60 minutes when operationally available.</p>
+                    </div>
+                    <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4 md:p-5">
+                      <div className="flex items-center gap-2 text-indigo-700"><Smartphone size={18} aria-hidden="true"/><p className="text-[11px] font-black uppercase tracking-[.16em]">India-wide digital</p></div>
+                      <p className="mt-2 text-lg font-black text-slate-900">Digital services are for users across India.</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">Recharge and bill discovery, QR tools, rewards, referrals and sponsored digital offers do not require Jagtial delivery. Provider execution remains enabled only where the relevant integration is verified.</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button type="button" onClick={() => setActiveTab('recharge')} className="rounded-lg bg-white px-3 py-2 text-xs font-black text-indigo-700 shadow-sm">Recharge &amp; bills</button>
+                        <Link href="/scanner" className="rounded-lg bg-white px-3 py-2 text-xs font-black text-indigo-700 shadow-sm">QR scanner</Link>
+                        <Link href="/app" className="rounded-lg bg-indigo-700 px-3 py-2 text-xs font-black text-white shadow-sm">Get Zeshu</Link>
+                      </div>
+                    </div>
                   </section>
 
-                  <section className="mx-4 grid gap-4 md:mx-0 md:grid-cols-2" aria-labelledby="service-availability-title">
-                    <div className="rounded-2xl border border-[#cfe8d7] bg-white p-5">
-                      <p className="text-[11px] font-black uppercase tracking-[.16em] text-[#087443]">Service availability</p>
-                      <h2 id="service-availability-title" className="mt-2 text-xl font-black text-[#173d27]">Daily essentials in supported Jagtial areas</h2>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">Confirm your delivery pin at checkout for service-area eligibility. Delivery estimates vary with traffic, weather, availability, and local operations. Outside Jagtial, this quick-commerce service is coming soon.</p>
-                    </div>
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                      <p className="text-[11px] font-black uppercase tracking-[.16em] text-slate-500">Travel services</p>
-                      <h2 className="mt-2 text-xl font-black text-slate-800">Travel bookings are coming soon</h2>
-                      <div className="mt-3 flex flex-wrap gap-2">{['Bus Tickets', 'Train Tickets', 'Flights', 'Hotels / Rooms'].map((service) => <span key={service} className="rounded-full bg-white px-3 py-2 text-xs font-black text-slate-500">{service} · Coming Soon</span>)}</div>
-                    </div>
+                  <section className="mx-4 rounded-[26px] bg-[#083b27] p-5 text-white md:mx-0 md:rounded-[28px] md:p-10">
+                    <p className="text-xs font-bold uppercase tracking-[.18em] text-[#a6dfba]">Zeshu · Jagtial fast delivery</p>
+                    <h1 className="mt-2 max-w-xl text-[30px] font-black leading-[1.06] tracking-tight md:text-5xl">Everyday essentials, simply delivered.</h1>
+                    <p className="mt-3 max-w-lg text-sm leading-6 text-[#d9f3e3]">Browse the live Jagtial catalogue. Prices and stock are confirmed securely before checkout, and your delivery pin is checked for the local service zone.</p>
+                    <button onClick={() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' })} className="mt-5 rounded-xl bg-white px-5 py-3 text-sm font-black text-[#075b36] active:scale-[.98] md:mt-6">Browse Jagtial groceries</button>
                   </section>
 
                   {activeOrder && <button type="button" onClick={() => { setTrackedOrder(activeOrder); setIsTrackingOpen(true); }} className="mx-4 flex w-[calc(100%-2rem)] items-center justify-between gap-4 rounded-2xl border border-[#cfe8d7] bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md md:mx-0 md:w-full">
@@ -2284,7 +2296,7 @@ export default function ZeshuSuperApp() {
                   <section className="mx-4 rounded-[24px] border border-emerald-100 bg-emerald-50 p-5 md:mx-0" aria-labelledby="pharmacy-health-title">
                     <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 id="pharmacy-health-title" className="text-xl font-black text-[#173d27]">Pharmacy &amp; Health</h2><p className="mt-1 text-sm text-[#587065]">Licensed pharmacy fulfillment is being onboarded. No medicine payment or prescription transaction is available.</p></div><button type="button" onClick={() => { setActiveTab('recharge'); setActiveService('pharmacy'); }} className="rounded-xl bg-[#087443] px-4 py-2.5 text-sm font-black text-white">View availability</button></div>
                   </section>
-                  <section className="mx-4 rounded-[24px] border border-slate-200 bg-white p-5 md:mx-0" aria-labelledby="upcoming-tools-title"><h2 id="upcoming-tools-title" className="text-lg font-black text-slate-900">More tools</h2><p className="mt-1 text-sm text-slate-500">UPI Tools are coming soon. Merchant QR payments and transfers are not enabled.</p></section>
+                  <section className="mx-4 rounded-[24px] border border-slate-200 bg-white p-5 md:mx-0" aria-labelledby="upcoming-tools-title"><h2 id="upcoming-tools-title" className="text-lg font-black text-slate-900">Nationwide tools &amp; offers</h2><p className="mt-1 text-sm leading-6 text-slate-500">The QR scanner, rewards, referrals and sponsored digital campaigns are designed for India-wide use. Merchant QR payment and cashback execution stays disabled until the payment/settlement integration is verified.</p><div className="mt-4 flex flex-wrap gap-2"><Link href="/scanner" className="rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-black text-slate-700">Open QR scanner</Link><Link href="/app" className="rounded-xl bg-[#087443] px-4 py-2.5 text-xs font-black text-white">Install Zeshu</Link><Link href="/partners" className="rounded-xl border border-[#087443] px-4 py-2.5 text-xs font-black text-[#087443]">Sponsored campaigns</Link></div></section>
                 </div>
               )}
               {user && (favoriteProducts.length > 0 || recentlyPurchased.length > 0 || frequentCategories.length > 0) && normalizedSearch === '' && (
@@ -2354,7 +2366,7 @@ export default function ZeshuSuperApp() {
         </div>
       </main>
 
-      {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && <button type="button" onClick={openAiSupport} aria-label="Chat with Zeshu Assistant" className="fixed bottom-24 right-4 z-30 inline-flex min-h-12 items-center gap-2 rounded-full bg-indigo-600 px-4 py-3 text-sm font-black text-white shadow-xl transition hover:bg-indigo-700 active:scale-95 md:bottom-8 md:right-8"><MessageCircle size={19} aria-hidden="true" /><span>Ask Zeshu</span></button>}
+      {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && cart.length === 0 && <button type="button" onClick={openAiSupport} aria-label="Chat with Zeshu Assistant" className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-30 inline-flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-sm font-black text-white shadow-xl transition hover:bg-indigo-700 active:scale-95 sm:h-auto sm:w-auto sm:min-h-12 sm:gap-2 sm:px-4 sm:py-3 md:bottom-8 md:right-8"><MessageCircle size={20} aria-hidden="true" /><span className="hidden sm:inline">Ask Zeshu</span></button>}
 
       <footer className="border-t border-[#dce8df] bg-white px-4 py-8 text-sm text-slate-600 md:px-8">
         <div className="mx-auto flex max-w-[1400px] flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -2362,6 +2374,7 @@ export default function ZeshuSuperApp() {
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Link href="/policies" className="font-black text-[#087443] underline-offset-4 hover:underline">Policies &amp; Trust Center</Link>
             <Link href="/partners" className="font-black text-[#087443] underline-offset-4 hover:underline">Brands &amp; Suppliers</Link>
+            <Link href="/app" className="font-black text-[#087443] underline-offset-4 hover:underline">Get Zeshu</Link>
             <span>Real support is provided through verified order communication.</span>
           </div>
         </div>
