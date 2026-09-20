@@ -2047,6 +2047,7 @@ export default function ZeshuSuperApp() {
   const zeshuCashMax = itemTotal > 0 ? Math.max(0, Math.min(rewardBalance, 20, Math.floor(itemTotal * 0.1))) : 0;
   const requestedZeshuCash = useZeshuCash ? Math.max(0, Math.min(Number(zeshuCashAmount || zeshuCashMax), zeshuCashMax)) : 0;
   const finalCartTotal = itemTotal > 0 ? (itemTotal + deliveryCharge - requestedZeshuCash) : 0;
+  const cartItemCount = cart.reduce((sum, entry) => sum + Number(entry.qty || 0), 0);
   const selectedDeliveryAddress = addresses.find((address) => address.id === selectedAddressId) || addresses.find((address) => address.is_default);
   const deliveryAddressSummary = currentAddress !== 'Location not set' && currentAddress.trim() ? currentAddress : selectedDeliveryAddress ? formatAddress(selectedDeliveryAddress) : '';
   const liveDeliveryStatus = ['PICKED_UP', 'OUT_FOR_DELIVERY'].includes(trackedOrder?.status);
@@ -2640,7 +2641,7 @@ export default function ZeshuSuperApp() {
           <button type="button" onClick={() => setActiveTab('recharge')} aria-current={activeTab === 'recharge' ? 'page' : undefined} className={"flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black " + (activeTab === 'recharge' ? 'text-[#087443]' : 'text-slate-500')}><Smartphone size={19} aria-hidden="true" /><span>Services</span></button>
           <Link href="/scanner" aria-label="Scan QR" className="mx-auto -mt-5 flex min-h-16 flex-col items-center justify-end gap-1 text-[10px] font-black text-[#087443]"><span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#087443] text-white shadow-lg shadow-emerald-900/20 active:scale-95"><QrCode size={24} aria-hidden="true" /></span><span>Scan</span></Link>
           <button type="button" onClick={() => user ? openAccountHome() : setIsAuthModalOpen(true)} className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black text-slate-500"><User size={19} aria-hidden="true" /><span>{user ? 'Account' : 'Login'}</span></button>
-          <button type="button" onClick={() => setIsCartOpen(true)} className="relative flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black text-slate-500"><span className="relative"><ShoppingBag size={19} aria-hidden="true" />{cart.length > 0 && <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black text-white">{cart.reduce((sum, entry) => sum + entry.qty, 0)}</span>}</span><span>Cart</span></button>
+          <button type="button" onClick={() => setIsCartOpen(true)} className="relative flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black text-slate-500"><span className="relative"><ShoppingBag size={19} aria-hidden="true" />{cart.length > 0 && <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black text-white">{cartItemCount}</span>}</span><span>Cart</span></button>
         </div>
       </nav>}
 
@@ -2658,23 +2659,28 @@ export default function ZeshuSuperApp() {
         </div>
       </footer>
 
-      {/* 🚀 NEW FLOATING CART WINDOW WITH SMOOTH ROUNDED EDGES */}
-      {!isCartOpen && cart.length > 0 && activeTab === 'home' && (
-        <div 
+      {/* Compact mobile mini-cart: visible without covering primary navigation. */}
+      {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && cart.length > 0 && activeTab === 'home' && (
+        <button
+          type="button"
           onClick={() => setIsCartOpen(true)}
-          className="fixed bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-[420px] bg-gradient-to-r from-[#059669] to-[#047857] text-white p-4 rounded-full shadow-2xl z-[90] flex items-center justify-between cursor-pointer animate-in slide-in-from-bottom-10 active:scale-[0.98] transition-all"
+          aria-label={`View cart with ${cartItemCount} item${cartItemCount === 1 ? '' : 's'}, total ₹${finalCartTotal}`}
+          className="fixed left-3 right-3 z-50 mx-auto flex min-h-14 max-w-md items-center justify-between gap-3 rounded-full border border-white/20 bg-[#087443]/90 px-3.5 py-2.5 text-left text-white shadow-[0_10px_30px_rgba(8,116,67,.28)] backdrop-blur-xl transition-all active:scale-[0.98] lg:hidden"
+          style={{ bottom: 'calc(5.25rem + env(safe-area-inset-bottom))' }}
         >
-          <div className="flex items-center gap-3">
-            <div className="bg-white/20 p-2.5 rounded-full"><ShoppingBag size={20} className="text-white" /></div>
-            <div className="flex flex-col">
-              <span className="text-sm font-black leading-tight tracking-wide">{cart.length} ITEM{cart.length > 1 ? 'S' : ''}</span>
-              <span className="text-[10px] font-bold text-emerald-100 leading-tight">View cart & checkout</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 font-black text-lg">
-            ₹{finalCartTotal} <ChevronRight size={20} className="text-white ml-1 opacity-80" />
-          </div>
-        </div>
+          <span className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/16 ring-1 ring-white/15">
+              <ShoppingBag size={18} aria-hidden="true" />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-black leading-tight">{cartItemCount} item{cartItemCount === 1 ? '' : 's'} · ₹{finalCartTotal}</span>
+              <span className="mt-0.5 block text-[10px] font-bold leading-none text-emerald-50/90">Ready when you are</span>
+            </span>
+          </span>
+          <span className="flex shrink-0 items-center gap-1 rounded-full bg-white/14 px-3 py-2 text-xs font-black">
+            View cart <ChevronRight size={15} aria-hidden="true" />
+          </span>
+        </button>
       )}
 
       {/* --- LIVE ORDER TRACKING SCREEN --- */}
