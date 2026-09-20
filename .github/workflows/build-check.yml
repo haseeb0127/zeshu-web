@@ -3,6 +3,8 @@ name: Build check
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -16,11 +18,57 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: https://build-check.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: build-check-anon-key
       SUPABASE_SERVICE_ROLE_KEY: build-check-service-role-key
+      RAZORPAY_KEY_ID: rzp_test_build_check
+      NEXT_PUBLIC_RAZORPAY_KEY_ID: rzp_test_build_check
+      RAZORPAY_KEY_SECRET: build-check-razorpay-secret
+      RAZORPAY_WEBHOOK_SECRET: build-check-webhook-secret
+      GOOGLE_MAPS_ROUTES_API_KEY: build-check-google-routes-key
+      NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY: build-check-google-browser-key
+      PLANAPI_MEMBER_ID: build-check-planapi-member
+      PLANAPI_PASSWORD: build-check-planapi-password
+      PLANAPI_TOKEN_ID: build-check-planapi-token
+      SUPPORT_AI_ENABLED: 'false'
+      ENFORCE_JAGTIAL_SERVICE_AREA: 'false'
+      SUPPORT_WHATSAPP_SENDER_ENABLED: 'false'
+      NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED: 'false'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
+      - name: Validate environment manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            NEXT_PUBLIC_SUPABASE_URL
+            NEXT_PUBLIC_SUPABASE_ANON_KEY
+            SUPABASE_SERVICE_ROLE_KEY
+            RAZORPAY_KEY_ID
+            NEXT_PUBLIC_RAZORPAY_KEY_ID
+            RAZORPAY_KEY_SECRET
+            RAZORPAY_WEBHOOK_SECRET
+            GOOGLE_MAPS_ROUTES_API_KEY
+            NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY
+            PLANAPI_MEMBER_ID
+            PLANAPI_PASSWORD
+            PLANAPI_TOKEN_ID
+            SUPPORT_AI_ENABLED
+            ENFORCE_JAGTIAL_SERVICE_AREA
+            SUPPORT_WHATSAPP_SENDER_ENABLED
+            NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED
+          )
+          for key in "${required[@]}"; do
+            grep -q "^${key}=" .env.example || {
+              echo "Missing ${key} from .env.example"
+              exit 1
+            }
+          done
+
+          if grep -Eq '^(PLAN_API_USER_ID|PLAN_API_PASSWORD|PLAN_API_TOKEN_ID)=' .env.example; then
+            echo "Legacy PLAN_API_* names must not be documented as canonical."
+            exit 1
+          fi
       - run: npm ci
       - run: npm run build
