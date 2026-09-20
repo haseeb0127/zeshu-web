@@ -1,15 +1,19 @@
 "use client";
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { X, IndianRupee, ShieldCheck, Image as ImageIcon, Camera } from 'lucide-react';
+import { X, IndianRupee, ShieldCheck, Image as ImageIcon, Camera, BookUser } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function ScannerPage() {
   const router = useRouter();
   const [isScanning, setIsScanning] = useState(true);
   const [scanResult, setScanResult] = useState<string | null>(null);
-  const [merchantName, setMerchantName] = useState('Local Kirana Store');
+  const [merchantName, setMerchantName] = useState('Scanned UPI recipient');
   const [amount, setAmount] = useState('');
+  const [upiId, setUpiId] = useState('');
+  const [recipientMode, setRecipientMode] = useState<'QR' | 'CONTACT'>('QR');
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactMessage, setContactMessage] = useState('');
   const [cameraError, setCameraError] = useState<string | null>(null);
   
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
@@ -19,12 +23,18 @@ export default function ScannerPage() {
       await html5QrCodeRef.current.stop().catch(console.error);
     }
     setIsScanning(false);
+    setRecipientMode('QR');
+    setContactPhone('');
+    setContactMessage('');
     setScanResult(text);
+    setUpiId('');
+    setMerchantName('Scanned UPI recipient');
     try {
       if (text.startsWith('upi://')) {
         const url = new URL(text);
         const params = new URLSearchParams(url.search);
         if (params.get('pn')) setMerchantName(decodeURIComponent(params.get('pn')!));
+        if (params.get('pa')) setUpiId(params.get('pa')!);
         if (params.get('am')) setAmount(params.get('am')!);
       }
     } catch {}
@@ -87,6 +97,50 @@ export default function ScannerPage() {
     } catch {
       alert("Could not detect a valid QR code. Try another photo!");
     }
+  };
+
+  const chooseContactRecipient = async () => {
+    setContactMessage('');
+    if (!('contacts' in navigator) || !('ContactsManager' in window)) {
+      setContactMessage('Contact picker is not supported on this device. You can still scan a QR.');
+      return;
+    }
+    try {
+      const contacts: any[] = await (navigator as any).contacts.select(['name', 'tel'], { multiple: false });
+      const selected = contacts?.[0];
+      const phone = String(selected?.tel?.[0] || '').replace(/\D/g, '').slice(-10);
+      const nameValue = Array.isArray(selected?.name) ? selected.name[0] : selected?.name;
+      const name = String(nameValue || '').trim();
+      if (!phone) {
+        setContactMessage('That contact does not have a usable mobile number.');
+        return;
+      }
+      if (html5QrCodeRef.current?.isScanning) {
+        await html5QrCodeRef.current.stop().catch(() => undefined);
+      }
+      setRecipientMode('CONTACT');
+      setMerchantName(name || 'Selected contact');
+      setContactPhone(phone);
+      setScanResult(null);
+      setUpiId('');
+      setAmount('');
+      setIsScanning(false);
+      setContactMessage('Contact selected. No money is sent until Zeshu enables a verified UPI payment provider.');
+    } catch {
+      setContactMessage('Contact selection cancelled.');
+    }
+  };
+
+  const restartScanner = () => {
+    setRecipientMode('QR');
+    setContactPhone('');
+    setContactMessage('');
+    setMerchantName('Scanned UPI recipient');
+    setUpiId('');
+    setAmount('');
+    setScanResult(null);
+    setCameraError(null);
+    setIsScanning(true);
   };
 
   // 🚀 INTEGRATED RAZORPAY PAYMENT LOGIC
@@ -161,7 +215,7 @@ export default function ScannerPage() {
         </button>
         <div className="flex items-center gap-2">
           <ShieldCheck size={18} className="text-emerald-500" />
-          <span className="font-bold text-sm text-slate-300">Zeshu Pay • UPI</span>
+          <span className="font-bold text-sm text-slate-300">Zeshu QR • UPI tools</span>
         </div>
         <div className="w-10"></div>
       </header>
@@ -187,12 +241,16 @@ export default function ScannerPage() {
               )}
             </div>
 
-            <div className="mt-6 w-full flex items-center gap-3">
-              <label className="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 text-sm">
-                <ImageIcon size={18} className="text-indigo-400" /> Upload QR from Gallery
+            <div className="mt-6 grid w-full gap-3 sm:grid-cols-2">
+              <label className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 text-sm">
+                <ImageIcon size={18} className="text-indigo-400" /> Upload QR
                 <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
               </label>
+              <button type="button" onClick={() => void chooseContactRecipient()} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 text-sm">
+                <BookUser size={18} className="text-emerald-400" /> Choose contact
+              </button>
             </div>
+            {contactMessage && <p className="mt-3 text-center text-xs font-bold leading-5 text-slate-400" role="status">{contactMessage}</p>}
           </div>
         )}
 
@@ -201,21 +259,22 @@ export default function ScannerPage() {
             <div className="w-20 h-20 bg-indigo-500/20 rounded-full flex items-center justify-center mb-4 border border-indigo-500/30">
               <span className="text-3xl font-black text-indigo-400">{merchantName.charAt(0)}</span>
             </div>
-            <h2 className="text-2xl font-black mb-1 tracking-tight text-center">Paying {merchantName}</h2>
-            <p className="text-slate-400 text-xs mb-8 text-center truncate w-full px-4 font-mono">{scanResult}</p>
+            <h2 className="text-2xl font-black mb-1 tracking-tight text-center">{recipientMode === 'CONTACT' ? merchantName : `QR recipient: ${merchantName}`}</h2>
+            <p className="text-slate-400 text-xs mb-2 text-center truncate w-full px-4 font-mono">{recipientMode === 'CONTACT' ? `••••••${contactPhone.slice(-4)}` : (upiId || scanResult)}</p>
+            <p className="mb-6 max-w-sm text-center text-xs font-bold leading-5 text-amber-300/90">{recipientMode === 'CONTACT' ? 'Contact selected for the future pay-to-contact flow. Zeshu has not sent or moved any money.' : 'QR details were read locally. Payment remains disabled until verified settlement is enabled.'}</p>
 
             <div className="w-full bg-slate-800/50 border border-slate-700 p-6 rounded-3xl mb-6">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Enter Amount</label>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Amount preview</label>
               <div className="flex items-center text-5xl font-black text-white">
                 <IndianRupee size={40} className="text-slate-500 mr-2" />
                 <input type="number" autoFocus value={amount} onChange={(e) => setAmount(e.target.value)} className="bg-transparent border-none outline-none w-full placeholder:text-slate-700" placeholder="0" />
               </div>
             </div>
 
-            <button type="button" disabled className="w-full rounded-2xl bg-slate-800 py-5 text-lg font-black text-slate-500">Payments unavailable</button>{/*
+            <button type="button" disabled className="w-full rounded-2xl bg-slate-800 py-5 text-lg font-black text-slate-500">{recipientMode === 'CONTACT' ? 'Contact payments unavailable' : 'QR payments unavailable'}</button>{/*
               {isProcessing ? (<><div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div> Opening Secure Gateway...</>) : (`Pay ₹${amount || '0'} with Zeshu`)}
             </button>
-            */}<button onClick={() => setIsScanning(true)} className="mt-4 text-xs text-slate-400 font-bold hover:text-white">Scan Different QR</button>
+            */}<button onClick={restartScanner} className="mt-4 text-xs text-slate-400 font-bold hover:text-white">{recipientMode === 'CONTACT' ? 'Scan a QR instead' : 'Scan Different QR'}</button>
           </div>
         )}
 
