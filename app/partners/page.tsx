@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import PartnerLeadForm from '../components/PartnerLeadForm';
 
 const opportunities = [
   { title: 'Sponsored products', body: 'Clearly labelled Sponsored placements in relevant shopping results or digital discovery. Nationwide digital campaigns can run independently from Jagtial-only physical fulfilment. Organic results remain distinguishable from paid placements.' },
@@ -6,7 +7,9 @@ const opportunities = [
   { title: 'Featured collections', body: 'Time-bound festival, launch, bundle and category campaigns with clear commercial labelling where applicable.' },
   { title: 'Sampling & bundles', body: 'Brands can sponsor samples or bundles tied to genuine customer orders without forcing unrelated products into the cart.' },
   { title: 'Local supplier onboarding', body: 'Jagtial grocery, fresh-food, electronics, clothing and other eligible suppliers can be reviewed for fulfilment partnerships.' },
-  { title: 'Licensed pharmacy partners', body: 'Only appropriately licensed pharmacy partners will be considered for future medicine fulfilment. Prescription workflows remain disabled until compliance is complete.' },
+  { title: 'Licensed pharmacy partners', body: 'Only appropriately licensed pharmacies will be considered for medicine fulfilment. Prescription workflows remain disabled until compliance and provider operations are verified.' },
+  { title: 'Recharge & bill providers', body: 'BBPS/Bharat Connect, recharge and utility providers can propose compliant API or agent-institution integrations with settlement, commission and dispute-support terms.' },
+  { title: 'Travel distribution', body: 'Flight, hotel, bus and authorised rail partners can propose API, white-label or affiliate distribution for India-wide travel discovery and booking.' },
 ];
 
 export default function PartnersPage() {
@@ -41,8 +44,8 @@ export default function PartnersPage() {
 
         <section className="mt-6 rounded-3xl bg-emerald-50 p-6 md:p-8">
           <h2 className="text-xl font-black">Become a Zeshu partner</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Supplier and campaign onboarding is reviewed manually while the partner portal is being prepared. Physical fulfilment partners should include their Jagtial service capability. Digital sponsors can propose India-wide campaigns. Include GST/FSSAI/drug-licence details where applicable, product catalogue and commercial proposal.</p>
-          <a href="mailto:support@zeshu.in?subject=Zeshu%20brand%20or%20supplier%20partnership" className="mt-4 inline-flex rounded-xl bg-[#087443] px-5 py-3 text-sm font-black text-white">Contact Zeshu</a>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Apply directly below. Local physical-fulfilment partners should include their Jagtial capability. Recharge/bill and travel providers should include API/white-label, commission, settlement and support terms. Sponsors should include campaign budget and the products/services they want to promote. Pharmacy or medicine-distribution applicants must include valid licence details.</p>
+          <PartnerLeadForm />
         </section>
       </div>
     </main>
