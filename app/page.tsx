@@ -13,7 +13,7 @@ import {
   Tv, HeartHandshake, Plus, Minus, ShoppingBag, X, LogOut, Ticket, QrCode,
   Droplets, Wifi, Car, Landmark, ShieldCheck, PhoneCall, Phone, Package, Flame, BadgeCheck,
   History, ChevronDown, CheckSquare, Square, Clock, CheckCircle, Menu, Info, AlertCircle, BookUser, Truck, Receipt, SlidersHorizontal,
-  Crown 
+  Crown, MessageCircle 
 } from 'lucide-react';
 import { customerSupabase } from './lib/browser-supabase';
 
@@ -1520,6 +1520,15 @@ export default function ZeshuSuperApp() {
   const handleVerifyOtp = async () => { setIsLoading(true); const { data, error } = await supabase.auth.verifyOtp({ phone: `+91${phoneNumber}`, token: otp, type: 'sms' }); setIsLoading(false); if (data.session && data.user && !error) { setUser(data.session.user); setIsAuthModalOpen(false); void loadGrowthData(); showToast("Welcome back!"); } else showToast('Incorrect or expired OTP. Please try again.'); };
   const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); setRewardBalance(0); setRewardHistory([]); setReferralCode(''); setUseZeshuCash(false); setZeshuCashAmount(''); setIsAccountOpen(false); showToast("Logged out."); };
   const openAccountHome = () => { setAccountView('HOME'); setIsAccountOpen(true); };
+  const openAiSupport = () => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      showToast('Sign in to chat with Zeshu Assistant.');
+      return;
+    }
+    setAccountView('SUPPORT');
+    setIsAccountOpen(true);
+  };
   const closeAccount = () => { setAccountView('HOME'); setIsAccountOpen(false); };
   const goToHome = () => {
     setActiveTab('home');
@@ -2332,6 +2341,8 @@ export default function ZeshuSuperApp() {
           )}
         </div>
       </main>
+
+      {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && <button type="button" onClick={openAiSupport} aria-label="Chat with Zeshu Assistant" className="fixed bottom-24 right-4 z-30 inline-flex min-h-12 items-center gap-2 rounded-full bg-indigo-600 px-4 py-3 text-sm font-black text-white shadow-xl transition hover:bg-indigo-700 active:scale-95 md:bottom-8 md:right-8"><MessageCircle size={19} aria-hidden="true" /><span>Ask Zeshu</span></button>}
 
       <footer className="border-t border-[#dce8df] bg-white px-4 py-8 text-sm text-slate-600 md:px-8">
         <div className="mx-auto flex max-w-[1400px] flex-col gap-3 md:flex-row md:items-center md:justify-between">
