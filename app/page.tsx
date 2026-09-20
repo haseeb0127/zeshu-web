@@ -2712,21 +2712,33 @@ export default function ZeshuSuperApp() {
 
       <main className="max-w-[1400px] mx-auto w-full md:px-8 py-4 md:py-8 pt-[calc(168px+env(safe-area-inset-top))] sm:pt-[calc(164px+env(safe-area-inset-top))] lg:pt-[120px] flex gap-8">
         {activeTab === 'home' && normalizedSearch === '' && (
-          <aside className="hidden lg:block w-[260px] shrink-0 sticky top-[120px] h-[calc(100vh-120px)] overflow-y-auto no-scrollbar pr-4">
-            <h3 className="font-black text-[#111827] mb-5 px-3 tracking-tight text-lg">Shop by Category</h3>
+          <aside className="hidden lg:block w-[280px] shrink-0 sticky top-[120px] h-[calc(100vh-120px)] overflow-y-auto no-scrollbar pr-5">
+            <div className="mb-4 px-3">
+              <h3 className="text-lg font-black tracking-tight text-[#111827]">Shop by Category</h3>
+              <p className="mt-1 text-xs font-semibold leading-5 text-slate-400">Everyday essentials, grouped the way customers shop.</p>
+            </div>
             <div className="flex flex-col gap-1.5">
-              {productCategories.map(cat => (
-                <button key={cat} onClick={() => setActiveCategory(cat)} className={`text-left px-4 py-3.5 rounded-[18px] font-extrabold text-sm transition-all flex items-center gap-3.5 active:scale-[0.97] ${activeCategory === cat ? 'bg-[#EEF2FF] text-[#4F46E5] shadow-[inset_4px_0_0_0_#4F46E5]' : 'text-[#6B7280] hover:bg-white border border-transparent hover:border-gray-200/60'}`}>
-                  {cat === 'Food Delivery' ? <Flame size={16} className="text-orange-500"/> : cat === 'Electronics' ? <Zap size={16} className="text-blue-500"/> : <Package size={16} />}
-                  {cat}
-                </button>
-              ))}
+              {productCategories.map((cat) => {
+                const definition = categoryDefinition(cat);
+                const count = Number(categoryProductCounts[cat] || 0);
+                const isSelected = activeCategory === cat;
+                return (
+                  <button key={cat} type="button" onClick={() => setActiveCategory(cat)} aria-pressed={isSelected} className={`group flex w-full items-center gap-3 rounded-[18px] border px-3.5 py-3 text-left transition-all active:scale-[0.98] ${isSelected ? 'border-emerald-100 bg-emerald-50 text-[#087443] shadow-[inset_4px_0_0_0_#087443]' : 'border-transparent text-slate-600 hover:border-slate-200 hover:bg-white'}`}>
+                    <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-lg ${isSelected ? 'bg-white' : 'bg-slate-100 group-hover:bg-emerald-50'}`} aria-hidden="true">{definition.icon}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-black">{definition.label}</span>
+                      {cat !== 'All' && <span className={`mt-0.5 block text-[10px] font-bold ${count > 0 ? 'text-slate-400' : 'text-amber-600'}`}>{count > 0 ? `${count} available` : 'Coming soon'}</span>}
+                    </span>
+                    {cat === 'All' && <span className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-slate-500">{count}</span>}
+                  </button>
+                );
+              })}
             </div>
           </aside>
         )}
 
         <div className="flex-1 min-w-0 pb-32">
-           {activeTab === 'home' && <div className="mb-5 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar md:px-0" aria-label="Product categories">{productCategories.map((category) => <button type="button" key={category} onClick={() => setActiveCategory(category)} aria-pressed={activeCategory === category} className={`whitespace-nowrap rounded-full border px-4 py-2 text-xs font-black transition ${activeCategory === category ? 'border-[#087443] bg-[#087443] text-white' : 'border-[#dce8df] bg-white text-[#52645a]'}`}>{category}</button>)}</div>}
+           {activeTab === 'home' && <div className="mb-5 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar md:px-0 lg:hidden" aria-label="Product categories">{productCategories.map((category) => { const definition = categoryDefinition(category); return <button type="button" key={category} onClick={() => setActiveCategory(category)} aria-pressed={activeCategory === category} className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-black transition ${activeCategory === category ? 'border-[#087443] bg-[#087443] text-white' : 'border-[#dce8df] bg-white text-[#52645a]'}`}><span aria-hidden="true">{definition.icon}</span><span>{definition.label}</span></button>; })}</div>}
            {activeTab === 'home' && <>
              <div className="mb-5 flex items-center justify-between gap-3 px-4 md:px-0">
                <button type="button" aria-expanded={isProductFiltersOpen} aria-controls="product-filters" onClick={() => setIsProductFiltersOpen((current) => !current)} className="inline-flex items-center gap-2 rounded-xl border border-[#dce8df] bg-white px-3 py-2.5 text-xs font-black text-[#087443] shadow-sm"><SlidersHorizontal size={16} aria-hidden="true" /> Filters{activeProductFilterCount > 0 && <span className="rounded-full bg-[#087443] px-1.5 py-0.5 text-[10px] text-white">{activeProductFilterCount}</span>}</button>
@@ -2735,7 +2747,7 @@ export default function ZeshuSuperApp() {
              {isProductFiltersOpen && <div id="product-filters" className="mb-5 rounded-2xl border border-[#dce8df] bg-white p-4 shadow-sm">
                <div className="mb-3 flex items-center justify-between gap-3"><h3 className="text-sm font-black text-slate-900">Filter products</h3><button type="button" onClick={clearProductFilters} className="text-xs font-black text-[#087443]">Clear all</button></div>
                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                 <label className="text-xs font-black text-slate-600">Category<select value={activeCategory} onChange={(event) => setActiveCategory(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="All">All categories</option>{productCategories.filter((category) => category !== 'All').map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
+                 <label className="text-xs font-black text-slate-600">Category<select value={activeCategory} onChange={(event) => setActiveCategory(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="All">All categories</option>{productCategories.filter((category) => category !== 'All').map((category) => <option key={category} value={category}>{categoryDefinition(category).label}</option>)}</select></label>
                  <label className="text-xs font-black text-slate-600">Brand<select value={brandFilter} onChange={(event) => setBrandFilter(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="ALL">All brands</option>{productBrands.map((brand) => <option key={brand} value={brand}>{brand}</option>)}</select></label>
                  <label className="text-xs font-black text-slate-600">Price<select value={priceFilter} onChange={(event) => setPriceFilter(event.target.value as typeof priceFilter)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="ALL">Any price</option><option value="UNDER_100">Under ₹100</option><option value="100_299">₹100–₹299</option><option value="300_499">₹300–₹499</option><option value="500_PLUS">₹500+</option></select></label>
                  <label className="text-xs font-black text-slate-600">Availability<select value={availabilityFilter} onChange={(event) => setAvailabilityFilter(event.target.value as typeof availabilityFilter)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="ALL">All products</option><option value="AVAILABLE">In stock / available</option></select></label>
