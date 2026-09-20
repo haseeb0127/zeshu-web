@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { customerSupabase } from './lib/browser-supabase';
 import { isJagtialDeliveryCity } from './lib/service-scope';
+import { catalogSearchScore, getCatalogSearchRecommendations, isCatalogSearchMatch, smartTextMatchScore } from './lib/catalog-search';
 
 const supabase = customerSupabase();
 const SUPPORT_WHATSAPP_UI_ENABLED = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED === 'true';
@@ -33,6 +34,26 @@ const SERVICES = [
   { id: 'water', label: 'Water Bill', icon: <Droplets size={28} strokeWidth={1.5}/>, color: 'bg-[#CFFAFE] text-[#0891B2] group-hover:bg-[#06B6D4] group-hover:text-white', inputLabel: 'Account / Consumer No.' },
   { id: 'broadband', label: 'Broadband', icon: <Wifi size={28} strokeWidth={1.5}/>, color: 'bg-[#FAE8FF] text-[#C026D3] group-hover:bg-[#D946EF] group-hover:text-white', inputLabel: 'Subscriber / User ID' },
 ];
+
+const SERVICE_SEARCH_TERMS: Record<string, string> = {
+  mobile: 'prepaid mobile recharge phone topup top up plan plans jio airtel vi vodafone bsnl sim',
+  electricity: 'electricity power current bill light bill consumer number',
+  dth: 'dth tv television dish recharge tata play airtel digital sun direct',
+  upi: 'upi qr payment vpa scan merchant cashback',
+  pharmacy: 'pharmacy health medicine medicines medical prescription tablet',
+  fastag: 'fastag toll vehicle recharge car',
+  lpg: 'lpg gas cylinder booking indane bharat hp',
+  gas: 'piped gas png connection bill',
+  water: 'water bill municipal connection',
+  broadband: 'broadband internet wifi fiber bill',
+};
+
+const SITE_SEARCH_SHORTCUTS = [
+  { id: 'scanner', label: 'Scan QR', description: 'Open the Zeshu QR scanner', href: '/scanner', terms: 'qr scan scanner code merchant upi' },
+  { id: 'app', label: 'Get Zeshu', description: 'Install Zeshu on your device', href: '/app', terms: 'app android install download mobile pwa home screen' },
+  { id: 'policies', label: 'Policies & Trust', description: 'Refunds, privacy, terms and service information', href: '/policies', terms: 'policy policies refund cancellation privacy terms trust return' },
+  { id: 'partners', label: 'Brands & Partners', description: 'Sponsored campaigns and supplier partnerships', href: '/partners', terms: 'partner partners vendor supplier brand sponsor sponsored advertise advertising campaign' },
+] as const;
 
 const OPERATORS_DATA: any = {
   mobile: { 'JIO': '11', 'Airtel': '2', 'Vodafone': '23', 'Idea': '6', 'BSNL': '4' },
@@ -429,33 +450,74 @@ export default function ZeshuSuperApp() {
 
   const normalizedSearch = searchQuery.trim().replace(/\s+/g, ' ').toLowerCase();
   const filteredProducts = useMemo(() => {
-    const matchingProducts = products.filter((p) => {
-      if (!p || !p.name) return false;
-      const haystack = [p.name, p.brand, p.category, p.weight, p.unit].filter(Boolean).join(' ').replace(/\s+/g, ' ').toLowerCase();
-      const matchesSearch = !normalizedSearch || haystack.includes(normalizedSearch);
-      const matchesCategory = activeCategory === 'All' || String(p.category || '').trim() === activeCategory;
-      const matchesBrand = brandFilter === 'ALL' || String(p.brand || '').trim() === brandFilter;
-      const numericPrice = Number(p.price);
-      const matchesPrice = priceFilter === 'ALL'
-        || (priceFilter === 'UNDER_100' && Number.isFinite(numericPrice) && numericPrice < 100)
-        || (priceFilter === '100_299' && Number.isFinite(numericPrice) && numericPrice >= 100 && numericPrice < 300)
-        || (priceFilter === '300_499' && Number.isFinite(numericPrice) && numericPrice >= 300 && numericPrice < 500)
-        || (priceFilter === '500_PLUS' && Number.isFinite(numericPrice) && numericPrice >= 500);
-      const matchesAvailability = availabilityFilter === 'ALL'
-        || (Boolean(p.vendor_id) && p.in_stock !== false && !(Number(p.quantity) <= 0));
-      return matchesSearch && matchesCategory && matchesBrand && matchesPrice && matchesAvailability;
-    });
-    if (productSort === 'recommended') return matchingProducts;
-    return [...matchingProducts].sort((a, b) => {
-      if (productSort === 'name') return String(a.name || '').localeCompare(String(b.name || ''));
-      const priceA = Number(a.price);
-      const priceB = Number(b.price);
-      if (!Number.isFinite(priceA) && Number.isFinite(priceB)) return 1;
-      if (Number.isFinite(priceA) && !Number.isFinite(priceB)) return -1;
-      if (!Number.isFinite(priceA) && !Number.isFinite(priceB)) return 0;
-      return productSort === 'price_asc' ? priceA - priceB : priceB - priceA;
-    });
+    const matchingProducts = products
+      .map((product, index) => ({
+        product,
+        index,
+        searchScore: normalizedSearch ? catalogSearchScore(product, normalizedSearch) : 0,
+      }))
+      .filter(({ product, searchScore }) => {
+        if (!product || !product.name) return false;
+        const matchesSearch = !normalizedSearch || (searchScore > 0 && isCatalogSearchMatch(product, normalizedSearch));
+        const matchesCategory = activeCategory === 'All' || String(product.category || '').trim() === activeCategory;
+        const matchesBrand = brandFilter === 'ALL' || String(product.brand || '').trim() === brandFilter;
+        const numericPrice = Number(product.price);
+        const matchesPrice = priceFilter === 'ALL'
+          || (priceFilter === 'UNDER_100' && Number.isFinite(numericPrice) && numericPrice < 100)
+          || (priceFilter === '100_299' && Number.isFinite(numericPrice) && numericPrice >= 100 && numericPrice < 300)
+          || (priceFilter === '300_499' && Number.isFinite(numericPrice) && numericPrice >= 300 && numericPrice < 500)
+          || (priceFilter === '500_PLUS' && Number.isFinite(numericPrice) && numericPrice >= 500);
+        const matchesAvailability = availabilityFilter === 'ALL'
+          || (Boolean(product.vendor_id) && product.in_stock !== false && !(Number(product.quantity) <= 0));
+        return matchesSearch && matchesCategory && matchesBrand && matchesPrice && matchesAvailability;
+      });
+
+    if (productSort === 'recommended') {
+      return [...matchingProducts]
+        .sort((a, b) => normalizedSearch ? b.searchScore - a.searchScore || a.index - b.index : a.index - b.index)
+        .map(({ product }) => product);
+    }
+
+    return [...matchingProducts]
+      .sort((a, b) => {
+        if (productSort === 'name') return String(a.product.name || '').localeCompare(String(b.product.name || ''));
+        const priceA = Number(a.product.price);
+        const priceB = Number(b.product.price);
+        if (!Number.isFinite(priceA) && Number.isFinite(priceB)) return 1;
+        if (Number.isFinite(priceA) && !Number.isFinite(priceB)) return -1;
+        if (!Number.isFinite(priceA) && !Number.isFinite(priceB)) return 0;
+        return productSort === 'price_asc' ? priceA - priceB : priceB - priceA;
+      })
+      .map(({ product }) => product);
   }, [products, normalizedSearch, activeCategory, brandFilter, priceFilter, availabilityFilter, productSort]);
+
+  const searchRecommendations = useMemo(() => {
+    if (!normalizedSearch || filteredProducts.length > 0) return [];
+    const availableProducts = products.filter((product) => product?.name && product.in_stock !== false && !(Number(product.quantity) === 0));
+    const closeMatches = getCatalogSearchRecommendations(availableProducts, normalizedSearch, 5);
+    return closeMatches.length ? closeMatches : availableProducts.slice(0, 5);
+  }, [filteredProducts.length, normalizedSearch, products]);
+
+  const serviceSearchMatches = useMemo(() => {
+    if (!normalizedSearch) return [];
+    return SERVICES
+      .map((service) => ({
+        service,
+        score: smartTextMatchScore(`${service.label} ${service.inputLabel} ${SERVICE_SEARCH_TERMS[service.id] || ''}`, normalizedSearch),
+      }))
+      .filter((entry) => entry.score >= 16)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 4);
+  }, [normalizedSearch]);
+
+  const siteShortcutMatches = useMemo(() => {
+    if (!normalizedSearch) return [];
+    return SITE_SEARCH_SHORTCUTS
+      .map((shortcut) => ({ shortcut, score: smartTextMatchScore(`${shortcut.label} ${shortcut.description} ${shortcut.terms}`, normalizedSearch) }))
+      .filter((entry) => entry.score >= 16)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 4);
+  }, [normalizedSearch]);
   const activeProductFilterCount = (activeCategory !== 'All' ? 1 : 0) + (brandFilter !== 'ALL' ? 1 : 0) + (priceFilter !== 'ALL' ? 1 : 0) + (availabilityFilter !== 'ALL' ? 1 : 0);
   const clearProductFilters = () => {
     setActiveCategory('All');
@@ -1520,7 +1582,7 @@ export default function ZeshuSuperApp() {
       recognition.onresult = (event: any) => {
         const transcript = Array.from(event?.results || []).map((result: any) => result?.[0]?.transcript || '').join(' ').trim();
         receivedResult = Boolean(transcript);
-        if (transcript) setSearchQuery(transcript);
+        if (transcript) { setSearchQuery(transcript); setActiveTab('home'); }
         else setVoiceSearchMessage('No speech detected. Try again.');
       };
       recognition.onerror = (event: any) => {
@@ -2062,7 +2124,7 @@ export default function ZeshuSuperApp() {
           <div className="w-full lg:flex-1 max-w-3xl order-last lg:order-none mt-1 lg:mt-0">
             <div className="bg-[#f1f4f1] transition-all rounded-[14px] md:rounded-[20px] flex items-center px-4 py-3 md:py-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#087443]/25">
               <Search className="text-[#9CA3AF] w-[18px] h-[18px] md:w-[22px] md:h-[22px]" />
-              <input aria-label="Search products" type="search" placeholder="Search products" className="bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setVoiceSearchMessage(''); }} />
+              <input aria-label="Search Zeshu" type="search" placeholder="Search milk, atta, snacks, recharge..." className="bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => { const value = e.target.value; setSearchQuery(value); setVoiceSearchMessage(''); if (value.trim()) setActiveTab('home'); }} />
               {searchQuery && <button type="button" aria-label="Clear search" className="text-gray-500 p-1" onClick={() => setSearchQuery('')}><X size={16}/></button>}
               <button type="button" aria-label={isVoiceListening ? 'Stop voice search' : 'Search by voice'} aria-pressed={isVoiceListening} className={`ml-1 rounded-full p-1.5 text-[#087443] transition ${isVoiceListening ? 'bg-[#d9f4e3] animate-pulse' : 'hover:bg-[#e5f4ea]'}`} onClick={toggleVoiceSearch}><Mic size={18} aria-hidden="true" /></button>
             </div>
