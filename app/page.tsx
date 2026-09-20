@@ -282,6 +282,7 @@ export default function ZeshuSuperApp() {
   const [supportThreadBusy, setSupportThreadBusy] = useState(false);
   const [supportThreadLoading, setSupportThreadLoading] = useState(false);
   const [supportAssistantQuestion, setSupportAssistantQuestion] = useState('');
+  const [supportAssistantMessages, setSupportAssistantMessages] = useState<Array<{ role: 'CUSTOMER' | 'AI'; body: string }>>([]);
   const [supportAssistantAnswer, setSupportAssistantAnswer] = useState('');
   const [supportAssistantBusy, setSupportAssistantBusy] = useState(false);
   const [supportAssistantResolved, setSupportAssistantResolved] = useState<boolean | null>(null);
@@ -1535,38 +1536,63 @@ export default function ZeshuSuperApp() {
   const askSupportAssistant = async () => {
     const question = supportAssistantQuestion.trim();
     if (!question || supportAssistantBusy) return;
+    const history = supportAssistantMessages.slice(-10);
+    setSupportAssistantQuestion('');
     setSupportAssistantBusy(true);
     setSupportAssistantAnswer('');
     setSupportAssistantResolved(null);
     setSupportAssistantSource('');
+    setSupportAssistantMessages((current) => [...current, { role: 'CUSTOMER', body: question }]);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
-        setSupportAssistantAnswer('Please sign in so Zeshu can help safely and connect you to support if needed.');
+        const answer = 'Please sign in so Zeshu can help safely and connect you to support if needed.';
+        setSupportAssistantAnswer(answer);
+        setSupportAssistantMessages((current) => [...current, { role: 'AI', body: answer }]);
         setSupportAssistantResolved(false);
         return;
       }
       const response = await fetch('/api/support/assistant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ message: question }),
+        body: JSON.stringify({ message: question, history }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(typeof payload.error === 'string' ? payload.error : 'Zeshu Assistant is temporarily unavailable.');
-      setSupportAssistantAnswer(String(payload.answer || 'I could not resolve that safely. Please connect to Zeshu Support.'));
+      const answer = String(payload.answer || 'I could not resolve that safely. Please connect to Zeshu Support.');
+      setSupportAssistantAnswer(answer);
+      setSupportAssistantMessages((current) => [...current, { role: 'AI', body: answer }]);
       setSupportAssistantResolved(payload.resolved === true);
       setSupportAssistantSource(payload.source === 'ai' ? 'ai' : 'guided');
+
+      const transferredConversation = payload?.handoff?.created ? payload?.handoff?.conversation : null;
+      if (transferredConversation?.id) {
+        setSupportConversations((current) => [transferredConversation, ...current.filter((item) => item.id !== transferredConversation.id)]);
+        setSelectedSupportConversationId(transferredConversation.id);
+        setSupportThread(null);
+        setSupportThreadRefreshToken((value) => value + 1);
+        setSupportNotice('Zeshu Assistant could not fully resolve this, so your conversation was automatically transferred to Zeshu Support. You do not need to repeat the issue.');
+      } else if (payload.resolved !== true) {
+        setSupportMessage(question);
+        setSupportSubject('Other');
+        setSupportNotice('The automatic transfer could not be completed. Your question is ready below so you can send it to Zeshu Support without retyping it.');
+      }
     } catch (assistantError) {
-      setSupportAssistantAnswer(assistantError instanceof Error ? assistantError.message : 'Zeshu Assistant is temporarily unavailable.');
+      const answer = assistantError instanceof Error ? assistantError.message : 'Zeshu Assistant is temporarily unavailable.';
+      setSupportAssistantAnswer(answer);
+      setSupportAssistantMessages((current) => [...current, { role: 'AI', body: answer }]);
       setSupportAssistantResolved(false);
+      setSupportMessage(question);
+      setSupportSubject('Other');
+      setSupportNotice('AI help is temporarily unavailable. Your question is ready for Zeshu Support below.');
     } finally {
       setSupportAssistantBusy(false);
     }
   };
 
   const connectAssistantToHuman = () => {
-    const question = supportAssistantQuestion.trim();
-    if (question) setSupportMessage(question);
+    const latestCustomerMessage = [...supportAssistantMessages].reverse().find((message) => message.role === 'CUSTOMER')?.body || supportAssistantQuestion.trim();
+    if (latestCustomerMessage) setSupportMessage(latestCustomerMessage);
     setSupportSubject('Other');
     setSelectedSupportConversationId(null);
     setSupportNotice('Your question is ready below. Add any order details and send it to Zeshu Support.');
@@ -2548,9 +2574,10 @@ export default function ZeshuSuperApp() {
               {accountView === 'SUPPORT' && <section className="rounded-[24px] border border-slate-200 bg-white p-5" aria-labelledby="support-title">
                 <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 id="support-title" className="font-black text-slate-900">Help &amp; Support</h3><p className="mt-2 text-sm leading-6 text-slate-600">Start a support conversation with the Zeshu team. Never share OTPs, passwords, or payment credentials.</p></div>{selectedSupportConversationId && <button type="button" onClick={startNewSupportConversation} className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-[#087443]">New conversation</button>}</div>
                 {!selectedSupportConversationId && <div className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-black text-slate-900">Zeshu Assistant</p><p className="mt-1 text-xs leading-5 text-slate-600">Ask about tracking, delivery, refunds, Zeshu Cash, location, recharge/bill availability or account help. For payment/refund decisions and unresolved order issues, it will direct you to a person.</p></div>{supportAssistantSource && <span className="rounded-full bg-white px-2 py-1 text-[10px] font-black uppercase tracking-wider text-indigo-700">{supportAssistantSource === 'ai' ? 'AI' : 'Guided help'}</span>}</div>
-                  <div className="mt-3 flex flex-col gap-2 sm:flex-row"><input value={supportAssistantQuestion} maxLength={1200} onChange={(event) => { setSupportAssistantQuestion(event.target.value); setSupportAssistantAnswer(''); setSupportAssistantResolved(null); setSupportAssistantSource(''); }} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void askSupportAssistant(); } }} placeholder="How can Zeshu help?" aria-label="Ask Zeshu Assistant" className="min-w-0 flex-1 rounded-xl border border-indigo-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-400" /><button type="button" disabled={supportAssistantBusy || !supportAssistantQuestion.trim()} onClick={() => void askSupportAssistant()} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-black text-white disabled:opacity-50">{supportAssistantBusy ? 'Thinking…' : 'Ask'}</button></div>
-                  {supportAssistantAnswer && <div className="mt-3 rounded-xl bg-white p-3 text-sm leading-6 text-slate-700"><p>{supportAssistantAnswer}</p>{supportAssistantResolved === false && <button type="button" onClick={connectAssistantToHuman} className="mt-3 rounded-xl bg-[#087443] px-4 py-2.5 text-xs font-black text-white">Connect to a person</button>}</div>}
+                  <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-black text-slate-900">Zeshu Assistant</p><p className="mt-1 text-xs leading-5 text-slate-600">Ask about tracking, delivery, refunds, Zeshu Cash, location, recharge/bill availability or account help. If AI cannot safely resolve the issue, it automatically transfers this chat to Zeshu Support with the context attached.</p></div>{supportAssistantSource && <span className="rounded-full bg-white px-2 py-1 text-[10px] font-black uppercase tracking-wider text-indigo-700">{supportAssistantSource === 'ai' ? 'AI' : 'Guided help'}</span>}</div>
+                  {supportAssistantMessages.length > 0 && <div className="mt-3 max-h-64 space-y-2 overflow-y-auto rounded-xl bg-white/70 p-3" aria-live="polite">{supportAssistantMessages.map((message, index) => <div key={`${message.role}-${index}`} className={`rounded-xl p-3 text-sm leading-6 ${message.role === 'CUSTOMER' ? 'ml-6 bg-indigo-600 text-white' : 'mr-6 bg-white text-slate-700 shadow-sm'}`}><p className={`mb-1 text-[10px] font-black uppercase tracking-wider ${message.role === 'CUSTOMER' ? 'text-indigo-100' : 'text-indigo-700'}`}>{message.role === 'CUSTOMER' ? 'You' : 'Zeshu Assistant'}</p><p className="whitespace-pre-wrap break-words">{message.body}</p></div>)}</div>}
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row"><input value={supportAssistantQuestion} maxLength={1200} onChange={(event) => { setSupportAssistantQuestion(event.target.value); setSupportAssistantAnswer(''); setSupportAssistantResolved(null); }} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void askSupportAssistant(); } }} placeholder="Ask Zeshu Assistant…" aria-label="Ask Zeshu Assistant" className="min-w-0 flex-1 rounded-xl border border-indigo-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-400" /><button type="button" disabled={supportAssistantBusy || !supportAssistantQuestion.trim()} onClick={() => void askSupportAssistant()} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-black text-white disabled:opacity-50">{supportAssistantBusy ? 'Thinking…' : 'Send'}</button></div>
+                  {supportAssistantResolved === false && supportAssistantAnswer && <button type="button" onClick={connectAssistantToHuman} className="mt-3 rounded-xl border border-[#087443] bg-white px-4 py-2.5 text-xs font-black text-[#087443]">Open manual support form</button>}
                 </div>}
                 {SUPPORT_WHATSAPP_UI_ENABLED && <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
                   <div className="flex items-center justify-between gap-4">
@@ -2576,7 +2603,7 @@ export default function ZeshuSuperApp() {
                   <button type="button" onClick={startNewSupportConversation} className="text-xs font-black text-indigo-700">← Back to conversations</button>
                   {supportThreadLoading && !supportThread ? <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Loading conversation…</p> : supportThread ? <>
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-2"><div><p className="font-black text-slate-900">{supportThread.conversation.subject}</p><p className="mt-1 text-xs font-bold text-slate-500">{supportThread.conversation.status === 'WAITING' ? 'WAITING FOR SUPPORT' : supportThread.conversation.status}</p></div>{supportThread.conversation.status !== 'RESOLVED' && <button type="button" disabled={supportThreadBusy || supportThread.conversation.status === 'WAITING'} onClick={() => void escalateSupportConversation()} className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-black text-amber-800 disabled:opacity-60">{supportThread.conversation.status === 'WAITING' ? 'Agent requested' : 'Talk to a person'}</button>}</div>
-                    <div className="mt-3 max-h-72 space-y-2 overflow-y-auto rounded-xl bg-slate-50 p-3">{supportThread.messages.length === 0 ? <p className="text-sm text-slate-500">No messages yet.</p> : supportThread.messages.map((message) => <div key={message.id} className={`rounded-xl p-3 text-sm ${message.sender_role === 'CUSTOMER' ? 'ml-6 bg-indigo-50 text-indigo-950' : 'mr-6 bg-white text-slate-800 shadow-sm'}`}><p className="mb-1 text-[10px] font-black uppercase tracking-wider text-slate-500">{message.sender_role === 'CUSTOMER' ? 'You' : message.sender_role === 'ADMIN' ? 'Zeshu support' : 'Support'}</p><p className="whitespace-pre-wrap break-words">{message.body}</p></div>)}</div>
+                    <div className="mt-3 max-h-72 space-y-2 overflow-y-auto rounded-xl bg-slate-50 p-3">{supportThread.messages.length === 0 ? <p className="text-sm text-slate-500">No messages yet.</p> : supportThread.messages.map((message) => <div key={message.id} className={`rounded-xl p-3 text-sm ${message.sender_role === 'CUSTOMER' ? 'ml-6 bg-indigo-50 text-indigo-950' : 'mr-6 bg-white text-slate-800 shadow-sm'}`}><p className="mb-1 text-[10px] font-black uppercase tracking-wider text-slate-500">{message.sender_role === 'CUSTOMER' ? 'You' : message.sender_role === 'ADMIN' ? 'Zeshu support' : message.sender_role === 'AI' ? 'Zeshu Assistant' : 'Support'}</p><p className="whitespace-pre-wrap break-words">{message.body}</p></div>)}</div>
                     {supportThread.conversation.status === 'RESOLVED' ? <p className="mt-3 rounded-xl bg-emerald-50 p-3 text-xs font-bold text-emerald-800">This conversation is resolved. Start a new conversation if you need more help.</p> : <><label htmlFor="support-thread-message" className="sr-only">Reply to support</label><textarea id="support-thread-message" rows={3} maxLength={4000} value={supportThreadMessage} onChange={(event) => setSupportThreadMessage(event.target.value)} placeholder="Reply to support" className="mt-3 w-full resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#087443]" /><button type="button" disabled={supportThreadBusy || !supportThreadMessage.trim()} onClick={() => void sendSupportThreadMessage()} className="mt-2 w-full rounded-xl bg-[#087443] px-4 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500">{supportThreadBusy ? 'Sending...' : 'Send message'}</button></>}
                   </> : <p className="mt-4 rounded-xl bg-red-50 p-4 text-sm font-bold text-red-700">This conversation could not be loaded.</p>}
                 </div>}
