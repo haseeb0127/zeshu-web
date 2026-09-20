@@ -24,6 +24,7 @@ type Props = {
   initial: LocationSelection | null;
   onClose: () => void;
   onConfirm: (coordinates: LocationSelection, address: string) => void;
+  onExploreDigital?: () => void;
 };
 
 const JAGTIAL_VIEWPORT = { lat: 18.7989, lng: 78.9117 };
@@ -112,7 +113,7 @@ const loadGoogleMaps = (key: string) => new Promise<any>((resolve, reject) => {
   document.head.appendChild(script);
 });
 
-export default function LocationSelector({ open, initial, onClose, onConfirm }: Props) {
+export default function LocationSelector({ open, initial, onClose, onConfirm, onExploreDigital }: Props) {
   const mapElement = useRef<HTMLDivElement>(null);
   const searchElement = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -126,6 +127,9 @@ export default function LocationSelector({ open, initial, onClose, onConfirm }: 
   const [center, setCenter] = useState(initial ? { lat: initial.latitude, lng: initial.longitude } : JAGTIAL_VIEWPORT);
   const [address, setAddress] = useState(LOCATION_PROMPT);
   const [addressDetails, setAddressDetails] = useState<LocationAddressDetails | null>(initial?.addressDetails || null);
+  const [serviceAreaStatus, setServiceAreaStatus] = useState<'ELIGIBLE' | 'OUTSIDE_SERVICE_AREA' | 'SERVICE_AREA_UNAVAILABLE' | null>(null);
+  const [serviceAreaMessage, setServiceAreaMessage] = useState('');
+  const [checkingServiceArea, setCheckingServiceArea] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -137,6 +141,9 @@ export default function LocationSelector({ open, initial, onClose, onConfirm }: 
     initialAddressRef.current = isUsableDisplayAddress(initialAddress);
     setAddress(initialAddress || LOCATION_PROMPT);
     setAddressDetails(initial?.addressDetails || null);
+    setServiceAreaStatus(null);
+    setServiceAreaMessage('');
+    setCheckingServiceArea(false);
     const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY;
     if (!key) { setMapsError(true); return; }
     let cancelled = false;
@@ -152,6 +159,8 @@ export default function LocationSelector({ open, initial, onClose, onConfirm }: 
         if (!next) return;
         const nextCenter = { lat: next.lat(), lng: next.lng() };
         setCenter(nextCenter);
+        setServiceAreaStatus(null);
+        setServiceAreaMessage('');
         if (initialAddressRef.current && !movedRef.current) return;
         if (reverseTimerRef.current) clearTimeout(reverseTimerRef.current);
         reverseTimerRef.current = setTimeout(() => {
@@ -183,6 +192,8 @@ export default function LocationSelector({ open, initial, onClose, onConfirm }: 
           const nextCenter = { lat: location.lat(), lng: location.lng() };
           const details = parseAddressDetails(place);
           map.panTo(nextCenter); map.setZoom(17); setCenter(nextCenter);
+          setServiceAreaStatus(null);
+          setServiceAreaMessage('');
           setAddress(place.formattedAddress || SELECTED_LOCATION_PROMPT);
           setAddressDetails(details);
         });
@@ -193,14 +204,41 @@ export default function LocationSelector({ open, initial, onClose, onConfirm }: 
   }, [open, initial]);
 
   if (!open) return null;
-  const confirm = () => onConfirm({
-    latitude: center.lat,
-    longitude: center.lng,
-    accuracy: initial && !movedRef.current ? initial.accuracy : null,
-    source: initial && !movedRef.current && initial.accuracy !== null ? 'DEVICE' : 'MANUAL_PIN',
-    ...(isUsableDisplayAddress(address) ? { displayAddress: address.trim() } : {}),
-    ...(addressDetails ? { addressDetails } : {}),
-  }, address);
+  const confirm = async () => {
+    if (checkingServiceArea) return;
+    setCheckingServiceArea(true);
+    setServiceAreaStatus(null);
+    setServiceAreaMessage('');
+    try {
+      const response = await fetch('/api/service-area/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ latitude: center.lat, longitude: center.lng }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      const status = payload?.status === 'ELIGIBLE' || payload?.status === 'OUTSIDE_SERVICE_AREA'
+        ? payload.status
+        : 'SERVICE_AREA_UNAVAILABLE';
+      setServiceAreaStatus(status);
+      setServiceAreaMessage(String(payload?.message || 'We could not verify this delivery location.'));
+
+      if (!response.ok || status !== 'ELIGIBLE') return;
+
+      onConfirm({
+        latitude: center.lat,
+        longitude: center.lng,
+        accuracy: initial && !movedRef.current ? initial.accuracy : null,
+        source: initial && !movedRef.current && initial.accuracy !== null ? 'DEVICE' : 'MANUAL_PIN',
+        ...(isUsableDisplayAddress(address) ? { displayAddress: address.trim() } : {}),
+        ...(addressDetails ? { addressDetails } : {}),
+      }, address);
+    } catch {
+      setServiceAreaStatus('SERVICE_AREA_UNAVAILABLE');
+      setServiceAreaMessage('We could not verify this delivery location. Check your connection and try again.');
+    } finally {
+      setCheckingServiceArea(false);
+    }
+  };
   return <div className="fixed inset-0 z-[180] flex flex-col bg-white" role="dialog" aria-modal="true" aria-labelledby="location-selector-title">
     <div className="flex items-center gap-3 border-b bg-white px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
       <button type="button" aria-label="Close location selector" onClick={onClose} className="min-h-11 min-w-11 rounded-full bg-slate-100 text-xl">×</button>
@@ -218,8 +256,11 @@ export default function LocationSelector({ open, initial, onClose, onConfirm }: 
         {addressDetails?.postalCode && <span className="rounded-full bg-slate-100 px-2.5 py-1">PIN {addressDetails.postalCode}</span>}
       </div>
       <p className="mt-2 text-sm font-black text-slate-800">Place the pin at your delivery entrance</p>
-      <p className="mt-1 text-xs leading-5 text-slate-500">We&apos;ll fill the street/area, city, state and PIN code automatically. You can add your house or flat number next.</p>
-      <button type="button" disabled={!mapsReady} onClick={confirm} className="mt-3 min-h-12 w-full rounded-2xl bg-[#087443] px-4 py-3 font-black text-white disabled:opacity-50">Use this location</button>
+      <p className="mt-1 text-xs leading-5 text-slate-500">We&apos;ll verify the pin against the Jagtial delivery area before saving it. Street/area, city, state and PIN are filled automatically when available.</p>
+      {serviceAreaStatus === 'ELIGIBLE' && <div role="status" className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3"><p className="text-sm font-black text-emerald-800">Delivery available here</p><p className="mt-1 text-xs leading-5 text-emerald-700">{serviceAreaMessage}</p></div>}
+      {serviceAreaStatus === 'OUTSIDE_SERVICE_AREA' && <div role="alert" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3"><p className="text-sm font-black text-amber-900">We&apos;re not delivering physical products here yet</p><p className="mt-1 text-xs leading-5 text-amber-800">{serviceAreaMessage} Digital services remain available across India.</p>{onExploreDigital && <button type="button" onClick={onExploreDigital} className="mt-2 rounded-lg bg-white px-3 py-2 text-xs font-black text-indigo-700 shadow-sm">Explore digital services</button>}</div>}
+      {serviceAreaStatus === 'SERVICE_AREA_UNAVAILABLE' && <div role="alert" className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3"><p className="text-sm font-black text-slate-800">Location could not be verified</p><p className="mt-1 text-xs leading-5 text-slate-600">{serviceAreaMessage}</p></div>}
+      <button type="button" disabled={!mapsReady || checkingServiceArea} onClick={() => void confirm()} className="mt-3 min-h-12 w-full rounded-2xl bg-[#087443] px-4 py-3 font-black text-white disabled:opacity-50">{checkingServiceArea ? 'Checking delivery area…' : serviceAreaStatus === 'OUTSIDE_SERVICE_AREA' ? 'Check another location' : 'Use this location'}</button>
     </div>
   </div>;
 }
