@@ -43,17 +43,17 @@ jobs:
         run: |
           set -euo pipefail
 
-          code="$(curl -sS -o /tmp/assistant -w '%{http_code}' \
+          code="$(curl -L -sS -o /tmp/assistant -w '%{http_code}' \
             -X POST "https://zeshu.in/api/support/assistant" \
             -H 'Content-Type: application/json' \
             --data '{"message":"hello"}' || true)"
           test "$code" = "401" || { echo "Assistant expected 401, got $code"; exit 1; }
 
-          code="$(curl -sS -o /tmp/admin-support -w '%{http_code}' \
+          code="$(curl -L -sS -o /tmp/admin-support -w '%{http_code}' \
             "https://zeshu.in/api/admin/support/conversations" || true)"
           test "$code" = "401" || { echo "Admin support expected 401, got $code"; exit 1; }
 
-          code="$(curl -sS -o /tmp/cron -w '%{http_code}' \
+          code="$(curl -L -sS -o /tmp/cron -w '%{http_code}' \
             "https://zeshu.in/api/cron/support-whatsapp" || true)"
           test "$code" = "401" || { echo "WhatsApp cron expected 401 without bearer token, got $code"; exit 1; }
 
