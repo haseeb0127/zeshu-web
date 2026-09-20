@@ -44,7 +44,7 @@ const fallbackAnswer = (message: string) => {
   }
   if (/recharge|bill|electricity|fastag|gas|water|broadband/.test(text)) {
     return {
-      answer: 'Some recharge and bill features are currently discovery-only while provider fulfilment is being verified. If you need help with a specific provider transaction, I will transfer this to Zeshu Support.',
+      answer: 'Recharge and bill tools are designed for India-wide use and do not require a Jagtial delivery location. Some provider features are still discovery-only while fulfilment is being verified. If you need help with a specific provider transaction, I will transfer this to Zeshu Support.',
       resolved: false,
       subject: 'Recharge or bill support',
       handoff_reason: 'Provider-specific transaction support requires a human review.',
@@ -60,7 +60,7 @@ const fallbackAnswer = (message: string) => {
   }
   if (/location|address|pin/.test(text)) {
     return {
-      answer: 'Use the delivery-location control at the top of Zeshu, place the pin at your delivery entrance, then save your house or flat and landmark details. Supported Jagtial delivery areas are validated automatically.',
+      answer: 'Physical delivery is currently limited to the Jagtial delivery zone. Use the delivery-location control, place the pin at your entrance, then save your house or flat and landmark details. Digital recharge, bill, QR and reward features do not require a Jagtial delivery location.',
       resolved: true,
       subject: 'Delivery location help',
       handoff_reason: '',
