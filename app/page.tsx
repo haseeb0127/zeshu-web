@@ -2306,6 +2306,7 @@ export default function ZeshuSuperApp() {
           <span className="font-bold">© Zeshu · Everyday, simply</span>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Link href="/policies" className="font-black text-[#087443] underline-offset-4 hover:underline">Policies &amp; Trust Center</Link>
+            <Link href="/partners" className="font-black text-[#087443] underline-offset-4 hover:underline">Brands &amp; Suppliers</Link>
             <span>Real support is provided through verified order communication.</span>
           </div>
         </div>
