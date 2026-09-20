@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import PwaInstallButton from '../components/PwaInstallButton';
+import ShareZeshuButton from '../components/ShareZeshuButton';
 
 export default function GetZeshuPage() {
   return (
@@ -18,7 +19,7 @@ export default function GetZeshuPage() {
           <div className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm md:p-8">
             <h2 className="text-2xl font-black">Install on this device</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">On supported Android browsers, tap Install Zeshu. If your browser does not show an install prompt, use Add to Home screen from the browser menu.</p>
-            <div className="mt-5 max-w-sm"><PwaInstallButton /></div>
+            <div className="mt-5 grid max-w-sm gap-3"><PwaInstallButton /><ShareZeshuButton /></div>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl bg-emerald-50 p-4"><p className="text-xs font-black uppercase tracking-wider text-emerald-700">Jagtial</p><p className="mt-1 font-black">Fast physical delivery</p><p className="mt-1 text-xs leading-5 text-slate-600">Groceries, fresh essentials and other eligible local products stay limited to the Jagtial delivery zone.</p></div>
               <div className="rounded-2xl bg-indigo-50 p-4"><p className="text-xs font-black uppercase tracking-wider text-indigo-700">All India</p><p className="mt-1 font-black">Digital services</p><p className="mt-1 text-xs leading-5 text-slate-600">Recharge, bills, QR tools, rewards and sponsored digital offers can serve users nationwide as each provider is enabled.</p></div>
