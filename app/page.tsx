@@ -708,7 +708,6 @@ export default function ZeshuSuperApp() {
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'support_conversations', filter: `id=eq.${selectedSupportConversationId}` }, () => {
         setSupportThreadRefreshToken((value) => value + 1);
-        void loadSupportConversations();
       })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
