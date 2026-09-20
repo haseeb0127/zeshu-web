@@ -253,7 +253,9 @@ export default function ZeshuSuperApp() {
   const [activeTab, setActiveTab] = useState('home'); 
   const [activeService, setActiveService] = useState('mobile');
   const [products, setProducts] = useState<any[]>([]);
-  const [banners] = useState<string[]>([]);
+  const [marketingCampaigns, setMarketingCampaigns] = useState<any[]>([]);
+  const [focusedCampaignId, setFocusedCampaignId] = useState<string | null>(null);
+  const marketingViewRef = useRef<Set<string>>(new Set());
   const [myOrders, setMyOrders] = useState<any[]>([]);
   const [recentlyPurchased, setRecentlyPurchased] = useState<any[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
@@ -448,6 +450,23 @@ export default function ZeshuSuperApp() {
 
   const productBrands = useMemo(() => Array.from(new Set(products.map((product) => String(product?.brand || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)), [products]);
 
+  const visibleMarketingBanners = useMemo(() => marketingCampaigns.filter((campaign) =>
+    campaign?.placement === 'HOMEPAGE_BANNER'
+      || (campaign?.placement === 'CATEGORY_BANNER' && activeCategory !== 'All' && String(campaign?.category_name || '').trim() === activeCategory)
+  ), [marketingCampaigns, activeCategory]);
+  const sponsoredProductIds = useMemo(() => new Set<string>(
+    marketingCampaigns
+      .filter((campaign) => campaign?.placement === 'SPONSORED_PRODUCT')
+      .flatMap((campaign) => Array.isArray(campaign?.products) ? campaign.products : [])
+      .map((product) => String(product?.id || ''))
+      .filter(Boolean)
+  ), [marketingCampaigns]);
+  const focusedProductIds = useMemo(() => {
+    if (!focusedCampaignId) return new Set<string>();
+    const campaign = marketingCampaigns.find((entry) => String(entry?.id || '') === focusedCampaignId);
+    return new Set<string>((Array.isArray(campaign?.products) ? campaign.products : []).map((product: any) => String(product?.id || '')).filter(Boolean));
+  }, [focusedCampaignId, marketingCampaigns]);
+
   const normalizedSearch = searchQuery.trim().replace(/\s+/g, ' ').toLowerCase();
   const filteredProducts = useMemo(() => {
     const matchingProducts = products
@@ -469,12 +488,17 @@ export default function ZeshuSuperApp() {
           || (priceFilter === '500_PLUS' && Number.isFinite(numericPrice) && numericPrice >= 500);
         const matchesAvailability = availabilityFilter === 'ALL'
           || (Boolean(product.vendor_id) && product.in_stock !== false && !(Number(product.quantity) <= 0));
-        return matchesSearch && matchesCategory && matchesBrand && matchesPrice && matchesAvailability;
+        const matchesCampaign = focusedProductIds.size === 0 || focusedProductIds.has(String(product.id));
+        return matchesSearch && matchesCategory && matchesBrand && matchesPrice && matchesAvailability && matchesCampaign;
       });
 
     if (productSort === 'recommended') {
       return [...matchingProducts]
-        .sort((a, b) => normalizedSearch ? b.searchScore - a.searchScore || a.index - b.index : a.index - b.index)
+        .sort((a, b) => {
+          const sponsoredDelta = Number(sponsoredProductIds.has(String(b.product.id))) - Number(sponsoredProductIds.has(String(a.product.id)));
+          if (sponsoredDelta) return sponsoredDelta;
+          return normalizedSearch ? b.searchScore - a.searchScore || a.index - b.index : a.index - b.index;
+        })
         .map(({ product }) => product);
     }
 
@@ -489,7 +513,7 @@ export default function ZeshuSuperApp() {
         return productSort === 'price_asc' ? priceA - priceB : priceB - priceA;
       })
       .map(({ product }) => product);
-  }, [products, normalizedSearch, activeCategory, brandFilter, priceFilter, availabilityFilter, productSort]);
+  }, [products, normalizedSearch, activeCategory, brandFilter, priceFilter, availabilityFilter, productSort, focusedProductIds, sponsoredProductIds]);
 
   const searchRecommendations = useMemo(() => {
     if (!normalizedSearch || filteredProducts.length > 0) return [];
@@ -525,6 +549,37 @@ export default function ZeshuSuperApp() {
     setPriceFilter('ALL');
     setAvailabilityFilter('ALL');
     setProductSort('recommended');
+    setFocusedCampaignId(null);
+  };
+
+  const recordMarketingEvent = (campaignId: unknown, eventType: 'VIEW' | 'CLICK') => {
+    const id = String(campaignId || '').trim();
+    if (!id) return;
+    void fetch('/api/marketing/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ campaign_id: id, event_type: eventType }),
+      keepalive: true,
+    }).catch(() => undefined);
+  };
+
+  const handleCampaignClick = (campaign: any) => {
+    recordMarketingEvent(campaign?.id, 'CLICK');
+    const linkedProducts = Array.isArray(campaign?.products) ? campaign.products : [];
+    if (linkedProducts.length > 0) {
+      setFocusedCampaignId(String(campaign.id));
+      setSearchQuery('');
+      setActiveCategory('All');
+      setBrandFilter('ALL');
+      setPriceFilter('ALL');
+      setAvailabilityFilter('ALL');
+      setProductSort('recommended');
+      setActiveTab('home');
+      window.setTimeout(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+      return;
+    }
+    const destination = String(campaign?.destination_url || '');
+    if (destination.startsWith('/') && !destination.startsWith('//')) window.location.assign(destination);
   };
 
   const smartAddOns = useMemo(() => {
@@ -672,6 +727,31 @@ export default function ZeshuSuperApp() {
     checkUser();
     setIsDetectingLoc(false);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const audiences = isJagtialDeliveryCity(currentAddress) ? 'INDIA,JAGTIAL' : 'INDIA';
+    const loadMarketingCampaigns = async () => {
+      try {
+        const response = await fetch(`/api/marketing/campaigns?audiences=${encodeURIComponent(audiences)}`, { cache: 'no-store' });
+        const payload = await response.json().catch(() => ({}));
+        if (!cancelled && response.ok) setMarketingCampaigns(Array.isArray(payload.campaigns) ? payload.campaigns : []);
+      } catch {
+        if (!cancelled) setMarketingCampaigns([]);
+      }
+    };
+    void loadMarketingCampaigns();
+    return () => { cancelled = true; };
+  }, [currentAddress]);
+
+  useEffect(() => {
+    marketingCampaigns.forEach((campaign) => {
+      const campaignId = String(campaign?.id || '');
+      if (!campaignId || marketingViewRef.current.has(campaignId)) return;
+      marketingViewRef.current.add(campaignId);
+      recordMarketingEvent(campaignId, 'VIEW');
+    });
+  }, [marketingCampaigns]);
 
   useEffect(() => {
     if (!user) {
@@ -2353,8 +2433,17 @@ export default function ZeshuSuperApp() {
             <>
               {normalizedSearch === '' && (
                 <div className="mb-10 space-y-5 md:space-y-8">
-                  {banners.length > 0 && <div className="flex gap-4 overflow-x-auto px-4 pb-2 no-scrollbar snap-x md:gap-5 md:px-0 md:pb-4">
-                    {banners.map((img, idx) => (<img key={idx} src={img} alt="Promo" className="h-[140px] min-w-[280px] cursor-pointer snap-center rounded-[16px] border border-gray-100/50 object-cover shadow-lg transition-all hover:-translate-y-1.5 md:h-[240px] md:min-w-[480px] md:rounded-[28px]" />))}
+                  {visibleMarketingBanners.length > 0 && <div className="flex gap-4 overflow-x-auto px-4 pb-2 no-scrollbar snap-x md:gap-5 md:px-0 md:pb-4" aria-label="Sponsored promotions">
+                    {visibleMarketingBanners.map((campaign) => (
+                      <button type="button" key={campaign.id} onClick={() => handleCampaignClick(campaign)} className="group relative h-[140px] min-w-[280px] cursor-pointer snap-center overflow-hidden rounded-[16px] border border-gray-100/50 bg-slate-100 text-left shadow-lg transition-all hover:-translate-y-1 md:h-[200px] md:min-w-[480px] md:rounded-[24px]">
+                        <picture>
+                          {campaign.mobile_image_url && <source media="(max-width: 767px)" srcSet={campaign.mobile_image_url} />}
+                          <img src={campaign.desktop_image_url || campaign.mobile_image_url} alt={campaign.headline || campaign.name || 'Sponsored promotion'} className="h-full w-full object-cover" />
+                        </picture>
+                        <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-violet-700 shadow-sm">Sponsored</span>
+                        {(campaign.headline || campaign.cta_label) && <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 pt-10 text-white"><span className="block text-sm font-black md:text-base">{campaign.headline || campaign.name}</span><span className="mt-1 block text-[11px] font-bold text-white/90">{campaign.cta_label || 'Shop now'} →</span></span>}
+                      </button>
+                    ))}
                   </div>}
 
                   <section className="mx-4 grid gap-3 md:mx-0 md:grid-cols-2" aria-label="Where Zeshu is available">
@@ -2439,7 +2528,7 @@ export default function ZeshuSuperApp() {
               )}
               <div id="products" className="px-4 md:px-0">
                 <div className="flex flex-wrap items-end justify-between gap-3 mb-6 md:mb-8 border-b pb-4 md:pb-5">
-                  <div><h2 className="text-2xl md:text-3xl font-black tracking-tighter">{normalizedSearch ? `Results for “${searchQuery.trim()}”` : `${activeCategory} Items`}</h2>{normalizedSearch && <p className="mt-1 text-xs font-medium text-slate-500">Matches names, brands, categories, related words and spelling mistakes.</p>}</div>
+                  <div><h2 className="text-2xl md:text-3xl font-black tracking-tighter">{focusedCampaignId ? 'Sponsored selection' : normalizedSearch ? `Results for “${searchQuery.trim()}”` : `${activeCategory} Items`}</h2>{focusedCampaignId ? <button type="button" onClick={() => setFocusedCampaignId(null)} className="mt-2 rounded-lg bg-violet-50 px-3 py-1.5 text-xs font-black text-violet-700">Clear sponsored selection</button> : normalizedSearch && <p className="mt-1 text-xs font-medium text-slate-500">Matches names, brands, categories, related words and spelling mistakes.</p>}</div>
                   <div className="flex items-center gap-2"><span className="text-[#6B7280] font-bold text-xs md:text-sm bg-gray-100 px-3 py-1 rounded-xl">{filteredProducts.length} items</span></div>
                 </div>
                 
@@ -2461,7 +2550,7 @@ export default function ZeshuSuperApp() {
                     {filteredProducts.map((p) => {
                       const inCart = cart.find(c => c.item.id === p.id);
                       const aggregate = productAggregates[String(p.id)];
-                      return <ProductCard key={p.id} product={p} quantity={inCart?.qty} onAdd={() => addToCart(p)} onRemove={() => removeFromCart(p.id)} isFavorite={favoriteIds.has(String(p.id))} favoriteBusy={favoriteBusyId === String(p.id)} onFavoriteToggle={() => void toggleFavorite(p)} reviewAverage={aggregate?.average_rating} reviewCount={aggregate?.review_count} onReviews={() => void openPublicReviews(p)} />;
+                      return <ProductCard key={p.id} product={p} quantity={inCart?.qty} onAdd={() => addToCart(p)} onRemove={() => removeFromCart(p.id)} isFavorite={favoriteIds.has(String(p.id))} favoriteBusy={favoriteBusyId === String(p.id)} onFavoriteToggle={() => void toggleFavorite(p)} reviewAverage={aggregate?.average_rating} reviewCount={aggregate?.review_count} onReviews={() => void openPublicReviews(p)} sponsored={sponsoredProductIds.has(String(p.id))} />;
                     })}
                   </div>
                 )}
