@@ -45,11 +45,16 @@
 - [x] Customer support conversations.
 - [x] Admin support inbox.
 - [x] Zeshu Assistant guided help.
-- [x] Optional AI support backend with human escalation.
-- [x] Human-support escalation pre-fills the customer question.
+- [x] Conversational AI support backend with recent-turn context.
+- [x] Structured resolved / needs-human decision for AI responses.
+- [x] Unresolved AI conversations automatically transfer into the real support thread.
+- [x] Customer question and AI reply are attached to the human-support handoff.
+- [x] Manual support form remains as fallback if automatic handoff fails.
+- [x] AI support endpoint rate limiting.
+- [x] AI support privacy disclosure and no-secret guidance.
 - [x] Admin customer-support sound, vibration and browser notifications.
 - [x] Support tables enabled for Supabase Realtime.
-- [ ] True AI mode requires a server-side AI key and SUPPORT_AI_ENABLED=true; guided help works without it.
+- [ ] Verify/set OPENAI_API_KEY and SUPPORT_AI_ENABLED=true in Vercel Production; guided help and automatic human handoff work without it.
 
 ## Vendor / product operations
 - [x] Vendor dashboard.
