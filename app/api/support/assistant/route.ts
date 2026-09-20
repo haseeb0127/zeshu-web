@@ -133,12 +133,15 @@ const loadLiveAssistantContext = async ({
   const needsCatalog = catalogIntent(message);
   const context: LiveAssistantContext = {};
 
-  const [ordersResult, ledgerResult, reservedResult, catalogResult] = await Promise.all([
+  const [ordersResult, ledgerResult, allLedgerResult, reservedResult, catalogResult] = await Promise.all([
     needsOrders
       ? service.from('orders').select('id,status,total_paid,delivery_fee,created_at,items').eq('user_id', userId).order('created_at', { ascending: false }).limit(5)
       : Promise.resolve({ data: [], error: null }),
     needsRewards
       ? service.from('customer_reward_ledger').select('event_type,amount,description,order_id,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(20)
+      : Promise.resolve({ data: [], error: null }),
+    needsRewards
+      ? service.from('customer_reward_ledger').select('amount').eq('user_id', userId)
       : Promise.resolve({ data: [], error: null }),
     needsRewards
       ? service.from('reward_redemptions').select('approved_amount').eq('user_id', userId).eq('status', 'RESERVED')
@@ -163,13 +166,10 @@ const loadLiveAssistantContext = async ({
 
   if (needsRewards && !ledgerResult.error) {
     const ledger = ledgerResult.data || [];
+    const fullLedger = allLedgerResult.error ? ledger : (allLedgerResult.data || []);
     const reserved = reservedResult.error ? [] : (reservedResult.data || []);
-    const ledgerBalance = ledger.reduce((sum: number, entry: any) => sum + safeNumber(entry.amount), 0);
+    const ledgerBalance = fullLedger.reduce((sum: number, entry: any) => sum + safeNumber(entry.amount), 0);
     const reservedBalance = reserved.reduce((sum: number, entry: any) => sum + safeNumber(entry.approved_amount), 0);
-
-    // The history query is intentionally capped, so obtain an authoritative balance
-    // from the public RPC when possible. The service-role client cannot impersonate
-    // auth.uid(), therefore fall back to the visible ledger window only for context.
     context.reward_balance = Math.max(0, Number((ledgerBalance - reservedBalance).toFixed(2)));
     context.reward_activity = ledger.slice(0, 10).map((entry: any) => ({
       event_type: String(entry.event_type || ''),
@@ -261,7 +261,7 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext): Assista
     const balance = context.reward_balance;
     if (typeof balance === 'number') {
       return {
-        answer: `Your current Zeshu Cash context shows about ₹${balance.toFixed(2)} available from the recent reward ledger. For the authoritative balance and full transaction history, open My Account → Zeshu Cash. Zeshu Cash is promotional reward value, not withdrawable bank cash.`,
+        answer: `Your current Zeshu Cash balance is ₹${balance.toFixed(2)}. For the full transaction history, open My Account → Zeshu Cash. Zeshu Cash is promotional reward value, not withdrawable bank cash.`,
         resolved: true,
         subject: 'Zeshu Cash help',
         handoff_reason: '',
