@@ -339,13 +339,13 @@ export default function AdminDashboard() {
 
   const overview = useMemo(() => ({ active: orders.filter((o) => !["DELIVERED", "CANCELLED"].includes(o.status)).length, delivered: orders.filter((o) => o.status === "DELIVERED").length, online: riders.filter((r) => r.is_active && !r.admin_suspended).length, revenue: orders.reduce((sum, o) => sum + Number(o.total_paid || 0), 0) }), [orders, riders]);
 
-  if (loading) return <div className="min-h-screen grid place-items-center"><div className="animate-spin h-10 w-10 border-4 border-violet-600 border-t-transparent rounded-full" /></div>;
+  if (loading) return <div className="min-h-screen grid place-items-center"><div className="animate-spin h-10 w-10 border-4 border-[#087443] border-t-transparent rounded-full" /></div>;
   if (accessError) return <div className="min-h-screen grid place-items-center p-6 text-center"><div><h1 className="text-2xl font-black">Admin access required</h1><p className="mt-2 text-slate-500">This account is not authorized for Zeshu HQ.</p></div></div>;
 
   return <div className="min-h-screen bg-[#f7f9f5] font-sans text-slate-900">
     <OrderAlertManager supabaseClient={supabase} channelName="admin-order-alerts" />
     <SupportAlertManager supabaseClient={supabase} />
-    <header className="sticky top-0 z-20 flex items-center justify-between bg-slate-950 px-5 py-4 text-white shadow-xl"><div className="flex items-center gap-3"><Store className="text-violet-400" /><div><h1 className="font-black tracking-tight">ZESHU HQ</h1><p className="text-[10px] font-bold uppercase tracking-widest text-violet-300">Operations</p></div></div><button type="button" aria-label="Sign out of admin dashboard" onClick={async () => { await supabase.auth.signOut(); router.replace("/admin/login"); }} className="min-h-10 min-w-10 rounded-xl bg-white/10 p-2"><LogOut size={18} /></button></header>
+    <header className="sticky top-0 z-20 flex items-center justify-between bg-[#087443] px-5 py-4 text-white shadow-[0_8px_24px_rgba(8,116,67,.16)]"><div className="flex items-center gap-3"><Store className="text-emerald-100" /><div><h1 className="font-black tracking-tight">ZESHU HQ</h1><p className="text-[10px] font-bold uppercase tracking-widest text-emerald-100">Operations</p></div></div><button type="button" aria-label="Sign out of admin dashboard" onClick={async () => { await supabase.auth.signOut(); router.replace("/admin/login"); }} className="min-h-10 min-w-10 rounded-xl bg-white/10 p-2"><LogOut size={18} /></button></header>
     <main className="mx-auto max-w-7xl p-5">
       {error && <div role="alert" className="mb-4 flex justify-between rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}<button onClick={() => setError("")}><X size={16} /></button></div>}
       {notice && <div role="status" className="mb-4 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{notice}</div>}
@@ -372,5 +372,5 @@ export default function AdminDashboard() {
 }
 
 function Modal({ title, close, children }: { title: string; close: () => void; children: React.ReactNode }) {
-  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-title"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6"><div className="mb-5 flex items-center justify-between"><h2 id="admin-dialog-title" className="text-xl font-black">{title}</h2><button type="button" aria-label="Close dialog" onClick={close} className="min-h-10 min-w-10 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"><X /></button></div>{children}</div></div>;
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-title"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6"><div className="mb-5 flex items-center justify-between"><h2 id="admin-dialog-title" className="text-xl font-black">{title}</h2><button type="button" aria-label="Close dialog" onClick={close} className="min-h-10 min-w-10 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"><X /></button></div>{children}</div></div>;
 }
