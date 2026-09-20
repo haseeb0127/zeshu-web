@@ -252,6 +252,33 @@ const electricityLabels: Record<string, string> = { customerName: 'Customer name
 export default function ZeshuSuperApp() {
   const [activeTab, setActiveTab] = useState('home'); 
   const [activeService, setActiveService] = useState('mobile');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('view') === 'services') {
+      setActiveTab('recharge');
+      const requestedService = params.get('service');
+      if (requestedService && SERVICES.some((service) => service.id === requestedService)) setActiveService(requestedService);
+    }
+  }, []);
+
+  const openServices = (serviceId?: string) => {
+    setActiveTab('recharge');
+    if (serviceId && SERVICES.some((service) => service.id === serviceId)) setActiveService(serviceId);
+    setSearchQuery('');
+    setVoiceSearchMessage('');
+    setIsCartOpen(false);
+    setIsAccountOpen(false);
+    setIsAuthModalOpen(false);
+    setIsTrackingOpen(false);
+    setLocationSelectorOpen(false);
+    const params = new URLSearchParams(window.location.search);
+    params.set('view', 'services');
+    if (serviceId) params.set('service', serviceId); else params.delete('service');
+    window.history.replaceState({}, '', `/?${params.toString()}`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   const [products, setProducts] = useState<any[]>([]);
   const [marketingCampaigns, setMarketingCampaigns] = useState<any[]>([]);
   const [focusedCampaignId, setFocusedCampaignId] = useState<string | null>(null);
@@ -2633,7 +2660,10 @@ export default function ZeshuSuperApp() {
             {(isVoiceListening || voiceSearchMessage) && <p className="mt-1 px-2 text-xs font-bold text-[#087443]" role="status" aria-live="polite">{isVoiceListening ? 'Listening…' : voiceSearchMessage}</p>}
           </div>
 
-          <div className="hidden lg:flex items-center gap-4 shrink-0">
+          <div className="hidden lg:flex items-center gap-3 shrink-0">
+            <button type="button" onClick={() => openServices()} aria-current={activeTab === 'recharge' ? 'page' : undefined} className={`flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-black transition-all active:scale-95 ${activeTab === 'recharge' ? 'border-[#087443] bg-emerald-50 text-[#087443]' : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50'}`}>
+              <Smartphone size={18} /><span>Bills &amp; Services</span>
+            </button>
             <Link href="/scanner" className="flex items-center gap-2 bg-[#087443] text-white px-4 py-2.5 rounded-full font-black text-sm transition-all active:scale-95 shadow-sm">
               <QrCode size={18} /><span>Scan</span>
             </Link>
@@ -2958,7 +2988,7 @@ export default function ZeshuSuperApp() {
       {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(15,23,42,.08)] backdrop-blur lg:hidden" aria-label="Primary navigation">
         <div className="mx-auto grid max-w-md grid-cols-5 items-end">
           <button type="button" onClick={goToHome} aria-current={activeTab === 'home' ? 'page' : undefined} className={"flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black " + (activeTab === 'home' ? 'text-[#087443]' : 'text-slate-500')}><Home size={19} aria-hidden="true" /><span>Home</span></button>
-          <button type="button" onClick={() => setActiveTab('recharge')} aria-current={activeTab === 'recharge' ? 'page' : undefined} className={"flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black " + (activeTab === 'recharge' ? 'text-[#087443]' : 'text-slate-500')}><Smartphone size={19} aria-hidden="true" /><span>Services</span></button>
+          <button type="button" onClick={() => openServices()} aria-current={activeTab === 'recharge' ? 'page' : undefined} className={"flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black " + (activeTab === 'recharge' ? 'text-[#087443]' : 'text-slate-500')}><Smartphone size={19} aria-hidden="true" /><span>Services</span></button>
           <Link href="/scanner" aria-label="Scan QR" className="mx-auto -mt-5 flex min-h-16 flex-col items-center justify-end gap-1 text-[10px] font-black text-[#087443]"><span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#087443] text-white shadow-lg shadow-emerald-900/20 active:scale-95"><QrCode size={24} aria-hidden="true" /></span><span>Scan</span></Link>
           <button type="button" onClick={() => user ? openAccountHome() : setIsAuthModalOpen(true)} className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black text-slate-500"><User size={19} aria-hidden="true" /><span>{user ? 'Account' : 'Login'}</span></button>
           <button type="button" onClick={() => setIsCartOpen(true)} className="relative flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black text-slate-500"><span className="relative"><ShoppingBag size={19} aria-hidden="true" />{cart.length > 0 && <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black text-white">{cartItemCount}</span>}</span><span>Cart</span></button>
@@ -2971,7 +3001,8 @@ export default function ZeshuSuperApp() {
         <div className="mx-auto flex max-w-[1400px] flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <span className="font-bold">© Zeshu · Everyday, simply</span>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <Link href="/policies" className="font-black text-[#087443] underline-offset-4 hover:underline">Policies &amp; Trust Center</Link>
+            <Link href="/services" className="font-black text-[#087443] underline-offset-4 hover:underline">Recharge &amp; Bills</Link>
+                        <Link href="/policies" className="font-black text-[#087443] underline-offset-4 hover:underline">Policies &amp; Trust Center</Link>
             <Link href="/partners" className="font-black text-[#087443] underline-offset-4 hover:underline">Brands &amp; Suppliers</Link>
             <Link href="/app" className="font-black text-[#087443] underline-offset-4 hover:underline">Get Zeshu</Link>
             <span>Real support is provided through verified order communication.</span>
