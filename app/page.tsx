@@ -2405,7 +2405,7 @@ export default function ZeshuSuperApp() {
         <div className="mx-auto grid max-w-md grid-cols-5 items-end">
           <button type="button" onClick={goToHome} aria-current={activeTab === 'home' ? 'page' : undefined} className={"flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black " + (activeTab === 'home' ? 'text-[#087443]' : 'text-slate-500')}><Home size={19} aria-hidden="true" /><span>Home</span></button>
           <button type="button" onClick={() => setActiveTab('recharge')} aria-current={activeTab === 'recharge' ? 'page' : undefined} className={"flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black " + (activeTab === 'recharge' ? 'text-[#087443]' : 'text-slate-500')}><Smartphone size={19} aria-hidden="true" /><span>Services</span></button>
-          <Link href="/scanner" aria-label="Scan QR" className="mx-auto -mt-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#087443] text-white shadow-lg shadow-emerald-900/20 active:scale-95"><QrCode size={24} aria-hidden="true" /></Link>
+          <Link href="/scanner" aria-label="Scan QR" className="mx-auto -mt-5 flex min-h-16 flex-col items-center justify-end gap-1 text-[10px] font-black text-[#087443]"><span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#087443] text-white shadow-lg shadow-emerald-900/20 active:scale-95"><QrCode size={24} aria-hidden="true" /></span><span>Scan</span></Link>
           <button type="button" onClick={() => user ? openAccountHome() : setIsAuthModalOpen(true)} className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black text-slate-500"><User size={19} aria-hidden="true" /><span>{user ? 'Account' : 'Login'}</span></button>
           <button type="button" onClick={() => setIsCartOpen(true)} className="relative flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black text-slate-500"><span className="relative"><ShoppingBag size={19} aria-hidden="true" />{cart.length > 0 && <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black text-white">{cart.reduce((sum, entry) => sum + entry.qty, 0)}</span>}</span><span>Cart</span></button>
         </div>
@@ -2413,7 +2413,7 @@ export default function ZeshuSuperApp() {
 
       {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && cart.length === 0 && <button type="button" onClick={openAiSupport} aria-label="Chat with Zeshu Assistant" className="fixed bottom-[5.75rem] right-4 z-30 inline-flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-sm font-black text-white shadow-xl transition hover:bg-indigo-700 active:scale-95 lg:bottom-8 lg:right-8 lg:h-auto lg:w-auto lg:min-h-12 lg:gap-2 lg:px-4 lg:py-3"><MessageCircle size={20} aria-hidden="true" /><span className="hidden lg:inline">Ask Zeshu</span></button>}
 
-      <footer className="border-t border-[#dce8df] bg-white px-4 py-8 text-sm text-slate-600 md:px-8">
+      <footer className="border-t border-[#dce8df] bg-white px-4 pb-28 pt-8 text-sm text-slate-600 lg:px-8 lg:py-8">
         <div className="mx-auto flex max-w-[1400px] flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <span className="font-bold">© Zeshu · Everyday, simply</span>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
