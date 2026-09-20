@@ -147,7 +147,7 @@ export default function ScannerPage() {
   // PSP/UPI settlement integration and server-side reconciliation for those transactions.
 
   return (
-    <div className="min-h-screen bg-[#0F172A] text-white flex flex-col font-sans selection:bg-indigo-500/30">
+    <div className="min-h-screen bg-[#0F172A] text-white flex flex-col font-sans selection:bg-emerald-500/30">
 
       <header className="p-4 flex items-center justify-between border-b border-slate-800">
         <button type="button" aria-label="Close scanner and return home" onClick={() => router.push('/')} className="p-2 bg-slate-800 rounded-full active:scale-95 transition-transform">
@@ -167,26 +167,26 @@ export default function ScannerPage() {
             <p className="text-slate-400 text-sm mb-2 text-center">The QR scanner works across India.</p>
             <p className="text-amber-300/90 text-xs mb-6 text-center">QR/contact payment and funded cashback will appear only after a verified payment and settlement integration is enabled.</p>
             
-            <div className="w-full aspect-square bg-slate-900 rounded-3xl overflow-hidden border-2 border-indigo-500/50 shadow-[0_0_40px_rgba(99,102,241,0.2)] relative flex items-center justify-center">
+            <div className="w-full aspect-square bg-slate-900 rounded-3xl overflow-hidden border-2 border-emerald-500/50 shadow-[0_0_40px_rgba(8,116,67,0.22)] relative flex items-center justify-center">
               <div id="reader" className="w-full h-full object-cover"></div>
               {cameraError && (
                 <div className="absolute inset-0 bg-slate-900/95 p-6 flex flex-col items-center justify-center text-center z-20">
                   <Camera size={40} className="text-amber-400 mb-3 animate-bounce" />
                   <p className="text-sm font-bold text-slate-200 mb-4">{cameraError}</p>
-                  <label className="bg-indigo-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl active:scale-95 transition-all shadow-lg shadow-indigo-500/30 cursor-pointer">Upload a QR image<input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" /></label>
+                  <label className="bg-[#087443] text-white text-xs font-bold px-4 py-2.5 rounded-xl active:scale-95 transition-all shadow-lg shadow-emerald-500/30 cursor-pointer">Upload a QR image<input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" /></label>
                 </div>
               )}
               {!cameraError && (
-                <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500 shadow-[0_0_15px_#6366F1] animate-[scan_2s_ease-in-out_infinite] z-10 pointer-events-none"></div>
+                <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500 shadow-[0_0_15px_#16A663] animate-[scan_2s_ease-in-out_infinite] z-10 pointer-events-none"></div>
               )}
             </div>
 
             <div className="mt-6 grid w-full gap-3 sm:grid-cols-2">
-              <label className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 text-sm">
-                <ImageIcon size={18} className="text-indigo-400" /> Upload QR
+              <label className="bg-[#18362a] hover:bg-[#214735] border border-emerald-900/60 text-slate-300 font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 text-sm">
+                <ImageIcon size={18} className="text-emerald-400" /> Upload QR
                 <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
               </label>
-              <button type="button" onClick={() => void chooseContactRecipient()} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 text-sm">
+              <button type="button" onClick={() => void chooseContactRecipient()} className="bg-[#18362a] hover:bg-[#214735] border border-emerald-900/60 text-slate-300 font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 text-sm">
                 <BookUser size={18} className="text-emerald-400" /> Choose contact
               </button>
             </div>
@@ -196,8 +196,8 @@ export default function ScannerPage() {
 
         {!isScanning && (
           <div className="w-full max-w-md flex flex-col items-center animate-in fade-in zoom-in duration-300">
-            <div className="w-20 h-20 bg-indigo-500/20 rounded-full flex items-center justify-center mb-4 border border-indigo-500/30">
-              <span className="text-3xl font-black text-indigo-400">{merchantName.charAt(0)}</span>
+            <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mb-4 border border-indigo-500/30">
+              <span className="text-3xl font-black text-emerald-400">{merchantName.charAt(0)}</span>
             </div>
             <h2 className="text-2xl font-black mb-1 tracking-tight text-center">{recipientMode === 'CONTACT' ? merchantName : `QR recipient: ${merchantName}`}</h2>
             <p className="text-slate-400 text-xs mb-2 text-center truncate w-full px-4 font-mono">{recipientMode === 'CONTACT' ? `••••••${contactPhone.slice(-4)}` : (upiId || scanResult)}</p>
