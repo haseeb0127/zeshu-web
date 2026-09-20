@@ -109,9 +109,10 @@
 - [ ] Brand advertising rate card and campaign agreement.
 
 ## Final QA
-- [ ] Latest production deployment must be green.
+- [x] Automated production public-route and auth-boundary smoke test.
+- [x] Latest production deployment is green.
 - [ ] Mobile-layout QA.
-- [ ] Browser QA.
+- [ ] Browser QA on real Chrome/Safari/Edge devices.
 - [ ] Customer login / logout smoke test.
 - [ ] Address and service-area smoke test.
 - [ ] Catalog filters and product actions smoke test.
@@ -119,7 +120,7 @@
 - [ ] Rider GPS / ETA / navigation field test.
 - [ ] Utility discovery smoke test without completing real payment.
 - [ ] Existing cart/payment regression smoke test only — no payment code changes.
-- [ ] Production security review.
+- [x] Production security review completed; new AI handoff is service-role only. Legacy project-wide advisor warnings remain separately tracked.
 - [ ] Launch decision.
 
 ## Parked until last
