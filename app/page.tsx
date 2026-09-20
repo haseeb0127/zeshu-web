@@ -292,7 +292,7 @@ export default function ZeshuSuperApp() {
   const [isProductFiltersOpen, setIsProductFiltersOpen] = useState(false);
   
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [expandedCartSection, setExpandedCartSection] = useState<'ADDRESS' | 'CASH' | 'PRICE' | null>(null);
+  const [expandedCartSection, setExpandedCartSection] = useState<'ADDRESS' | 'CASH' | null>(null);
   const [useZeshuCash, setUseZeshuCash] = useState(false);
   const [zeshuCashAmount, setZeshuCashAmount] = useState('');
   const [isAccountOpen, setIsAccountOpen] = useState(false);
@@ -714,6 +714,17 @@ export default function ZeshuSuperApp() {
   useEffect(() => {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
   }, [cart]);
+
+  useEffect(() => {
+    if (!isCartOpen || cart.length === 0) return;
+    const selected = addresses.find((address) => address.id === selectedAddressId) || addresses.find((address) => address.is_default);
+    const hasVerifiedCoordinates = Boolean(
+      selected
+      && isValidLocationCoordinate(selected.latitude, selected.longitude)
+      && deliveryServiceability === 'ELIGIBLE'
+    );
+    if (!hasVerifiedCoordinates) setExpandedCartSection('ADDRESS');
+  }, [isCartOpen, cart.length, addresses, selectedAddressId, deliveryServiceability]);
 
   useEffect(() => {
     const address = currentAddress.trim();
@@ -1521,6 +1532,30 @@ export default function ZeshuSuperApp() {
       }
     }
   };
+  const resetNewAddressForm = () => {
+    setEditingAddress(null);
+    setLocationAccuracy(null);
+    setAddressForm({
+      label: 'Home',
+      recipient_name: '',
+      phone: '',
+      address_line: '',
+      landmark: '',
+      city: '',
+      state: '',
+      postal_code: '',
+      latitude: '',
+      longitude: '',
+      is_default: addresses.length === 0,
+    });
+  };
+
+  const startNewAddressWithAutoDetect = () => {
+    resetNewAddressForm();
+    setAddressFormOpen(false);
+    handleAutoDetectLocation();
+  };
+
   const openAddressForm = (address?: CustomerAddress) => {
     setEditingAddress(address || null);
     setLocationAccuracy(address?.location_accuracy_meters ?? null);
@@ -1582,33 +1617,118 @@ export default function ZeshuSuperApp() {
     }
   };
 
+  const addressSaveErrorMessage = (error: any) => {
+    const message = String(error?.message || '').toLowerCase();
+    if (!message) return 'We could not save this address. Please try again.';
+    if (message.includes('authentication required') || message.includes('jwt') || message.includes('session')) return 'Your sign-in session expired. Please sign in again and save the address.';
+    if (message.includes('phone') || message.includes('customer_addresses_phone_check')) return 'Enter a valid delivery phone number, or leave it blank.';
+    if (message.includes('address_line') || message.includes('required address fields')) return 'Check the house/street, city and state fields.';
+    if (message.includes('postal') || message.includes('pin')) return 'Enter a valid PIN code.';
+    if (message.includes('latitude') || message.includes('longitude') || message.includes('coordinates') || message.includes('location')) return 'Please confirm the delivery pin on the map again.';
+    if (message.includes('duplicate') || message.includes('one_default')) return 'We could not update the default address. Please retry once.';
+    return 'We could not save this address. Please try again.';
+  };
+
+  const saveAddressRpc = async (locationPayload: Record<string, unknown>) => {
+    let result = await supabase.rpc('customer_upsert_address_with_location', locationPayload);
+    if (result.error?.code === 'PGRST202' || /function .*customer_upsert_address_with_location/i.test(result.error?.message || '')) {
+      const { p_location_accuracy_meters: _accuracy, p_location_source: _source, ...legacyPayload } = locationPayload as any;
+      result = await supabase.rpc('customer_upsert_address', legacyPayload);
+    }
+    if (result.error && /authentication required|jwt|session/i.test(result.error.message || '')) {
+      const refreshed = await supabase.auth.refreshSession();
+      if (refreshed.data.session) {
+        result = await supabase.rpc('customer_upsert_address_with_location', locationPayload);
+      }
+    }
+    return result;
+  };
+
   const saveAddress = async (event: React.FormEvent) => {
     event.preventDefault();
     if (addressSaving) return;
-    if (!addressForm.label.trim() || !addressForm.address_line.trim() || !addressForm.city.trim() || !addressForm.state.trim()) return showToast('Label, address, city, and state are required.');
+
+    const label = addressForm.label.trim();
+    const recipientName = addressForm.recipient_name.trim();
+    const phone = addressForm.phone.trim();
+    const addressLine = addressForm.address_line.trim();
+    const landmark = addressForm.landmark.trim();
+    const city = addressForm.city.trim();
+    const state = addressForm.state.trim();
+    const postalCode = addressForm.postal_code.trim();
+
+    if (!label || !addressLine || !city || !state) return showToast('House/street, city and state are required.');
+    if (label.length > 40) return showToast('Address label is too long.');
+    if (addressLine.length > 240) return showToast('House/street address is too long.');
+    if (landmark.length > 160) return showToast('Landmark is too long.');
+    if (city.length > 80 || state.length > 80) return showToast('City or state is too long.');
+    if (recipientName.length > 120) return showToast('Recipient name is too long.');
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (phone && (phoneDigits.length < 7 || phoneDigits.length > 15)) return showToast('Enter a valid delivery phone number, or leave it blank.');
+    if (postalCode && !/^\d{6}$/.test(postalCode)) return showToast('Enter a valid 6-digit PIN code.');
+
     const latitude = addressForm.latitude.trim() ? Number(addressForm.latitude) : null;
     const longitude = addressForm.longitude.trim() ? Number(addressForm.longitude) : null;
-    if ((latitude !== null && (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)) || (longitude !== null && (!Number.isFinite(longitude) || longitude < -180 || longitude > 180))) return showToast('Enter valid map coordinates.');
-    if (latitude === null || longitude === null) return showToast('Confirm the delivery pin on the map before saving this address.');
+    if ((latitude !== null && (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)) || (longitude !== null && (!Number.isFinite(longitude) || longitude < -180 || longitude > 180))) return showToast('Please confirm a valid delivery pin on the map.');
+    if (latitude === null || longitude === null) return showToast('Confirm the delivery entrance on the map before saving.');
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      setAddressFormOpen(false);
+      setIsAuthModalOpen(true);
+      return showToast('Please sign in before saving a delivery address.');
+    }
+
     setAddressSaving(true);
     const area = await checkDeliveryServiceArea(latitude, longitude);
     if (area.status !== 'ELIGIBLE') {
       setAddressSaving(false);
       showToast(area.status === 'OUTSIDE_SERVICE_AREA'
-        ? 'This address is outside the current Jagtial delivery area.'
+        ? 'This pin is outside the current Jagtial delivery area. Choose another location.'
         : 'We could not verify this delivery pin. Please try the map again.');
       return;
     }
-    const locationPayload = { p_address_id: editingAddress?.id || null, p_label: addressForm.label.trim(), p_recipient_name: addressForm.recipient_name.trim() || null, p_phone: addressForm.phone.trim() || null, p_address_line: addressForm.address_line.trim(), p_landmark: addressForm.landmark.trim() || null, p_city: addressForm.city.trim(), p_state: addressForm.state.trim(), p_postal_code: addressForm.postal_code.trim() || null, p_latitude: latitude, p_longitude: longitude, p_is_default: addressForm.is_default, p_location_accuracy_meters: locationAccuracy, p_location_source: locationAccuracy !== null ? 'DEVICE' : (latitude !== null && longitude !== null ? 'MANUAL_PIN' : 'LEGACY') };
-    let { error } = await supabase.rpc('customer_upsert_address_with_location', locationPayload);
-    if (error?.code === 'PGRST202' || /function .*customer_upsert_address_with_location/i.test(error?.message || '')) {
-      const { p_location_accuracy_meters: _accuracy, p_location_source: _source, ...legacyPayload } = locationPayload;
-      const fallback = await supabase.rpc('customer_upsert_address', legacyPayload);
-      error = fallback.error;
-    }
+
+    const locationPayload = {
+      p_address_id: editingAddress?.id || null,
+      p_label: label,
+      p_recipient_name: recipientName || null,
+      p_phone: phone || null,
+      p_address_line: addressLine,
+      p_landmark: landmark || null,
+      p_city: city,
+      p_state: state,
+      p_postal_code: postalCode || null,
+      p_latitude: latitude,
+      p_longitude: longitude,
+      p_is_default: addressForm.is_default,
+      p_location_accuracy_meters: locationAccuracy,
+      p_location_source: locationAccuracy !== null ? 'DEVICE' : 'MANUAL_PIN',
+    };
+
+    const result = await saveAddressRpc(locationPayload);
     setAddressSaving(false);
-    if (error) { if (process.env.NODE_ENV === 'development') console.error('Customer address save failed:', error.message); return showToast('Could not save this address. Please try again.'); }
-    setAddressFormOpen(false); showToast('Address saved.'); await loadAddresses();
+
+    if (result.error) {
+      if (process.env.NODE_ENV === 'development') console.error('Customer address save failed:', result.error.message);
+      const friendly = addressSaveErrorMessage(result.error);
+      if (/sign-in session expired/i.test(friendly)) {
+        setAddressFormOpen(false);
+        setIsAuthModalOpen(true);
+      }
+      return showToast(friendly);
+    }
+
+    const saved = result.data as CustomerAddress | null;
+    if (saved?.id) {
+      setSelectedAddressId(saved.id);
+      setCurrentAddress(formatAddress(saved));
+      setDeliveryServiceability('ELIGIBLE');
+    }
+    setAddressFormOpen(false);
+    setExpandedCartSection(null);
+    showToast('Address saved and ready for delivery.');
+    await loadAddresses();
   };
   const setDefaultAddress = async (addressId: string) => {
     const { error } = await supabase.rpc('customer_set_default_address', { p_address_id: addressId });
@@ -2760,7 +2880,7 @@ export default function ZeshuSuperApp() {
                 </button>
                 {expandedCartSection === 'ADDRESS' && <div id="cart-address-details" className="border-t border-[#dce8df] p-4">
                 {addresses.length > 0 && <div className="mb-3"><p className="text-xs font-black uppercase tracking-wider text-[#52645a]">Saved addresses</p><div className="mt-2 space-y-2">{addresses.map((address) => <div key={address.id} className={`rounded-xl border p-3 ${selectedAddressId === address.id ? 'border-[#087443] bg-[#f1faf4]' : 'border-slate-200 bg-white'}`}><button type="button" onClick={() => void useSavedAddressForCheckout(address)} className="w-full text-left text-xs"><span className="block font-black">{address.label}{address.is_default ? ' · Default' : ''}</span><span className="mt-1 block line-clamp-2 text-slate-500">{formatAddress(address)}</span></button><div className="mt-2 flex flex-wrap gap-2"><button type="button" onClick={() => openAddressForm(address)} className="rounded-lg bg-slate-100 px-3 py-2 text-[11px] font-black">Edit</button>{!address.is_default && <button type="button" onClick={() => void setDefaultAddress(address.id)} className="rounded-lg bg-emerald-50 px-3 py-2 text-[11px] font-black text-emerald-700">Set default</button>}<button type="button" onClick={() => void useSavedAddressForCheckout(address)} className="rounded-lg bg-indigo-50 px-3 py-2 text-[11px] font-black text-indigo-700">Use for checkout</button></div></div>)}</div></div>}
-                <div className="mb-2 flex flex-wrap items-center gap-3"><button type="button" onClick={() => { openAddressForm(); handleAutoDetectLocation(); }} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">Use my current location</button><button type="button" onClick={() => openAddressForm()} className="rounded-lg bg-[#087443] px-3 py-2 text-xs font-black text-white">+ Add Address</button>{selectedAddressId && <button type="button" onClick={() => { const selected = addresses.find((address) => address.id === selectedAddressId); if (selected) requestDeleteAddress(selected); }} className="text-xs font-black text-red-600">Remove selected address</button>}</div><label htmlFor="delivery-address" className="block text-xs font-black uppercase tracking-wider text-[#52645a]">Delivery address</label>
+                <div className="mb-2 flex flex-wrap items-center gap-3"><button type="button" onClick={startNewAddressWithAutoDetect} disabled={isDetectingLoc} className="rounded-lg bg-[#087443] px-3 py-2 text-xs font-black text-white disabled:opacity-60">{isDetectingLoc ? 'Detecting location…' : 'Use current location'}</button><button type="button" onClick={() => { resetNewAddressForm(); setAddressFormOpen(true); }} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">Enter address manually</button>{selectedAddressId && <button type="button" onClick={() => { const selected = addresses.find((address) => address.id === selectedAddressId); if (selected) requestDeleteAddress(selected); }} className="text-xs font-black text-red-600">Remove selected address</button>}</div><label htmlFor="delivery-address" className="block text-xs font-black uppercase tracking-wider text-[#52645a]">Delivery address</label>
                 <textarea id="delivery-address" value={currentAddress === 'Location not set' ? '' : currentAddress} onChange={(event) => setCurrentAddress(event.target.value)} rows={3} placeholder="House / flat, street, area and landmark" className="mt-2 w-full resize-none rounded-xl border border-[#dce8df] bg-[#f8fbf8] p-3 text-sm font-medium outline-none focus:border-[#087443]" />
                 <p className="mt-2 text-[11px] text-slate-500">Your address is used only for this checkout and is validated again on the server.</p>
                 </div>}
@@ -2777,18 +2897,18 @@ export default function ZeshuSuperApp() {
                 </div>}
               </section>}
               {cart.length > 0 && <section className="overflow-hidden rounded-2xl border border-[#dce8df] bg-white shadow-sm">
-                <button type="button" aria-expanded={expandedCartSection === 'PRICE'} aria-controls="cart-price-details" onClick={() => setExpandedCartSection((current) => current === 'PRICE' ? null : 'PRICE')} className="flex w-full items-center justify-between gap-3 p-4 text-left">
-                  <span className="flex min-w-0 items-center gap-3"><Receipt size={20} className="shrink-0 text-[#087443]" aria-hidden="true" /><span className="min-w-0"><span className="block text-sm font-black text-slate-900">Price Details</span><span className="mt-1 block truncate text-xs font-bold text-slate-500">₹{finalCartTotal} · View breakdown</span></span></span>
-                  <ChevronDown size={16} className={`shrink-0 text-[#087443] transition-transform ${expandedCartSection === 'PRICE' ? 'rotate-180' : ''}`} aria-hidden="true" />
-                </button>
-                {expandedCartSection === 'PRICE' && <div id="cart-price-details" className="space-y-3 border-t border-[#dce8df] p-4">
+                <div className="flex w-full items-center justify-between gap-3 p-4">
+                  <span className="flex min-w-0 items-center gap-3"><Receipt size={20} className="shrink-0 text-[#087443]" aria-hidden="true" /><span className="min-w-0"><span className="block text-sm font-black text-slate-900">Price Details</span><span className="mt-1 block truncate text-xs font-bold text-slate-500">Full breakdown shown before payment</span></span></span>
+                  <span className="shrink-0 text-sm font-black text-slate-900">₹{finalCartTotal}</span>
+                </div>
+                <div id="cart-price-details" className="space-y-3 border-t border-[#dce8df] p-4">
                   {itemTotal > 0 && <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3"><div className="flex items-center justify-between text-xs font-black text-emerald-800"><span>{itemTotal >= freeDeliveryThreshold ? "You've unlocked FREE delivery 🎉" : `Add ₹${freeDeliveryThreshold - itemTotal} more for FREE delivery`}</span><span>{Math.min(100, Math.round((itemTotal / freeDeliveryThreshold) * 100))}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-emerald-100"><div className="h-full rounded-full bg-emerald-600 transition-all" style={{ width: `${Math.min(100, (itemTotal / freeDeliveryThreshold) * 100)}%` }} /></div>{itemTotal < freeDeliveryThreshold && itemTotal < 199 && <p className="mt-2 text-[11px] font-bold text-emerald-700">Add a few more essentials and save on delivery.</p>}</div>}
                   <div className="flex justify-between text-[#4B5563]"><span>Subtotal</span><span className="font-bold">₹{itemTotal}</span></div>
                   <div className="flex justify-between text-[#059669]"><span>Delivery charge</span><span className="font-black">{deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}</span></div>
                   {requestedZeshuCash > 0 && <div className="flex justify-between text-emerald-700"><span>Zeshu Cash</span><span className="font-black">-₹{requestedZeshuCash}</span></div>}
                   <div className="border-t pt-4 flex justify-between font-black text-xl"><span>Grand total</span><span>₹{finalCartTotal}</span></div>
                   <p className="text-center text-[11px] font-bold text-slate-500">No hidden fees. Know your full cost before checkout.</p>
-                </div>}
+                </div>
               </section>}
             </div>
             <div className="sticky bottom-0 z-10 bg-white p-6 border-t shadow-2xl">
@@ -2809,7 +2929,7 @@ export default function ZeshuSuperApp() {
       {addressFormOpen && <div className="fixed inset-0 z-[130] flex items-end bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4">
         <form onSubmit={saveAddress} role="dialog" aria-modal="true" aria-labelledby="address-form-title" className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] bg-white shadow-2xl sm:rounded-3xl">
           <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:rounded-t-3xl">
-            <div><h2 id="address-form-title" className="text-xl font-black text-slate-900">{editingAddress ? 'Edit address' : 'Add delivery address'}</h2><p className="mt-1 text-xs font-medium text-slate-500">Pin the entrance once, then confirm the details below.</p></div>
+            <div><h2 id="address-form-title" className="text-xl font-black text-slate-900">{editingAddress ? 'Edit address' : 'Add delivery address'}</h2><p className="mt-1 text-xs font-medium text-slate-500">We detect your location first, then you only confirm the entrance and house details.</p></div>
             <button type="button" aria-label="Close address form" onClick={() => setAddressFormOpen(false)} className="flex min-h-10 min-w-10 items-center justify-center rounded-xl bg-slate-100"><X size={18} /></button>
           </div>
 
@@ -2818,11 +2938,11 @@ export default function ZeshuSuperApp() {
               <div className="flex items-start gap-3">
                 <span className={"mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl " + (addressForm.latitude && addressForm.longitude ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}><MapPin size={20} aria-hidden="true" /></span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-black text-slate-900">{addressForm.latitude && addressForm.longitude ? 'Delivery entrance pinned' : 'Choose your delivery entrance'}</p>
+                  <p className="text-sm font-black text-slate-900">{addressForm.latitude && addressForm.longitude ? 'Location detected · confirm the entrance' : 'Detect your delivery location'}</p>
                   <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">{[addressForm.address_line, addressForm.landmark, addressForm.city, addressForm.state, addressForm.postal_code].filter(Boolean).join(', ') || 'Use the map so Zeshu can fill your area, city, state and PIN code automatically.'}</p>
                 </div>
               </div>
-              <button type="button" onClick={openAddressMapForForm} className="mt-3 w-full rounded-xl border border-[#087443] bg-white px-4 py-3 text-sm font-black text-[#087443]">{addressForm.latitude && addressForm.longitude ? 'Change pin on map' : 'Choose on map'}</button>
+              <button type="button" onClick={openAddressMapForForm} className="mt-3 w-full rounded-xl border border-[#087443] bg-white px-4 py-3 text-sm font-black text-[#087443]">{addressForm.latitude && addressForm.longitude ? 'Adjust pin on map' : 'Detect / choose on map'}</button>
             </section>
 
             <div>
@@ -2850,7 +2970,7 @@ export default function ZeshuSuperApp() {
 
           <div className="sticky bottom-0 flex gap-3 border-t border-slate-100 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-b-3xl">
             <button type="button" onClick={() => setAddressFormOpen(false)} className="min-h-12 flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-600">Cancel</button>
-            <button disabled={addressSaving} className="min-h-12 flex-[1.4] rounded-xl bg-[#087443] px-5 py-3 text-sm font-black text-white disabled:opacity-60">{addressSaving ? 'Saving...' : 'Save address'}</button>
+            <button disabled={addressSaving} className="min-h-12 flex-[1.4] rounded-xl bg-[#087443] px-5 py-3 text-sm font-black text-white disabled:opacity-60">{addressSaving ? 'Checking & saving…' : 'Save address'}</button>
           </div>
         </form>
       </div>}
