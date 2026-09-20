@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateProviderRequest, authRequiredResponse, rateLimitResponse } from '@/app/lib/provider-security';
+import { getPlanApiCredentials, planApiTimeoutSignal } from '@/app/lib/planapi-config';
 
 export async function GET(request: Request) {
   const user = await authenticateProviderRequest(request);
@@ -16,8 +17,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const apiUserId = process.env.PLAN_API_USER_ID || '';
-    const apiPassword = process.env.PLAN_API_PASSWORD || '';
+    const { memberId: apiUserId, password: apiPassword } = getPlanApiCredentials();
 
     if (service === 'dth') {
       // --- FETCH DTH PLANS ---
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
         operatorcode: operatorCode
       });
 
-      const res = await fetch(`https://planapi.in/api/Mobile/DthPlans?${dthParams.toString()}`);
+      const res = await fetch(`https://planapi.in/api/Mobile/DthPlans?${dthParams.toString()}`, { signal: planApiTimeoutSignal(), cache: 'no-store' });
       const text = await res.text();
       
       let data: any = {};
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
         cricle: circleCode 
       });
 
-      const res = await fetch(`https://planapi.in/api/Mobile/MobileRechargePlan?${mobileParams.toString()}`);
+      const res = await fetch(`https://planapi.in/api/Mobile/MobileRechargePlan?${mobileParams.toString()}`, { signal: planApiTimeoutSignal(), cache: 'no-store' });
       const text = await res.text();
       
       let data: any = {};
@@ -105,7 +105,9 @@ export async function GET(request: Request) {
     }
 
   } catch (error) {
-    if (process.env.NODE_ENV === 'development') console.error("Plan provider request failed:", error instanceof Error ? error.message : 'unknown error');
-    return NextResponse.json({ plans: [], message: "Failed to connect to provider" }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'unknown error';
+    if (process.env.NODE_ENV === 'development' && message !== 'PLANAPI_NOT_CONFIGURED') console.error('Plan provider request failed:', message);
+    if (message === 'PLANAPI_NOT_CONFIGURED') return NextResponse.json({ plans: [], message: 'Recharge plans are temporarily unavailable.' }, { status: 503 });
+    return NextResponse.json({ plans: [], message: 'Recharge plans are temporarily unavailable.' }, { status: 502 });
   }
 }

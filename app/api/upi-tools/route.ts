@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateProviderRequest, authRequiredResponse, rateLimitResponse } from '@/app/lib/provider-security';
+import { getPlanApiCredentials, planApiTimeoutSignal } from '@/app/lib/planapi-config';
 
 export async function POST(request: Request) {
   try {
@@ -15,11 +16,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: "Action type is required" }, { status: 400 });
     }
 
-    // 1. Build the Secure Headers (Requires the TokenID you added to Vercel earlier!)
+    const { memberId, password, tokenId } = getPlanApiCredentials({ requireToken: true });
+
+    // 1. Build the secure provider headers from canonical server-only configuration.
     const headers = {
-      'TokenID': process.env.PLAN_API_TOKEN_ID || '',
-      'ApiUserID': process.env.PLAN_API_USER_ID || '',
-      'ApiPassword': process.env.PLAN_API_PASSWORD || '',
+      'TokenID': tokenId || '',
+      'ApiUserID': memberId,
+      'ApiPassword': password,
       'Content-Type': 'application/x-www-form-urlencoded'
     };
 
@@ -76,8 +79,10 @@ export async function POST(request: Request) {
     // 4. Fetch from PlanAPI
     const res = await fetch(apiUrl, {
       method: 'POST',
-      headers: headers,
-      body: formData.toString()
+      headers,
+      body: formData.toString(),
+      signal: planApiTimeoutSignal(),
+      cache: 'no-store'
     });
 
     // 5. THE ARMOR SHIELD: Prevent HTML 404 crashes
@@ -111,7 +116,9 @@ export async function POST(request: Request) {
     }
 
   } catch (error: unknown) {
-    if (process.env.NODE_ENV === 'development') console.error('UPI provider request failed:', error instanceof Error ? error.message : 'unknown error');
-    return NextResponse.json({ success: false, message: "Unable to verify UPI details right now. Please try again." }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'unknown error';
+    if (process.env.NODE_ENV === 'development' && message !== 'PLANAPI_NOT_CONFIGURED') console.error('UPI provider request failed:', message);
+    if (message === 'PLANAPI_NOT_CONFIGURED') return NextResponse.json({ success: false, message: 'UPI verification is temporarily unavailable.' }, { status: 503 });
+    return NextResponse.json({ success: false, message: "Unable to verify UPI details right now. Please try again." }, { status: 502 });
   }
 }

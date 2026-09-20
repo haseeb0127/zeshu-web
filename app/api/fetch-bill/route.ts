@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateProviderRequest, authRequiredResponse, rateLimitResponse } from '@/app/lib/provider-security';
+import { getPlanApiCredentials, planApiTimeoutSignal } from '@/app/lib/planapi-config';
 
 // 🚀 THE SWITCHBOARD
 const SERVICE_API_MAP: Record<string, { endpoint: string; numberParam: string }> = {
@@ -34,15 +35,16 @@ export async function GET(request: Request) {
   const apiConfig = SERVICE_API_MAP[service] || { endpoint: 'BillCheck', numberParam: 'Accountno' };
 
   try {
+    const { memberId, password } = getPlanApiCredentials();
     const params = new URLSearchParams({
-      apimember_id: process.env.PLAN_API_USER_ID || '',
-      api_password: process.env.PLAN_API_PASSWORD || '',
+      apimember_id: memberId,
+      api_password: password,
       operator_code: operatorCode,
     });
     params.append(apiConfig.numberParam, number);
 
     const apiUrl = `https://planapi.in/api/Mobile/${apiConfig.endpoint}?${params.toString()}`;
-    const res = await fetch(apiUrl);
+    const res = await fetch(apiUrl, { signal: planApiTimeoutSignal(), cache: 'no-store' });
     
     // 🔍 THE SHIELD: Prevent crashes by reading text instead of forcing JSON
     const rawText = await res.text();
@@ -72,10 +74,11 @@ export async function GET(request: Request) {
       }, { status: 400 });
     }
 
-  } catch (error: any) {
-    // 🚨 If the Vercel server drops connection, show the real crash reason
-    if (process.env.NODE_ENV === 'development') console.error('Bill provider request failed:', error?.message || 'unknown error');
-    return NextResponse.json({ success: false, message: "Unable to fetch bill details right now. Please try again." }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'unknown error';
+    if (process.env.NODE_ENV === 'development' && message !== 'PLANAPI_NOT_CONFIGURED') console.error('Bill provider request failed:', message);
+    if (message === 'PLANAPI_NOT_CONFIGURED') return NextResponse.json({ success: false, message: 'Bill service is temporarily unavailable.' }, { status: 503 });
+    return NextResponse.json({ success: false, message: "Unable to fetch bill details right now. Please try again." }, { status: 502 });
   }
 }
 export const dynamic = 'force-dynamic';

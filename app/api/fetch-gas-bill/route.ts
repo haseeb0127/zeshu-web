@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateProviderRequest, authRequiredResponse, rateLimitResponse } from '@/app/lib/provider-security';
+import { getPlanApiCredentials, planApiTimeoutSignal } from '@/app/lib/planapi-config';
 
 export async function GET(request: Request) {
   const user = await authenticateProviderRequest(request);
@@ -19,17 +20,18 @@ export async function GET(request: Request) {
   }
 
   try {
+    const { memberId, password } = getPlanApiCredentials();
     // Build the query parameters securely
     const params = new URLSearchParams({
-      apimember_id: process.env.PLAN_API_USER_ID || '',
-      api_password: process.env.PLAN_API_PASSWORD || '',
+      apimember_id: memberId,
+      api_password: password,
       ConsumerNo: consumerNo,
       operator_code: operatorCode
     });
 
     // Make the request to PlanAPI
     const apiUrl = `https://planapi.in/api/Mobile/GasInfoFetch?${params.toString()}`;
-    const res = await fetch(apiUrl);
+    const res = await fetch(apiUrl, { signal: planApiTimeoutSignal(), cache: 'no-store' });
     
     // 🔍 THE SHIELD: Prevent crashes by reading text instead of forcing JSON
     const rawText = await res.text();
@@ -60,12 +62,14 @@ export async function GET(request: Request) {
       }, { status: 400 });
     }
 
-  } catch (error: any) {
-    if (process.env.NODE_ENV === 'development') console.error("Critical Gas API Error:", error?.message || 'unknown error');
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'unknown error';
+    if (process.env.NODE_ENV === 'development' && message !== 'PLANAPI_NOT_CONFIGURED') console.error('Gas provider request failed:', message);
+    if (message === 'PLANAPI_NOT_CONFIGURED') return NextResponse.json({ success: false, message: 'Gas bill service is temporarily unavailable.' }, { status: 503 });
     return NextResponse.json({ 
       success: false, 
       message: "Unable to fetch bill details right now. Please try again." 
-    }, { status: 500 });
+    }, { status: 502 });
   }
 }
 export const dynamic = 'force-dynamic';

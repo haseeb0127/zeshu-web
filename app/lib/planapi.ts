@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { getPlanApiCredentials } from './planapi-config';
 
 const PLAN_API_BASE = 'https://planapi.in/api/Mobile';
 
@@ -49,10 +50,7 @@ export type BbpsField = { label: string; minLength: number | null; maxLength: nu
 export type BbpsBillInfo = { billFetchAvailable: boolean; fields: BbpsField[] };
 
 function credentials() {
-  const memberId = process.env.PLANAPI_MEMBER_ID;
-  const password = process.env.PLANAPI_PASSWORD;
-  if (!memberId || !password) throw new Error('PLANAPI_NOT_CONFIGURED');
-  return { memberId, password };
+  return getPlanApiCredentials();
 }
 
 function providerError(message: string) {
