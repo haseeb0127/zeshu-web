@@ -2176,6 +2176,13 @@ export default function ZeshuSuperApp() {
                </div>
              </div>}
            </>}
+             {normalizedSearch && (serviceSearchMatches.length > 0 || siteShortcutMatches.length > 0) && <section className="mb-5 mx-4 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 md:mx-0" aria-labelledby="zeshu-search-shortcuts-title">
+               <div className="flex items-center justify-between gap-3"><div><h3 id="zeshu-search-shortcuts-title" className="text-sm font-black text-slate-900">Also on Zeshu</h3><p className="mt-1 text-xs leading-5 text-slate-600">We matched your words to products and Zeshu services.</p></div><span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-indigo-700">Smart search</span></div>
+               <div className="mt-3 flex flex-wrap gap-2">
+                 {serviceSearchMatches.map(({ service }) => <button type="button" key={service.id} onClick={() => { setActiveService(service.id); setActiveTab('recharge'); setSearchQuery(''); }} className="rounded-xl bg-white px-3 py-2.5 text-xs font-black text-indigo-700 shadow-sm">{service.label}</button>)}
+                 {siteShortcutMatches.map(({ shortcut }) => <Link key={shortcut.id} href={shortcut.href} className="rounded-xl bg-white px-3 py-2.5 text-xs font-black text-indigo-700 shadow-sm">{shortcut.label}</Link>)}
+               </div>
+             </section>}
           {activeTab === 'recharge' ? (
              <div className="bg-white rounded-[32px] shadow-xl border border-gray-100 max-w-2xl mx-auto overflow-hidden animate-in slide-in-from-bottom-4">
                <div className="flex overflow-x-auto bg-[#F8F9FC] p-3 gap-2 border-b border-gray-100 no-scrollbar">
@@ -2432,7 +2439,7 @@ export default function ZeshuSuperApp() {
               )}
               <div id="products" className="px-4 md:px-0">
                 <div className="flex flex-wrap items-end justify-between gap-3 mb-6 md:mb-8 border-b pb-4 md:pb-5">
-                  <h2 className="text-2xl md:text-3xl font-black tracking-tighter">{activeCategory} Items</h2>
+                  <div><h2 className="text-2xl md:text-3xl font-black tracking-tighter">{normalizedSearch ? `Results for “${searchQuery.trim()}”` : `${activeCategory} Items`}</h2>{normalizedSearch && <p className="mt-1 text-xs font-medium text-slate-500">Matches names, brands, categories, related words and spelling mistakes.</p>}</div>
                   <div className="flex items-center gap-2"><span className="text-[#6B7280] font-bold text-xs md:text-sm bg-gray-100 px-3 py-1 rounded-xl">{filteredProducts.length} items</span></div>
                 </div>
                 
@@ -2445,7 +2452,8 @@ export default function ZeshuSuperApp() {
                      {activeProductFilterCount > 0 && <button type="button" onClick={clearProductFilters} className="order-3 rounded-xl border border-[#087443] px-4 py-2 text-xs font-black text-[#087443]">Clear filters</button>}
                      <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center"><Search size={32} className="text-gray-300"/></div>
                      <h3 className="text-xl font-black">{['Fruits', 'Vegetables', 'Chicken', 'Mutton', 'Fish & Seafood', 'Eggs'].includes(activeCategory) && !normalizedSearch ? 'Products coming soon.' : `No products found${normalizedSearch ? ` for “${searchQuery.trim()}”` : ''}.`}</h3>
-                     <p className="text-gray-500 text-sm">{['Fruits', 'Vegetables', 'Chicken', 'Mutton', 'Fish & Seafood', 'Eggs'].includes(activeCategory) && !normalizedSearch ? 'We will add verified products here when they are available.' : 'Try clearing search or browsing another category.'}</p>
+                      <p className="text-gray-500 text-sm">{['Fruits', 'Vegetables', 'Chicken', 'Mutton', 'Fish & Seafood', 'Eggs'].includes(activeCategory) && !normalizedSearch ? 'We will add verified products here when they are available.' : normalizedSearch ? 'Check the closest catalog suggestions below, or clear filters to widen the search.' : 'Try clearing search or browsing another category.'}</p>
+                      {normalizedSearch && searchRecommendations.length > 0 && serviceSearchMatches.length === 0 && siteShortcutMatches.length === 0 && <div className="w-full max-w-xl rounded-2xl bg-[#f7fbf8] p-4"><p className="text-xs font-black uppercase tracking-wider text-[#52645a]">Closest matches</p><div className="mt-3 flex flex-wrap justify-center gap-2">{searchRecommendations.map((product) => <button type="button" key={String(product.id)} onClick={() => { clearProductFilters(); setSearchQuery(String(product.name || '')); }} className="rounded-xl border border-[#cfe8d7] bg-white px-3 py-2 text-xs font-black text-[#087443]">{String(product.name)}</button>)}</div></div>}
                      <div className="flex flex-wrap justify-center gap-2"><button type="button" onClick={() => setSearchQuery('')} className="rounded-xl bg-[#087443] px-4 py-2 text-xs font-black text-white">Clear search</button><button type="button" onClick={() => setActiveCategory('All')} className="rounded-xl border border-[#087443] px-4 py-2 text-xs font-black text-[#087443]">Browse all categories</button>{user && recentlyPurchased.length > 0 && <button type="button" onClick={() => document.getElementById('recently-purchased')?.scrollIntoView({ behavior: 'smooth' })} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-700">Recently purchased</button>}</div>
                   </div>
                 ) : (
