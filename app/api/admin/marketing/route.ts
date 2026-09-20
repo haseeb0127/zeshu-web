@@ -8,6 +8,7 @@ const PLACEMENTS = new Set(['HOMEPAGE_BANNER', 'CATEGORY_BANNER', 'SPONSORED_PRO
 const AUDIENCES = new Set(['JAGTIAL', 'INDIA']);
 const STATUSES = new Set(['DRAFT', 'PUBLISHED', 'PAUSED']);
 const PAYMENT_STATUSES = new Set(['UNPAID', 'PARTIAL', 'PAID', 'WAIVED']);
+const LEAD_STATUSES = new Set(['NEW', 'CONTACTED', 'QUALIFIED', 'ONBOARDED', 'REJECTED']);
 
 const parseDate = (value: unknown) => {
   const text = cleanText(value, 80);
@@ -125,14 +126,15 @@ export async function GET(request: Request) {
   const { context, response } = await requireMarketingAdmin(request);
   if (response || !context) return response!;
 
-  const [clientsResult, campaignsResult, linksResult, productsResult, eventsResult] = await Promise.all([
+  const [clientsResult, campaignsResult, linksResult, productsResult, eventsResult, leadsResult] = await Promise.all([
     context.service.from('marketing_clients').select('*').order('created_at', { ascending: false }),
     context.service.from('marketing_campaigns').select('*').order('created_at', { ascending: false }),
     context.service.from('marketing_campaign_products').select('campaign_id,product_id,display_order').order('display_order', { ascending: true }),
     context.service.from('products').select('id,name,brand,category,price,weight,unit,image_url,in_stock,quantity,vendor_id').order('name', { ascending: true }),
     context.service.from('marketing_campaign_events').select('campaign_id,event_type').limit(50000),
+    context.service.from('partner_leads').select('*').order('created_at', { ascending: false }).limit(500),
   ]);
-  const firstError = clientsResult.error || campaignsResult.error || linksResult.error || productsResult.error || eventsResult.error;
+  const firstError = clientsResult.error || campaignsResult.error || linksResult.error || productsResult.error || eventsResult.error || leadsResult.error;
   if (firstError) return NextResponse.json({ error: 'Marketing data is temporarily unavailable.' }, { status: 503 });
 
   const eventCounts = new Map<string, { views: number; clicks: number }>();
@@ -165,6 +167,7 @@ export async function GET(request: Request) {
     clients: clientsResult.data || [],
     campaigns,
     products: productsResult.data || [],
+    partner_leads: leadsResult.data || [],
   });
 }
 
@@ -223,6 +226,22 @@ export async function PATCH(request: Request) {
   const { context, response } = await requireMarketingAdmin(request);
   if (response || !context) return response!;
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const action = cleanText(body.action, 30).toLowerCase();
+
+  if (action === 'lead_status') {
+    const leadId = cleanText(body.id, 80);
+    const status = cleanText(body.status, 30).toUpperCase();
+    if (!leadId || !LEAD_STATUSES.has(status)) return NextResponse.json({ error: 'Choose a valid partner lead status.' }, { status: 400 });
+    const { data: lead, error } = await context.service
+      .from('partner_leads')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', leadId)
+      .select('*')
+      .single();
+    if (error || !lead) return NextResponse.json({ error: 'Partner lead could not be updated.' }, { status: 400 });
+    return NextResponse.json({ lead });
+  }
+
   const campaignId = cleanText(body.id, 80);
   if (!campaignId) return NextResponse.json({ error: 'Campaign ID is required.' }, { status: 400 });
 
