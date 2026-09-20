@@ -283,15 +283,16 @@ export default function VendorDashboard() {
           p_set_in_stock: true,
         })
       : await supabase.from("products").insert({ ...payload, vendor_id: vendor.id });
-    if (!result.error && editingProduct) {
+    let saveError = result.error;
+    if (!saveError && editingProduct) {
       const brandResult = await supabase.rpc("vendor_update_product_brand", {
         p_product_id: editingProduct.id,
         p_brand: payload.brand,
       });
-      if (brandResult.error) result = brandResult as typeof result;
+      saveError = brandResult.error;
     }
-    if (result.error) {
-      console.error("Product save failed:", result.error);
+    if (saveError) {
+      console.error("Product save failed:", saveError);
       setError("Product could not be saved. Please review the fields and try again.");
     } else {
       setIsProductFormOpen(false);
