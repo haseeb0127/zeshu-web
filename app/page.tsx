@@ -319,6 +319,8 @@ export default function ZeshuSuperApp() {
   const [supportAssistantBusy, setSupportAssistantBusy] = useState(false);
   const [supportAssistantResolved, setSupportAssistantResolved] = useState<boolean | null>(null);
   const [supportAssistantSource, setSupportAssistantSource] = useState<'ai' | 'guided' | ''>('');
+  const [supportAssistantSuggestions, setSupportAssistantSuggestions] = useState<string[]>([]);
+  const [supportAssistantContextUsed, setSupportAssistantContextUsed] = useState<string[]>([]);
   const [supportThreadRefreshToken, setSupportThreadRefreshToken] = useState(0);
   const supportThreadRequestRef = useRef(false);
   const [supportWhatsappEnabled, setSupportWhatsappEnabled] = useState(false);
@@ -2044,20 +2046,22 @@ export default function ZeshuSuperApp() {
     setLocationSelectorOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-  const askSupportAssistant = async () => {
-    const question = supportAssistantQuestion.trim();
+  const askSupportAssistant = async (questionOverride?: string) => {
+    const question = (questionOverride ?? supportAssistantQuestion).trim();
     if (!question || supportAssistantBusy) return;
-    const history = supportAssistantMessages.slice(-10);
+    const history = supportAssistantMessages.slice(-16);
     setSupportAssistantQuestion('');
     setSupportAssistantBusy(true);
     setSupportAssistantAnswer('');
     setSupportAssistantResolved(null);
     setSupportAssistantSource('');
+    setSupportAssistantSuggestions([]);
+    setSupportAssistantContextUsed([]);
     setSupportAssistantMessages((current) => [...current, { role: 'CUSTOMER', body: question }]);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
-        const answer = 'Please sign in so Zeshu can help safely and connect you to support if needed.';
+        const answer = 'Please sign in so Zeshu can safely check your Zeshu account context when needed.';
         setSupportAssistantAnswer(answer);
         setSupportAssistantMessages((current) => [...current, { role: 'AI', body: answer }]);
         setSupportAssistantResolved(false);
@@ -2075,6 +2079,8 @@ export default function ZeshuSuperApp() {
       setSupportAssistantMessages((current) => [...current, { role: 'AI', body: answer }]);
       setSupportAssistantResolved(payload.resolved === true);
       setSupportAssistantSource(payload.source === 'ai' ? 'ai' : 'guided');
+      setSupportAssistantSuggestions(Array.isArray(payload.suggested_questions) ? payload.suggested_questions.slice(0, 3).map(String) : []);
+      setSupportAssistantContextUsed(Array.isArray(payload.context_used) ? payload.context_used.map(String) : []);
 
       const transferredConversation = payload?.handoff?.created ? payload?.handoff?.conversation : null;
       if (transferredConversation?.id) {
@@ -2082,7 +2088,7 @@ export default function ZeshuSuperApp() {
         setSelectedSupportConversationId(transferredConversation.id);
         setSupportThread(null);
         setSupportThreadRefreshToken((value) => value + 1);
-        setSupportNotice('Zeshu Assistant could not fully resolve this, so your conversation was automatically transferred to Zeshu Support. You do not need to repeat the issue.');
+        setSupportNotice('Zeshu Assistant transferred this to Zeshu Support with the context attached. You do not need to repeat the issue.');
       } else if (payload.resolved !== true) {
         setSupportMessage(question);
         setSupportSubject('Other');
@@ -2093,12 +2099,24 @@ export default function ZeshuSuperApp() {
       setSupportAssistantAnswer(answer);
       setSupportAssistantMessages((current) => [...current, { role: 'AI', body: answer }]);
       setSupportAssistantResolved(false);
+      setSupportAssistantSuggestions([]);
+      setSupportAssistantContextUsed([]);
       setSupportMessage(question);
       setSupportSubject('Other');
-      setSupportNotice('AI help is temporarily unavailable. Your question is ready for Zeshu Support below.');
+      setSupportNotice('Assistant help is temporarily unavailable. Your question is ready for Zeshu Support below.');
     } finally {
       setSupportAssistantBusy(false);
     }
+  };
+
+  const clearSupportAssistantChat = () => {
+    setSupportAssistantQuestion('');
+    setSupportAssistantMessages([]);
+    setSupportAssistantAnswer('');
+    setSupportAssistantResolved(null);
+    setSupportAssistantSource('');
+    setSupportAssistantSuggestions([]);
+    setSupportAssistantContextUsed([]);
   };
 
   const connectAssistantToHuman = () => {
