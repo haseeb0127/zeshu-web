@@ -2,7 +2,7 @@ import { useState } from "react";
 import QuantityControl from "./QuantityControl";
 import { Heart } from "lucide-react";
 
-type Product = { id: string | number; name: string; price?: number; weight?: string; unit?: string; image_url?: string; in_stock?: boolean; quantity?: number };
+type Product = { id: string | number; name: string; brand?: string; price?: number; weight?: string; unit?: string; image_url?: string; in_stock?: boolean; quantity?: number };
 type Props = { product: Product; quantity?: number; onAdd: () => void; onRemove: () => void; isFavorite?: boolean; favoriteBusy?: boolean; onFavoriteToggle?: () => void; reviewAverage?: number; reviewCount?: number; onReviews?: () => void };
 
 export default function ProductCard({ product, quantity, onAdd, onRemove, isFavorite = false, favoriteBusy = false, onFavoriteToggle, reviewAverage, reviewCount = 0, onReviews }: Props) {
@@ -14,6 +14,7 @@ export default function ProductCard({ product, quantity, onAdd, onRemove, isFavo
       {product.image_url && !imageFailed ? <img src={product.image_url} alt={product.name} loading="lazy" onError={() => setImageFailed(true)} className="h-full w-full object-contain transition-transform duration-200 group-hover:scale-105" /> : <div className="grid h-full place-items-center text-center text-xs font-bold text-[#6b7b70]">Image unavailable</div>}
     </div>
     <h3 className="min-h-10 text-sm font-bold leading-5 text-[#1b2c22] line-clamp-2">{product.name}</h3>
+    {product.brand && <p className="mt-1 truncate text-[11px] font-black uppercase tracking-wide text-[#087443]">{product.brand}</p>}
     <p className="mt-1 min-h-5 text-xs font-medium text-[#6b7b70]">{product.weight || product.unit || "1 unit"}</p>
     <div className="mt-1 flex items-center justify-between gap-2">{reviewCount > 0 ? <p className="text-xs font-black text-amber-600">★ {Number(reviewAverage || 0).toFixed(1)} <span className="font-medium text-slate-500">({reviewCount})</span></p> : <p className="text-[11px] font-medium text-slate-400">No reviews yet</p>}{onReviews && <button type="button" onClick={onReviews} className="text-[10px] font-black text-[#087443]">See reviews</button>}</div>
     <div className="mt-auto flex items-center justify-between gap-2 border-t border-[#edf1ed] pt-3">
