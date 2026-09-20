@@ -22,6 +22,37 @@ import { catalogSearchScore, getCatalogSearchRecommendations, isCatalogSearchMat
 const supabase = customerSupabase();
 const SUPPORT_WHATSAPP_UI_ENABLED = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED === 'true';
 
+const CUSTOMER_CATEGORY_DEFINITIONS = [
+  { id: 'All', label: 'All Products', icon: '🛍️', aliases: [] },
+  { id: 'Snacks & Biscuits', label: 'Snacks & Biscuits', icon: '🍪', aliases: ['biscuits','biscuit','snacks','snack','chips','namkeen'] },
+  { id: 'Dairy & Breakfast', label: 'Dairy & Breakfast', icon: '🥛', aliases: ['dairy','milk','breakfast','bread','curd','paneer','butter','cheese'] },
+  { id: 'Beverages', label: 'Beverages', icon: '🥤', aliases: ['drinks','drink','beverages','beverage','soft drinks','juice','water'] },
+  { id: 'Fresh Fruits', label: 'Fresh Fruits', icon: '🍎', aliases: ['fruits','fruit','fresh fruits'] },
+  { id: 'Vegetables', label: 'Vegetables', icon: '🥬', aliases: ['vegetables','vegetable','fresh vegetables'] },
+  { id: 'Chicken', label: 'Chicken', icon: '🍗', aliases: ['chicken','poultry'] },
+  { id: 'Meat & Seafood', label: 'Meat & Seafood', icon: '🥩', aliases: ['mutton','meat','fish & seafood','fish','seafood'] },
+  { id: 'Eggs', label: 'Eggs', icon: '🥚', aliases: ['eggs','egg'] },
+  { id: 'Staples & Cooking', label: 'Staples & Cooking', icon: '🌾', aliases: ['staples','grocery','groceries','atta','flour','rice','oil','pulses','dal','spices'] },
+] as const;
+
+const normalizeCategoryName = (value: unknown) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+const categoryDefinition = (id: string) => CUSTOMER_CATEGORY_DEFINITIONS.find((category) => category.id === id) || CUSTOMER_CATEGORY_DEFINITIONS[0];
+const productMatchesCustomerCategory = (rawCategory: unknown, customerCategory: string) => {
+  if (customerCategory === 'All') return true;
+  const raw = normalizeCategoryName(rawCategory);
+  const definition = categoryDefinition(customerCategory);
+  return definition.aliases.some((alias) => raw === normalizeCategoryName(alias));
+};
+const campaignMatchesCustomerCategory = (campaignCategory: unknown, customerCategory: string) => {
+  if (customerCategory === 'All') return false;
+  const raw = normalizeCategoryName(campaignCategory);
+  const definition = categoryDefinition(customerCategory);
+  return raw === normalizeCategoryName(definition.id)
+    || raw === normalizeCategoryName(definition.label)
+    || definition.aliases.some((alias) => raw === normalizeCategoryName(alias));
+};
+
+
 const SERVICES = [
   { id: 'mobile', label: 'Prepaid', icon: <Smartphone size={28} strokeWidth={1.5}/>, color: 'bg-[#EEF2FF] text-[#4F46E5] group-hover:bg-[#4F46E5] group-hover:text-white', inputLabel: 'Mobile Number' },
   { id: 'electricity', label: 'Electricity', icon: <Zap size={28} strokeWidth={1.5}/>, color: 'bg-[#FEF3C7] text-[#D97706] group-hover:bg-[#F59E0B] group-hover:text-white', inputLabel: 'Consumer Number' },
@@ -480,17 +511,21 @@ export default function ZeshuSuperApp() {
   const currentServiceObj = SERVICES.find(s => s.id === activeService) || SERVICES[0];
   const isPlanBased = activeService === 'mobile' || activeService === 'dth'; 
 
-  const productCategories = useMemo(() => {
-    const cats = new Set(products.map(p => String(p?.category || '').trim()).filter(Boolean));
-    ['Fruits', 'Vegetables', 'Chicken', 'Mutton', 'Fish & Seafood', 'Eggs'].forEach((category) => cats.add(category));
-    return ['All', ...Array.from(cats).sort((a, b) => a.localeCompare(b))];
-  }, [products]);
+  const productCategories = useMemo(() => CUSTOMER_CATEGORY_DEFINITIONS.map((category) => category.id), []);
+  const categoryProductCounts = useMemo(() => Object.fromEntries(
+    CUSTOMER_CATEGORY_DEFINITIONS.map((category) => [
+      category.id,
+      category.id === 'All'
+        ? products.length
+        : products.filter((product) => productMatchesCustomerCategory(product?.category, category.id)).length,
+    ]),
+  ) as Record<string, number>, [products]);
 
   const productBrands = useMemo(() => Array.from(new Set(products.map((product) => String(product?.brand || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)), [products]);
 
   const visibleMarketingBanners = useMemo(() => marketingCampaigns.filter((campaign) =>
     campaign?.placement === 'HOMEPAGE_BANNER'
-      || (campaign?.placement === 'CATEGORY_BANNER' && activeCategory !== 'All' && String(campaign?.category_name || '').trim() === activeCategory)
+      || (campaign?.placement === 'CATEGORY_BANNER' && campaignMatchesCustomerCategory(campaign?.category_name, activeCategory))
   ), [marketingCampaigns, activeCategory]);
   const sponsoredProductIds = useMemo(() => new Set<string>(
     marketingCampaigns
@@ -516,7 +551,7 @@ export default function ZeshuSuperApp() {
       .filter(({ product, searchScore }) => {
         if (!product || !product.name) return false;
         const matchesSearch = !normalizedSearch || (searchScore > 0 && isCatalogSearchMatch(product, normalizedSearch));
-        const matchesCategory = activeCategory === 'All' || String(product.category || '').trim() === activeCategory;
+        const matchesCategory = productMatchesCustomerCategory(product.category, activeCategory);
         const matchesBrand = brandFilter === 'ALL' || String(product.brand || '').trim() === brandFilter;
         const numericPrice = Number(product.price);
         const matchesPrice = priceFilter === 'ALL'
@@ -2965,8 +3000,8 @@ export default function ZeshuSuperApp() {
                   <div className="bg-white p-12 md:p-20 rounded-[32px] border-2 border-dashed border-gray-200 text-center flex flex-col items-center justify-center gap-4">
                      {activeProductFilterCount > 0 && <button type="button" onClick={clearProductFilters} className="order-3 rounded-xl border border-[#087443] px-4 py-2 text-xs font-black text-[#087443]">Clear filters</button>}
                      <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center"><Search size={32} className="text-gray-300"/></div>
-                     <h3 className="text-xl font-black">{['Fruits', 'Vegetables', 'Chicken', 'Mutton', 'Fish & Seafood', 'Eggs'].includes(activeCategory) && !normalizedSearch ? 'Products coming soon.' : `No products found${normalizedSearch ? ` for “${searchQuery.trim()}”` : ''}.`}</h3>
-                      <p className="text-gray-500 text-sm">{['Fruits', 'Vegetables', 'Chicken', 'Mutton', 'Fish & Seafood', 'Eggs'].includes(activeCategory) && !normalizedSearch ? 'We will add verified products here when they are available.' : normalizedSearch ? 'Check the closest catalog suggestions below, or clear filters to widen the search.' : 'Try clearing search or browsing another category.'}</p>
+                     <h3 className="text-xl font-black">{activeCategory !== 'All' && Number(categoryProductCounts[activeCategory] || 0) === 0 && !normalizedSearch ? 'Products coming soon.' : `No products found${normalizedSearch ? ` for “${searchQuery.trim()}”` : ''}.`}</h3>
+                      <p className="text-gray-500 text-sm">{activeCategory !== 'All' && Number(categoryProductCounts[activeCategory] || 0) === 0 && !normalizedSearch ? 'We will add verified products here when they are available.' : normalizedSearch ? 'Check the closest catalog suggestions below, or clear filters to widen the search.' : 'Try clearing search or browsing another category.'}</p>
                       {normalizedSearch && searchRecommendations.length > 0 && serviceSearchMatches.length === 0 && siteShortcutMatches.length === 0 && <div className="w-full max-w-xl rounded-2xl bg-[#f7fbf8] p-4"><p className="text-xs font-black uppercase tracking-wider text-[#52645a]">Closest matches</p><div className="mt-3 flex flex-wrap justify-center gap-2">{searchRecommendations.map((product) => <button type="button" key={String(product.id)} onClick={() => { clearProductFilters(); setSearchQuery(String(product.name || '')); }} className="rounded-xl border border-[#cfe8d7] bg-white px-3 py-2 text-xs font-black text-[#087443]">{String(product.name)}</button>)}</div></div>}
                      <div className="flex flex-wrap justify-center gap-2"><button type="button" onClick={() => setSearchQuery('')} className="rounded-xl bg-[#087443] px-4 py-2 text-xs font-black text-white">Clear search</button><button type="button" onClick={() => setActiveCategory('All')} className="rounded-xl border border-[#087443] px-4 py-2 text-xs font-black text-[#087443]">Browse all categories</button>{user && recentlyPurchased.length > 0 && <button type="button" onClick={() => document.getElementById('recently-purchased')?.scrollIntoView({ behavior: 'smooth' })} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-700">Recently purchased</button>}</div>
                   </div>
