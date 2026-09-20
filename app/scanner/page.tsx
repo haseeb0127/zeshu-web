@@ -196,7 +196,7 @@ export default function ScannerPage() {
 
         {!isScanning && (
           <div className="w-full max-w-md flex flex-col items-center animate-in fade-in zoom-in duration-300">
-            <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mb-4 border border-indigo-500/30">
+            <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mb-4 border border-emerald-500/30">
               <span className="text-3xl font-black text-emerald-400">{merchantName.charAt(0)}</span>
             </div>
             <h2 className="text-2xl font-black mb-1 tracking-tight text-center">{recipientMode === 'CONTACT' ? merchantName : `QR recipient: ${merchantName}`}</h2>
