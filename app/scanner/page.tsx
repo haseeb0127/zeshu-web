@@ -170,7 +170,8 @@ export default function ScannerPage() {
         {isScanning && (
           <div className="w-full max-w-md flex flex-col items-center">
             <h2 className="text-2xl font-black mb-1 tracking-tight text-center">Scan any Shop QR</h2>
-            <p className="text-slate-400 text-sm mb-6 text-center">Merchant QR payments are not available yet.</p>
+            <p className="text-slate-400 text-sm mb-2 text-center">The QR scanner works across India.</p>
+            <p className="text-amber-300/90 text-xs mb-6 text-center">Merchant payment and cashback execution stay disabled until the settlement integration is verified.</p>
             
             <div className="w-full aspect-square bg-slate-900 rounded-3xl overflow-hidden border-2 border-indigo-500/50 shadow-[0_0_40px_rgba(99,102,241,0.2)] relative flex items-center justify-center">
               <div id="reader" className="w-full h-full object-cover"></div>
