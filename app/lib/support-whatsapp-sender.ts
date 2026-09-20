@@ -7,6 +7,15 @@ const META_TIMEOUT_MS = 10_000;
 const MAX_RETRY_DELAY_MS = 60 * 60 * 1_000;
 const E164_PHONE = /^\+[1-9][0-9]{7,14}$/;
 
+export type SupportWhatsappReadiness = {
+  senderEnabled: boolean;
+  uiEnabled: boolean;
+  senderConfigured: boolean;
+  webhookConfigured: boolean;
+  missingSenderConfig: string[];
+  missingWebhookConfig: string[];
+};
+
 type SenderConfig = {
   supabaseUrl: string;
   serviceRoleKey: string;
@@ -59,10 +68,54 @@ function configuredValue(name: string): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+const PHONE_NUMBER_ID = /^\d{5,32}$/;
+const GRAPH_API_VERSION = /^v\d+\.\d+$/;
+const TEMPLATE_NAME = /^[a-z0-9_]{1,512}$/;
+const TEMPLATE_LANGUAGE = /^[a-z]{2}(?:_[A-Z]{2})?$/;
+
+function validSenderConfigValue(name: string, value: string | null): boolean {
+  if (!value) return false;
+  if (name === 'WHATSAPP_PHONE_NUMBER_ID') return PHONE_NUMBER_ID.test(value);
+  if (name === 'WHATSAPP_GRAPH_API_VERSION') return GRAPH_API_VERSION.test(value);
+  if (name === 'WHATSAPP_SUPPORT_REPLY_TEMPLATE_NAME' || name === 'WHATSAPP_SUPPORT_RESOLVED_TEMPLATE_NAME') return TEMPLATE_NAME.test(value);
+  if (name === 'WHATSAPP_SUPPORT_REPLY_TEMPLATE_LANGUAGE' || name === 'WHATSAPP_SUPPORT_RESOLVED_TEMPLATE_LANGUAGE') return TEMPLATE_LANGUAGE.test(value);
+  if (name === 'WHATSAPP_ACCESS_TOKEN') return value.length >= 20;
+  return true;
+}
+
+export function getSupportWhatsappReadiness(): SupportWhatsappReadiness {
+  const senderRequired = [
+    'NEXT_PUBLIC_SUPABASE_URL',
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'WHATSAPP_ACCESS_TOKEN',
+    'WHATSAPP_PHONE_NUMBER_ID',
+    'WHATSAPP_GRAPH_API_VERSION',
+    'WHATSAPP_SUPPORT_REPLY_TEMPLATE_NAME',
+    'WHATSAPP_SUPPORT_REPLY_TEMPLATE_LANGUAGE',
+    'WHATSAPP_SUPPORT_RESOLVED_TEMPLATE_NAME',
+    'WHATSAPP_SUPPORT_RESOLVED_TEMPLATE_LANGUAGE',
+  ];
+  const webhookRequired = [
+    'WHATSAPP_WEBHOOK_VERIFY_TOKEN',
+    'WHATSAPP_APP_SECRET',
+  ];
+
+  const missingSenderConfig = senderRequired.filter((name) => !validSenderConfigValue(name, configuredValue(name)));
+  const missingWebhookConfig = webhookRequired.filter((name) => !configuredValue(name));
+
+  return {
+    senderEnabled: process.env.SUPPORT_WHATSAPP_SENDER_ENABLED === 'true',
+    uiEnabled: process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED === 'true',
+    senderConfigured: missingSenderConfig.length === 0,
+    webhookConfigured: missingWebhookConfig.length === 0,
+    missingSenderConfig,
+    missingWebhookConfig,
+  };
+}
+
 function loadConfig(): SenderConfig | null {
   if (process.env.SUPPORT_WHATSAPP_SENDER_ENABLED !== 'true') return null;
 
-  const cronSecret = configuredValue('CRON_SECRET');
   const supabaseUrl = configuredValue('NEXT_PUBLIC_SUPABASE_URL');
   const serviceRoleKey = configuredValue('SUPABASE_SERVICE_ROLE_KEY');
   const accessToken = configuredValue('WHATSAPP_ACCESS_TOKEN');
@@ -73,9 +126,17 @@ function loadConfig(): SenderConfig | null {
   const resolvedTemplateName = configuredValue('WHATSAPP_SUPPORT_RESOLVED_TEMPLATE_NAME');
   const resolvedTemplateLanguage = configuredValue('WHATSAPP_SUPPORT_RESOLVED_TEMPLATE_LANGUAGE');
 
-  if (!cronSecret || !supabaseUrl || !serviceRoleKey || !accessToken || !phoneNumberId ||
+  if (!supabaseUrl || !serviceRoleKey || !accessToken || !phoneNumberId ||
       !graphApiVersion || !replyTemplateName || !replyTemplateLanguage ||
       !resolvedTemplateName || !resolvedTemplateLanguage) return null;
+
+  if (!validSenderConfigValue('WHATSAPP_ACCESS_TOKEN', accessToken) ||
+      !validSenderConfigValue('WHATSAPP_PHONE_NUMBER_ID', phoneNumberId) ||
+      !validSenderConfigValue('WHATSAPP_GRAPH_API_VERSION', graphApiVersion) ||
+      !validSenderConfigValue('WHATSAPP_SUPPORT_REPLY_TEMPLATE_NAME', replyTemplateName) ||
+      !validSenderConfigValue('WHATSAPP_SUPPORT_REPLY_TEMPLATE_LANGUAGE', replyTemplateLanguage) ||
+      !validSenderConfigValue('WHATSAPP_SUPPORT_RESOLVED_TEMPLATE_NAME', resolvedTemplateName) ||
+      !validSenderConfigValue('WHATSAPP_SUPPORT_RESOLVED_TEMPLATE_LANGUAGE', resolvedTemplateLanguage)) return null;
 
   return {
     supabaseUrl,
