@@ -3,9 +3,9 @@ import QuantityControl from "./QuantityControl";
 import { Heart } from "lucide-react";
 
 type Product = { id: string | number; name: string; brand?: string; price?: number; weight?: string; unit?: string; image_url?: string; in_stock?: boolean; quantity?: number };
-type Props = { product: Product; quantity?: number; onAdd: () => void; onRemove: () => void; isFavorite?: boolean; favoriteBusy?: boolean; onFavoriteToggle?: () => void; reviewAverage?: number; reviewCount?: number; onReviews?: () => void };
+type Props = { product: Product; quantity?: number; onAdd: () => void; onRemove: () => void; isFavorite?: boolean; favoriteBusy?: boolean; onFavoriteToggle?: () => void; reviewAverage?: number; reviewCount?: number; onReviews?: () => void; sponsored?: boolean };
 
-export default function ProductCard({ product, quantity, onAdd, onRemove, isFavorite = false, favoriteBusy = false, onFavoriteToggle, reviewAverage, reviewCount = 0, onReviews }: Props) {
+export default function ProductCard({ product, quantity, onAdd, onRemove, isFavorite = false, favoriteBusy = false, onFavoriteToggle, reviewAverage, reviewCount = 0, onReviews, sponsored = false }: Props) {
   const [imageFailed, setImageFailed] = useState(false);
   const unavailable = product.in_stock === false || product.quantity === 0;
   return <article className="group flex min-h-[290px] flex-col rounded-3xl border border-[#e3e9e4] bg-white p-3 shadow-[0_2px_10px_rgba(20,45,31,.04)] transition-shadow hover:shadow-[0_10px_28px_rgba(20,45,31,.09)] md:p-4">
@@ -13,6 +13,7 @@ export default function ProductCard({ product, quantity, onAdd, onRemove, isFavo
       {onFavoriteToggle && <button type="button" aria-label={isFavorite ? `Remove ${product.name} from favorites` : `Add ${product.name} to favorites`} aria-pressed={isFavorite} disabled={favoriteBusy} onClick={onFavoriteToggle} className="absolute right-2 top-2 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/95 text-[#087443] shadow-sm disabled:opacity-50"><Heart size={18} fill={isFavorite ? 'currentColor' : 'none'} /></button>}
       {product.image_url && !imageFailed ? <img src={product.image_url} alt={product.name} loading="lazy" onError={() => setImageFailed(true)} className="h-full w-full object-contain transition-transform duration-200 group-hover:scale-105" /> : <div className="grid h-full place-items-center text-center text-xs font-bold text-[#6b7b70]">Image unavailable</div>}
     </div>
+    {sponsored && <p className="mb-1 text-[10px] font-black uppercase tracking-[.12em] text-violet-700">Sponsored</p>}
     <h3 className="min-h-10 text-sm font-bold leading-5 text-[#1b2c22] line-clamp-2">{product.name}</h3>
     {product.brand && <p className="mt-1 truncate text-[11px] font-black uppercase tracking-wide text-[#087443]">{product.brand}</p>}
     <p className="mt-1 min-h-5 text-xs font-medium text-[#6b7b70]">{product.weight || product.unit || "1 unit"}</p>
