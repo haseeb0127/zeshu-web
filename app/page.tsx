@@ -258,7 +258,8 @@ export default function ZeshuSuperApp() {
   const [isCheckoutOpening, setIsCheckoutOpening] = useState(false);
   const [checkoutError, setCheckoutError] = useState<CheckoutErrorState | null>(null);
   const [isCheckingPaymentStatus, setIsCheckingPaymentStatus] = useState(false);
-  const [activeCategory, setActiveCategory] = useState('All'); 
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [brandFilter, setBrandFilter] = useState('ALL');
   const [priceFilter, setPriceFilter] = useState<'ALL' | 'UNDER_100' | '100_299' | '300_499' | '500_PLUS'>('ALL');
   const [availabilityFilter, setAvailabilityFilter] = useState<'ALL' | 'AVAILABLE'>('ALL');
   const [productSort, setProductSort] = useState<'recommended' | 'price_asc' | 'price_desc' | 'name'>('recommended');
@@ -420,13 +421,16 @@ export default function ZeshuSuperApp() {
     return ['All', ...Array.from(cats).sort((a, b) => a.localeCompare(b))];
   }, [products]);
 
+  const productBrands = useMemo(() => Array.from(new Set(products.map((product) => String(product?.brand || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)), [products]);
+
   const normalizedSearch = searchQuery.trim().replace(/\s+/g, ' ').toLowerCase();
   const filteredProducts = useMemo(() => {
     const matchingProducts = products.filter((p) => {
       if (!p || !p.name) return false;
-      const haystack = [p.name, p.category, p.weight, p.unit].filter(Boolean).join(' ').replace(/\s+/g, ' ').toLowerCase();
+      const haystack = [p.name, p.brand, p.category, p.weight, p.unit].filter(Boolean).join(' ').replace(/\s+/g, ' ').toLowerCase();
       const matchesSearch = !normalizedSearch || haystack.includes(normalizedSearch);
       const matchesCategory = activeCategory === 'All' || String(p.category || '').trim() === activeCategory;
+      const matchesBrand = brandFilter === 'ALL' || String(p.brand || '').trim() === brandFilter;
       const numericPrice = Number(p.price);
       const matchesPrice = priceFilter === 'ALL'
         || (priceFilter === 'UNDER_100' && Number.isFinite(numericPrice) && numericPrice < 100)
@@ -435,7 +439,7 @@ export default function ZeshuSuperApp() {
         || (priceFilter === '500_PLUS' && Number.isFinite(numericPrice) && numericPrice >= 500);
       const matchesAvailability = availabilityFilter === 'ALL'
         || (Boolean(p.vendor_id) && p.in_stock !== false && !(Number(p.quantity) <= 0));
-      return matchesSearch && matchesCategory && matchesPrice && matchesAvailability;
+      return matchesSearch && matchesCategory && matchesBrand && matchesPrice && matchesAvailability;
     });
     if (productSort === 'recommended') return matchingProducts;
     return [...matchingProducts].sort((a, b) => {
@@ -447,10 +451,11 @@ export default function ZeshuSuperApp() {
       if (!Number.isFinite(priceA) && !Number.isFinite(priceB)) return 0;
       return productSort === 'price_asc' ? priceA - priceB : priceB - priceA;
     });
-  }, [products, normalizedSearch, activeCategory, priceFilter, availabilityFilter, productSort]);
-  const activeProductFilterCount = (activeCategory !== 'All' ? 1 : 0) + (priceFilter !== 'ALL' ? 1 : 0) + (availabilityFilter !== 'ALL' ? 1 : 0);
+  }, [products, normalizedSearch, activeCategory, brandFilter, priceFilter, availabilityFilter, productSort]);
+  const activeProductFilterCount = (activeCategory !== 'All' ? 1 : 0) + (brandFilter !== 'ALL' ? 1 : 0) + (priceFilter !== 'ALL' ? 1 : 0) + (availabilityFilter !== 'ALL' ? 1 : 0);
   const clearProductFilters = () => {
     setActiveCategory('All');
+    setBrandFilter('ALL');
     setPriceFilter('ALL');
     setAvailabilityFilter('ALL');
     setProductSort('recommended');
@@ -2011,8 +2016,9 @@ export default function ZeshuSuperApp() {
              </div>
              {isProductFiltersOpen && <div id="product-filters" className="mb-5 rounded-2xl border border-[#dce8df] bg-white p-4 shadow-sm">
                <div className="mb-3 flex items-center justify-between gap-3"><h3 className="text-sm font-black text-slate-900">Filter products</h3><button type="button" onClick={clearProductFilters} className="text-xs font-black text-[#087443]">Clear all</button></div>
-               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                  <label className="text-xs font-black text-slate-600">Category<select value={activeCategory} onChange={(event) => setActiveCategory(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="All">All categories</option>{productCategories.filter((category) => category !== 'All').map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
+                 <label className="text-xs font-black text-slate-600">Brand<select value={brandFilter} onChange={(event) => setBrandFilter(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="ALL">All brands</option>{productBrands.map((brand) => <option key={brand} value={brand}>{brand}</option>)}</select></label>
                  <label className="text-xs font-black text-slate-600">Price<select value={priceFilter} onChange={(event) => setPriceFilter(event.target.value as typeof priceFilter)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="ALL">Any price</option><option value="UNDER_100">Under ₹100</option><option value="100_299">₹100–₹299</option><option value="300_499">₹300–₹499</option><option value="500_PLUS">₹500+</option></select></label>
                  <label className="text-xs font-black text-slate-600">Availability<select value={availabilityFilter} onChange={(event) => setAvailabilityFilter(event.target.value as typeof availabilityFilter)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="ALL">All products</option><option value="AVAILABLE">In stock / available</option></select></label>
                  <label className="text-xs font-black text-slate-600">Sort<select value={productSort} onChange={(event) => setProductSort(event.target.value as typeof productSort)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="recommended">Recommended</option><option value="price_asc">Price: Low to High</option><option value="price_desc">Price: High to Low</option><option value="name">Name A-Z</option></select></label>
