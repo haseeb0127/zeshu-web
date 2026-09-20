@@ -1,7 +1,7 @@
 "use client";
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { QrCode, X, IndianRupee, ShieldCheck, Image as ImageIcon, Camera } from 'lucide-react';
+import { X, IndianRupee, ShieldCheck, Image as ImageIcon, Camera } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function ScannerPage() {
@@ -14,13 +14,29 @@ export default function ScannerPage() {
   
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
+  const handleSuccessfulScan = useCallback(async (text: string) => {
+    if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+      await html5QrCodeRef.current.stop().catch(console.error);
+    }
+    setIsScanning(false);
+    setScanResult(text);
+    try {
+      if (text.startsWith('upi://')) {
+        const url = new URL(text);
+        const params = new URLSearchParams(url.search);
+        if (params.get('pn')) setMerchantName(decodeURIComponent(params.get('pn')!));
+        if (params.get('am')) setAmount(params.get('am')!);
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     if (!isScanning) return;
     let isMounted = true;
     const startCamera = async () => {
       try {
         if (html5QrCodeRef.current) {
-          try { await html5QrCodeRef.current.stop(); } catch(e){}
+          try { await html5QrCodeRef.current.stop(); } catch {}
         }
         const html5QrCode = new Html5Qrcode("reader");
         html5QrCodeRef.current = html5QrCode;
@@ -41,7 +57,7 @@ export default function ScannerPage() {
           (decodedText) => { handleSuccessfulScan(decodedText); },
           () => {} 
         );
-      } catch (err: any) {
+      } catch {
         if (isMounted) {
           setCameraError(
             window.location.hostname !== 'localhost' && window.location.protocol === 'http:'
@@ -59,23 +75,7 @@ export default function ScannerPage() {
         html5QrCodeRef.current.stop().catch(console.error);
       }
     };
-  }, [isScanning]);
-
-  const handleSuccessfulScan = async (text: string) => {
-    if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
-      await html5QrCodeRef.current.stop().catch(console.error);
-    }
-    setIsScanning(false);
-    setScanResult(text);
-    try {
-      if (text.startsWith('upi://')) {
-        const url = new URL(text);
-        const params = new URLSearchParams(url.search);
-        if (params.get('pn')) setMerchantName(decodeURIComponent(params.get('pn')!));
-        if (params.get('am')) setAmount(params.get('am')!);
-      }
-    } catch (e) {}
-  };
+  }, [handleSuccessfulScan, isScanning]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -84,7 +84,7 @@ export default function ScannerPage() {
       const html5QrCode = html5QrCodeRef.current || new Html5Qrcode("reader");
       const decodedText = await html5QrCode.scanFile(file, true);
       handleSuccessfulScan(decodedText);
-    } catch (err) {
+    } catch {
       alert("Could not detect a valid QR code. Try another photo!");
     }
   };
@@ -156,8 +156,8 @@ export default function ScannerPage() {
     <div className="min-h-screen bg-[#0F172A] text-white flex flex-col font-sans selection:bg-indigo-500/30">
 
       <header className="p-4 flex items-center justify-between border-b border-slate-800">
-        <button onClick={() => router.push('/')} className="p-2 bg-slate-800 rounded-full active:scale-95 transition-transform">
-          <X size={24} className="text-slate-400" />
+        <button type="button" aria-label="Close scanner and return home" onClick={() => router.push('/')} className="p-2 bg-slate-800 rounded-full active:scale-95 transition-transform">
+          <X size={24} className="text-slate-400" aria-hidden="true" />
         </button>
         <div className="flex items-center gap-2">
           <ShieldCheck size={18} className="text-emerald-500" />

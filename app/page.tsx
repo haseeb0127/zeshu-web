@@ -229,7 +229,7 @@ export default function ZeshuSuperApp() {
   const [activeTab, setActiveTab] = useState('home'); 
   const [activeService, setActiveService] = useState('mobile');
   const [products, setProducts] = useState<any[]>([]);
-  const [banners, setBanners] = useState<string[]>([]);
+  const [banners] = useState<string[]>([]);
   const [myOrders, setMyOrders] = useState<any[]>([]);
   const [recentlyPurchased, setRecentlyPurchased] = useState<any[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
@@ -600,9 +600,6 @@ export default function ZeshuSuperApp() {
       const { data: pData, error: productsError } = await supabase.from('products').select('*');
       if (pData) { setProducts(pData); localStorage.setItem('zeshu_products', JSON.stringify(pData)); }
       if (productsError) setContentError(true);
-      
-      const { data: bData } = await supabase.from('banners').select('*').order('created_at', { ascending: false });
-      if (bData && bData.length > 0) { setBanners(bData.map((b: any) => b.image_url)); }
       setProductsLoading(false);
     };
     
@@ -1300,9 +1297,10 @@ export default function ZeshuSuperApp() {
 
   const autoDetectAndFetchPlans = async (num: string) => {
     if (!/^[6-9]\d{9}$/.test(num)) { setPlanDiscoveryError('Enter a valid 10-digit Indian mobile number.'); return; }
+    const headers = await getUtilityAuthHeaders(); if (!headers) return;
     setPlanDiscoveryLoading(true); setPlanDiscoveryError(''); setPlanDiscovery(null); setPlans([]); setSelectedPlanCategory('All'); setPlanSearch(''); setPlanVisibleCount(20); setPlanSelectionMessage(''); setSelectedPlanId('');
     try {
-      const response = await fetch('/api/recharge/plans', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mobile: num }) });
+      const response = await fetch('/api/recharge/plans', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ mobile: num }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Recharge plans are temporarily unavailable.');
       setPlanDiscovery(data); setSelectedOperator(data.operator || ''); setPlans(data.plans || []); showToast(`Plans found for ${data.operator}`);
@@ -1994,12 +1992,12 @@ export default function ZeshuSuperApp() {
       </div>
 
       <header className={`fixed top-0 w-full z-40 transition-all duration-500 ${isScrolled ? 'bg-white/90 backdrop-blur-2xl shadow-sm border-b border-gray-200/40' : 'bg-white border-b border-gray-100'}`}>
-        <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 md:py-0 md:h-[88px] flex flex-col md:flex-row items-center justify-between gap-3 md:gap-8">
-          <div className="flex items-center justify-between w-full md:w-auto gap-4">
-            <div className="flex items-center gap-4 md:gap-6">
-              <button aria-label="Go to Zeshu home" className="flex items-center gap-2 md:gap-3 md:border-r border-gray-200/60 md:pr-6 active:scale-[0.97] transition-transform" onClick={goToHome}>
+        <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 lg:py-0 lg:h-[88px] flex flex-col lg:flex-row items-center justify-between gap-3 lg:gap-8">
+          <div className="flex items-center justify-between w-full lg:w-auto gap-4">
+            <div className="flex items-center gap-4 lg:gap-6">
+              <button aria-label="Go to Zeshu home" className="flex items-center gap-2 lg:gap-3 lg:border-r border-gray-200/60 lg:pr-6 active:scale-[0.97] transition-transform" onClick={goToHome}>
                 <div className="bg-[#087443] text-white font-black p-2 md:p-2.5 rounded-xl md:rounded-2xl text-xl md:text-2xl tracking-tighter shadow-sm">Z</div>
-                <div className="hidden md:flex flex-col text-left"><span className="text-[22px] font-black tracking-tighter leading-none">ZESHU</span><span className="text-[10px] font-extrabold text-[#087443] tracking-[0.2em] uppercase mt-0.5">Everyday, simply</span></div>
+                <div className="hidden lg:flex flex-col text-left"><span className="text-[22px] font-black tracking-tighter leading-none">ZESHU</span><span className="text-[10px] font-extrabold text-[#087443] tracking-[0.2em] uppercase mt-0.5">Everyday, simply</span></div>
               </button>
               <button type="button" aria-label="Detect or change delivery location" className="flex max-w-[160px] flex-col cursor-pointer text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443] md:max-w-[220px]" onClick={handleAutoDetectLocation}>
                 <div className="font-black text-[13px] md:text-[15px] flex items-center gap-1.5">{locationAccuracy !== null ? 'Try location again' : 'Use my current location'} <MapPin size={14} className="text-[#087443]"/></div>
@@ -2007,7 +2005,7 @@ export default function ZeshuSuperApp() {
               </button>
             </div>
 
-            <div className="md:hidden flex items-center gap-2">
+            <div className="lg:hidden flex items-center gap-2">
               <Link href="/scanner" aria-label="Open QR scanner" className="p-2 bg-[#087443] text-white rounded-full active:scale-95 shadow-md flex items-center justify-center">
                 <QrCode size={18} />
               </Link>
@@ -2019,7 +2017,7 @@ export default function ZeshuSuperApp() {
             </div>
           </div>
 
-          <div className="w-full md:flex-1 max-w-3xl order-last md:order-none mt-1 md:mt-0">
+          <div className="w-full lg:flex-1 max-w-3xl order-last lg:order-none mt-1 lg:mt-0">
             <div className="bg-[#f1f4f1] transition-all rounded-[14px] md:rounded-[20px] flex items-center px-4 py-3 md:py-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#087443]/25">
               <Search className="text-[#9CA3AF] w-[18px] h-[18px] md:w-[22px] md:h-[22px]" />
               <input aria-label="Search products" type="search" placeholder="Search products" className="bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setVoiceSearchMessage(''); }} />
@@ -2029,7 +2027,7 @@ export default function ZeshuSuperApp() {
             {(isVoiceListening || voiceSearchMessage) && <p className="mt-1 px-2 text-xs font-bold text-[#087443]" role="status" aria-live="polite">{isVoiceListening ? 'Listening…' : voiceSearchMessage}</p>}
           </div>
 
-          <div className="hidden md:flex items-center gap-4 shrink-0">
+          <div className="hidden lg:flex items-center gap-4 shrink-0">
             <Link href="/scanner" className="flex items-center gap-2 bg-[#087443] text-white px-4 py-2.5 rounded-full font-black text-sm transition-all active:scale-95 shadow-sm">
               <QrCode size={18} /><span>Scan</span>
             </Link>
@@ -2041,7 +2039,7 @@ export default function ZeshuSuperApp() {
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto w-full md:px-8 py-8 pt-[130px] md:pt-[120px] flex gap-8">
+      <main className="max-w-[1400px] mx-auto w-full md:px-8 py-8 pt-[130px] lg:pt-[120px] flex gap-8">
         {activeTab === 'home' && normalizedSearch === '' && (
           <aside className="hidden lg:block w-[260px] shrink-0 sticky top-[120px] h-[calc(100vh-120px)] overflow-y-auto no-scrollbar pr-4">
             <h3 className="font-black text-[#111827] mb-5 px-3 tracking-tight text-lg">Shop by Category</h3>
@@ -2276,10 +2274,10 @@ export default function ZeshuSuperApp() {
                     <div className="flex items-center justify-between mb-8"><h2 className="text-xl md:text-2xl font-black tracking-tight">Recharge &amp; Bills</h2><button onClick={() => setActiveTab('recharge')} className="text-[#075b36] font-extrabold text-xs md:text-sm hover:bg-[#e9f7ef] bg-[#f1faf4] px-3 py-1.5 md:px-4 md:py-2 rounded-xl">Explore services</button></div>
                     <div className="grid grid-cols-4 md:grid-cols-8 gap-y-8 md:gap-y-10 gap-x-2 md:gap-x-4">
                       {SERVICES.filter((s) => !['pharmacy', 'upi'].includes(s.id)).map((s) => (
-                        <div key={s.id} onClick={() => { setActiveTab('recharge'); setActiveService(s.id); }} className="flex flex-col items-center gap-2.5 md:gap-3.5 cursor-pointer group active:scale-95 transition-transform">
+                        <button type="button" key={s.id} onClick={() => { setActiveTab('recharge'); setActiveService(s.id); }} className="flex flex-col items-center gap-2.5 md:gap-3.5 cursor-pointer group active:scale-95 transition-transform">
                           <div className={`h-[60px] w-[60px] md:h-[72px] md:w-[72px] rounded-[20px] md:rounded-[24px] flex items-center justify-center transition-all ${s.color}`}>{s.icon}</div>
                           <span className="text-[10px] md:text-[11px] font-black text-[#6B7280] text-center leading-tight group-hover:text-[#111827]">{s.label}</span>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </div>
