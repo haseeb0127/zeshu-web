@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateProviderRequest, authRequiredResponse, rateLimitResponse } from '@/app/lib/provider-security';
+import { getPlanApiCredentials, planApiTimeoutSignal } from '@/app/lib/planapi-config';
 
 export async function GET(request: Request) {
   const user = await authenticateProviderRequest(request);
@@ -15,15 +16,16 @@ export async function GET(request: Request) {
   const cleanNumber = number.replace(/\D/g, '');
 
   try {
+    const { memberId, password } = getPlanApiCredentials();
     if (service === 'dth') {
       // --- DTH OPERATOR FETCH ---
       const dthParams = new URLSearchParams({
-        apimember_id: process.env.PLAN_API_USER_ID || '',
-        api_password: process.env.PLAN_API_PASSWORD || '',
+        apimember_id: memberId,
+        api_password: password,
         dth_number: cleanNumber
       });
       
-      const res = await fetch(`https://planapi.in/api/Mobile/DthOperatorFetch?${dthParams.toString()}`);
+      const res = await fetch(`https://planapi.in/api/Mobile/DthOperatorFetch?${dthParams.toString()}`, { signal: planApiTimeoutSignal(), cache: 'no-store' });
       const data = await res.json();
 
       if (data.ERROR === "0" && data.DthOpCode) {
@@ -37,12 +39,12 @@ export async function GET(request: Request) {
       if (mobileNumber.length !== 10) return NextResponse.json({ success: false, message: "Invalid mobile number" });
 
       const hlrParams = new URLSearchParams({
-        ApiUserID: process.env.PLAN_API_USER_ID || '',
-        ApiPassword: process.env.PLAN_API_PASSWORD || '',
+        ApiUserID: memberId,
+        ApiPassword: password,
         Mobileno: mobileNumber
       });
       
-      const res = await fetch(`https://planapi.in/api/Mobile/OperatorFetchNew?${hlrParams.toString()}`);
+      const res = await fetch(`https://planapi.in/api/Mobile/OperatorFetchNew?${hlrParams.toString()}`, { signal: planApiTimeoutSignal(), cache: 'no-store' });
       const data = await res.json();
 
       if (data.OpCode) {
@@ -52,7 +54,9 @@ export async function GET(request: Request) {
       }
     }
   } catch (error) {
-    if (process.env.NODE_ENV === 'development') console.error("Operator provider request failed:", error instanceof Error ? error.message : 'unknown error');
-    return NextResponse.json({ success: false, message: "Server connection failed" }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'unknown error';
+    if (process.env.NODE_ENV === 'development' && message !== 'PLANAPI_NOT_CONFIGURED') console.error('Operator provider request failed:', message);
+    if (message === 'PLANAPI_NOT_CONFIGURED') return NextResponse.json({ success: false, message: 'Operator lookup is temporarily unavailable.' }, { status: 503 });
+    return NextResponse.json({ success: false, message: 'Operator lookup is temporarily unavailable.' }, { status: 502 });
   }
 }
