@@ -212,7 +212,7 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext): Assista
     };
   }
 
-  if (/refund|return|damaged|spoiled|wrong item|missing item|cancel.*order|order.*cancel/.test(text)) {
+  if (/damaged|spoiled|wrong item|missing item|refund my|refund.*order|want.*refund|need.*refund|return my|cancel.*order|order.*cancel/.test(text)) {
     return {
       answer: 'I can explain the policy, but a support person must review the actual order before any replacement, cancellation or refund decision. I’ll transfer this with your question attached.',
       resolved: false,
@@ -220,6 +220,17 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext): Assista
       handoff_reason: 'A human must review the specific order and remedy.',
       suggested_questions: [],
       intent: 'REFUND',
+    };
+  }
+
+  if (/refund|return policy|cancellation policy/.test(text)) {
+    return {
+      answer: 'Approved monetary refunds are returned to the original payment method where supported and are normally processed within 5–7 business days after approval; final credit timing can depend on the bank or payment provider. Grocery quality or fulfilment issues should generally be reported within 24 hours where reasonably possible. A specific refund or replacement still needs order review.',
+      resolved: true,
+      subject: 'Refund policy',
+      handoff_reason: '',
+      suggested_questions: ['I need help with a specific order', 'What if an item is missing?', 'Money was debited but no order'],
+      intent: 'REFUND_POLICY',
     };
   }
 
@@ -299,6 +310,28 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext): Assista
       handoff_reason: '',
       suggested_questions: suggestedForIntent('CATALOG'),
       intent: 'CATALOG',
+    };
+  }
+
+  if (/recharge failed|bill payment failed|provider.*failed|recharge.*debited|bill.*debited/.test(text)) {
+    return {
+      answer: 'A specific provider transaction needs a human review so Zeshu does not guess about fulfilment or money movement. I’ll transfer this with your question attached.',
+      resolved: false,
+      subject: 'Recharge or bill transaction help',
+      handoff_reason: 'A provider-specific transaction requires reconciliation.',
+      suggested_questions: [],
+      intent: 'PROVIDER_DISPUTE',
+    };
+  }
+
+  if (/change.*phone|update.*phone|delete.*account|close.*account|change.*account/.test(text)) {
+    return {
+      answer: 'That changes account data, so I’ll transfer this to Zeshu Support rather than changing or guessing about your account.',
+      resolved: false,
+      subject: 'Account change help',
+      handoff_reason: 'The requested account change requires protected support handling.',
+      suggested_questions: [],
+      intent: 'ACCOUNT_CHANGE',
     };
   }
 
