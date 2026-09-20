@@ -31,5 +31,5 @@ export default function OrderAlertManager({ supabaseClient, channelName, filter,
     if (typeof Notification !== "undefined" && Notification.permission === "default") await Notification.requestPermission();
     setEnabled(true); setNotice("Order alerts enabled on this device.");
   };
-  return <div className="mb-4 flex flex-wrap items-center gap-2"><button type="button" onClick={() => void enable()} disabled={enabled} className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700 disabled:opacity-60">{enabled ? "Order alerts on" : label}</button>{notice && <span className="text-xs font-bold text-slate-500">{notice}</span>}</div>;
+  return <div className="mb-4 flex flex-wrap items-center gap-2"><button type="button" onClick={() => void enable()} disabled={enabled} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800 disabled:opacity-60">{enabled ? "Order alerts on" : label}</button>{notice && <span className="text-xs font-bold text-slate-500">{notice}</span>}</div>;
 }
