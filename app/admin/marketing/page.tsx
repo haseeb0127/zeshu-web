@@ -74,6 +74,7 @@ export default function AdminMarketingPage() {
   const [clients, setClients] = useState<Row[]>([]);
   const [campaigns, setCampaigns] = useState<Row[]>([]);
   const [products, setProducts] = useState<Row[]>([]);
+  const [partnerLeads, setPartnerLeads] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState<"desktop" | "mobile" | "">("");
@@ -107,6 +108,7 @@ export default function AdminMarketingPage() {
       setClients(Array.isArray(payload.clients) ? payload.clients : []);
       setCampaigns(Array.isArray(payload.campaigns) ? payload.campaigns : []);
       setProducts(Array.isArray(payload.products) ? payload.products : []);
+      setPartnerLeads(Array.isArray(payload.partner_leads) ? payload.partner_leads : []);
       setError("");
     }
     setLoading(false);
@@ -213,6 +215,23 @@ export default function AdminMarketingPage() {
     setBusy(false);
   };
 
+  const setLeadStatus = async (lead: Row, status: string) => {
+    setBusy(true); setError(""); setNotice("");
+    const accessToken = await token();
+    const response = await fetch("/api/admin/marketing", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ action: "lead_status", id: lead.id, status }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) setError(payload.error || "Partner lead could not be updated.");
+    else {
+      setNotice(`Partner lead marked ${String(status).toLowerCase()}.`);
+      await load();
+    }
+    setBusy(false);
+  };
+
   const editCampaign = (campaign: Row) => {
     setForm({
       id: campaign.id,
@@ -253,7 +272,17 @@ export default function AdminMarketingPage() {
       {notice && <div role="status" className="mb-4 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{notice}</div>}
 
       <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {[["Clients", clients.length], ["Campaigns", campaigns.length], ["Live", campaigns.filter((c) => campaignState(c) === "Live").length], ["Total clicks", campaigns.reduce((sum, c) => sum + Number(c.clicks || 0), 0)]].map(([label, value]) => <div key={String(label)} className="rounded-2xl bg-white p-5 shadow-sm"><p className="text-xs font-black uppercase tracking-wide text-slate-400">{label}</p><p className="mt-2 text-2xl font-black text-slate-950">{value}</p></div>)}
+        {[["Partner leads", partnerLeads.length], ["Campaigns", campaigns.length], ["Live", campaigns.filter((c) => campaignState(c) === "Live").length], ["Total clicks", campaigns.reduce((sum, c) => sum + Number(c.clicks || 0), 0)]].map(([label, value]) => <div key={String(label)} className="rounded-2xl bg-white p-5 shadow-sm"><p className="text-xs font-black uppercase tracking-wide text-slate-400">{label}</p><p className="mt-2 text-2xl font-black text-slate-950">{value}</p></div>)}
+      </section>
+
+      <section className="mb-6 rounded-2xl bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-black">Partner applications</h2><p className="mt-1 text-xs text-slate-500">Vendors, pharmacies/distributors, recharge/bill providers, travel partners and sponsors submitted from /partners.</p></div><Link href="/partners" className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">Public partner page</Link></div>
+        {partnerLeads.length === 0 ? <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No partner applications yet.</p> : <div className="mt-4 grid gap-3 lg:grid-cols-2">{partnerLeads.map((lead) => <article key={lead.id} className="rounded-xl border border-slate-200 p-4">
+          <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-wider text-violet-700">{String(lead.partner_type || "").replaceAll("_"," ")}</p><h3 className="mt-1 font-black text-slate-950">{lead.business_name}</h3><p className="mt-1 text-xs text-slate-500">{lead.contact_person}{lead.city ? ` · ${lead.city}` : ""}</p></div><span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-600">{lead.status}</span></div>
+          <div className="mt-3 text-xs leading-5 text-slate-600">{lead.contact_phone && <p>Phone: {lead.contact_phone}</p>}{lead.contact_email && <p>Email: {lead.contact_email}</p>}{lead.website && <p className="break-all">Website: {lead.website}</p>}{lead.licence_or_gst && <p className="break-all">GST / licence: {lead.licence_or_gst}</p>}</div>
+          {lead.proposal && <p className="mt-3 rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-600">{lead.proposal}</p>}
+          <div className="mt-3 flex flex-wrap gap-2">{["CONTACTED","QUALIFIED","ONBOARDED","REJECTED"].map((status) => <button type="button" disabled={busy || lead.status === status} key={status} onClick={() => void setLeadStatus(lead,status)} className="rounded-lg bg-violet-50 px-2.5 py-2 text-[10px] font-black text-violet-700 disabled:opacity-40">{status}</button>)}</div>
+        </article>)}</div>}
       </section>
 
       {showClient && <section className="mb-6 rounded-2xl bg-white p-5 shadow-sm">
