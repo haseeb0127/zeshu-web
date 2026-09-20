@@ -177,6 +177,42 @@ export default function AdminMarketingPage() {
     setBusy(false);
   };
 
+  const setCampaignStatus = async (campaign: Row, status: CampaignForm["status"]) => {
+    setBusy(true); setError(""); setNotice("");
+    const accessToken = await token();
+    const response = await fetch("/api/admin/marketing", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({
+        id: campaign.id,
+        client_id: campaign.client_id,
+        name: campaign.name,
+        placement: campaign.placement,
+        audience: campaign.audience,
+        category_name: campaign.category_name || "",
+        headline: campaign.headline || "",
+        cta_label: campaign.cta_label || "Shop now",
+        desktop_image_url: campaign.desktop_image_url || "",
+        mobile_image_url: campaign.mobile_image_url || "",
+        destination_url: campaign.destination_url || "",
+        starts_at: campaign.starts_at || null,
+        ends_at: campaign.ends_at || null,
+        priority: campaign.priority ?? 0,
+        advertising_fee: campaign.advertising_fee ?? "",
+        payment_status: campaign.payment_status || "UNPAID",
+        status,
+        product_ids: Array.isArray(campaign.product_ids) ? campaign.product_ids : [],
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) setError(payload.error || "Campaign status could not be changed.");
+    else {
+      setNotice(status === "PAUSED" ? "Campaign paused." : status === "PUBLISHED" ? "Campaign published." : "Campaign saved as draft.");
+      await load();
+    }
+    setBusy(false);
+  };
+
   const editCampaign = (campaign: Row) => {
     setForm({
       id: campaign.id,
@@ -261,10 +297,10 @@ export default function AdminMarketingPage() {
       <section className="rounded-2xl bg-white shadow-sm">
         <div className="border-b border-slate-100 p-5"><h2 className="text-lg font-black">Campaigns</h2><p className="mt-1 text-xs text-slate-500">Dates automatically determine scheduled/live/expired display; paused campaigns stay hidden.</p></div>
         {campaigns.length === 0 ? <div className="p-8 text-center text-sm text-slate-500">No campaigns yet.</div> : <div className="divide-y divide-slate-100">{campaigns.map((campaign) => { const state=campaignState(campaign); const client=clients.find((c) => c.id === campaign.client_id); return <article key={campaign.id} className="grid gap-4 p-5 lg:grid-cols-[1.4fr_.8fr_.8fr_auto] lg:items-center">
-          <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-black text-slate-900">{campaign.name}</h3><span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${state === "Live" ? "bg-emerald-100 text-emerald-700" : state === "Paused" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"}`}>{state}</span>{campaign.placement === "SPONSORED_PRODUCT" && <span className="rounded-full bg-violet-100 px-2 py-1 text-[10px] font-black uppercase text-violet-700">Sponsored</span>}</div><p className="mt-1 text-xs text-slate-500">{client?.brand_name || "Unknown brand"} · {campaign.placement.replaceAll("_"," ")} · {campaign.audience}</p><p className="mt-1 text-xs font-bold text-slate-600">{campaign.headline || "No headline"}</p></div>
+          <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-black text-slate-900">{campaign.name}</h3><span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${state === "Live" ? "bg-emerald-100 text-emerald-700" : state === "Paused" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"}`}>{state}</span>{campaign.placement === "SPONSORED_PRODUCT" && <span className="rounded-full bg-violet-100 px-2 py-1 text-[10px] font-black uppercase text-violet-700">Sponsored</span>}</div><p className="mt-1 text-xs text-slate-500">{client?.brand_name || "Unknown brand"} · {campaign.placement.replace(/_/g," ")} · {campaign.audience}</p><p className="mt-1 text-xs font-bold text-slate-600">{campaign.headline || "No headline"}</p></div>
           <div className="text-xs"><p className="font-black text-slate-400 uppercase">Schedule</p><p className="mt-1 font-bold">{campaign.starts_at ? new Date(campaign.starts_at).toLocaleString() : "—"}</p><p className="text-slate-500">to {campaign.ends_at ? new Date(campaign.ends_at).toLocaleString() : "—"}</p></div>
           <div className="grid grid-cols-3 gap-2 text-center text-xs"><div><p className="font-black text-slate-400">Views</p><p className="mt-1 font-black">{campaign.views || 0}</p></div><div><p className="font-black text-slate-400">Clicks</p><p className="mt-1 font-black">{campaign.clicks || 0}</p></div><div><p className="font-black text-slate-400">CTR</p><p className="mt-1 font-black">{Number(campaign.ctr || 0).toFixed(2)}%</p></div></div>
-          <div className="flex gap-2 lg:justify-end"><button onClick={() => editCampaign(campaign)} className="rounded-xl bg-violet-50 px-3 py-2 text-xs font-black text-violet-700">Edit</button>{campaign.status === "PUBLISHED" ? <button onClick={() => { editCampaign(campaign); setTimeout(() => void saveCampaign("PAUSED"), 0); }} className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-black text-amber-800">Pause</button> : <button onClick={() => editCampaign(campaign)} className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">Review</button>}</div>
+          <div className="flex gap-2 lg:justify-end"><button onClick={() => editCampaign(campaign)} className="rounded-xl bg-violet-50 px-3 py-2 text-xs font-black text-violet-700">Edit</button>{campaign.status === "PUBLISHED" ? <button disabled={busy} onClick={() => void setCampaignStatus(campaign, "PAUSED")} className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-black text-amber-800 disabled:opacity-50">Pause</button> : <button onClick={() => editCampaign(campaign)} className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">Review</button>}</div>
         </article>; })}</div>}
       </section>
     </div>
