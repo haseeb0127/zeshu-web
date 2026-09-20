@@ -17,7 +17,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#ffffff",
+  themeColor: "#087443",
   colorScheme: "light",
 };
 
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "Zeshu",
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
   },
 };
 
