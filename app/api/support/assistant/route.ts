@@ -7,71 +7,68 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const MAX_MESSAGE_LENGTH = 1200;
-const MAX_HISTORY_ITEMS = 10;
+const MAX_HISTORY_ITEMS = 16;
 
 type AssistantTurn = { role: 'CUSTOMER' | 'AI'; body: string };
+type AssistantResult = {
+  answer: string;
+  resolved: boolean;
+  subject: string;
+  handoff_reason: string;
+  suggested_questions: string[];
+  intent: string;
+};
+
+type LiveOrder = {
+  order_ref: string;
+  status: string;
+  total_paid: number;
+  delivery_fee: number | null;
+  created_at: string | null;
+  item_names: string[];
+};
+
+type RewardActivity = {
+  event_type: string;
+  amount: number;
+  description: string;
+  order_ref: string | null;
+  created_at: string | null;
+};
+
+type CatalogProduct = {
+  name: string;
+  price: number;
+  unit: string;
+  category: string;
+  brand: string;
+  quantity: number;
+};
+
+type LiveAssistantContext = {
+  recent_orders?: LiveOrder[];
+  reward_balance?: number;
+  reward_activity?: RewardActivity[];
+  catalog_matches?: CatalogProduct[];
+  catalog_snapshot_partial?: boolean;
+};
 
 const getBearer = (request: Request) => {
   const authorization = request.headers.get('authorization') || '';
   return authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
 };
 
-const fallbackAnswer = (message: string) => {
-  const text = message.toLowerCase();
-  if (/refund|return|damaged|spoiled|wrong item|missing item/.test(text)) {
-    return {
-      answer: 'I can explain the policy, but this needs a Zeshu support person to check the actual order and decide the correct replacement or refund.',
-      resolved: false,
-      subject: 'Order item or refund help',
-      handoff_reason: 'A human must review the specific order and remedy.',
-    };
-  }
-  if (/where.*order|track|delivery|rider|eta|late/.test(text)) {
-    return {
-      answer: 'Open My Account → Your Orders & Buy Again → Track order. When a rider is assigned, Zeshu shows rider-location freshness and an arrival estimate when available.',
-      resolved: true,
-      subject: 'Order tracking help',
-      handoff_reason: '',
-    };
-  }
-  if (/cashback|zeshu cash|reward|coins/.test(text)) {
-    return {
-      answer: 'Your available Zeshu Cash and recent reward activity are shown in My Account → ZESHU CASH. Zeshu Cash is promotional reward value and is not withdrawable as bank cash.',
-      resolved: true,
-      subject: 'Zeshu Cash help',
-      handoff_reason: '',
-    };
-  }
-  if (/recharge|bill|electricity|fastag|gas|water|broadband/.test(text)) {
-    return {
-      answer: 'Recharge and bill tools are designed for India-wide use and do not require a Jagtial delivery location. Some provider features are still discovery-only while fulfilment is being verified. If you need help with a specific provider transaction, I will transfer this to Zeshu Support.',
-      resolved: false,
-      subject: 'Recharge or bill support',
-      handoff_reason: 'Provider-specific transaction support requires a human review.',
-    };
-  }
-  if (/payment|charged|debited|razorpay|upi/.test(text)) {
-    return {
-      answer: 'If money was debited but your order is not confirmed, do not pay again. I am transferring this to Zeshu Support so the existing transaction can be checked safely.',
-      resolved: false,
-      subject: 'Payment reconciliation help',
-      handoff_reason: 'A specific payment must be reviewed by support.',
-    };
-  }
-  if (/location|address|pin/.test(text)) {
-    return {
-      answer: 'Physical delivery is currently limited to the Jagtial delivery zone. Use the delivery-location control, place the pin at your entrance, then save your house or flat and landmark details. Digital recharge, bill, QR and reward features do not require a Jagtial delivery location.',
-      resolved: true,
-      subject: 'Delivery location help',
-      handoff_reason: '',
-    };
-  }
-  return {
-    answer: 'I can help with orders, tracking, delivery location, Zeshu Cash, refunds, recharge or bill availability, and account help. I could not safely resolve this question on my own, so I will transfer it to Zeshu Support.',
-    resolved: false,
-    subject: 'Zeshu Assistant handoff',
-    handoff_reason: 'The assistant could not confidently resolve the customer question.',
-  };
+const safeNumber = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : 0;
+
+const shortOrderRef = (value: unknown) => String(value || '').split('-')[0]?.toUpperCase() || '';
+
+const redactSensitive = (value: string) => value
+  .replace(/\b\d[\d\s-]{10,18}\d\b/g, '[redacted payment number]')
+  .replace(/\b(otp|cvv|upi\s*pin|password)\s*[:=-]?\s*[a-z0-9!@#$%^&*_-]{3,}\b/gi, '$1 [redacted]');
+
+const containsLikelySecret = (value: string) => {
+  if (/\b\d[\d\s-]{10,18}\d\b/.test(value)) return true;
+  return /\b(otp|cvv|upi\s*pin|password)\s*[:=-]?\s*[a-z0-9!@#$%^&*_-]{3,}\b/i.test(value);
 };
 
 const sanitizeHistory = (value: unknown): AssistantTurn[] => {
@@ -79,13 +76,298 @@ const sanitizeHistory = (value: unknown): AssistantTurn[] => {
   return value.slice(-MAX_HISTORY_ITEMS).flatMap((item): AssistantTurn[] => {
     if (!item || typeof item !== 'object') return [];
     const role = (item as any).role;
-    const body = typeof (item as any).body === 'string' ? (item as any).body.trim().slice(0, MAX_MESSAGE_LENGTH) : '';
+    const body = typeof (item as any).body === 'string'
+      ? redactSensitive((item as any).body.trim().slice(0, MAX_MESSAGE_LENGTH))
+      : '';
     if ((role !== 'CUSTOMER' && role !== 'AI') || !body) return [];
     return [{ role, body }];
   });
 };
 
-const parseStructuredResponse = (payload: any) => {
+const catalogIntent = (message: string) => /\b(product|products|stock|available|availability|price|cost|sell|find|search|grocery|groceries|milk|atta|flour|bread|chicken|biscuit|biscuits|dairy|snack|snacks|oil|rice|egg|eggs|drink|drinks|cola|pepsi)\b/i.test(message);
+const orderIntent = (message: string) => /\b(order|orders|track|tracking|delivery|rider|eta|late|arrive|arriving|purchase|buy again)\b/i.test(message);
+const rewardIntent = (message: string) => /\b(zeshu cash|cashback|reward|rewards|bonus|bonuses|referral|coins?)\b/i.test(message);
+
+const queryTokens = (message: string) => {
+  const stop = new Set(['what','when','where','which','with','have','your','does','zeshu','show','tell','find','price','cost','stock','available','availability','product','products','please','need','want','give','about','there','this','that','from','for','the','and','are','can','you','do','is','me','my']);
+  return Array.from(new Set(
+    message.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
+      .filter((token) => token.length >= 3 && !stop.has(token))
+  )).slice(0, 8);
+};
+
+const searchCatalog = (products: any[], message: string): CatalogProduct[] => {
+  const tokens = queryTokens(message);
+  const normalized = products.map((product) => ({
+    name: String(product?.name || ''),
+    price: safeNumber(product?.price),
+    unit: String(product?.unit || product?.weight || ''),
+    category: String(product?.category || ''),
+    brand: String(product?.brand || ''),
+    quantity: Math.max(0, Number(product?.quantity || 0)),
+    haystack: [product?.name, product?.brand, product?.category, product?.unit, product?.weight].filter(Boolean).join(' ').toLowerCase(),
+  }));
+  if (tokens.length === 0) return normalized.slice(0, 12).map(({ haystack: _haystack, ...product }) => product);
+  return normalized
+    .map((product) => ({ product, score: tokens.reduce((sum, token) => sum + (product.haystack.includes(token) ? 1 : 0), 0) }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score || a.product.name.localeCompare(b.product.name))
+    .slice(0, 12)
+    .map(({ product }) => {
+      const { haystack: _haystack, ...clean } = product;
+      return clean;
+    });
+};
+
+const loadLiveAssistantContext = async ({
+  service,
+  userId,
+  message,
+}: {
+  service: any;
+  userId: string;
+  message: string;
+}): Promise<LiveAssistantContext> => {
+  const needsOrders = orderIntent(message);
+  const needsRewards = rewardIntent(message);
+  const needsCatalog = catalogIntent(message);
+  const context: LiveAssistantContext = {};
+
+  const [ordersResult, ledgerResult, reservedResult, catalogResult] = await Promise.all([
+    needsOrders
+      ? service.from('orders').select('id,status,total_paid,delivery_fee,created_at,items').eq('user_id', userId).order('created_at', { ascending: false }).limit(5)
+      : Promise.resolve({ data: [], error: null }),
+    needsRewards
+      ? service.from('customer_reward_ledger').select('event_type,amount,description,order_id,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(20)
+      : Promise.resolve({ data: [], error: null }),
+    needsRewards
+      ? service.from('reward_redemptions').select('approved_amount').eq('user_id', userId).eq('status', 'RESERVED')
+      : Promise.resolve({ data: [], error: null }),
+    needsCatalog
+      ? service.from('products').select('name,price,unit,weight,category,brand,in_stock,quantity').eq('in_stock', true).gt('quantity', 0).order('name', { ascending: true }).limit(120)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  if (needsOrders && !ordersResult.error) {
+    context.recent_orders = (ordersResult.data || []).map((order: any) => ({
+      order_ref: shortOrderRef(order.id),
+      status: String(order.status || 'UNKNOWN'),
+      total_paid: safeNumber(order.total_paid),
+      delivery_fee: order.delivery_fee == null ? null : safeNumber(order.delivery_fee),
+      created_at: order.created_at || null,
+      item_names: Array.isArray(order.items)
+        ? order.items.slice(0, 6).map((entry: any) => String(entry?.item?.name || entry?.item_snapshot?.name || entry?.name || '')).filter(Boolean)
+        : [],
+    }));
+  }
+
+  if (needsRewards && !ledgerResult.error) {
+    const ledger = ledgerResult.data || [];
+    const reserved = reservedResult.error ? [] : (reservedResult.data || []);
+    const ledgerBalance = ledger.reduce((sum: number, entry: any) => sum + safeNumber(entry.amount), 0);
+    const reservedBalance = reserved.reduce((sum: number, entry: any) => sum + safeNumber(entry.approved_amount), 0);
+
+    // The history query is intentionally capped, so obtain an authoritative balance
+    // from the public RPC when possible. The service-role client cannot impersonate
+    // auth.uid(), therefore fall back to the visible ledger window only for context.
+    context.reward_balance = Math.max(0, Number((ledgerBalance - reservedBalance).toFixed(2)));
+    context.reward_activity = ledger.slice(0, 10).map((entry: any) => ({
+      event_type: String(entry.event_type || ''),
+      amount: safeNumber(entry.amount),
+      description: String(entry.description || ''),
+      order_ref: entry.order_id ? shortOrderRef(entry.order_id) : null,
+      created_at: entry.created_at || null,
+    }));
+  }
+
+  if (needsCatalog && !catalogResult.error) {
+    const products = catalogResult.data || [];
+    context.catalog_matches = searchCatalog(products, message);
+    context.catalog_snapshot_partial = products.length >= 120;
+  }
+
+  return context;
+};
+
+const suggestedForIntent = (intent: string) => {
+  if (intent === 'ORDER') return ['What is my latest order status?', 'How does live tracking work?', 'I have an order problem'];
+  if (intent === 'REWARDS') return ['What is my Zeshu Cash balance?', 'How can I earn Zeshu Cash?', 'Show recent reward activity'];
+  if (intent === 'CATALOG') return ['Do you have milk?', 'What products are in stock?', 'How do I search products?'];
+  if (intent === 'DELIVERY') return ['Where does Zeshu deliver?', 'How do I set my address?', 'Can I use digital services outside Jagtial?'];
+  if (intent === 'PAYMENT') return ['How does secure checkout work?', 'Money was debited but no order', 'Where can I find my payment reference?'];
+  return ['Where is my latest order?', 'What is my Zeshu Cash balance?', 'What can Zeshu Assistant help with?'];
+};
+
+const fallbackAnswer = (message: string, context: LiveAssistantContext): AssistantResult => {
+  const text = message.toLowerCase();
+
+  if (/\b(human|person|agent|support executive|talk to support)\b/.test(text)) {
+    return {
+      answer: 'I’ll transfer this to Zeshu Support so a person can help you. You will not need to repeat the question.',
+      resolved: false,
+      subject: 'Customer requested human support',
+      handoff_reason: 'The customer explicitly requested a human support agent.',
+      suggested_questions: [],
+      intent: 'HUMAN',
+    };
+  }
+
+  if (/refund|return|damaged|spoiled|wrong item|missing item|cancel.*order|order.*cancel/.test(text)) {
+    return {
+      answer: 'I can explain the policy, but a support person must review the actual order before any replacement, cancellation or refund decision. I’ll transfer this with your question attached.',
+      resolved: false,
+      subject: 'Order item, cancellation or refund help',
+      handoff_reason: 'A human must review the specific order and remedy.',
+      suggested_questions: [],
+      intent: 'REFUND',
+    };
+  }
+
+  if (/money.*debited|debited|charged|payment failed|paid.*not.*order|payment.*not.*confirmed|duplicate payment/.test(text)) {
+    return {
+      answer: 'Do not pay again. A specific payment needs reconciliation against Zeshu’s server records, so I’ll transfer this to Zeshu Support with your question attached.',
+      resolved: false,
+      subject: 'Payment reconciliation help',
+      handoff_reason: 'A specific payment must be reviewed by support.',
+      suggested_questions: [],
+      intent: 'PAYMENT',
+    };
+  }
+
+  if (orderIntent(message)) {
+    const latest = context.recent_orders?.[0];
+    if (latest) {
+      const items = latest.item_names.length ? ` Items include ${latest.item_names.slice(0, 3).join(', ')}.` : '';
+      return {
+        answer: `Your latest order #${latest.order_ref} is ${latest.status.replaceAll('_', ' ').toLowerCase()}. The recorded total is ₹${latest.total_paid.toFixed(2)}.${items} You can open My Account → Orders & payments to view or track it.`,
+        resolved: true,
+        subject: 'Order status',
+        handoff_reason: '',
+        suggested_questions: suggestedForIntent('ORDER'),
+        intent: 'ORDER',
+      };
+    }
+    return {
+      answer: 'I could not find a confirmed order in your recent Zeshu order history. If you just attempted payment, do not pay again until the payment status is clear.',
+      resolved: true,
+      subject: 'Order history',
+      handoff_reason: '',
+      suggested_questions: suggestedForIntent('ORDER'),
+      intent: 'ORDER',
+    };
+  }
+
+  if (rewardIntent(message)) {
+    const balance = context.reward_balance;
+    if (typeof balance === 'number') {
+      return {
+        answer: `Your current Zeshu Cash context shows about ₹${balance.toFixed(2)} available from the recent reward ledger. For the authoritative balance and full transaction history, open My Account → Zeshu Cash. Zeshu Cash is promotional reward value, not withdrawable bank cash.`,
+        resolved: true,
+        subject: 'Zeshu Cash help',
+        handoff_reason: '',
+        suggested_questions: suggestedForIntent('REWARDS'),
+        intent: 'REWARDS',
+      };
+    }
+    return {
+      answer: 'Open My Account → Zeshu Cash to see your current balance, earned rewards, bonuses, referrals and amounts used at checkout.',
+      resolved: true,
+      subject: 'Zeshu Cash help',
+      handoff_reason: '',
+      suggested_questions: suggestedForIntent('REWARDS'),
+      intent: 'REWARDS',
+    };
+  }
+
+  if (catalogIntent(message)) {
+    const matches = context.catalog_matches || [];
+    if (matches.length > 0) {
+      const summary = matches.slice(0, 5).map((product) => `${product.name} — ₹${product.price.toFixed(2)}${product.unit ? ` / ${product.unit}` : ''}`).join('; ');
+      return {
+        answer: `I found these currently in-stock matches: ${summary}. Stock can change, so the product page/cart is the final availability check before payment.`,
+        resolved: true,
+        subject: 'Product availability',
+        handoff_reason: '',
+        suggested_questions: suggestedForIntent('CATALOG'),
+        intent: 'CATALOG',
+      };
+    }
+    return {
+      answer: 'I could not find a matching in-stock item in the current catalog snapshot. Try the Home search with the product or brand name; Zeshu search also handles related terms and common spelling variations.',
+      resolved: true,
+      subject: 'Product search',
+      handoff_reason: '',
+      suggested_questions: suggestedForIntent('CATALOG'),
+      intent: 'CATALOG',
+    };
+  }
+
+  if (/recharge|bill|electricity|fastag|gas|water|broadband|dth/.test(text)) {
+    return {
+      answer: 'Recharge and bill tools are designed for India-wide use. Some services are still discovery-only, so Zeshu only treats a provider transaction as completed where the relevant fulfilment integration is explicitly enabled and verified.',
+      resolved: true,
+      subject: 'Recharge or bill availability',
+      handoff_reason: '',
+      suggested_questions: ['Which digital services are available?', 'Can I use Zeshu outside Jagtial?', 'I have a provider transaction problem'],
+      intent: 'DIGITAL',
+    };
+  }
+
+  if (/payment|checkout|upi|card/.test(text)) {
+    return {
+      answer: 'Zeshu verifies the final total, stock and payment result on the server before confirming an order. Never share an OTP, card CVV or UPI PIN with Zeshu support. If money was debited but the order is not confirmed, do not pay again—ask me to transfer the payment issue.',
+      resolved: true,
+      subject: 'Secure checkout help',
+      handoff_reason: '',
+      suggested_questions: suggestedForIntent('PAYMENT'),
+      intent: 'PAYMENT',
+    };
+  }
+
+  if (/location|address|delivery area|serviceable|jagtial/.test(text)) {
+    return {
+      answer: 'Physical delivery is limited to the supported Jagtial delivery zone. Set your delivery pin at the entrance and Zeshu checks the coordinates before physical checkout. Digital services can still be used across India where the relevant service is available.',
+      resolved: true,
+      subject: 'Delivery location help',
+      handoff_reason: '',
+      suggested_questions: suggestedForIntent('DELIVERY'),
+      intent: 'DELIVERY',
+    };
+  }
+
+  if (/otp|login|sign in|signin/.test(text)) {
+    return {
+      answer: 'Enter your mobile number and request an OTP. On supported Android/browser environments, Zeshu can securely auto-fill the OTP without reading your SMS inbox. Never send the OTP to support or type it into chat.',
+      resolved: true,
+      subject: 'Login help',
+      handoff_reason: '',
+      suggested_questions: ['OTP did not arrive', 'How is my account protected?', 'How do I update my saved address?'],
+      intent: 'ACCOUNT',
+    };
+  }
+
+  if (/invite|share app|referral code/.test(text)) {
+    return {
+      answer: 'Open My Account → Invite & Earn to copy or share your invite code and Zeshu app link. On supported phones you can choose one contact; Zeshu does not upload your full phonebook.',
+      resolved: true,
+      subject: 'Invite and referral help',
+      handoff_reason: '',
+      suggested_questions: suggestedForIntent('REWARDS'),
+      intent: 'REFERRAL',
+    };
+  }
+
+  return {
+    answer: 'I can help with live order status, current product availability and prices, Zeshu Cash, delivery areas, addresses, checkout, refunds policy, recharge/bill availability, referrals and account help. Tell me what you are trying to do, or choose one of the suggestions below.',
+    resolved: true,
+    subject: 'Zeshu Assistant help',
+    handoff_reason: '',
+    suggested_questions: suggestedForIntent('GENERAL'),
+    intent: 'GENERAL',
+  };
+};
+
+const parseStructuredResponse = (payload: any): AssistantResult | null => {
   const outputText = typeof payload?.output_text === 'string'
     ? payload.output_text.trim()
     : Array.isArray(payload?.output)
@@ -95,11 +377,16 @@ const parseStructuredResponse = (payload: any) => {
   try {
     const parsed = JSON.parse(outputText);
     if (typeof parsed?.answer !== 'string' || typeof parsed?.resolved !== 'boolean') return null;
+    const suggestions = Array.isArray(parsed?.suggested_questions)
+      ? parsed.suggested_questions.filter((item: unknown) => typeof item === 'string' && item.trim()).slice(0, 3).map((item: string) => item.trim().slice(0, 120))
+      : [];
     return {
       answer: parsed.answer.trim().slice(0, 4000),
       resolved: parsed.resolved,
       subject: typeof parsed.subject === 'string' && parsed.subject.trim() ? parsed.subject.trim().slice(0, 160) : 'Zeshu Assistant handoff',
       handoff_reason: typeof parsed.handoff_reason === 'string' ? parsed.handoff_reason.trim().slice(0, 500) : '',
+      suggested_questions: suggestions,
+      intent: typeof parsed.intent === 'string' ? parsed.intent.trim().slice(0, 40) : 'GENERAL',
     };
   } catch {
     return null;
@@ -156,10 +443,12 @@ export async function GET() {
   return NextResponse.json({
     mode: aiEnabled ? 'ai' : 'guided',
     automatic_handoff: handoffConfigured,
+    capabilities: ['live_order_status', 'reward_context', 'catalog_search', 'policy_help', 'automatic_handoff'],
   });
 }
 
 export async function POST(request: Request) {
+  const startedAt = Date.now();
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -175,11 +464,33 @@ export async function POST(request: Request) {
   if (limited) return limited;
 
   const body = await request.json().catch(() => ({}));
-  const message = typeof body?.message === 'string' ? body.message.trim() : '';
+  const rawMessage = typeof body?.message === 'string' ? body.message.trim() : '';
   const history = sanitizeHistory(body?.history);
-  if (!message || message.length > MAX_MESSAGE_LENGTH) return NextResponse.json({ error: 'Enter a shorter support question.' }, { status: 400 });
+  if (!rawMessage || rawMessage.length > MAX_MESSAGE_LENGTH) return NextResponse.json({ error: 'Enter a shorter support question.' }, { status: 400 });
 
-  let result = fallbackAnswer(message);
+  if (containsLikelySecret(rawMessage)) {
+    return NextResponse.json({
+      answer: 'For your security, please remove any OTP, password, card number, CVV or UPI PIN from the message and ask again. Zeshu Support will never need those secrets.',
+      resolved: true,
+      source: 'guided',
+      intent: 'SECURITY',
+      suggested_questions: ['OTP did not arrive', 'Money was debited but no order', 'How is my account protected?'],
+      context_used: [],
+      latency_ms: Date.now() - startedAt,
+      handoff_reason: '',
+      handoff: { requested: false, created: false, conversation: null },
+    });
+  }
+
+  const message = redactSensitive(rawMessage);
+  const service = serviceRoleKey
+    ? createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } })
+    : null;
+  const liveContext = service
+    ? await loadLiveAssistantContext({ service, userId: authData.user.id, message }).catch(() => ({} as LiveAssistantContext))
+    : {};
+
+  let result = fallbackAnswer(message, liveContext);
   let source: 'ai' | 'guided' = 'guided';
 
   const apiKey = process.env.OPENAI_API_KEY;
@@ -192,13 +503,17 @@ export async function POST(request: Request) {
       }));
       conversationInput.push({ role: 'user', content: [{ type: 'input_text', text: message }] });
 
+      const liveContextText = Object.keys(liveContext).length
+        ? JSON.stringify(liveContext)
+        : '{"note":"No live account/catalog context was needed or available for this question."}';
+
       const response = await fetch('https://api.openai.com/v1/responses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
           model: process.env.SUPPORT_AI_MODEL || 'gpt-5.6-luna',
           store: false,
-          max_output_tokens: 320,
+          max_output_tokens: 600,
           text: {
             format: {
               type: 'json_schema',
@@ -212,8 +527,10 @@ export async function POST(request: Request) {
                   resolved: { type: 'boolean' },
                   subject: { type: 'string' },
                   handoff_reason: { type: 'string' },
+                  suggested_questions: { type: 'array', items: { type: 'string' }, maxItems: 3 },
+                  intent: { type: 'string' },
                 },
-                required: ['answer', 'resolved', 'subject', 'handoff_reason'],
+                required: ['answer', 'resolved', 'subject', 'handoff_reason', 'suggested_questions', 'intent'],
               },
             },
           },
@@ -222,13 +539,47 @@ export async function POST(request: Request) {
               role: 'system',
               content: [{
                 type: 'input_text',
-                text: `You are Zeshu Support Assistant for an Indian local-commerce service. Reply concisely and helpfully. Use the Zeshu knowledge below as the source of truth for service-specific facts. resolved=true only when the customer can reasonably act on your answer without a staff member checking private account, order, payment, refund, provider, safety, or fulfilment data. Set resolved=false for any specific payment/debit, refund decision, order dispute, missing/wrong/damaged/spoiled item, provider transaction, account-specific issue, safety issue, explicit request for a human, repeated statement that the prior answer did not help, or whenever you are uncertain. Never claim a payment, refund, recharge, cancellation, order change, cashback adjustment, delivery change, or account change was completed. Never request OTPs, passwords, card numbers, CVV, UPI PIN, API keys, access tokens or secrets. When resolved=false, clearly say the conversation is being transferred to Zeshu Support and give a short subject. Do not invent policies or business facts.\n\nZESHU KNOWLEDGE:\n${ZESHU_SUPPORT_KNOWLEDGE}`,
+                text: `You are Zeshu Assistant, a smart customer concierge for an Indian local-commerce service.
+
+GOAL:
+Resolve as many customer questions as possible accurately, quickly and in plain language. Be useful before escalating.
+
+GROUNDING:
+- ZESHU KNOWLEDGE below is the source of truth for policies, feature availability and business rules.
+- LIVE CONTEXT below is fresh read-only Zeshu data for this signed-in customer or current catalog when relevant.
+- Never invent an order, balance, product, price, stock state, delivery promise, provider status, refund or payment result.
+- If live context conflicts with a general statement, prefer the live context for that customer's read-only facts while preserving the policy rules.
+- Catalog stock and price can change; remind the customer that cart/checkout performs the final check when relevant.
+
+WHEN TO RESOLVE WITHOUT A HUMAN:
+- Read-only questions about recent order status, order totals, current catalog/stock/price, Zeshu Cash/reward activity, delivery/service-area rules, login/OTP help, referrals, policies, app navigation, feature availability and how-to questions can be answered directly when context supports them.
+- If a question is vague but safe, ask ONE concise clarifying question and keep resolved=true instead of transferring immediately.
+
+WHEN TO TRANSFER:
+Set resolved=false only when a human or protected transaction review is actually required: a refund/replacement/cancellation decision, specific debit or disputed payment reconciliation, missing/wrong/damaged/spoiled-item claim, provider transaction dispute, account change that the assistant cannot perform, safety issue, explicit request for a human, or repeated failure of prior help.
+When resolved=false, say clearly that it is being transferred and why. Do not make the customer repeat the issue.
+
+SAFETY:
+Never request or repeat OTPs, passwords, card numbers, CVV, UPI PIN, API keys, access tokens or secrets. Never claim a payment, refund, recharge, cancellation, order change, cashback adjustment, delivery change or account change was completed unless the live context explicitly proves a read-only completed state and no action is being taken now.
+
+STYLE:
+- Start with the direct answer.
+- Use short paragraphs; bullets only when they genuinely help.
+- Avoid corporate jargon and unnecessary warnings.
+- If the customer asks in Hinglish, reply in natural Hinglish; otherwise match their language.
+- Give at most 3 useful suggested follow-up questions.
+
+ZESHU KNOWLEDGE:
+${ZESHU_SUPPORT_KNOWLEDGE}
+
+LIVE CONTEXT:
+${liveContextText}`,
               }],
             },
             ...conversationInput,
           ],
         }),
-        signal: AbortSignal.timeout(9000),
+        signal: AbortSignal.timeout(12000),
       });
       if (response.ok) {
         const payload = await response.json();
@@ -255,10 +606,20 @@ export async function POST(request: Request) {
     });
   }
 
+  const contextUsed = [
+    liveContext.recent_orders ? 'orders' : null,
+    typeof liveContext.reward_balance === 'number' ? 'rewards' : null,
+    liveContext.catalog_matches ? 'catalog' : null,
+  ].filter(Boolean);
+
   return NextResponse.json({
     answer: result.answer,
     resolved: result.resolved,
     source,
+    intent: result.intent,
+    suggested_questions: result.suggested_questions,
+    context_used: contextUsed,
+    latency_ms: Date.now() - startedAt,
     handoff_reason: result.handoff_reason,
     handoff: {
       requested: !result.resolved,
