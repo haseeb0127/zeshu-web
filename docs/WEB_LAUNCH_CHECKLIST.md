@@ -54,7 +54,7 @@
 - [x] AI support privacy disclosure and no-secret guidance.
 - [x] Admin customer-support sound, vibration and browser notifications.
 - [x] Support tables enabled for Supabase Realtime.
-- [ ] Verify/set OPENAI_API_KEY and SUPPORT_AI_ENABLED=true in Vercel Production; guided help and automatic human handoff work without it.
+- [ ] Production readiness check currently reports `mode=guided`, `automatic_handoff=true`. Set OPENAI_API_KEY and SUPPORT_AI_ENABLED=true in Vercel Production to switch to real AI mode.
 
 ## Vendor / product operations
 - [x] Vendor dashboard.
@@ -109,7 +109,7 @@
 - [ ] Brand advertising rate card and campaign agreement.
 
 ## Final QA
-- [x] Automated production public-route and auth-boundary smoke test.
+- [x] Automated production public-route, AI-readiness, and auth-boundary smoke test.
 - [x] Latest production deployment is green.
 - [ ] Mobile-layout QA.
 - [ ] Browser QA on real Chrome/Safari/Edge devices.
