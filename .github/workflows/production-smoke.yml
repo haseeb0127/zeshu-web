@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  statuses: read
 
 concurrency:
   group: production-smoke
@@ -15,24 +16,49 @@ concurrency:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
-      - name: Wait for production routes
+      - name: Wait for Vercel deployment for this commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          deployed=0
+
+          for attempt in {1..30}; do
+            payload="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status")"
+            state="$(jq -r '[.statuses[] | select(.context | ascii_downcase | contains("vercel"))][0].state // empty' <<<"$payload")"
+            target="$(jq -r '[.statuses[] | select(.context | ascii_downcase | contains("vercel"))][0].target_url // empty' <<<"$payload")"
+
+            echo "Vercel status for ${GITHUB_SHA}: ${state:-pending} ${target}"
+
+            case "$state" in
+              success)
+                deployed=1
+                break
+                ;;
+              failure|error)
+                echo "Vercel deployment failed for commit ${GITHUB_SHA}."
+                exit 1
+                ;;
+            esac
+
+            sleep 10
+          done
+
+          if [ "$deployed" != "1" ]; then
+            echo "Timed out waiting for the Vercel status attached to commit ${GITHUB_SHA}."
+            exit 1
+          fi
+
+      - name: Verify production routes
         shell: bash
         run: |
           set -euo pipefail
           for route in "/" "/policies" "/partners"; do
-            ok=0
-            code=000
-            for attempt in {1..12}; do
-              code="$(curl -L -sS -o /tmp/zeshu-body -w '%{http_code}' "https://zeshu.in${route}" || true)"
-              if [ "$code" = "200" ]; then
-                ok=1
-                break
-              fi
-              sleep 10
-            done
-            if [ "$ok" != "1" ]; then
+            code="$(curl -L -sS -o /tmp/zeshu-body -w '%{http_code}' "https://zeshu.in${route}" || true)"
+            if [ "$code" != "200" ]; then
               echo "Expected 200 from ${route}, got ${code}"
               exit 1
             fi
@@ -52,19 +78,14 @@ jobs:
         run: |
           set -euo pipefail
 
-          code="$(curl -L -sS -o /tmp/assistant -w '%{http_code}' \
-            -X POST "https://zeshu.in/api/support/assistant" \
-            -H 'Content-Type: application/json' \
-            --data '{"message":"hello"}' || true)"
+          code="$(curl -L -sS -o /tmp/assistant -w '%{http_code}'             -X POST "https://zeshu.in/api/support/assistant"             -H 'Content-Type: application/json'             --data '{"message":"hello"}' || true)"
           test "$code" = "401" || { echo "Assistant expected 401, got $code"; exit 1; }
 
-          code="$(curl -L -sS -o /tmp/admin-support -w '%{http_code}' \
-            "https://zeshu.in/api/admin/support/conversations" || true)"
+          code="$(curl -L -sS -o /tmp/admin-support -w '%{http_code}'             "https://zeshu.in/api/admin/support/conversations" || true)"
           test "$code" = "401" || { echo "Admin support expected 401, got $code"; exit 1; }
 
-          code="$(curl -L -sS -o /tmp/cron -w '%{http_code}' \
-            "https://zeshu.in/api/cron/support-whatsapp" || true)"
+          code="$(curl -L -sS -o /tmp/cron -w '%{http_code}'             "https://zeshu.in/api/cron/support-whatsapp" || true)"
           test "$code" = "401" || { echo "WhatsApp cron expected 401 without bearer token, got $code"; exit 1; }
 
       - name: Summary
-        run: echo "Zeshu production public-route and auth-boundary smoke tests passed."
+        run: echo "Zeshu production deployment and auth-boundary smoke tests passed for ${GITHUB_SHA}."
