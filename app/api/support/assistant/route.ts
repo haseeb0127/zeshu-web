@@ -147,6 +147,18 @@ const createAutomaticHandoff = async ({
   }
 };
 
+export async function GET() {
+  const aiEnabled = process.env.SUPPORT_AI_ENABLED === 'true' && Boolean(process.env.OPENAI_API_KEY);
+  const handoffConfigured = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+  return NextResponse.json({
+    mode: aiEnabled ? 'ai' : 'guided',
+    automatic_handoff: handoffConfigured,
+  });
+}
+
 export async function POST(request: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
