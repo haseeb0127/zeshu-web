@@ -1361,6 +1361,8 @@ export default function ZeshuSuperApp() {
         source: locationAccuracy !== null ? 'DEVICE' : 'MANUAL_PIN',
         ...(displayAddress ? { displayAddress } : {}),
       });
+    } else {
+      setLocationSelection(null);
     }
     setLocationSelectorOpen(true);
   };
@@ -2049,22 +2051,12 @@ export default function ZeshuSuperApp() {
                 <div className="bg-[#087443] text-white font-black p-2 md:p-2.5 rounded-xl md:rounded-2xl text-xl md:text-2xl tracking-tighter shadow-sm">Z</div>
                 <div className="hidden lg:flex flex-col text-left"><span className="text-[22px] font-black tracking-tighter leading-none">ZESHU</span><span className="text-[10px] font-extrabold text-[#087443] tracking-[0.2em] uppercase mt-0.5">Everyday, simply</span></div>
               </button>
-              <button type="button" aria-label="Detect or change delivery location" className="flex min-w-0 max-w-[150px] flex-col cursor-pointer text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443] sm:max-w-[190px] md:max-w-[220px]" onClick={handleAutoDetectLocation}>
+              <button type="button" aria-label="Detect or change delivery location" className="flex min-w-0 max-w-[240px] flex-col cursor-pointer text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443] sm:max-w-[360px] lg:max-w-[220px]" onClick={handleAutoDetectLocation}>
                 <div className="flex items-center gap-1.5 whitespace-nowrap text-[12px] font-black md:text-[15px]">{currentAddress !== 'Location not set' ? 'Deliver to' : 'Set delivery location'} <MapPin size={14} className="shrink-0 text-[#087443]"/></div>
                 <div className="mt-0.5 flex min-w-0 items-center text-[10px] font-medium text-[#6B7280] md:text-xs"><span className="truncate">{currentAddress}</span><ChevronDown size={14} className="ml-1 shrink-0"/></div>
               </button>
             </div>
 
-            <div className="lg:hidden flex items-center gap-2">
-              <Link href="/scanner" aria-label="Open QR scanner" className="p-2 bg-[#087443] text-white rounded-full active:scale-95 shadow-md flex items-center justify-center">
-                <QrCode size={18} />
-              </Link>
-              <button aria-label={user ? 'Open account' : 'Sign in'} onClick={() => user ? openAccountHome() : setIsAuthModalOpen(true)} className="p-2 bg-gray-100 rounded-full active:scale-95 text-gray-700 border border-gray-200"><User size={18} /></button>
-              <button aria-label="Open cart" onClick={() => setIsCartOpen(true)} className="relative p-2 bg-gray-100 rounded-full active:scale-95 border border-gray-200">
-                <ShoppingBag size={18} className="text-gray-700" />
-                {cart.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full text-[9px] font-black w-4 h-4 flex items-center justify-center border border-white">{cart.length}</span>}
-              </button>
-            </div>
           </div>
 
           <div className="w-full lg:flex-1 max-w-3xl order-last lg:order-none mt-1 lg:mt-0">
@@ -2409,7 +2401,7 @@ export default function ZeshuSuperApp() {
         </div>
       </main>
 
-      {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(15,23,42,.08)] backdrop-blur md:hidden" aria-label="Primary navigation">
+      {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(15,23,42,.08)] backdrop-blur lg:hidden" aria-label="Primary navigation">
         <div className="mx-auto grid max-w-md grid-cols-5 items-end">
           <button type="button" onClick={goToHome} aria-current={activeTab === 'home' ? 'page' : undefined} className={"flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black " + (activeTab === 'home' ? 'text-[#087443]' : 'text-slate-500')}><Home size={19} aria-hidden="true" /><span>Home</span></button>
           <button type="button" onClick={() => setActiveTab('recharge')} aria-current={activeTab === 'recharge' ? 'page' : undefined} className={"flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black " + (activeTab === 'recharge' ? 'text-[#087443]' : 'text-slate-500')}><Smartphone size={19} aria-hidden="true" /><span>Services</span></button>
@@ -2419,7 +2411,7 @@ export default function ZeshuSuperApp() {
         </div>
       </nav>}
 
-      {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && cart.length === 0 && <button type="button" onClick={openAiSupport} aria-label="Chat with Zeshu Assistant" className="fixed bottom-[5.75rem] right-4 z-30 inline-flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-sm font-black text-white shadow-xl transition hover:bg-indigo-700 active:scale-95 sm:h-auto sm:w-auto sm:min-h-12 sm:gap-2 sm:px-4 sm:py-3 md:bottom-8 md:right-8"><MessageCircle size={20} aria-hidden="true" /><span className="hidden sm:inline">Ask Zeshu</span></button>}
+      {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && cart.length === 0 && <button type="button" onClick={openAiSupport} aria-label="Chat with Zeshu Assistant" className="fixed bottom-[5.75rem] right-4 z-30 inline-flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-sm font-black text-white shadow-xl transition hover:bg-indigo-700 active:scale-95 lg:bottom-8 lg:right-8 lg:h-auto lg:w-auto lg:min-h-12 lg:gap-2 lg:px-4 lg:py-3"><MessageCircle size={20} aria-hidden="true" /><span className="hidden lg:inline">Ask Zeshu</span></button>}
 
       <footer className="border-t border-[#dce8df] bg-white px-4 py-8 text-sm text-slate-600 md:px-8">
         <div className="mx-auto flex max-w-[1400px] flex-col gap-3 md:flex-row md:items-center md:justify-between">
