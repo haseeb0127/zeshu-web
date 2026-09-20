@@ -46,13 +46,13 @@ export default function AdminLogin() {
         
         <form onSubmit={handleAdminLogin} className="space-y-4">
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Admin Email</label>
-            <input type="email" required className="w-full mt-1 p-4 bg-gray-50 rounded-xl outline-none border focus:border-purple-500 font-bold" value={email} onChange={e => setEmail(e.target.value)} />
+            <label htmlFor="admin-email" className="text-xs font-bold text-gray-400 uppercase tracking-widest">Admin Email</label>
+            <input id="admin-email" type="email" required className="w-full mt-1 p-4 bg-gray-50 rounded-xl outline-none border focus:border-purple-500 font-bold" value={email} onChange={e => setEmail(e.target.value)} />
           </div>
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Password</label>
+            <label htmlFor="admin-password" className="text-xs font-bold text-gray-400 uppercase tracking-widest">Password</label>
             <div className="relative mt-1">
-              <input type="password" required className="w-full p-4 bg-gray-50 rounded-xl outline-none border focus:border-purple-500 font-bold" value={password} onChange={e => setPassword(e.target.value)} />
+              <input id="admin-password" type="password" required className="w-full p-4 bg-gray-50 rounded-xl outline-none border focus:border-purple-500 font-bold" value={password} onChange={e => setPassword(e.target.value)} />
               <Lock size={18} className="absolute right-4 top-4 text-gray-400" />
             </div>
           </div>

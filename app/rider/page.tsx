@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   MapPin,
   Power,
@@ -34,11 +34,8 @@ export default function RiderDashboard() {
   const [availabilityUpdating, setAvailabilityUpdating] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [ordersError, setOrdersError] = useState("");
-  useEffect(() => {
-    void loadRider();
-  }, []);
 
-  const loadRider = async () => {
+  const loadRider = useCallback(async () => {
     const {
       data: { user },
       error: authError,
@@ -78,7 +75,14 @@ export default function RiderDashboard() {
     setIsOnline(Boolean(data.is_active));
     setIsAdminSuspended(Boolean(data.admin_suspended));
     setAuthState("dashboard");
-  };
+  }, []);
+
+  useEffect(() => {
+    const loadTimer = window.setTimeout(() => {
+      void loadRider();
+    }, 0);
+    return () => window.clearTimeout(loadTimer);
+  }, [loadRider]);
 
   const normalizedIndiaPhone = () => {
     const digits = phoneNumber.replace(/\D/g, "");
@@ -135,33 +139,7 @@ export default function RiderDashboard() {
     await loadRider();
   };
 
-  useEffect(() => {
-    if (!riderId) return;
-
-    fetchMyOrders();
-
-    const channel = supabase
-      .channel(`rider-orders-${riderId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "orders",
-          filter: `rider_id=eq.${riderId}`,
-        },
-        () => {
-          fetchMyOrders();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [riderId]);
-
-  const fetchMyOrders = async () => {
+  const fetchMyOrders = useCallback(async () => {
     if (!riderId) return;
 
     setLoading(true);
@@ -195,7 +173,36 @@ export default function RiderDashboard() {
     }
 
     setLoading(false);
-  };
+  }, [riderId]);
+
+  useEffect(() => {
+    if (!riderId) return;
+
+    const refreshTimer = window.setTimeout(() => {
+      void fetchMyOrders();
+    }, 0);
+
+    const channel = supabase
+      .channel(`rider-orders-${riderId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+          filter: `rider_id=eq.${riderId}`,
+        },
+        () => {
+          void fetchMyOrders();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      window.clearTimeout(refreshTimer);
+      void supabase.removeChannel(channel);
+    };
+  }, [fetchMyOrders, riderId]);
 
   const toggleOnline = async () => {
     if (availabilityUpdating || !sessionUserId || !riderId) return;
