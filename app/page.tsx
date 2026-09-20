@@ -700,6 +700,21 @@ export default function ZeshuSuperApp() {
   }, [accountView, isAccountOpen, selectedSupportConversationId, supportThreadRefreshToken, user]);
 
   useEffect(() => {
+    if (!isAccountOpen || accountView !== 'SUPPORT' || !selectedSupportConversationId || !user) return;
+    const channel = supabase
+      .channel(`customer-support-live-${selectedSupportConversationId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'support_messages', filter: `conversation_id=eq.${selectedSupportConversationId}` }, () => {
+        setSupportThreadRefreshToken((value) => value + 1);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'support_conversations', filter: `id=eq.${selectedSupportConversationId}` }, () => {
+        setSupportThreadRefreshToken((value) => value + 1);
+        void loadSupportConversations();
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [accountView, isAccountOpen, selectedSupportConversationId, user]);
+
+  useEffect(() => {
     if (isAccountOpen && accountView === 'SUPPORT' && selectedSupportConversationId) return;
     setSupportNotice((currentNotice) => currentNotice === 'A support agent has been requested.' ? '' : currentNotice);
   }, [accountView, isAccountOpen, selectedSupportConversationId]);
