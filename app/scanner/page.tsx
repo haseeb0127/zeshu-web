@@ -125,7 +125,7 @@ export default function ScannerPage() {
       setUpiId('');
       setAmount('');
       setIsScanning(false);
-      setContactMessage('Contact selected. No money is sent until Zeshu enables a verified UPI payment provider.');
+      setContactMessage('Contact selected. No money is sent; payments will be enabled only after verified UPI settlement is available.');
     } catch {
       setContactMessage('Contact selection cancelled.');
     }
@@ -143,68 +143,8 @@ export default function ScannerPage() {
     setIsScanning(true);
   };
 
-  // 🚀 INTEGRATED RAZORPAY PAYMENT LOGIC
-  /* Disabled until a verified scanner payment flow exists.
-  const processPayment = async () => {
-    alert('QR merchant payments are unavailable because merchant settlement is not configured. No payment has been started.');
-    return;
-
-    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-      alert("Please enter a valid amount");
-      return;
-    }
-    setIsProcessing(true);
-
-    try {
-      // 1. Ask Next.js to generate an Order ID
-      const orderResponse = await fetch('/api/create-razorpay-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: Number(amount) })
-      });
-      const orderData = await orderResponse.json();
-
-      // 2. Open Razorpay Gateway
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, 
-        amount: orderData.amount, 
-        currency: orderData.currency || 'INR', 
-        name: merchantName, 
-        description: "Zeshu UPI QR Payment",
-        order_id: orderData.id || orderData.order?.id,
-        handler: async function (response: any) { 
-          // PAYMENT WAS SUCCESSFUL
-          setIsProcessing(false);
-          
-          // Calculate random cashback
-          const txnAmount = Number(amount);
-          const randomPercent = Math.random() * (0.05 - 0.01) + 0.01;
-          let calculatedCashback = Math.floor(txnAmount * randomPercent);
-          if (calculatedCashback < 2) calculatedCashback = 2;
-          if (calculatedCashback > 20) calculatedCashback = 20;
-
-          setCashbackWon(calculatedCashback);
-          
-          try {
-            new Audio('https://assets.mixkit.co/active-storage/sfx/2018/2018-preview.mp3').play();
-          } catch (e) {}
-        },
-        theme: { color: "#4F46E5" },
-      };
-      
-      const rzp = new (window as any).Razorpay(options);
-      rzp.on('payment.failed', function (response: any) {
-         setIsProcessing(false);
-         alert("Payment Failed. Please try again.");
-      });
-      rzp.open();
-
-    } catch (error) { 
-      setIsProcessing(false);
-      alert("Payment Gateway Error"); 
-    }
-  };
-  */
+  // Real QR/contact payment execution is intentionally absent until Zeshu has a verified
+  // PSP/UPI settlement integration and server-side reconciliation for those transactions.
 
   return (
     <div className="min-h-screen bg-[#0F172A] text-white flex flex-col font-sans selection:bg-indigo-500/30">
@@ -225,7 +165,7 @@ export default function ScannerPage() {
           <div className="w-full max-w-md flex flex-col items-center">
             <h2 className="text-2xl font-black mb-1 tracking-tight text-center">Scan any Shop QR</h2>
             <p className="text-slate-400 text-sm mb-2 text-center">The QR scanner works across India.</p>
-            <p className="text-amber-300/90 text-xs mb-6 text-center">Merchant payment and cashback execution stay disabled until the settlement integration is verified.</p>
+            <p className="text-amber-300/90 text-xs mb-6 text-center">QR/contact payment and funded cashback will appear only after a verified payment and settlement integration is enabled.</p>
             
             <div className="w-full aspect-square bg-slate-900 rounded-3xl overflow-hidden border-2 border-indigo-500/50 shadow-[0_0_40px_rgba(99,102,241,0.2)] relative flex items-center justify-center">
               <div id="reader" className="w-full h-full object-cover"></div>
@@ -278,30 +218,6 @@ export default function ScannerPage() {
           </div>
         )}
 
-        {/* Scanner payment success UI intentionally disabled until verified payment flow exists.
-        {cashbackWon !== null && (
-          <div className="w-full max-w-md flex flex-col items-center text-center animate-in slide-in-from-bottom-10 fade-in duration-500">
-            <div className="w-24 h-24 bg-emerald-500/20 rounded-full flex items-center justify-center mb-6 border-4 border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.3)]">
-              <CheckCircle2 size={48} className="text-emerald-400" />
-            </div>
-            
-            <h2 className="text-3xl font-black mb-2 text-white">Payment Successful</h2>
-            <p className="text-slate-400 font-medium mb-10">₹{amount} paid securely to {merchantName}</p>
-
-            <div className="w-full bg-gradient-to-br from-indigo-900 to-purple-900 border border-indigo-500/30 p-8 rounded-3xl relative overflow-hidden shadow-2xl shadow-indigo-500/20">
-              <Gift size={32} className="text-amber-400 mx-auto mb-4" />
-              <p className="text-indigo-200 font-bold mb-1 uppercase tracking-widest text-sm">Super Cashback Won!</p>
-              <div className="flex items-center justify-center text-5xl font-black text-white drop-shadow-md mb-2">
-                <IndianRupee size={40} className="text-amber-400" />
-                <span className="bg-gradient-to-r from-amber-200 to-amber-500 bg-clip-text text-transparent">{cashbackWon}</span>
-              </div>
-              <p className="text-indigo-200/80 text-sm">Added directly to your Zeshu Wallet</p>
-            </div>
-
-            <button onClick={() => router.push('/')} className="mt-10 w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-2xl active:scale-95 transition-all">Back to Home</button>
-          </div>
-        )}
-        */}
       </main>
 
       <style dangerouslySetInnerHTML={{__html: `
