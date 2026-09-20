@@ -336,6 +336,9 @@ export default function ZeshuSuperApp() {
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const [locationSelectorOpen, setLocationSelectorOpen] = useState(false);
   const [locationSelection, setLocationSelection] = useState<LocationSelection | null>(null);
+  const [deliveryServiceability, setDeliveryServiceability] = useState<'UNKNOWN' | 'CHECKING' | 'ELIGIBLE' | 'OUTSIDE_SERVICE_AREA' | 'SERVICE_AREA_UNAVAILABLE'>('UNKNOWN');
+  const [pendingAddProduct, setPendingAddProduct] = useState<any>(null);
+  const [isInstalledSurface, setIsInstalledSurface] = useState(false);
   const locationWatchRef = useRef<number | null>(null);
   const locationRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const locationRequestRef = useRef(0);
@@ -634,6 +637,13 @@ export default function ZeshuSuperApp() {
       window.removeEventListener('online', updateOnlineState);
       window.removeEventListener('offline', updateOnlineState);
     };
+  }, []);
+
+  useEffect(() => {
+    const standalone = window.matchMedia?.('(display-mode: standalone)').matches
+      || Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
+    const webView = /;\s*wv\)/i.test(window.navigator.userAgent) || /\bwv\b/i.test(window.navigator.userAgent);
+    setIsInstalledSurface(Boolean(standalone || webView));
   }, []);
 
   const clearLocationWatcher = () => {
@@ -1125,6 +1135,25 @@ export default function ZeshuSuperApp() {
   }, [isTrackingOpen, trackedOrder?.id, trackedOrder?.status, user?.id]);
 
   const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); };
+  const checkDeliveryServiceArea = async (latitude: number, longitude: number) => {
+    setDeliveryServiceability('CHECKING');
+    try {
+      const response = await fetch('/api/service-area/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ latitude, longitude }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      const status = payload?.status === 'ELIGIBLE' || payload?.status === 'OUTSIDE_SERVICE_AREA'
+        ? payload.status
+        : 'SERVICE_AREA_UNAVAILABLE';
+      setDeliveryServiceability(status);
+      return { status, message: String(payload?.message || '') };
+    } catch {
+      setDeliveryServiceability('SERVICE_AREA_UNAVAILABLE');
+      return { status: 'SERVICE_AREA_UNAVAILABLE' as const, message: 'We could not verify this delivery location.' };
+    }
+  };
   const showCheckoutError = (message: string, code?: string, requestId?: string) => {
     setCheckoutError({ message, code, requestId });
     showToast(message);
@@ -1483,7 +1512,14 @@ export default function ZeshuSuperApp() {
     setAddressesLoaded(true);
     const defaultAddress = next.find((address) => address.is_default);
     if (!selectedAddressId && defaultAddress) setSelectedAddressId(defaultAddress.id);
-    if (defaultAddress) setCurrentAddress(formatAddress(defaultAddress));
+    if (defaultAddress) {
+      setCurrentAddress(formatAddress(defaultAddress));
+      if (isValidLocationCoordinate(defaultAddress.latitude, defaultAddress.longitude)) {
+        void checkDeliveryServiceArea(Number(defaultAddress.latitude), Number(defaultAddress.longitude));
+      } else {
+        setDeliveryServiceability('UNKNOWN');
+      }
+    }
   };
   const openAddressForm = (address?: CustomerAddress) => {
     setEditingAddress(address || null);
@@ -1508,14 +1544,61 @@ export default function ZeshuSuperApp() {
     }
     setLocationSelectorOpen(true);
   };
+  const useSavedAddressForCheckout = async (address: CustomerAddress, openCartAfter = false) => {
+    if (!isValidLocationCoordinate(address.latitude, address.longitude)) {
+      setDeliveryServiceability('SERVICE_AREA_UNAVAILABLE');
+      setLocationSelection(null);
+      openAddressForm(address);
+      showToast('Confirm this saved address on the map before using it for delivery.');
+      return;
+    }
+    const area = await checkDeliveryServiceArea(Number(address.latitude), Number(address.longitude));
+    if (area.status !== 'ELIGIBLE') {
+      setLocationSelection({
+        latitude: Number(address.latitude),
+        longitude: Number(address.longitude),
+        accuracy: address.location_accuracy_meters ?? null,
+        source: address.location_source === 'DEVICE' ? 'DEVICE' : 'MANUAL_PIN',
+        displayAddress: formatAddress(address),
+      });
+      setLocationSelectorOpen(true);
+      showToast(area.status === 'OUTSIDE_SERVICE_AREA'
+        ? 'Physical delivery is not available at this address. Choose a location inside the Jagtial service area.'
+        : 'We could not verify this saved delivery address. Confirm the pin again.');
+      return;
+    }
+    setSelectedAddressId(address.id);
+    setCurrentAddress(formatAddress(address));
+    setLocationSelection({
+      latitude: Number(address.latitude),
+      longitude: Number(address.longitude),
+      accuracy: address.location_accuracy_meters ?? null,
+      source: address.location_source === 'DEVICE' ? 'DEVICE' : 'MANUAL_PIN',
+      displayAddress: formatAddress(address),
+    });
+    if (openCartAfter) {
+      setIsAccountOpen(false);
+      setIsCartOpen(true);
+    }
+  };
+
   const saveAddress = async (event: React.FormEvent) => {
     event.preventDefault();
     if (addressSaving) return;
     if (!addressForm.label.trim() || !addressForm.address_line.trim() || !addressForm.city.trim() || !addressForm.state.trim()) return showToast('Label, address, city, and state are required.');
     const latitude = addressForm.latitude.trim() ? Number(addressForm.latitude) : null;
     const longitude = addressForm.longitude.trim() ? Number(addressForm.longitude) : null;
-    if ((latitude !== null && (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)) || (longitude !== null && (!Number.isFinite(longitude) || longitude < -180 || longitude > 180))) return showToast('Enter valid map coordinates or leave them blank.');
+    if ((latitude !== null && (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)) || (longitude !== null && (!Number.isFinite(longitude) || longitude < -180 || longitude > 180))) return showToast('Enter valid map coordinates.');
+    if (latitude === null || longitude === null) return showToast('Confirm the delivery pin on the map before saving this address.');
     setAddressSaving(true);
+    const area = await checkDeliveryServiceArea(latitude, longitude);
+    if (area.status !== 'ELIGIBLE') {
+      setAddressSaving(false);
+      showToast(area.status === 'OUTSIDE_SERVICE_AREA'
+        ? 'This address is outside the current Jagtial delivery area.'
+        : 'We could not verify this delivery pin. Please try the map again.');
+      return;
+    }
     const locationPayload = { p_address_id: editingAddress?.id || null, p_label: addressForm.label.trim(), p_recipient_name: addressForm.recipient_name.trim() || null, p_phone: addressForm.phone.trim() || null, p_address_line: addressForm.address_line.trim(), p_landmark: addressForm.landmark.trim() || null, p_city: addressForm.city.trim(), p_state: addressForm.state.trim(), p_postal_code: addressForm.postal_code.trim() || null, p_latitude: latitude, p_longitude: longitude, p_is_default: addressForm.is_default, p_location_accuracy_meters: locationAccuracy, p_location_source: locationAccuracy !== null ? 'DEVICE' : (latitude !== null && longitude !== null ? 'MANUAL_PIN' : 'LEGACY') };
     let { error } = await supabase.rpc('customer_upsert_address_with_location', locationPayload);
     if (error?.code === 'PGRST202' || /function .*customer_upsert_address_with_location/i.test(error?.message || '')) {
@@ -1912,7 +1995,7 @@ export default function ZeshuSuperApp() {
     showToast(isFavorite ? 'Removed from favorites.' : 'Added to favorites.');
   };
   
-  const addToCart = (product: any) => {
+  const commitAddToCart = (product: any) => {
     if (!product?.vendor_id || product?.in_stock === false || Number(product?.quantity) <= 0) return showToast('This product is currently unavailable.');
     setCheckoutError(null);
     const existing = cart.find((entry) => String(entry.item.id) === String(product.id));
@@ -1921,6 +2004,19 @@ export default function ZeshuSuperApp() {
     if (existing && product.quantity !== null && existing.qty >= Number(product.quantity)) return showToast('Maximum available quantity already in your cart.');
     setCart(prev => { const current = prev.find((entry) => String(entry.item.id) === String(product.id)); return current ? prev.map(c => String(c.item.id) === String(product.id) ? { ...c, qty: c.qty + 1 } : c) : [...prev, { item: product, qty: 1 }]; });
     showToast(`${product.name} added`);
+  };
+
+  const addToCart = (product: any) => {
+    if (!product?.vendor_id || product?.in_stock === false || Number(product?.quantity) <= 0) return showToast('This product is currently unavailable.');
+    if (deliveryServiceability !== 'ELIGIBLE') {
+      setPendingAddProduct(product);
+      showToast(deliveryServiceability === 'OUTSIDE_SERVICE_AREA'
+        ? 'Choose a delivery location inside the Jagtial service area to add physical products.'
+        : 'Set your delivery location first. We will check whether Zeshu delivers there.');
+      handleAutoDetectLocation();
+      return;
+    }
+    commitAddToCart(product);
   };
   const removeFromCart = (productId: any) => { setCheckoutError(null); setCart(prev => { const existing = prev.find(c => c.item.id === productId); if (existing && existing.qty > 1) { return prev.map(c => c.item.id === productId ? { ...c, qty: c.qty - 1 } : c); } else { const newCart = prev.filter(c => c.item.id !== productId); if (newCart.length === 0) setIsCartOpen(false); return newCart; } }); };
   const clearCart = () => {
@@ -2151,7 +2247,8 @@ export default function ZeshuSuperApp() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FC] font-sans antialiased text-[#111827] overflow-x-hidden relative">
-      <LocationSelector open={locationSelectorOpen} initial={locationSelection} onClose={() => setLocationSelectorOpen(false)} onConfirm={(selection, address) => {
+      <LocationSelector open={locationSelectorOpen} initial={locationSelection} onClose={() => { setLocationSelectorOpen(false); setPendingAddProduct(null); }} onExploreDigital={() => { setLocationSelectorOpen(false); setPendingAddProduct(null); setActiveTab('recharge'); }} onConfirm={(selection, address) => {
+        setDeliveryServiceability('ELIGIBLE');
         setLocationSelection(selection);
         setLocationAccuracy(selection.accuracy);
         const details = selection.addressDetails;
@@ -2177,15 +2274,19 @@ export default function ZeshuSuperApp() {
           }));
         } catch { /* localStorage may be unavailable */ }
         setLocationSelectorOpen(false);
+        if (pendingAddProduct) {
+          commitAddToCart(pendingAddProduct);
+          setPendingAddProduct(null);
+        }
         setAddressFormOpen(true);
-        showToast(details ? 'Address details filled from the map. Add your house or flat number if needed.' : 'Delivery location confirmed. Add your house or flat details.');
+        showToast(details ? 'Delivery available. Address details were filled from the map.' : 'Delivery available. Add your house or flat details.');
       }} />
       {isOffline && <div role="status" aria-live="polite" className="fixed left-1/2 top-20 z-[145] -translate-x-1/2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs font-bold text-amber-900 shadow-sm">You&apos;re offline. Live location and ETA may be delayed.</div>}
       <div className={`fixed bottom-32 left-1/2 -translate-x-1/2 z-[150] transition-all duration-500 ${toastMessage ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-95 pointer-events-none'}`}>
         <div className="bg-[#1F2937]/95 backdrop-blur-xl text-white px-6 py-3.5 rounded-full font-bold text-sm shadow-2xl flex items-center gap-2.5 border border-white/10"><CheckCircle size={18} className="text-[#10B981]"/>{toastMessage}</div>
       </div>
 
-      <header className={`fixed top-0 w-full z-40 transition-all duration-500 ${isScrolled ? 'bg-white/90 backdrop-blur-2xl shadow-sm border-b border-gray-200/40' : 'bg-white border-b border-gray-100'}`}>
+      <header className={`fixed top-0 w-full z-40 pt-[env(safe-area-inset-top)] lg:pt-0 transition-all duration-500 ${isScrolled ? 'bg-white/90 backdrop-blur-2xl shadow-sm border-b border-gray-200/40' : 'bg-white border-b border-gray-100'}`}>
         <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 lg:py-0 lg:h-[88px] flex flex-col lg:flex-row items-center justify-between gap-3 lg:gap-8">
           <div className="flex items-center justify-between w-full lg:w-auto gap-4">
             <div className="flex items-center gap-4 lg:gap-6">
@@ -2223,7 +2324,7 @@ export default function ZeshuSuperApp() {
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto w-full md:px-8 py-4 md:py-8 pt-[168px] sm:pt-[164px] lg:pt-[120px] flex gap-8">
+      <main className="max-w-[1400px] mx-auto w-full md:px-8 py-4 md:py-8 pt-[calc(168px+env(safe-area-inset-top))] sm:pt-[calc(164px+env(safe-area-inset-top))] lg:pt-[120px] flex gap-8">
         {activeTab === 'home' && normalizedSearch === '' && (
           <aside className="hidden lg:block w-[260px] shrink-0 sticky top-[120px] h-[calc(100vh-120px)] overflow-y-auto no-scrollbar pr-4">
             <h3 className="font-black text-[#111827] mb-5 px-3 tracking-tight text-lg">Shop by Category</h3>
@@ -2433,7 +2534,7 @@ export default function ZeshuSuperApp() {
             <>
               {normalizedSearch === '' && (
                 <div className="mb-10 space-y-5 md:space-y-8">
-                  {visibleMarketingBanners.length > 0 && <div className="flex gap-4 overflow-x-auto px-4 pb-2 no-scrollbar snap-x md:gap-5 md:px-0 md:pb-4" aria-label="Sponsored promotions">
+                  {visibleMarketingBanners.length > 0 && <div id="sponsored-promotions" className="flex gap-4 overflow-x-auto px-4 pb-2 no-scrollbar snap-x md:gap-5 md:px-0 md:pb-4" aria-label="Sponsored promotions">
                     {visibleMarketingBanners.map((campaign) => (
                       <button type="button" key={campaign.id} onClick={() => handleCampaignClick(campaign)} className="group relative h-[140px] min-w-[280px] cursor-pointer snap-center overflow-hidden rounded-[16px] border border-gray-100/50 bg-slate-100 text-left shadow-lg transition-all hover:-translate-y-1 md:h-[200px] md:min-w-[480px] md:rounded-[24px]">
                         <picture>
@@ -2446,50 +2547,23 @@ export default function ZeshuSuperApp() {
                     ))}
                   </div>}
 
-                  <section className="mx-4 grid gap-3 md:mx-0 md:grid-cols-2" aria-label="Where Zeshu is available">
-                    <div className="rounded-2xl border border-[#bfe0ca] bg-[#eef8f1] p-4 md:p-5">
-                      <div className="flex items-center gap-2 text-[#087443]"><MapPin size={18} aria-hidden="true"/><p className="text-[11px] font-black uppercase tracking-[.16em]">Jagtial delivery</p></div>
-                      <p className="mt-2 text-lg font-black text-[#173d27]">Fast physical delivery stays local.</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-600">Groceries, fruits, vegetables, meat, eggs and other physical items are limited to the Jagtial delivery zone. Target delivery is roughly 30–60 minutes when operationally available.</p>
+                  <section className="mx-4 rounded-2xl border border-[#dce8df] bg-white p-3 shadow-sm md:mx-0" aria-label="Delivery and nationwide tools">
+                    <button type="button" onClick={handleAutoDetectLocation} className="flex w-full items-center justify-between gap-3 rounded-xl bg-[#f3faf5] px-3 py-2.5 text-left">
+                      <span className="flex min-w-0 items-center gap-2"><MapPin size={17} className="shrink-0 text-[#087443]" aria-hidden="true"/><span className="min-w-0"><span className="block text-xs font-black text-[#173d27]">{deliveryServiceability === 'ELIGIBLE' ? 'Delivery available' : 'Jagtial delivery'}</span><span className="block truncate text-[11px] font-medium text-slate-500">{deliveryServiceability === 'ELIGIBLE' ? currentAddress : 'Set a pin to check serviceability'}</span></span></span><ChevronRight size={16} className="shrink-0 text-[#087443]" aria-hidden="true"/>
+                    </button>
+                    <div className="mt-2 flex gap-2 overflow-x-auto pb-1 no-scrollbar" aria-label="Nationwide tools and offers">
+                      <button type="button" onClick={() => setActiveTab('recharge')} className="whitespace-nowrap rounded-xl bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700">India-wide services</button>
+                      <Link href="/scanner" className="whitespace-nowrap rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">Scan QR</Link>
+                      {visibleMarketingBanners.length > 0 && <button type="button" onClick={() => document.getElementById('sponsored-promotions')?.scrollIntoView({ behavior: 'smooth', block: 'center' })} className="whitespace-nowrap rounded-xl bg-violet-50 px-3 py-2 text-xs font-black text-violet-700">Offers</button>}
+                      {!isInstalledSurface && <Link href="/app" className="whitespace-nowrap rounded-xl bg-[#087443] px-3 py-2 text-xs font-black text-white">Get Zeshu</Link>}
                     </div>
-                    <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4 md:p-5">
-                      <div className="flex items-center gap-2 text-indigo-700"><Smartphone size={18} aria-hidden="true"/><p className="text-[11px] font-black uppercase tracking-[.16em]">India-wide digital</p></div>
-                      <p className="mt-2 text-lg font-black text-slate-900">Digital services are for users across India.</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-600">Recharge and bill discovery, QR tools, rewards, referrals and sponsored digital offers do not require Jagtial delivery. Provider execution remains enabled only where the relevant integration is verified.</p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <button type="button" onClick={() => setActiveTab('recharge')} className="rounded-lg bg-white px-3 py-2 text-xs font-black text-indigo-700 shadow-sm">Recharge &amp; bills</button>
-                        <Link href="/scanner" className="rounded-lg bg-white px-3 py-2 text-xs font-black text-indigo-700 shadow-sm">QR scanner</Link>
-                        <Link href="/app" className="rounded-lg bg-indigo-700 px-3 py-2 text-xs font-black text-white shadow-sm">Get Zeshu</Link>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section className="mx-4 rounded-[26px] bg-[#083b27] p-5 text-white md:mx-0 md:rounded-[28px] md:p-10">
-                    <p className="text-xs font-bold uppercase tracking-[.18em] text-[#a6dfba]">Zeshu · Jagtial fast delivery</p>
-                    <h1 className="mt-2 max-w-xl text-[30px] font-black leading-[1.06] tracking-tight md:text-5xl">Everyday essentials, simply delivered.</h1>
-                    <p className="mt-3 max-w-lg text-sm leading-6 text-[#d9f3e3]">Browse the live Jagtial catalogue. Prices and stock are confirmed securely before checkout, and your delivery pin is checked for the local service zone.</p>
-                    <button onClick={() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' })} className="mt-5 rounded-xl bg-white px-5 py-3 text-sm font-black text-[#075b36] active:scale-[.98] md:mt-6">Browse Jagtial groceries</button>
+                    <p className="mt-2 px-1 text-[10px] font-semibold leading-4 text-slate-400">Physical delivery requires a serviceable Jagtial pin. Digital tools can be used across India where the relevant service is available.</p>
                   </section>
 
                   {activeOrder && <button type="button" onClick={() => { setTrackedOrder(activeOrder); setIsTrackingOpen(true); }} className="mx-4 flex w-[calc(100%-2rem)] items-center justify-between gap-4 rounded-2xl border border-[#cfe8d7] bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md md:mx-0 md:w-full">
                     <span><span className="block text-[10px] font-black uppercase tracking-[.16em] text-[#087443]">Your active order</span><span className="mt-1 block text-lg font-black text-slate-900">{ORDER_STATUS_LABELS[activeOrder.status] || 'Order in progress'}</span><span className="mt-1 block text-xs font-medium text-slate-500">Order #{activeOrder.id?.split('-')[0]?.toUpperCase()} · Tap to view details</span></span><ChevronRight className="shrink-0 text-[#087443]" size={22}/>
                   </button>}
 
-                  <div className="bg-white p-6 md:p-10 rounded-[24px] md:rounded-[32px] shadow-sm border border-gray-100 mx-4 md:mx-0">
-                    <div className="flex items-center justify-between mb-8"><h2 className="text-xl md:text-2xl font-black tracking-tight">Recharge &amp; Bills</h2><button onClick={() => setActiveTab('recharge')} className="text-[#075b36] font-extrabold text-xs md:text-sm hover:bg-[#e9f7ef] bg-[#f1faf4] px-3 py-1.5 md:px-4 md:py-2 rounded-xl">Explore services</button></div>
-                    <div className="grid grid-cols-4 md:grid-cols-8 gap-y-8 md:gap-y-10 gap-x-2 md:gap-x-4">
-                      {SERVICES.filter((s) => !['pharmacy', 'upi'].includes(s.id)).map((s) => (
-                        <button type="button" key={s.id} onClick={() => { setActiveTab('recharge'); setActiveService(s.id); }} className="flex flex-col items-center gap-2.5 md:gap-3.5 cursor-pointer group active:scale-95 transition-transform">
-                          <div className={`h-[60px] w-[60px] md:h-[72px] md:w-[72px] rounded-[20px] md:rounded-[24px] flex items-center justify-center transition-all ${s.color}`}>{s.icon}</div>
-                          <span className="text-[10px] md:text-[11px] font-black text-[#6B7280] text-center leading-tight group-hover:text-[#111827]">{s.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <section className="mx-4 rounded-[24px] border border-emerald-100 bg-emerald-50 p-5 md:mx-0" aria-labelledby="pharmacy-health-title">
-                    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 id="pharmacy-health-title" className="text-xl font-black text-[#173d27]">Pharmacy &amp; Health</h2><p className="mt-1 text-sm text-[#587065]">Licensed pharmacy fulfillment is being onboarded. No medicine payment or prescription transaction is available.</p></div><button type="button" onClick={() => { setActiveTab('recharge'); setActiveService('pharmacy'); }} className="rounded-xl bg-[#087443] px-4 py-2.5 text-sm font-black text-white">View availability</button></div>
-                  </section>
-                  <section className="mx-4 rounded-[24px] border border-slate-200 bg-white p-5 md:mx-0" aria-labelledby="upcoming-tools-title"><h2 id="upcoming-tools-title" className="text-lg font-black text-slate-900">Nationwide tools &amp; offers</h2><p className="mt-1 text-sm leading-6 text-slate-500">The QR scanner, rewards, referrals and sponsored digital campaigns are designed for India-wide use. Merchant QR payment and cashback execution stays disabled until the payment/settlement integration is verified.</p><div className="mt-4 flex flex-wrap gap-2"><Link href="/scanner" className="rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-black text-slate-700">Open QR scanner</Link><Link href="/app" className="rounded-xl bg-[#087443] px-4 py-2.5 text-xs font-black text-white">Install Zeshu</Link><Link href="/partners" className="rounded-xl border border-[#087443] px-4 py-2.5 text-xs font-black text-[#087443]">Sponsored campaigns</Link></div></section>
                 </div>
               )}
               {user && (favoriteProducts.length > 0 || recentlyPurchased.length > 0 || frequentCategories.length > 0) && normalizedSearch === '' && (
@@ -2679,7 +2753,7 @@ export default function ZeshuSuperApp() {
                   <span className="flex shrink-0 items-center gap-1 text-xs font-black text-[#087443]">{deliveryAddressSummary ? 'Change' : 'Add'} <ChevronDown size={16} className={`transition-transform ${expandedCartSection === 'ADDRESS' ? 'rotate-180' : ''}`} aria-hidden="true" /></span>
                 </button>
                 {expandedCartSection === 'ADDRESS' && <div id="cart-address-details" className="border-t border-[#dce8df] p-4">
-                {addresses.length > 0 && <div className="mb-3"><p className="text-xs font-black uppercase tracking-wider text-[#52645a]">Saved addresses</p><div className="mt-2 space-y-2">{addresses.map((address) => <div key={address.id} className={`rounded-xl border p-3 ${selectedAddressId === address.id ? 'border-[#087443] bg-[#f1faf4]' : 'border-slate-200 bg-white'}`}><button type="button" onClick={() => { setSelectedAddressId(address.id); setCurrentAddress(formatAddress(address)); }} className="w-full text-left text-xs"><span className="block font-black">{address.label}{address.is_default ? ' · Default' : ''}</span><span className="mt-1 block line-clamp-2 text-slate-500">{formatAddress(address)}</span></button><div className="mt-2 flex flex-wrap gap-2"><button type="button" onClick={() => openAddressForm(address)} className="rounded-lg bg-slate-100 px-3 py-2 text-[11px] font-black">Edit</button>{!address.is_default && <button type="button" onClick={() => void setDefaultAddress(address.id)} className="rounded-lg bg-emerald-50 px-3 py-2 text-[11px] font-black text-emerald-700">Set default</button>}<button type="button" onClick={() => { setSelectedAddressId(address.id); setCurrentAddress(formatAddress(address)); }} className="rounded-lg bg-indigo-50 px-3 py-2 text-[11px] font-black text-indigo-700">Use for checkout</button></div></div>)}</div></div>}
+                {addresses.length > 0 && <div className="mb-3"><p className="text-xs font-black uppercase tracking-wider text-[#52645a]">Saved addresses</p><div className="mt-2 space-y-2">{addresses.map((address) => <div key={address.id} className={`rounded-xl border p-3 ${selectedAddressId === address.id ? 'border-[#087443] bg-[#f1faf4]' : 'border-slate-200 bg-white'}`}><button type="button" onClick={() => void useSavedAddressForCheckout(address)} className="w-full text-left text-xs"><span className="block font-black">{address.label}{address.is_default ? ' · Default' : ''}</span><span className="mt-1 block line-clamp-2 text-slate-500">{formatAddress(address)}</span></button><div className="mt-2 flex flex-wrap gap-2"><button type="button" onClick={() => openAddressForm(address)} className="rounded-lg bg-slate-100 px-3 py-2 text-[11px] font-black">Edit</button>{!address.is_default && <button type="button" onClick={() => void setDefaultAddress(address.id)} className="rounded-lg bg-emerald-50 px-3 py-2 text-[11px] font-black text-emerald-700">Set default</button>}<button type="button" onClick={() => void useSavedAddressForCheckout(address)} className="rounded-lg bg-indigo-50 px-3 py-2 text-[11px] font-black text-indigo-700">Use for checkout</button></div></div>)}</div></div>}
                 <div className="mb-2 flex flex-wrap items-center gap-3"><button type="button" onClick={() => { openAddressForm(); handleAutoDetectLocation(); }} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">Use my current location</button><button type="button" onClick={() => openAddressForm()} className="rounded-lg bg-[#087443] px-3 py-2 text-xs font-black text-white">+ Add Address</button>{selectedAddressId && <button type="button" onClick={() => { const selected = addresses.find((address) => address.id === selectedAddressId); if (selected) requestDeleteAddress(selected); }} className="text-xs font-black text-red-600">Remove selected address</button>}</div><label htmlFor="delivery-address" className="block text-xs font-black uppercase tracking-wider text-[#52645a]">Delivery address</label>
                 <textarea id="delivery-address" value={currentAddress === 'Location not set' ? '' : currentAddress} onChange={(event) => setCurrentAddress(event.target.value)} rows={3} placeholder="House / flat, street, area and landmark" className="mt-2 w-full resize-none rounded-xl border border-[#dce8df] bg-[#f8fbf8] p-3 text-sm font-medium outline-none focus:border-[#087443]" />
                 <p className="mt-2 text-[11px] text-slate-500">Your address is used only for this checkout and is validated again on the server.</p>
@@ -2834,7 +2908,7 @@ export default function ZeshuSuperApp() {
               {accountView !== 'HOME' && <div className="flex items-center"><button type="button" onClick={() => setAccountView('HOME')} className="inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-black text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"><span aria-hidden="true">←</span> Back to My Account</button></div>}
               {accountView === 'ADDRESSES' && <section className="rounded-[24px] border border-slate-200 bg-white p-5" aria-labelledby="saved-addresses-title">
                 <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 id="saved-addresses-title" className="font-black text-slate-900">Saved Addresses</h3><p className="mt-1 text-xs text-slate-500">Choose a saved address at checkout.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => { openAddressForm(); handleAutoDetectLocation(); }} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">Use my current location</button><button type="button" onClick={() => openAddressForm()} className="rounded-xl bg-[#087443] px-3 py-2 text-xs font-black text-white">+ Add Address</button></div></div>
-                <div className="mt-4 space-y-3">{addresses.length === 0 ? <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No saved addresses yet.</p> : addresses.map((address) => <div key={address.id} className="rounded-xl border border-slate-100 p-3"><div className="flex items-start justify-between gap-3"><div><p className="font-black text-slate-900">{address.label} {address.is_default && <span className="ml-1 rounded bg-emerald-100 px-2 py-1 text-[10px] text-emerald-700">Default</span>}</p><p className="mt-1 text-xs text-slate-600">{address.recipient_name || 'Recipient'} · {formatAddress(address)}</p></div><button type="button" onClick={() => void deleteAddress(address.id)} className="text-xs font-black text-red-600">Delete</button></div><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => openAddressForm(address)} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black">Edit</button>{!address.is_default && <button type="button" onClick={() => void setDefaultAddress(address.id)} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">Set default</button>}<button type="button" onClick={() => { setSelectedAddressId(address.id); setCurrentAddress(formatAddress(address)); setIsAccountOpen(false); setIsCartOpen(true); }} className="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700">Use for checkout</button></div></div>)}</div>
+                <div className="mt-4 space-y-3">{addresses.length === 0 ? <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No saved addresses yet.</p> : addresses.map((address) => <div key={address.id} className="rounded-xl border border-slate-100 p-3"><div className="flex items-start justify-between gap-3"><div><p className="font-black text-slate-900">{address.label} {address.is_default && <span className="ml-1 rounded bg-emerald-100 px-2 py-1 text-[10px] text-emerald-700">Default</span>}</p><p className="mt-1 text-xs text-slate-600">{address.recipient_name || 'Recipient'} · {formatAddress(address)}</p></div><button type="button" onClick={() => void deleteAddress(address.id)} className="text-xs font-black text-red-600">Delete</button></div><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => openAddressForm(address)} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black">Edit</button>{!address.is_default && <button type="button" onClick={() => void setDefaultAddress(address.id)} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">Set default</button>}<button type="button" onClick={() => void useSavedAddressForCheckout(address, true)} className="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700">Use for checkout</button></div></div>)}</div>
               </section>}
               {accountView === 'REFERRAL' && <section className="rounded-[24px] border border-emerald-100 bg-white p-5" aria-labelledby="invite-earn-title">
                 <h3 id="invite-earn-title" className="font-black text-slate-900">Invite &amp; Earn</h3>
