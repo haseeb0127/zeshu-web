@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 export type LocationAddressDetails = {
   formattedAddress: string;
@@ -30,6 +30,7 @@ type Props = {
 const JAGTIAL_VIEWPORT = { lat: 18.7989, lng: 78.9117 };
 const LOCATION_PROMPT = 'Move the map to your delivery location';
 const SELECTED_LOCATION_PROMPT = 'Selected location';
+const BUILD_CHECK_MAP_KEY = 'build-check-google-browser-key';
 
 const isUsableDisplayAddress = (value?: string) => {
   const trimmed = value?.trim();
@@ -95,6 +96,20 @@ const parseAddressDetails = (result: any): LocationAddressDetails | null => {
   return { formattedAddress, addressLine, city, state, postalCode };
 };
 
+const parseOpenStreetMapAddress = (result: any): LocationAddressDetails | null => {
+  if (!result) return null;
+  const raw = result.address && typeof result.address === 'object' ? result.address : {};
+  const house = [raw.house_number, raw.road].filter(Boolean).join(' ').trim();
+  const area = raw.neighbourhood || raw.suburb || raw.quarter || raw.residential || raw.hamlet || '';
+  const city = raw.city || raw.town || raw.village || raw.municipality || raw.county || '';
+  const state = raw.state || '';
+  const postalCode = raw.postcode || '';
+  const formattedAddress = String(result.display_name || '').trim();
+  const addressLine = uniqueParts([house, area]).join(', ') || formattedAddress.split(',').slice(0, 2).join(', ').trim();
+  if (!formattedAddress && !addressLine && !city && !state && !postalCode) return null;
+  return { formattedAddress, addressLine, city, state, postalCode };
+};
+
 const loadGoogleMaps = (key: string) => new Promise<any>((resolve, reject) => {
   if ((window as any).google?.maps) return resolve((window as any).google.maps);
   const existing = document.getElementById('zeshu-google-maps');
@@ -122,8 +137,13 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
   const movedRef = useRef(false);
   const initialAddressRef = useRef(false);
   const reverseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const detectedAccuracyRef = useRef<number | null>(null);
   const [mapsReady, setMapsReady] = useState(false);
   const [mapsError, setMapsError] = useState(false);
+  const [fallbackMap, setFallbackMap] = useState(false);
+  const [fallbackBusy, setFallbackBusy] = useState(false);
+  const [fallbackQuery, setFallbackQuery] = useState('');
+  const [fallbackMessage, setFallbackMessage] = useState('');
   const [center, setCenter] = useState(initial ? { lat: initial.latitude, lng: initial.longitude } : JAGTIAL_VIEWPORT);
   const [address, setAddress] = useState(LOCATION_PROMPT);
   const [addressDetails, setAddressDetails] = useState<LocationAddressDetails | null>(initial?.addressDetails || null);
@@ -131,12 +151,54 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
   const [serviceAreaMessage, setServiceAreaMessage] = useState('');
   const [checkingServiceArea, setCheckingServiceArea] = useState(false);
 
+  const fallbackMapUrl = useMemo(() => {
+    const lat = Number(center.lat);
+    const lng = Number(center.lng);
+    const delta = 0.012;
+    const bbox = [lng - delta, lat - delta, lng + delta, lat + delta].join(',');
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${encodeURIComponent(`${lat},${lng}`)}`;
+  }, [center.lat, center.lng]);
+
+  const reverseFallback = async (lat: number, lng: number) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&lat=${encodeURIComponent(String(lat))}&lon=${encodeURIComponent(String(lng))}`,
+        { headers: { 'Accept-Language': 'en-IN,en;q=0.9' } },
+      );
+      if (!response.ok) return;
+      const result = await response.json();
+      const details = parseOpenStreetMapAddress(result);
+      if (details) {
+        setAddressDetails(details);
+        setAddress(details.formattedAddress || SELECTED_LOCATION_PROMPT);
+      }
+    } catch {
+      // Coordinates are still usable even if reverse geocoding is unavailable.
+    }
+  };
+
+  const enableFallbackMap = (message?: string) => {
+    setFallbackMap(true);
+    setMapsError(false);
+    setMapsReady(true);
+    if (message) setFallbackMessage(message);
+    if (initial) {
+      detectedAccuracyRef.current = initial.source === 'DEVICE' ? initial.accuracy : null;
+      if (!isUsableDisplayAddress(initial.displayAddress)) void reverseFallback(initial.latitude, initial.longitude);
+    }
+  };
+
   useEffect(() => {
     if (!open) return;
     setMapsReady(false);
     setMapsError(false);
+    setFallbackMap(false);
+    setFallbackBusy(false);
+    setFallbackQuery('');
+    setFallbackMessage('');
     setCenter(initial ? { lat: initial.latitude, lng: initial.longitude } : JAGTIAL_VIEWPORT);
     movedRef.current = false;
+    detectedAccuracyRef.current = initial?.source === 'DEVICE' ? initial.accuracy : null;
     const initialAddress = initial?.displayAddress?.trim();
     initialAddressRef.current = isUsableDisplayAddress(initialAddress);
     setAddress(initialAddress || LOCATION_PROMPT);
@@ -144,16 +206,38 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
     setServiceAreaStatus(null);
     setServiceAreaMessage('');
     setCheckingServiceArea(false);
-    const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY;
-    if (!key) { setMapsError(true); return; }
+
+    const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY?.trim();
+    if (!key || key === BUILD_CHECK_MAP_KEY || key.startsWith('build-check-')) {
+      enableFallbackMap('Using the staging map fallback. GPS detection and address search are available without a Google browser key.');
+      return;
+    }
+
     let cancelled = false;
     void loadGoogleMaps(key).then((maps) => {
       if (cancelled || !mapElement.current) return;
-      const map = new maps.Map(mapElement.current, { center: initial ? { lat: initial.latitude, lng: initial.longitude } : JAGTIAL_VIEWPORT, zoom: initial ? 17 : 13, disableDefaultUI: true, clickableIcons: false, gestureHandling: 'greedy' });
+      const map = new maps.Map(mapElement.current, {
+        center: initial ? { lat: initial.latitude, lng: initial.longitude } : JAGTIAL_VIEWPORT,
+        zoom: initial ? 17 : 13,
+        disableDefaultUI: true,
+        clickableIcons: false,
+        gestureHandling: 'greedy',
+      });
       mapRef.current = map;
       geocoderRef.current = new maps.Geocoder();
-      map.addListener('dragstart', () => { movedRef.current = true; initialAddressRef.current = false; });
-      map.addListener('click', (event: any) => { if (event.latLng) { movedRef.current = true; initialAddressRef.current = false; map.panTo(event.latLng); } });
+      map.addListener('dragstart', () => {
+        movedRef.current = true;
+        detectedAccuracyRef.current = null;
+        initialAddressRef.current = false;
+      });
+      map.addListener('click', (event: any) => {
+        if (event.latLng) {
+          movedRef.current = true;
+          detectedAccuracyRef.current = null;
+          initialAddressRef.current = false;
+          map.panTo(event.latLng);
+        }
+      });
       map.addListener('idle', () => {
         const next = map.getCenter();
         if (!next) return;
@@ -188,10 +272,13 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
           const location = place.location;
           if (!location) return;
           movedRef.current = true;
+          detectedAccuracyRef.current = null;
           initialAddressRef.current = false;
           const nextCenter = { lat: location.lat(), lng: location.lng() };
           const details = parseAddressDetails(place);
-          map.panTo(nextCenter); map.setZoom(17); setCenter(nextCenter);
+          map.panTo(nextCenter);
+          map.setZoom(17);
+          setCenter(nextCenter);
           setServiceAreaStatus(null);
           setServiceAreaMessage('');
           setAddress(place.formattedAddress || SELECTED_LOCATION_PROMPT);
@@ -199,11 +286,88 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
         });
       }
       setMapsReady(true);
-    }).catch(() => { if (!cancelled) setMapsError(true); });
-    return () => { cancelled = true; if (reverseTimerRef.current) clearTimeout(reverseTimerRef.current); mapRef.current = null; autocompleteRef.current = null; };
+    }).catch(() => {
+      if (!cancelled) enableFallbackMap('Google Maps is not configured for staging, so Zeshu switched to the GPS/OpenStreetMap fallback.');
+    });
+
+    return () => {
+      cancelled = true;
+      if (reverseTimerRef.current) clearTimeout(reverseTimerRef.current);
+      mapRef.current = null;
+      autocompleteRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial]);
 
+  const detectFallbackLocation = () => {
+    if (!('geolocation' in navigator)) {
+      setFallbackMessage('This browser does not provide GPS location. Search for your area instead.');
+      return;
+    }
+    setFallbackBusy(true);
+    setFallbackMessage('Detecting your current location…');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const accuracy = Number(position.coords.accuracy);
+        const next = { lat: position.coords.latitude, lng: position.coords.longitude };
+        detectedAccuracyRef.current = Number.isFinite(accuracy) && accuracy >= 0 ? accuracy : null;
+        movedRef.current = false;
+        initialAddressRef.current = false;
+        setCenter(next);
+        setServiceAreaStatus(null);
+        setServiceAreaMessage('');
+        setFallbackBusy(false);
+        setFallbackMessage(detectedAccuracyRef.current !== null ? `GPS detected · accuracy about ${Math.round(detectedAccuracyRef.current)} m` : 'GPS location detected.');
+        void reverseFallback(next.lat, next.lng);
+      },
+      (error) => {
+        setFallbackBusy(false);
+        const denied = error?.code === 1;
+        setFallbackMessage(denied
+          ? 'Location permission is blocked. Allow location for this site, then try again, or search for your area.'
+          : 'GPS could not get a reliable fix. Search for your area or try again outdoors.');
+      },
+      { enableHighAccuracy: true, maximumAge: 15000, timeout: 12000 },
+    );
+  };
+
+  const searchFallbackLocation = async () => {
+    const query = fallbackQuery.trim();
+    if (!query || fallbackBusy) return;
+    setFallbackBusy(true);
+    setFallbackMessage('Searching…');
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=1&countrycodes=in&q=${encodeURIComponent(query)}`,
+        { headers: { 'Accept-Language': 'en-IN,en;q=0.9' } },
+      );
+      const results = response.ok ? await response.json() : [];
+      const result = Array.isArray(results) ? results[0] : null;
+      const lat = Number(result?.lat);
+      const lng = Number(result?.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        setFallbackMessage('No matching place found. Try an area, street, landmark or PIN code.');
+        return;
+      }
+      detectedAccuracyRef.current = null;
+      movedRef.current = true;
+      initialAddressRef.current = false;
+      setCenter({ lat, lng });
+      setServiceAreaStatus(null);
+      setServiceAreaMessage('');
+      const details = parseOpenStreetMapAddress(result);
+      setAddressDetails(details);
+      setAddress(details?.formattedAddress || String(result?.display_name || SELECTED_LOCATION_PROMPT));
+      setFallbackMessage('Location found. Confirm the preview below.');
+    } catch {
+      setFallbackMessage('Location search is temporarily unavailable. You can still use GPS.');
+    } finally {
+      setFallbackBusy(false);
+    }
+  };
+
   if (!open) return null;
+
   const confirm = async () => {
     if (checkingServiceArea) return;
     setCheckingServiceArea(true);
@@ -224,11 +388,12 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
 
       if (!response.ok || status !== 'ELIGIBLE') return;
 
+      const detectedAccuracy = detectedAccuracyRef.current;
       onConfirm({
         latitude: center.lat,
         longitude: center.lng,
-        accuracy: initial && !movedRef.current ? initial.accuracy : null,
-        source: initial && !movedRef.current && initial.accuracy !== null ? 'DEVICE' : 'MANUAL_PIN',
+        accuracy: detectedAccuracy ?? (initial && !movedRef.current ? initial.accuracy : null),
+        source: detectedAccuracy !== null || (initial && !movedRef.current && initial.source === 'DEVICE') ? 'DEVICE' : 'MANUAL_PIN',
         ...(isUsableDisplayAddress(address) ? { displayAddress: address.trim() } : {}),
         ...(addressDetails ? { addressDetails } : {}),
       }, address);
@@ -239,15 +404,42 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
       setCheckingServiceArea(false);
     }
   };
+
   return <div className="fixed inset-0 z-[180] flex flex-col bg-white" role="dialog" aria-modal="true" aria-labelledby="location-selector-title">
     <div className="flex items-center gap-3 border-b bg-white px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
       <button type="button" aria-label="Close location selector" onClick={onClose} className="min-h-11 min-w-11 rounded-full bg-slate-100 text-xl">×</button>
-      <h2 id="location-selector-title" className="font-black text-slate-900">Choose delivery location</h2>
+      <div>
+        <h2 id="location-selector-title" className="font-black text-slate-900">Choose delivery location</h2>
+        {fallbackMap && <p className="text-[10px] font-bold text-emerald-700">GPS map fallback active</p>}
+      </div>
     </div>
+
     <div className="relative flex-1 bg-slate-100">
-      {mapsError ? <div className="flex h-full items-center justify-center p-6 text-center"><div><p className="font-bold text-slate-800">Maps are unavailable right now.</p><p className="mt-2 text-sm text-slate-600">You can still enter your address manually.</p><button type="button" onClick={onClose} className="mt-4 rounded-xl bg-[#087443] px-5 py-3 font-black text-white">Enter address manually</button></div></div> : <><div ref={mapElement} className="h-full w-full" aria-label="Delivery location map" />{mapsReady && <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full text-4xl drop-shadow-md" aria-hidden="true">📍</div>}</>}
-      <div ref={searchElement} className="absolute left-3 right-3 top-3 rounded-2xl bg-white shadow-lg" aria-label="Search delivery location" />
+      {fallbackMap ? <>
+        <iframe title="Delivery location map preview" src={fallbackMapUrl} className="h-full w-full border-0" loading="eager" referrerPolicy="strict-origin-when-cross-origin" />
+        <div className="absolute left-3 right-3 top-3 space-y-2 rounded-2xl bg-white/95 p-3 shadow-lg backdrop-blur">
+          <div className="flex gap-2">
+            <input
+              value={fallbackQuery}
+              onChange={(event) => setFallbackQuery(event.target.value)}
+              onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void searchFallbackLocation(); } }}
+              placeholder="Search area, street, landmark or PIN"
+              className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-bold outline-none focus:border-[#087443]"
+            />
+            <button type="button" disabled={fallbackBusy || !fallbackQuery.trim()} onClick={() => void searchFallbackLocation()} className="rounded-xl bg-[#111827] px-3 py-2.5 text-xs font-black text-white disabled:opacity-50">Search</button>
+          </div>
+          <button type="button" disabled={fallbackBusy} onClick={detectFallbackLocation} className="w-full rounded-xl bg-[#087443] px-3 py-2.5 text-xs font-black text-white disabled:opacity-50">
+            {fallbackBusy ? 'Working…' : 'Use my current GPS location'}
+          </button>
+          {fallbackMessage && <p className="text-[11px] font-bold leading-4 text-slate-600">{fallbackMessage}</p>}
+        </div>
+      </> : mapsError ? <div className="flex h-full items-center justify-center p-6 text-center"><div><p className="font-bold text-slate-800">Maps are unavailable right now.</p><p className="mt-2 text-sm text-slate-600">You can still enter your address manually.</p><button type="button" onClick={onClose} className="mt-4 rounded-xl bg-[#087443] px-5 py-3 font-black text-white">Enter address manually</button></div></div> : <>
+        <div ref={mapElement} className="h-full w-full" aria-label="Delivery location map" />
+        {mapsReady && <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full text-4xl drop-shadow-md" aria-hidden="true">📍</div>}
+        <div ref={searchElement} className="absolute left-3 right-3 top-3 rounded-2xl bg-white shadow-lg" aria-label="Search delivery location" />
+      </>}
     </div>
+
     <div className="border-t bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <p className="text-xs font-bold leading-5 text-slate-500">{address}</p>
       <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-black text-slate-600">
@@ -255,8 +447,8 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
         {addressDetails?.state && <span className="rounded-full bg-slate-100 px-2.5 py-1">{addressDetails.state}</span>}
         {addressDetails?.postalCode && <span className="rounded-full bg-slate-100 px-2.5 py-1">PIN {addressDetails.postalCode}</span>}
       </div>
-      <p className="mt-2 text-sm font-black text-slate-800">Place the pin at your delivery entrance</p>
-      <p className="mt-1 text-xs leading-5 text-slate-500">We&apos;ll verify the pin against the Jagtial delivery area before saving it. Street/area, city, state and PIN are filled automatically when available.</p>
+      <p className="mt-2 text-sm font-black text-slate-800">{fallbackMap ? 'Confirm the detected/search result' : 'Place the pin at your delivery entrance'}</p>
+      <p className="mt-1 text-xs leading-5 text-slate-500">We&apos;ll verify this location against the Jagtial delivery area before saving it. Street/area, city, state and PIN are filled automatically when available.</p>
       {serviceAreaStatus === 'ELIGIBLE' && <div role="status" className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3"><p className="text-sm font-black text-emerald-800">Delivery available here</p><p className="mt-1 text-xs leading-5 text-emerald-700">{serviceAreaMessage}</p></div>}
       {serviceAreaStatus === 'OUTSIDE_SERVICE_AREA' && <div role="alert" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3"><p className="text-sm font-black text-amber-900">We&apos;re not delivering physical products here yet</p><p className="mt-1 text-xs leading-5 text-amber-800">{serviceAreaMessage} Digital services remain available across India.</p>{onExploreDigital && <button type="button" onClick={onExploreDigital} className="mt-2 rounded-lg bg-white px-3 py-2 text-xs font-black text-indigo-700 shadow-sm">Explore digital services</button>}</div>}
       {serviceAreaStatus === 'SERVICE_AREA_UNAVAILABLE' && <div role="alert" className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3"><p className="text-sm font-black text-slate-800">Location could not be verified</p><p className="mt-1 text-xs leading-5 text-slate-600">{serviceAreaMessage}</p></div>}
