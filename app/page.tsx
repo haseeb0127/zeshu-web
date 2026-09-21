@@ -97,6 +97,8 @@ const CHECKOUT_ERROR_MESSAGES: Record<string, string> = {
   CHECKOUT_INTERNAL_ERROR: "We couldn't prepare your checkout. Please try again.",
   OUTSIDE_SERVICE_AREA: 'Fast physical delivery is currently available only in Jagtial. Digital services remain available across India.',
   SERVICE_AREA_UNAVAILABLE: 'Confirm a delivery pin inside the Jagtial delivery zone before checkout.',
+  MIXED_FULFILLMENT_UNSUPPORTED: 'Fresh/local and India-delivery items need separate shipments. Please place them separately for now.',
+  NATIONWIDE_DELIVERY_UNAVAILABLE: 'India-wide physical delivery is being prepared. Payment will open only after live courier rates and delivery checks are connected.',
 };
 
 const checkoutFailureMessage = (code: unknown) => String(code || '') === 'ABANDONABLE_PAYMENT_CHECKOUT'
