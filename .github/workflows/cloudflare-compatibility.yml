@@ -1,0 +1,43 @@
+name: Cloudflare compatibility
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  vinext-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://build-check.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: build-check-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: build-check-service-role-key
+      RAZORPAY_KEY_ID: rzp_test_build_check
+      NEXT_PUBLIC_RAZORPAY_KEY_ID: rzp_test_build_check
+      RAZORPAY_KEY_SECRET: build-check-razorpay-secret
+      RAZORPAY_WEBHOOK_SECRET: build-check-webhook-secret
+      GOOGLE_MAPS_ROUTES_API_KEY: build-check-google-routes-key
+      NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY: build-check-google-browser-key
+      PLANAPI_MEMBER_ID: build-check-planapi-member
+      PLANAPI_PASSWORD: build-check-planapi-password
+      PLANAPI_TOKEN_ID: build-check-planapi-token
+      SUPPORT_AI_ENABLED: 'false'
+      ENFORCE_JAGTIAL_SERVICE_AREA: 'false'
+      SUPPORT_WHATSAPP_SENDER_ENABLED: 'false'
+      NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED: 'false'
+      PAYMENT_ROUTER_MODE: 'off'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Verify existing Next.js production build
+        run: npm run build
+      - name: Check Next.js compatibility with Cloudflare Workers
+        run: npx --yes vinext@latest check
