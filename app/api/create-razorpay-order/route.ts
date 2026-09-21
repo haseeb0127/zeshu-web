@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import Razorpay from 'razorpay';
 import { randomUUID } from 'node:crypto';
 import { evaluateJagtialServiceArea, isJagtialServiceAreaEnforced } from '../../lib/service-area';
+import { getNationwideCourierQuotes, isNationwideCourierReady } from '../../lib/courier-server';
+import { evaluateNationwideProfitability } from '../../lib/nationwide-profitability';
 
 export const dynamic = 'force-dynamic';
 
@@ -159,12 +161,13 @@ export async function POST(request: Request) {
     const serviceClient = createClient(url, serviceRoleKey);
     stage = 'CUSTOMER_PROFILE';
     let deliveryCoordinates: { latitude: number; longitude: number; accuracyMeters: number | null; source: 'DEVICE' | 'MANUAL_PIN' | 'LEGACY' } | null = null;
+    let savedDeliveryAddress: any = null;
     const [, adminRoleResult, customerProfileResult, savedAddressResult] = await Promise.all([
         serviceClient.rpc('release_expired_zeshu_cash_redemptions'),
         Promise.resolve(serviceClient.from('admin_roles').select('user_id').eq('user_id', user.id).eq('role', 'admin').maybeSingle()),
         Promise.resolve(serviceClient.from('users').select('id').eq('id', user.id).maybeSingle()),
         deliveryAddressId
-          ? Promise.resolve(serviceClient.from('customer_addresses').select('id,user_id,latitude,longitude,location_accuracy_meters,location_source').eq('id', deliveryAddressId).eq('user_id', user.id).maybeSingle())
+          ? Promise.resolve(serviceClient.from('customer_addresses').select('id,user_id,latitude,longitude,location_accuracy_meters,location_source,postal_code,city,state').eq('id', deliveryAddressId).eq('user_id', user.id).maybeSingle())
           : Promise.resolve({ data: null }),
     ]);
     const { data: adminRole, error: adminRoleError } = adminRoleResult;
@@ -177,6 +180,7 @@ export async function POST(request: Request) {
 
     if (deliveryAddressId) {
       const { data: savedAddress } = savedAddressResult;
+      savedDeliveryAddress = savedAddress || null;
       const latitude = Number(savedAddress?.latitude);
       const longitude = Number(savedAddress?.longitude);
       if (savedAddress && Number.isFinite(latitude) && latitude >= -90 && latitude <= 90 && Number.isFinite(longitude) && longitude >= -180 && longitude <= 180) {
@@ -199,9 +203,11 @@ export async function POST(request: Request) {
     const fulfillmentModes = new Set((fulfillmentProducts || []).map((product: any) => String(product.delivery_mode || 'LOCAL_STANDARD')));
     const hasIndiaItems = fulfillmentModes.has('INDIA_STANDARD');
     const hasLocalItems = [...fulfillmentModes].some((mode) => mode !== 'INDIA_STANDARD');
-    const checkoutFulfillmentMode = fulfillmentModes.size === 1 && fulfillmentModes.has('LOCAL_30_MIN')
-      ? 'LOCAL_30_MIN'
-      : 'LOCAL_STANDARD';
+    let checkoutFulfillmentMode: 'LOCAL_30_MIN' | 'LOCAL_STANDARD' | 'INDIA_STANDARD' = hasIndiaItems
+      ? 'INDIA_STANDARD'
+      : fulfillmentModes.size === 1 && fulfillmentModes.has('LOCAL_30_MIN')
+        ? 'LOCAL_30_MIN'
+        : 'LOCAL_STANDARD';
 
     if (hasIndiaItems && hasLocalItems) {
       return checkoutError(
@@ -213,19 +219,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (hasIndiaItems) {
-      // Nationwide payment stays locked until a real courier quote, pincode
-      // serviceability and the server-side profitability gate are all live.
-      return checkoutError(
-        requestId,
-        stage,
-        'NATIONWIDE_DELIVERY_UNAVAILABLE',
-        'India-wide physical delivery is being prepared. We will enable payment only after live courier rates and profitability checks are connected.',
-        409,
-      );
-    }
-
-    if (isJagtialServiceAreaEnforced()) {
+    if (!hasIndiaItems && isJagtialServiceAreaEnforced()) {
       const serviceAreaResult = deliveryCoordinates
         ? evaluateJagtialServiceArea(deliveryCoordinates.latitude, deliveryCoordinates.longitude)
         : 'SERVICE_AREA_UNAVAILABLE';
@@ -312,7 +306,11 @@ export async function POST(request: Request) {
       const recoveryMerchandiseSubtotal = sameRecoveryProductSet && recoveryVendorId
         ? canonicalRequestedItems.reduce((sum, item) => sum + Number(recoveryProductsById.get(item.product_id)?.price || 0) * item.quantity, 0)
         : NaN;
-      const recoveryDeliveryFee = Number.isFinite(recoveryMerchandiseSubtotal) && recoveryMerchandiseSubtotal >= 299 ? 0 : 30;
+      const recoverySnapshot = recoveryReservation.pricing_snapshot || {};
+      const recoverySnapshotDeliveryFee = Number(recoverySnapshot.delivery_fee);
+      const recoveryDeliveryFee = recoverySnapshot.fulfillment_mode === 'INDIA_STANDARD' && Number.isFinite(recoverySnapshotDeliveryFee)
+        ? recoverySnapshotDeliveryFee
+        : Number.isFinite(recoveryMerchandiseSubtotal) && recoveryMerchandiseSubtotal >= 299 ? 0 : 30;
       const recoveryExpectedPricing = {
         small_cart_fee: 0,
         delivery_fee: recoveryDeliveryFee,
@@ -322,7 +320,6 @@ export async function POST(request: Request) {
         pass_fee: 0,
         discount_total: 0,
       };
-      const recoverySnapshot = recoveryReservation.pricing_snapshot || {};
       const sameRecoveryPricing = Object.entries(recoveryExpectedPricing)
         .filter(([key]) => key !== 'discount_total')
         .every(([key, value]) => sameNumber(recoverySnapshot[key], value));
@@ -413,7 +410,11 @@ export async function POST(request: Request) {
       const merchandiseSubtotal = sameProductSet && currentVendorId
         ? canonicalRequestedItems.reduce((sum, item) => sum + Number(productsById.get(item.product_id)?.price || 0) * item.quantity, 0)
         : NaN;
-      const deliveryFee = Number.isFinite(merchandiseSubtotal) && merchandiseSubtotal >= 299 ? 0 : 30;
+      const snapshot = activeResumable.pricing_snapshot || {};
+      const snapshotDeliveryFee = Number(snapshot.delivery_fee);
+      const deliveryFee = snapshot.fulfillment_mode === 'INDIA_STANDARD' && Number.isFinite(snapshotDeliveryFee)
+        ? snapshotDeliveryFee
+        : Number.isFinite(merchandiseSubtotal) && merchandiseSubtotal >= 299 ? 0 : 30;
       const expectedPricing = {
         small_cart_fee: 0,
         delivery_fee: deliveryFee,
@@ -423,7 +424,6 @@ export async function POST(request: Request) {
         pass_fee: 0,
         discount_total: 0,
       };
-      const snapshot = activeResumable.pricing_snapshot || {};
       const samePricing = Object.entries(expectedPricing).filter(([key]) => key !== 'discount_total').every(([key, value]) => sameNumber(snapshot[key], value));
       const existingCashDiscount = Number(snapshot.zeshu_cash_redemption || snapshot.discount_total || 0);
       const expectedTotal = Number.isFinite(merchandiseSubtotal)
@@ -560,7 +560,7 @@ export async function POST(request: Request) {
     const requestedProductIds = canonicalRequestedItems.map((item) => item.product_id);
     const { data: authoritativeProducts, error: authoritativeProductsError } = await serviceClient
       .from('products')
-      .select('id,vendor_id,price,quantity,in_stock')
+      .select('id,name,vendor_id,price,quantity,in_stock,delivery_mode,fresh_eligible,nationwide_shipping_enabled,requires_cold_chain,packed_weight_grams,package_length_cm,package_width_cm,package_height_cm,shipping_class,min_nationwide_quantity,min_nationwide_order_value,handling_minutes')
       .in('id', requestedProductIds);
     if (authoritativeProductsError) return checkoutError(requestId, stage, 'PRODUCT_LOOKUP_FAILED', 'Unable to verify checkout products.', 500, authoritativeProductsError);
     stage = 'PRODUCT_VALIDATION';
@@ -580,6 +580,224 @@ export async function POST(request: Request) {
       return product?.quantity === null || product?.quantity === undefined || Number(product.quantity) < item.quantity;
     })) {
       return reservationErrorResponse(requestId, stage, 'INSUFFICIENT_STOCK');
+    }
+
+    if (products.some((product: any) => String(product.delivery_mode || 'LOCAL_STANDARD') !== checkoutFulfillmentMode)) {
+      return checkoutError(requestId, stage, 'FULFILLMENT_CHANGED', 'A product delivery option changed while you were checking out. Please review your basket and try again.', 409);
+    }
+
+    const vendorId = String(products[0]?.vendor_id || '');
+    const { data: fulfillmentVendor, error: fulfillmentVendorError } = await serviceClient
+      .from('vendors')
+      .select('id,is_open,admin_suspended,local_30_min_enabled,local_standard_enabled')
+      .eq('id', vendorId)
+      .maybeSingle();
+    if (fulfillmentVendorError || !fulfillmentVendor) {
+      return checkoutError(requestId, stage, 'VENDOR_UNAVAILABLE', 'This store is temporarily unavailable.', 409, fulfillmentVendorError);
+    }
+    if (fulfillmentVendor.admin_suspended === true || fulfillmentVendor.is_open !== true) {
+      return checkoutError(requestId, stage, 'VENDOR_UNAVAILABLE', 'This store is currently closed. Please try again when it reopens.', 409);
+    }
+
+    if (checkoutFulfillmentMode === 'LOCAL_30_MIN') {
+      if (products.some((product: any) => product.fresh_eligible !== true)) {
+        checkoutFulfillmentMode = 'LOCAL_STANDARD';
+      } else {
+        let fastCapacityAvailable = fulfillmentVendor.local_30_min_enabled === true;
+        if (fastCapacityAvailable) {
+          const freshnessCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+          const [{ data: activeRiders, error: riderError }, { data: activeDeliveries, error: activeDeliveryError }] = await Promise.all([
+            serviceClient.from('riders').select('id,user_id').eq('is_active', true).eq('admin_suspended', false).gte('location_updated_at', freshnessCutoff),
+            serviceClient.from('orders').select('rider_id,assigned_rider_id').in('status', ['PENDING','CONFIRMED','PREPARING','READY_FOR_PICKUP','PICKED_UP','OUT_FOR_DELIVERY']),
+          ]);
+          if (riderError || activeDeliveryError) {
+            fastCapacityAvailable = false;
+          } else {
+            const busyRiderIds = new Set<string>(
+              (activeDeliveries || [])
+                .flatMap((order: any) => [order.rider_id, order.assigned_rider_id])
+                .filter(Boolean)
+                .map(String),
+            );
+            fastCapacityAvailable = (activeRiders || []).some((rider: any) =>
+              !busyRiderIds.has(String(rider.id)) && !busyRiderIds.has(String(rider.user_id || '')),
+            );
+          }
+        }
+        if (!fastCapacityAvailable) checkoutFulfillmentMode = 'LOCAL_STANDARD';
+      }
+    }
+
+    if (checkoutFulfillmentMode === 'LOCAL_STANDARD' && fulfillmentVendor.local_standard_enabled === false) {
+      return checkoutError(requestId, stage, 'LOCAL_DELIVERY_PAUSED', 'Local delivery is temporarily paused for this store.', 409);
+    }
+
+    let indiaShipping: null | {
+      quote: Awaited<ReturnType<typeof getNationwideCourierQuotes>>[number];
+      customerShippingCharge: number;
+      subtotal: number;
+      freeShipping: boolean;
+      deliveryPostcode: string;
+      weightKg: number;
+      dimensions: { lengthCm: number; breadthCm: number; heightCm: number };
+    } = null;
+
+    if (checkoutFulfillmentMode === 'INDIA_STANDARD') {
+      const deliveryPostcode = String(savedDeliveryAddress?.postal_code || '').replace(/\D/g, '');
+      if (!/^\d{6}$/.test(deliveryPostcode)) {
+        return checkoutError(requestId, stage, 'INDIA_PINCODE_REQUIRED', 'Choose a saved delivery address with a valid 6-digit PIN code for India delivery.', 409);
+      }
+
+      if (products.some((product: any) =>
+        product.nationwide_shipping_enabled !== true
+        || product.requires_cold_chain === true
+        || product.shipping_class !== 'STANDARD'
+        || Number(product.packed_weight_grams) <= 0
+        || Number(product.package_length_cm) <= 0
+        || Number(product.package_width_cm) <= 0
+        || Number(product.package_height_cm) <= 0
+      )) {
+        return checkoutError(requestId, stage, 'INDIA_PRODUCT_NOT_READY', 'One or more items still need complete safe-shipping details before India delivery can be offered.', 409);
+      }
+
+      const [{ data: settings, error: settingsError }, { data: profiles, error: profilesError }] = await Promise.all([
+        serviceClient.from('fulfillment_settings').select('*').eq('id', 'default').maybeSingle(),
+        serviceClient.from('product_fulfillment_profiles').select('*').in('product_id', requestedProductIds),
+      ]);
+      if (settingsError || profilesError || !settings) {
+        return checkoutError(requestId, stage, 'INDIA_DELIVERY_UNAVAILABLE', 'India delivery is temporarily unavailable. No payment was started.', 503, settingsError || profilesError);
+      }
+      if (settings.nationwide_checkout_enabled !== true || !isNationwideCourierReady()) {
+        return checkoutError(requestId, stage, 'NATIONWIDE_DELIVERY_UNAVAILABLE', 'India-wide delivery is being prepared and is not accepting payments yet.', 409);
+      }
+
+      const profilesById = new Map((profiles || []).map((profile: any) => [String(profile.product_id), profile]));
+      const subtotal = canonicalRequestedItems.reduce((sum, item) => {
+        const product: any = productsById.get(item.product_id);
+        return sum + Number(product.price) * item.quantity;
+      }, 0);
+      const requiredMinimumOrder = Math.max(0, ...products.map((product: any) => Number(product.min_nationwide_order_value || 0)));
+      if (subtotal < requiredMinimumOrder) {
+        return checkoutError(requestId, stage, 'INDIA_MIN_ORDER', `Add ₹${Math.ceil(requiredMinimumOrder - subtotal)} more of eligible India-delivery products to unlock delivery.`, 409);
+      }
+
+      for (const item of canonicalRequestedItems) {
+        const product: any = productsById.get(item.product_id);
+        const requiredQty = Math.max(1, Number(product.min_nationwide_quantity || 1));
+        if (item.quantity < requiredQty) {
+          return checkoutError(requestId, stage, 'INDIA_MIN_QUANTITY', `Buy at least ${requiredQty} of ${String(product.name || 'this item')} for India delivery.`, 409);
+        }
+      }
+
+      let productCost = 0;
+      let packagingCost = 0;
+      let handlingCost = 0;
+      let returnRiskPercent = Math.max(0, Number(settings.default_rto_allowance_percent || 0));
+      let minimumContribution = Math.max(0, Number(settings.default_min_contribution_rupees || 0));
+      let minimumMargin = Math.max(0, Number(settings.default_min_margin_percent || 0));
+      for (const item of canonicalRequestedItems) {
+        const profile: any = profilesById.get(item.product_id);
+        const product: any = productsById.get(item.product_id);
+        const costPrice = Number(profile?.cost_price);
+        if (!profile || !Number.isFinite(costPrice) || costPrice < 0) {
+          return checkoutError(requestId, stage, 'INDIA_PRODUCT_NOT_READY', 'One or more items still need verified cost details before India delivery can be offered.', 409);
+        }
+        productCost += costPrice * item.quantity;
+        packagingCost += Math.max(0, Number(profile.packaging_cost || 0)) * item.quantity;
+        handlingCost += Math.max(0, Number(profile.handling_cost || 0)) * item.quantity;
+        returnRiskPercent = Math.max(returnRiskPercent, Math.max(0, Number(profile.return_risk_percent || 0)));
+        if (profile.min_contribution_rupees !== null) minimumContribution = Math.max(minimumContribution, Number(profile.min_contribution_rupees));
+        if (profile.min_margin_percent !== null) minimumMargin = Math.max(minimumMargin, Number(profile.min_margin_percent));
+        if (!Number.isFinite(Number(product.price))) {
+          return checkoutError(requestId, stage, 'INDIA_PRODUCT_NOT_READY', 'One or more items have invalid pricing for India delivery.', 409);
+        }
+      }
+
+      const weightKg = canonicalRequestedItems.reduce((sum, item) => {
+        const product: any = productsById.get(item.product_id);
+        return sum + Number(product.packed_weight_grams) * item.quantity;
+      }, 0) / 1000;
+      const lengthCm = Math.max(...canonicalRequestedItems.map((item) => Number((productsById.get(item.product_id) as any)?.package_length_cm || 0)));
+      const breadthCm = Math.max(...canonicalRequestedItems.map((item) => Number((productsById.get(item.product_id) as any)?.package_width_cm || 0)));
+      const heightCm = canonicalRequestedItems.reduce((sum, item) => {
+        const product: any = productsById.get(item.product_id);
+        return sum + Number(product.package_height_cm) * item.quantity;
+      }, 0);
+
+      stage = 'SHIPPING_QUOTE';
+      let quotes: Awaited<ReturnType<typeof getNationwideCourierQuotes>>;
+      try {
+        quotes = await getNationwideCourierQuotes({
+          deliveryPostcode,
+          weightKg,
+          declaredValue: subtotal,
+          lengthCm,
+          breadthCm,
+          heightCm,
+        });
+      } catch (quoteError) {
+        return checkoutError(requestId, stage, 'INDIA_DELIVERY_UNAVAILABLE', 'We could not get a live courier rate for this address right now. No payment was started.', 503, quoteError);
+      }
+      if (!quotes.length) {
+        return checkoutError(requestId, stage, 'INDIA_PINCODE_UNSERVICEABLE', 'No prepaid courier is currently available for this PIN code.', 409);
+      }
+
+      const evaluated = quotes.map((quote) => {
+        const freeDecision = settings.free_shipping_enabled === true
+          ? evaluateNationwideProfitability({
+              merchandiseRevenue: subtotal,
+              productCost,
+              packagingCost,
+              handlingCost,
+              courierCost: quote.courierCost,
+              customerShippingCharge: 0,
+              paymentFeePercent: Number(settings.payment_fee_percent || 0),
+              returnRtoAllowancePercent: returnRiskPercent,
+              operatingCostPercent: Number(settings.default_operating_cost_percent || 0),
+              minimumContributionRupees: minimumContribution,
+              minimumMarginPercent: minimumMargin,
+            })
+          : null;
+        if (freeDecision?.eligible) return { quote, decision: freeDecision, customerShippingCharge: 0, freeShipping: true };
+
+        const customerShippingCharge = Math.ceil(quote.courierCost);
+        const paidDecision = evaluateNationwideProfitability({
+          merchandiseRevenue: subtotal,
+          productCost,
+          packagingCost,
+          handlingCost,
+          courierCost: quote.courierCost,
+          customerShippingCharge,
+          paymentFeePercent: Number(settings.payment_fee_percent || 0),
+          returnRtoAllowancePercent: returnRiskPercent,
+          operatingCostPercent: Number(settings.default_operating_cost_percent || 0),
+          minimumContributionRupees: minimumContribution,
+          minimumMarginPercent: minimumMargin,
+        });
+        return { quote, decision: paidDecision, customerShippingCharge, freeShipping: false };
+      });
+
+      const eligibleQuotes = evaluated
+        .filter((entry) => entry.decision.eligible)
+        .sort((a, b) =>
+          a.customerShippingCharge - b.customerShippingCharge
+          || a.quote.courierCost - b.quote.courierCost
+          || (a.quote.estimatedDeliveryDays ?? 999) - (b.quote.estimatedDeliveryDays ?? 999),
+        );
+
+      if (!eligibleQuotes.length) {
+        return checkoutError(requestId, stage, 'INDIA_LOW_MARGIN', 'This basket is not economical for India delivery yet. Add more eligible items or choose a bundle.', 409);
+      }
+      const selected = eligibleQuotes[0];
+      indiaShipping = {
+        quote: selected.quote,
+        customerShippingCharge: selected.customerShippingCharge,
+        subtotal,
+        freeShipping: selected.freeShipping,
+        deliveryPostcode,
+        weightKg,
+        dimensions: { lengthCm, breadthCm, heightCm },
+      };
     }
 
     stage = 'RESERVATION_CREATE';
@@ -610,28 +828,84 @@ export async function POST(request: Request) {
 
     const reservation = Array.isArray(reservationData) ? reservationData[0] : reservationData;
     const reservationId = reservation?.reservation_id;
-    const reservationExpectedTotal = Number(reservation?.expected_total_paid);
+    let reservationExpectedTotal = Number(reservation?.expected_total_paid);
     if (typeof reservationId !== 'string' || !Number.isFinite(reservationExpectedTotal) || reservationExpectedTotal <= 0) {
       return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to prepare the database-verified checkout total.', 500);
     }
 
     stage = 'FULFILLMENT_SNAPSHOT';
-    const { error: fulfillmentSnapshotError } = await serviceClient
+    const { data: createdReservation, error: createdReservationError } = await serviceClient
       .from('inventory_reservations')
-      .update({
-        fulfillment_mode: checkoutFulfillmentMode,
-        shipping_quote_snapshot: {
-          mode: checkoutFulfillmentMode,
-          scope: 'JAGTIAL_LOCAL',
-          rate_source: 'LOCAL_PRICING',
-          thirty_minute_candidate: checkoutFulfillmentMode === 'LOCAL_30_MIN',
-          promised_eta_minutes: null,
-        },
-      })
+      .select('id,status,merchandise_subtotal,pricing_snapshot')
       .eq('id', reservationId)
-      .eq('user_id', user.id);
-    if (fulfillmentSnapshotError) {
+      .eq('user_id', user.id)
+      .eq('status', 'ACTIVE')
+      .maybeSingle();
+    if (createdReservationError || !createdReservation) {
+      return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to save the delivery plan for this checkout.', 500, createdReservationError);
+    }
+
+    const pricingSnapshot = {
+      ...(createdReservation.pricing_snapshot || {}),
+      fulfillment_mode: checkoutFulfillmentMode,
+    } as Record<string, unknown>;
+    const fulfillmentPatch: Record<string, unknown> = {
+      fulfillment_mode: checkoutFulfillmentMode,
+      pricing_snapshot: pricingSnapshot,
+      shipping_quote_snapshot: {
+        mode: checkoutFulfillmentMode,
+        scope: 'JAGTIAL_LOCAL',
+        rate_source: 'LOCAL_PRICING',
+        thirty_minute_candidate: checkoutFulfillmentMode === 'LOCAL_30_MIN',
+        promised_eta_minutes: null,
+      },
+    };
+
+    if (indiaShipping) {
+      const indiaTotal = Number(createdReservation.merchandise_subtotal) + indiaShipping.customerShippingCharge;
+      if (!Number.isFinite(indiaTotal) || indiaTotal <= 0) {
+        return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to prepare the India-delivery total.', 500);
+      }
+      reservationExpectedTotal = Math.round(indiaTotal * 100) / 100;
+      pricingSnapshot.delivery_fee = indiaShipping.customerShippingCharge;
+      pricingSnapshot.fulfillment_mode = 'INDIA_STANDARD';
+      fulfillmentPatch.expected_total_paid = reservationExpectedTotal;
+      fulfillmentPatch.pre_reward_total_paid = reservationExpectedTotal;
+      fulfillmentPatch.pricing_snapshot = pricingSnapshot;
+      fulfillmentPatch.shipping_quote_snapshot = {
+        mode: 'INDIA_STANDARD',
+        scope: 'INDIA',
+        rate_source: 'SHIPROCKET_LIVE',
+        provider: 'shiprocket',
+        courier_id: indiaShipping.quote.courierId,
+        courier_name: indiaShipping.quote.courierName,
+        courier_cost: indiaShipping.quote.courierCost,
+        customer_shipping_charge: indiaShipping.customerShippingCharge,
+        free_shipping: indiaShipping.freeShipping,
+        estimated_delivery_days: indiaShipping.quote.estimatedDeliveryDays,
+        etd: indiaShipping.quote.etd,
+        charge_weight_kg: indiaShipping.quote.chargeWeightKg,
+        shipment_weight_kg: Math.round(indiaShipping.weightKg * 1000) / 1000,
+        package_dimensions_cm: indiaShipping.dimensions,
+        delivery_postcode: indiaShipping.deliveryPostcode,
+        quoted_at: new Date().toISOString(),
+      };
+    }
+
+    const { data: updatedReservation, error: fulfillmentSnapshotError } = await serviceClient
+      .from('inventory_reservations')
+      .update(fulfillmentPatch)
+      .eq('id', reservationId)
+      .eq('user_id', user.id)
+      .eq('status', 'ACTIVE')
+      .select('id,expected_total_paid')
+      .maybeSingle();
+    if (fulfillmentSnapshotError || !updatedReservation) {
       return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to save the delivery plan for this checkout.', 500, fulfillmentSnapshotError);
+    }
+    reservationExpectedTotal = Number(updatedReservation.expected_total_paid);
+    if (!Number.isFinite(reservationExpectedTotal) || reservationExpectedTotal <= 0) {
+      return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to prepare the database-verified checkout total.', 500);
     }
 
     stage = 'CASH_RESERVATION';
