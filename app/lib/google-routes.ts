@@ -1,4 +1,5 @@
 import 'server-only';
+import { getRuntimeEnvValue } from '@/app/lib/runtime-env';
 
 type Coordinates = { latitude: number; longitude: number };
 export type RouteEta = { durationSeconds: number; distanceMeters: number; calculatedAt: string; source: 'google_routes' };
@@ -9,7 +10,7 @@ const etaCache = new Map<string, { expiresAt: number; value: RouteEta }>();
 function validCoordinate(value: number, min: number, max: number) { return Number.isFinite(value) && value >= min && value <= max; }
 
 export async function getGoogleRoutesEta(origin: Coordinates, destination: Coordinates): Promise<RouteEta | null> {
-  const key = process.env.GOOGLE_MAPS_ROUTES_API_KEY;
+  const key = await getRuntimeEnvValue('GOOGLE_MAPS_ROUTES_API_KEY');
   if (!key || !validCoordinate(origin.latitude, -90, 90) || !validCoordinate(origin.longitude, -180, 180) || !validCoordinate(destination.latitude, -90, 90) || !validCoordinate(destination.longitude, -180, 180)) return null;
   const cacheKey = [origin.latitude, origin.longitude, destination.latitude, destination.longitude].map((value) => value.toFixed(4)).join(':');
   const cached = etaCache.get(cacheKey);
