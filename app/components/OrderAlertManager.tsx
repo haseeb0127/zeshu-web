@@ -9,7 +9,7 @@ async function showSystemNotification(title: string, body: string) {
   try {
     if ("serviceWorker" in navigator) {
       const registration = await navigator.serviceWorker.ready;
-      await registration.showNotification(title, { body, icon: "/icon.svg", badge: "/icon.svg" });
+      await registration.showNotification(title, { body, icon: "/zeshu-icon.svg", badge: "/zeshu-icon.svg" });
       return;
     }
   } catch {

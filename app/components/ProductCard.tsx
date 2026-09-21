@@ -2,12 +2,12 @@ import { useState } from "react";
 import QuantityControl from "./QuantityControl";
 import { Heart } from "lucide-react";
 
-type Product = { id: string | number; name: string; brand?: string; price?: number; weight?: string; unit?: string; image_url?: string; in_stock?: boolean; quantity?: number };
+type Product = { id: string | number; name: string; brand?: string; price?: number; weight?: string; unit?: string; image_url?: string; in_stock?: boolean; quantity?: number; vendor_id?: string | null };
 type Props = { product: Product; quantity?: number; onAdd: () => void; onRemove: () => void; isFavorite?: boolean; favoriteBusy?: boolean; onFavoriteToggle?: () => void; reviewAverage?: number; reviewCount?: number; onReviews?: () => void; sponsored?: boolean };
 
 export default function ProductCard({ product, quantity, onAdd, onRemove, isFavorite = false, favoriteBusy = false, onFavoriteToggle, reviewAverage, reviewCount = 0, onReviews, sponsored = false }: Props) {
   const [imageFailed, setImageFailed] = useState(false);
-  const unavailable = product.in_stock === false || product.quantity === 0;
+  const unavailable = !product.vendor_id || product.in_stock === false || Number(product.quantity) <= 0;
   return <article className="group flex min-h-[290px] flex-col rounded-3xl border border-[#e3e9e4] bg-white p-3 shadow-[0_2px_10px_rgba(20,45,31,.04)] transition-shadow hover:shadow-[0_10px_28px_rgba(20,45,31,.09)] md:p-4">
     <div className="relative mb-3 aspect-square overflow-hidden rounded-2xl bg-[#f5f7f5] p-4">
       {onFavoriteToggle && <button type="button" aria-label={isFavorite ? `Remove ${product.name} from favorites` : `Add ${product.name} to favorites`} aria-pressed={isFavorite} disabled={favoriteBusy} onClick={onFavoriteToggle} className="absolute right-2 top-2 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/95 text-[#087443] shadow-sm disabled:opacity-50"><Heart size={18} fill={isFavorite ? 'currentColor' : 'none'} /></button>}
@@ -20,7 +20,7 @@ export default function ProductCard({ product, quantity, onAdd, onRemove, isFavo
     <div className="mt-1 flex items-center justify-between gap-2">{reviewCount > 0 ? <p className="text-xs font-black text-amber-600">★ {Number(reviewAverage || 0).toFixed(1)} <span className="font-medium text-slate-500">({reviewCount})</span></p> : <p className="text-[11px] font-medium text-slate-400">No reviews yet</p>}{onReviews && <button type="button" onClick={onReviews} className="text-[10px] font-black text-[#087443]">See reviews</button>}</div>
     <div className="mt-auto flex items-center justify-between gap-2 border-t border-[#edf1ed] pt-3">
       <span className="text-base font-black text-[#17261d]">₹{product.price || 0}</span>
-      {unavailable ? <span className="rounded-lg bg-[#f3f5f3] px-2 py-2 text-[10px] font-black uppercase tracking-wide text-[#78857c]">Unavailable</span> : quantity ? <QuantityControl quantity={quantity} label={product.name} onAdd={onAdd} onRemove={onRemove} /> : <button type="button" onClick={onAdd} className="h-10 min-w-[84px] rounded-xl border border-[#087443] bg-[#e9f7ef] px-4 text-xs font-black text-[#075b36] active:scale-95">ADD</button>}
+      {unavailable ? <span className="rounded-lg bg-[#f3f5f3] px-2 py-2 text-[10px] font-black uppercase tracking-wide text-[#78857c]">Currently unavailable</span> : quantity ? <QuantityControl quantity={quantity} label={product.name} onAdd={onAdd} onRemove={onRemove} /> : <button type="button" onClick={onAdd} className="h-10 min-w-[84px] rounded-xl border border-[#087443] bg-[#e9f7ef] px-4 text-xs font-black text-[#075b36] active:scale-95">ADD</button>}
     </div>
   </article>;
 }

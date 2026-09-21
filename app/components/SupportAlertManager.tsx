@@ -9,7 +9,7 @@ async function showSupportNotification() {
   try {
     if ("serviceWorker" in navigator) {
       const registration = await navigator.serviceWorker.ready;
-      await registration.showNotification("Zeshu customer needs support", { body: "Open Support in ZESHU HQ to reply.", icon: "/icon.svg", badge: "/icon.svg" });
+      await registration.showNotification("Zeshu customer needs support", { body: "Open Support in ZESHU HQ to reply.", icon: "/zeshu-icon.svg", badge: "/zeshu-icon.svg" });
       return;
     }
   } catch {

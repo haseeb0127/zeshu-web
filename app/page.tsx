@@ -261,6 +261,9 @@ export default function ZeshuSuperApp() {
       setActiveTab('recharge');
       const requestedService = params.get('service');
       if (requestedService && SERVICES.some((service) => service.id === requestedService)) setActiveService(requestedService);
+      // Treat query-based service links as one-time deep links. Keeping the query
+      // caused mobile refreshes to reopen Services forever instead of Home.
+      window.history.replaceState({}, '', '/');
     }
   }, []);
 
@@ -274,10 +277,11 @@ export default function ZeshuSuperApp() {
     setIsAuthModalOpen(false);
     setIsTrackingOpen(false);
     setLocationSelectorOpen(false);
-    const params = new URLSearchParams(window.location.search);
-    params.set('view', 'services');
-    if (serviceId) params.set('service', serviceId); else params.delete('service');
-    window.history.replaceState({}, '', `/?${params.toString()}`);
+    // Internal tab navigation should not persist into the URL; refreshing Zeshu
+    // should always reopen the customer storefront.
+    if (typeof window !== 'undefined' && (window.location.search || window.location.hash)) {
+      window.history.replaceState({}, '', '/');
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const [products, setProducts] = useState<any[]>([]);
@@ -483,16 +487,22 @@ export default function ZeshuSuperApp() {
   const isPlanBased = activeService === 'mobile' || activeService === 'dth'; 
 
   const productCategories = useMemo(() => CUSTOMER_CATEGORY_DEFINITIONS.map((category) => category.id), []);
-  const categoryProductCounts = useMemo(() => Object.fromEntries(
-    CUSTOMER_CATEGORY_DEFINITIONS.map((category) => [
-      category.id,
-      category.id === 'All'
-        ? products.length
-        : products.filter((product) => productMatchesCustomerCategory(product?.category, category.id)).length,
-    ]),
-  ) as Record<string, number>, [products]);
+  const categoryProductCounts = useMemo(() => {
+    const availableCatalog = products.filter((product) => Boolean(product?.vendor_id) && product.in_stock !== false && !(Number(product?.quantity) <= 0));
+    return Object.fromEntries(
+      CUSTOMER_CATEGORY_DEFINITIONS.map((category) => [
+        category.id,
+        category.id === 'All'
+          ? availableCatalog.length
+          : availableCatalog.filter((product) => productMatchesCustomerCategory(product?.category, category.id)).length,
+      ]),
+    ) as Record<string, number>;
+  }, [products]);
 
   const productBrands = useMemo(() => Array.from(new Set(products.map((product) => String(product?.brand || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)), [products]);
+  const isAvailableProduct = (product: any) => Boolean(product?.vendor_id) && product?.in_stock !== false && !(Number(product?.quantity) <= 0);
+  const availableFavoriteProducts = useMemo(() => favoriteProducts.filter(isAvailableProduct), [favoriteProducts]);
+  const availableRecentlyPurchased = useMemo(() => recentlyPurchased.filter(isAvailableProduct), [recentlyPurchased]);
 
   const visibleMarketingBanners = useMemo(() => marketingCampaigns.filter((campaign) =>
     campaign?.placement === 'HOMEPAGE_BANNER'
@@ -530,8 +540,9 @@ export default function ZeshuSuperApp() {
           || (priceFilter === '100_299' && Number.isFinite(numericPrice) && numericPrice >= 100 && numericPrice < 300)
           || (priceFilter === '300_499' && Number.isFinite(numericPrice) && numericPrice >= 300 && numericPrice < 500)
           || (priceFilter === '500_PLUS' && Number.isFinite(numericPrice) && numericPrice >= 500);
-        const matchesAvailability = availabilityFilter === 'ALL'
-          || (Boolean(product.vendor_id) && product.in_stock !== false && !(Number(product.quantity) <= 0));
+        const isAvailable = Boolean(product.vendor_id) && product.in_stock !== false && !(Number(product.quantity) <= 0);
+        const defaultCatalogVisibility = normalizedSearch ? true : isAvailable;
+        const matchesAvailability = defaultCatalogVisibility && (availabilityFilter === 'ALL' || isAvailable);
         const aggregate = productAggregates[String(product.id)];
         const rating = Number(aggregate?.average_rating || 0);
         const reviewCount = Number(aggregate?.review_count || 0);
@@ -545,6 +556,10 @@ export default function ZeshuSuperApp() {
     if (productSort === 'recommended') {
       return [...matchingProducts]
         .sort((a, b) => {
+          if (normalizedSearch) {
+            const availabilityDelta = Number(isAvailableProduct(b.product)) - Number(isAvailableProduct(a.product));
+            if (availabilityDelta) return availabilityDelta;
+          }
           const sponsoredDelta = Number(sponsoredProductIds.has(String(b.product.id))) - Number(sponsoredProductIds.has(String(a.product.id)));
           if (sponsoredDelta) return sponsoredDelta;
           return normalizedSearch ? b.searchScore - a.searchScore || a.index - b.index : a.index - b.index;
@@ -2092,6 +2107,7 @@ export default function ZeshuSuperApp() {
     setIsAuthModalOpen(false);
     setIsTrackingOpen(false);
     setLocationSelectorOpen(false);
+    if (typeof window !== 'undefined' && (window.location.search || window.location.hash)) window.history.replaceState({}, '', '/');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const askSupportAssistant = async (questionOverride?: string) => {
@@ -2951,21 +2967,21 @@ export default function ZeshuSuperApp() {
 
                 </div>
               )}
-              {user && (favoriteProducts.length > 0 || recentlyPurchased.length > 0 || frequentCategories.length > 0) && normalizedSearch === '' && (
+              {user && (availableFavoriteProducts.length > 0 || availableRecentlyPurchased.length > 0 || frequentCategories.length > 0) && normalizedSearch === '' && (
                 <section className="mx-4 mb-6 rounded-[20px] border border-[#dce8df] bg-[#f7fbf8] p-4 md:mx-0" aria-labelledby="quick-picks-title">
                   <div className="flex items-center justify-between"><h2 id="quick-picks-title" className="text-lg font-black tracking-tight text-[#173d27]">Quick Picks</h2><span className="text-[10px] font-black uppercase tracking-wider text-[#5d8069]">For you</span></div>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {recentlyPurchased.length > 0 && <button type="button" onClick={() => document.getElementById('recently-purchased')?.scrollIntoView({ behavior: 'smooth' })} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-[#087443] shadow-sm">Buy Again</button>}
-                    {favoriteProducts.length > 0 && <button type="button" onClick={() => document.getElementById('favorites')?.scrollIntoView({ behavior: 'smooth' })} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-[#087443] shadow-sm">Favorites</button>}
+                    {availableRecentlyPurchased.length > 0 && <button type="button" onClick={() => document.getElementById('recently-purchased')?.scrollIntoView({ behavior: 'smooth' })} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-[#087443] shadow-sm">Buy Again</button>}
+                    {availableFavoriteProducts.length > 0 && <button type="button" onClick={() => document.getElementById('favorites')?.scrollIntoView({ behavior: 'smooth' })} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-[#087443] shadow-sm">Favorites</button>}
                     {frequentCategories.map((category) => <button type="button" key={category} onClick={() => { setActiveCategory(category); document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' }); }} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-[#087443] shadow-sm">{category}</button>)}
                   </div>
                 </section>
               )}
-              {user && favoriteProducts.length > 0 && normalizedSearch === '' && (
+              {user && availableFavoriteProducts.length > 0 && normalizedSearch === '' && (
                 <section id="favorites" className="mx-4 mb-8 rounded-[24px] border border-[#dce8df] bg-white p-5 md:mx-0 md:p-7" aria-labelledby="favorites-title">
                   <div className="flex items-center justify-between gap-3"><div><h2 id="favorites-title" className="text-xl font-black tracking-tight">Your Favorites</h2><p className="mt-1 text-xs text-slate-500">Live prices and availability from your saved products.</p></div><HeartHandshake size={22} className="text-[#087443]" /></div>
                   <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
-                    {favoriteProducts.slice(0, 10).map((product: any) => {
+                    {availableFavoriteProducts.slice(0, 10).map((product: any) => {
                       const unavailable = product.in_stock === false || (product.quantity !== null && Number(product.quantity) <= 0) || !product.vendor_id;
                       const inCart = cart.find((entry) => String(entry.item.id) === String(product.id));
                       return <div key={product.id} className="rounded-2xl border border-slate-100 p-3"><div className="flex h-24 items-center justify-center rounded-xl bg-slate-50"><img src={product.image_url || 'https://via.placeholder.com/120'} alt={product.name} className="h-full w-full object-contain" /></div><p className="mt-2 line-clamp-2 text-xs font-black text-slate-800">{product.name}</p><p className="mt-1 text-sm font-black text-slate-900">₹{product.price}</p>{unavailable ? <div className="mt-2 flex items-center justify-between gap-2"><span className="text-[10px] font-black text-red-600">Unavailable</span><button type="button" onClick={() => void toggleFavorite(product)} className="text-[10px] font-black text-slate-500">Remove</button></div> : <button type="button" onClick={() => addToCart(product)} className="mt-2 w-full rounded-lg bg-[#eef8f1] py-2 text-[10px] font-black text-[#087443]">{inCart ? `In cart (${inCart.qty})` : 'ADD'}</button>}</div>;
@@ -2973,11 +2989,11 @@ export default function ZeshuSuperApp() {
                   </div>
                 </section>
               )}
-              {user && recentlyPurchased.length > 0 && normalizedSearch === '' && (
+              {user && availableRecentlyPurchased.length > 0 && normalizedSearch === '' && (
                 <section id="recently-purchased" className="mx-4 mb-8 rounded-[24px] border border-[#dce8df] bg-white p-5 md:mx-0 md:p-7" aria-labelledby="recently-purchased-title">
                   <div className="flex items-center justify-between gap-3"><div><h2 id="recently-purchased-title" className="text-xl font-black tracking-tight">Recently Purchased</h2><p className="mt-1 text-xs text-slate-500">Current prices and availability from your delivered orders.</p></div><span className="rounded-lg bg-[#eef8f1] px-2 py-1 text-xs font-black text-[#087443]">Buy Again</span></div>
                   <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
-                    {recentlyPurchased.map((product: any) => {
+                    {availableRecentlyPurchased.map((product: any) => {
                       const unavailable = product.in_stock === false || (product.quantity !== null && Number(product.quantity) <= 0) || !product.vendor_id;
                       const inCart = cart.find((entry) => String(entry.item.id) === String(product.id));
                       return <div key={product.id} className="rounded-2xl border border-slate-100 p-3"><div className="flex h-24 items-center justify-center rounded-xl bg-slate-50"><img src={product.image_url || 'https://via.placeholder.com/120'} alt={product.name} className="h-full w-full object-contain" /></div><p className="mt-2 line-clamp-2 text-xs font-black text-slate-800">{product.name}</p><p className="mt-1 text-sm font-black text-slate-900">₹{product.price}</p>{unavailable ? <span className="mt-2 block text-[10px] font-black text-red-600">Currently unavailable</span> : <button type="button" onClick={() => addToCart(product)} className="mt-2 w-full rounded-lg bg-[#eef8f1] py-2 text-[10px] font-black text-[#087443]">{inCart ? `In cart (${inCart.qty})` : 'ADD'}</button>}</div>;
