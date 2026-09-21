@@ -342,6 +342,8 @@ export default function ZeshuSuperApp() {
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpAutoFillStatus, setOtpAutoFillStatus] = useState('');
+  const [stagingQaAvailable, setStagingQaAvailable] = useState(false);
+  const [stagingQaLoading, setStagingQaLoading] = useState(false);
   const otpAbortRef = useRef<AbortController | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckoutOpening, setIsCheckoutOpening] = useState(false);
@@ -742,6 +744,10 @@ export default function ZeshuSuperApp() {
       window.removeEventListener('online', updateOnlineState);
       window.removeEventListener('offline', updateOnlineState);
     };
+  }, []);
+
+  useEffect(() => {
+    setStagingQaAvailable(window.location.hostname === 'zeshu-web-staging.asif-mohammed0127.workers.dev');
   }, []);
 
   useEffect(() => {
@@ -1392,7 +1398,7 @@ export default function ZeshuSuperApp() {
     }, () => {
       openSelector(fallbackSelection);
       showToast('We couldn\'t get a precise GPS location. Search or place the pin on the map.');
-    }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 3000 });
+    }, { enableHighAccuracy: true, maximumAge: 15000, timeout: 12000 });
   };
 
   const pickSingleContact = async () => {
@@ -2001,6 +2007,10 @@ export default function ZeshuSuperApp() {
   const recentRewardUsed = rewardHistory.reduce((sum, entry) => sum + Math.abs(Math.min(0, Number(entry?.amount || 0))), 0);
 
   const handleSendOtp = async () => {
+    if (stagingQaAvailable) {
+      showToast('Phone OTP is not enabled on Zeshu Staging. Use the staging test customer button below.');
+      return;
+    }
     if (!/^\d{10}$/.test(phoneNumber)) return showToast('Enter a valid 10-digit mobile number.');
     otpAbortRef.current?.abort();
     setOtp('');
@@ -2013,6 +2023,39 @@ export default function ZeshuSuperApp() {
       setOtpAutoFillStatus('OTP sent. Waiting for secure auto-fill…');
     } else {
       showToast('We could not start OTP delivery. Check the number and try again later.');
+    }
+  };
+
+  const handleStagingQaLogin = async () => {
+    if (!stagingQaAvailable || stagingQaLoading) return;
+    setStagingQaLoading(true);
+    try {
+      const response = await fetch('/api/staging/test-session', { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload?.tokenHash) {
+        throw new Error(typeof payload?.error === 'string' ? payload.error : 'Staging test sign-in is unavailable.');
+      }
+
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: String(payload.tokenHash),
+        type: 'magiclink',
+      });
+      if (error || !data.session || !data.user) {
+        throw new Error('Could not start the staging customer session.');
+      }
+
+      otpAbortRef.current?.abort();
+      setUser(data.user);
+      setOtp('');
+      setOtpSent(false);
+      setOtpAutoFillStatus('');
+      setIsAuthModalOpen(false);
+      void loadGrowthData();
+      showToast('Staging test customer signed in. You can continue checkout.');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Staging test sign-in is unavailable.');
+    } finally {
+      setStagingQaLoading(false);
     }
   };
 
@@ -3374,6 +3417,11 @@ export default function ZeshuSuperApp() {
               <div className="space-y-4">
                 <input type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={10} value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))} className="w-full p-4 bg-[#F7F9F5] border rounded-2xl font-bold text-lg outline-none focus:border-[#087443]" placeholder="Mobile Number" />
                 <button disabled={isLoading} onClick={() => void handleSendOtp()} className="w-full bg-[#111827] text-white font-bold py-4 rounded-2xl active:scale-95 transition-transform disabled:opacity-60">{isLoading ? 'Sending OTP…' : 'Get OTP'}</button>
+                {stagingQaAvailable && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+                  <p className="text-xs font-black text-emerald-900">Staging test mode</p>
+                  <p className="mt-1 text-[11px] leading-4 text-emerald-800">Phone SMS is intentionally not configured on the isolated staging Supabase project. Use a safe staging-only customer session to test cart, address and checkout flow.</p>
+                  <button type="button" disabled={stagingQaLoading} onClick={() => void handleStagingQaLogin()} className="mt-3 w-full rounded-xl bg-[#087443] px-4 py-3 text-sm font-black text-white disabled:opacity-60">{stagingQaLoading ? 'Starting test session…' : 'Continue as staging test customer'}</button>
+                </div>}
               </div>
             ) : (
               <div className="space-y-4">
