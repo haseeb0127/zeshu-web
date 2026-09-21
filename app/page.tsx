@@ -884,6 +884,15 @@ export default function ZeshuSuperApp() {
   }, []);
 
   useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const nextUser = session?.user || null;
+      setUser(nextUser);
+      if (nextUser) void loadGrowthData();
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     const audiences = isJagtialDeliveryCity(currentAddress) ? 'INDIA,JAGTIAL' : 'INDIA';
     const loadMarketingCampaigns = async () => {
