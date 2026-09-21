@@ -555,8 +555,37 @@ export async function POST(request: Request) {
         if (!isRetryableProviderOrder(existingOrder, payments, expectedAmountPaise)) return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, undefined, getProviderDiagnostics(existingOrder, payments));
       if (deliveryCoordinates) await saveReservationLocationSnapshot(serviceClient, activeResumable.reservation_id, user.id, deliveryCoordinates);
       if (resumedCash?.redemption_id) await serviceClient.rpc('bind_zeshu_cash_redemption', { p_redemption_id: resumedCash.redemption_id, p_razorpay_order_id: existingOrder.id });
+        const { data: resumedDeliveryPlan, error: resumedDeliveryPlanError } = await serviceClient
+          .from('inventory_reservations')
+          .select('fulfillment_mode,shipping_quote_snapshot')
+          .eq('id', activeResumable.reservation_id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (resumedDeliveryPlanError || !resumedDeliveryPlan) {
+          return checkoutError(requestId, 'FULFILLMENT_SNAPSHOT', 'CHECKOUT_INTERNAL_ERROR', 'Unable to verify the saved delivery plan. No payment was started.', 500, resumedDeliveryPlanError);
+        }
+        const resumedShippingSnapshot = resumedDeliveryPlan.shipping_quote_snapshot || {};
         stage = 'COMPLETE';
-        return NextResponse.json({ success: true, resumed: true, resumePayment: true, orderId: existingOrder.id, amount: existingOrder.amount, currency: existingOrder.currency, totalAmount: resumedExpectedTotal, zeshuCashUsed: Number(resumedCash?.approved_amount || 0), redemptionId: resumedCash?.redemption_id || null, reservationId: activeResumable.reservation_id, requestId });
+        return NextResponse.json({
+          success: true,
+          resumed: true,
+          resumePayment: true,
+          orderId: existingOrder.id,
+          amount: existingOrder.amount,
+          currency: existingOrder.currency,
+          totalAmount: resumedExpectedTotal,
+          zeshuCashUsed: Number(resumedCash?.approved_amount || 0),
+          redemptionId: resumedCash?.redemption_id || null,
+          reservationId: activeResumable.reservation_id,
+          fulfillmentMode: resumedDeliveryPlan.fulfillment_mode || 'LOCAL_STANDARD',
+          shippingCharge: Number(resumedShippingSnapshot.customer_shipping_charge || 0),
+          freeShipping: resumedShippingSnapshot.free_shipping === true,
+          courierName: typeof resumedShippingSnapshot.courier_name === 'string' ? resumedShippingSnapshot.courier_name : null,
+          estimatedDeliveryDays: Number.isFinite(Number(resumedShippingSnapshot.estimated_delivery_days))
+            ? Number(resumedShippingSnapshot.estimated_delivery_days)
+            : null,
+          requestId,
+        });
       } catch (error) {
         if (process.env.NODE_ENV !== 'production') console.error('[checkout]', { requestId, stage, code: 'PAYMENT_RECONCILIATION_REQUIRED', errorType: error instanceof Error ? error.name : typeof error });
         return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, error);
@@ -1005,7 +1034,22 @@ export async function POST(request: Request) {
     if (bindError) return checkoutError(requestId, stage, 'RESERVATION_BIND_FAILED', 'Unable to bind the checkout reservation. Please try again.', 500, bindError);
 
     stage = 'COMPLETE';
-    return NextResponse.json({ success: true, orderId: order.id, amount: order.amount, currency: order.currency, totalAmount: expectedTotalPaid, zeshuCashUsed: Number(cashReservation?.approved_amount || 0), redemptionId: cashReservation?.redemption_id || null, reservationId, requestId });
+    return NextResponse.json({
+      success: true,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      totalAmount: expectedTotalPaid,
+      zeshuCashUsed: Number(cashReservation?.approved_amount || 0),
+      redemptionId: cashReservation?.redemption_id || null,
+      reservationId,
+      fulfillmentMode: checkoutFulfillmentMode,
+      shippingCharge: indiaShipping?.customerShippingCharge || 0,
+      freeShipping: indiaShipping?.freeShipping === true,
+      courierName: indiaShipping?.quote.courierName || null,
+      estimatedDeliveryDays: indiaShipping?.quote.estimatedDeliveryDays ?? null,
+      requestId,
+    });
   } catch (error) {
     return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'We couldn\'t prepare your checkout. Please try again.', 500, error);
   }
