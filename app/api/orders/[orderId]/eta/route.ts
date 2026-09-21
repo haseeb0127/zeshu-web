@@ -4,6 +4,7 @@ import { getGoogleRoutesEta } from '../../../../lib/google-routes';
 import { getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
 
 const ACTIVE_STATUSES = new Set(['PICKED_UP', 'OUT_FOR_DELIVERY']);
+const LIVE_RIDER_MAX_AGE_MS = 2 * 60 * 1000;
 
 export async function GET(request: Request, context: { params: Promise<{ orderId: string }> }) {
   const { url, anonKey, serviceRoleKey } = await getRuntimeSupabaseEnv();
@@ -23,8 +24,17 @@ export async function GET(request: Request, context: { params: Promise<{ orderId
   const riderAllowed = order.assigned_rider_id === user.id;
   if (!admin && !customerAllowed && !riderAllowed) return NextResponse.json({ code: 'FORBIDDEN', source: 'UNAVAILABLE' }, { status: 403 });
   if (!ACTIVE_STATUSES.has(String(order.status))) return NextResponse.json({ source: 'UNAVAILABLE' }, { status: 200 });
-  const riderQuery = order.rider_id ? service.from('riders').select('current_latitude,current_longitude').eq('id', order.rider_id).maybeSingle() : { data: null, error: null } as any;
+  const riderQuery = order.rider_id
+    ? service.from('riders').select('current_latitude,current_longitude,location_updated_at,is_active,admin_suspended').eq('id', order.rider_id).maybeSingle()
+    : { data: null, error: null } as any;
   const { data: rider } = await riderQuery;
+  const locationUpdatedAt = Date.parse(String(rider?.location_updated_at || ''));
+  const hasFreshLiveLocation = rider?.is_active === true
+    && rider?.admin_suspended !== true
+    && Number.isFinite(locationUpdatedAt)
+    && Date.now() - locationUpdatedAt >= 0
+    && Date.now() - locationUpdatedAt <= LIVE_RIDER_MAX_AGE_MS;
+  if (!hasFreshLiveLocation) return NextResponse.json({ source: 'UNAVAILABLE' }, { status: 200 });
   const origin = { latitude: Number(rider?.current_latitude), longitude: Number(rider?.current_longitude) };
   const destination = { latitude: Number(order.delivery_latitude), longitude: Number(order.delivery_longitude) };
   if (!Number.isFinite(origin.latitude) || !Number.isFinite(origin.longitude) || !Number.isFinite(destination.latitude) || !Number.isFinite(destination.longitude)) return NextResponse.json({ source: 'UNAVAILABLE' }, { status: 200 });
