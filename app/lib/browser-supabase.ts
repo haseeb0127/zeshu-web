@@ -9,6 +9,24 @@ const storageKeys: Record<BrowserRole, string> = {
   rider: 'zeshu-rider-auth',
 };
 
+const STAGING_SUPABASE_URL = 'https://xdzgdhupfgsdyzellpqq.supabase.co';
+const STAGING_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_SQcjikOTZSoHEh19UNqOpg_ad0o7G7i';
+const BUILD_CHECK_SUPABASE_URL = 'https://build-check.supabase.co';
+const BUILD_CHECK_SUPABASE_KEY = 'build-check-anon-key';
+
+const configuredUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+const configuredKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+
+const supabaseUrl =
+  !configuredUrl || configuredUrl === BUILD_CHECK_SUPABASE_URL
+    ? STAGING_SUPABASE_URL
+    : configuredUrl;
+
+const supabaseKey =
+  !configuredKey || configuredKey === BUILD_CHECK_SUPABASE_KEY
+    ? STAGING_SUPABASE_PUBLISHABLE_KEY
+    : configuredKey;
+
 type BrowserClientRegistry = Partial<Record<BrowserRole, SupabaseClient>>;
 
 const getRegistry = () => {
@@ -21,8 +39,8 @@ const getBrowserSupabaseClient = (role: BrowserRole) => {
   const registry = getRegistry();
   if (!registry[role]) {
     registry[role] = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      supabaseUrl,
+      supabaseKey,
       {
         auth: {
           storageKey: storageKeys[role],
