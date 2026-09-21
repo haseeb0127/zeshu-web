@@ -2600,6 +2600,40 @@ export default function ZeshuSuperApp() {
       const orderId = orderData.orderId || orderData.id || orderData.order?.id;
       const reservationId = orderData.reservationId;
       if (typeof orderId !== 'string' || typeof reservationId !== 'string' || !Number.isSafeInteger(Number(orderData.amount)) || Number(orderData.amount) <= 0) throw new Error('Unable to prepare a verified payment checkout.');
+
+      const resolvedFulfillmentMode = String(orderData.fulfillmentMode || 'LOCAL_STANDARD');
+      if (resolvedFulfillmentMode === 'INDIA_STANDARD') {
+        const shippingCharge = Math.max(0, Number(orderData.shippingCharge || 0));
+        const payableNow = Math.max(0, Number(orderData.totalAmount || Number(orderData.amount) / 100));
+        const etaDays = Number(orderData.estimatedDeliveryDays);
+        const courierName = typeof orderData.courierName === 'string' && orderData.courierName.trim()
+          ? orderData.courierName.trim()
+          : 'selected courier';
+        const shippingLine = orderData.freeShipping === true || shippingCharge === 0
+          ? 'Shipping: FREE'
+          : `Shipping: ₹${shippingCharge.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+        const etaLine = Number.isFinite(etaDays) && etaDays >= 0
+          ? `Estimated delivery: about ${Math.ceil(etaDays)} day${Math.ceil(etaDays) === 1 ? '' : 's'}`
+          : 'Estimated delivery will be shown by the courier after dispatch';
+        const confirmed = window.confirm(
+          `India delivery summary\n\n${shippingLine}\nCourier: ${courierName}\n${etaLine}\nPayable now: ₹${payableNow.toLocaleString('en-IN', { maximumFractionDigits: 2 })}\n\nContinue to secure payment?`,
+        );
+        if (!confirmed) {
+          setIsLoading(false);
+          setIsCheckoutOpening(false);
+          showToast('Payment not started. Your checkout can be resumed if you continue later.');
+          return;
+        }
+      } else if (checkoutDeliveryModes.size === 1 && checkoutDeliveryModes.has('LOCAL_30_MIN') && resolvedFulfillmentMode === 'LOCAL_STANDARD') {
+        const confirmed = window.confirm('30-minute delivery is not available right now. Continue with standard local delivery instead?');
+        if (!confirmed) {
+          setIsLoading(false);
+          setIsCheckoutOpening(false);
+          showToast('Payment not started. Try again when 30-minute capacity is available.');
+          return;
+        }
+      }
+
       let paymentSucceeded = false;
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, amount: Number(orderData.amount), currency: orderData.currency || 'INR', name: "Zeshu Super App", order_id: orderId,
