@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+import { getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
 
 async function getAdmin(request: Request) {
+  const { url, anonKey, serviceRoleKey } = await getRuntimeSupabaseEnv();
   const authorization = request.headers.get('authorization');
   const token = authorization?.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
   if (!token || !url || !anonKey || !serviceRoleKey) return null;
