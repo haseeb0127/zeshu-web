@@ -185,6 +185,46 @@ export async function POST(request: Request) {
       }
     }
 
+    stage = 'FULFILLMENT_CLASSIFICATION';
+    const requestedFulfillmentIds = Array.from(new Set(reservationItems.map((item) => item.product_id)));
+    const { data: fulfillmentProducts, error: fulfillmentProductsError } = await serviceClient
+      .from('products')
+      .select('id,delivery_mode,nationwide_shipping_enabled,requires_cold_chain,shipping_class,packed_weight_grams')
+      .in('id', requestedFulfillmentIds);
+    if (fulfillmentProductsError) return checkoutError(requestId, stage, 'PRODUCT_LOOKUP_FAILED', 'Unable to verify delivery eligibility.', 500, fulfillmentProductsError);
+    if ((fulfillmentProducts || []).length !== requestedFulfillmentIds.length) {
+      return checkoutError(requestId, stage, 'PRODUCT_UNAVAILABLE', 'One or more items are currently unavailable.', 400);
+    }
+
+    const fulfillmentModes = new Set((fulfillmentProducts || []).map((product: any) => String(product.delivery_mode || 'LOCAL_STANDARD')));
+    const hasIndiaItems = fulfillmentModes.has('INDIA_STANDARD');
+    const hasLocalItems = [...fulfillmentModes].some((mode) => mode !== 'INDIA_STANDARD');
+    const checkoutFulfillmentMode = fulfillmentModes.size === 1 && fulfillmentModes.has('LOCAL_30_MIN')
+      ? 'LOCAL_30_MIN'
+      : 'LOCAL_STANDARD';
+
+    if (hasIndiaItems && hasLocalItems) {
+      return checkoutError(
+        requestId,
+        stage,
+        'MIXED_FULFILLMENT_UNSUPPORTED',
+        'Fresh/local and India-delivery items need separate shipments. Split checkout is being prepared.',
+        409,
+      );
+    }
+
+    if (hasIndiaItems) {
+      // Nationwide payment stays locked until a real courier quote, pincode
+      // serviceability and the server-side profitability gate are all live.
+      return checkoutError(
+        requestId,
+        stage,
+        'NATIONWIDE_DELIVERY_UNAVAILABLE',
+        'India-wide physical delivery is being prepared. We will enable payment only after live courier rates and profitability checks are connected.',
+        409,
+      );
+    }
+
     if (isJagtialServiceAreaEnforced()) {
       const serviceAreaResult = deliveryCoordinates
         ? evaluateJagtialServiceArea(deliveryCoordinates.latitude, deliveryCoordinates.longitude)
@@ -574,6 +614,26 @@ export async function POST(request: Request) {
     if (typeof reservationId !== 'string' || !Number.isFinite(reservationExpectedTotal) || reservationExpectedTotal <= 0) {
       return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to prepare the database-verified checkout total.', 500);
     }
+
+    stage = 'FULFILLMENT_SNAPSHOT';
+    const { error: fulfillmentSnapshotError } = await serviceClient
+      .from('inventory_reservations')
+      .update({
+        fulfillment_mode: checkoutFulfillmentMode,
+        shipping_quote_snapshot: {
+          mode: checkoutFulfillmentMode,
+          scope: 'JAGTIAL_LOCAL',
+          rate_source: 'LOCAL_PRICING',
+          thirty_minute_candidate: checkoutFulfillmentMode === 'LOCAL_30_MIN',
+          promised_eta_minutes: null,
+        },
+      })
+      .eq('id', reservationId)
+      .eq('user_id', user.id);
+    if (fulfillmentSnapshotError) {
+      return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to save the delivery plan for this checkout.', 500, fulfillmentSnapshotError);
+    }
+
     stage = 'CASH_RESERVATION';
     const [, cashResult] = await Promise.all([
       deliveryCoordinates

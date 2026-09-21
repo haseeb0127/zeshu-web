@@ -19,6 +19,7 @@ import { customerSupabase } from './lib/browser-supabase';
 import { isJagtialDeliveryCity } from './lib/service-scope';
 import { catalogSearchScore, getCatalogSearchRecommendations, isCatalogSearchMatch, smartTextMatchScore } from './lib/catalog-search';
 import { CUSTOMER_CATEGORY_DEFINITIONS, campaignMatchesCustomerCategory, categoryDefinition, productMatchesCustomerCategory } from './lib/catalog-categories';
+import { isFreshThirtyMinuteCandidate, isIndiaReadyProduct } from './lib/fulfillment';
 
 const supabase = customerSupabase();
 const SUPPORT_WHATSAPP_UI_ENABLED = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED === 'true';
@@ -96,6 +97,8 @@ const CHECKOUT_ERROR_MESSAGES: Record<string, string> = {
   CHECKOUT_INTERNAL_ERROR: "We couldn't prepare your checkout. Please try again.",
   OUTSIDE_SERVICE_AREA: 'Fast physical delivery is currently available only in Jagtial. Digital services remain available across India.',
   SERVICE_AREA_UNAVAILABLE: 'Confirm a delivery pin inside the Jagtial delivery zone before checkout.',
+  MIXED_FULFILLMENT_UNSUPPORTED: 'Fresh/local and India-delivery items need separate shipments. Please place them separately for now.',
+  NATIONWIDE_DELIVERY_UNAVAILABLE: 'India-wide physical delivery is being prepared. Payment will open only after live courier rates and delivery checks are connected.',
 };
 
 const checkoutFailureMessage = (code: unknown) => String(code || '') === 'ABANDONABLE_PAYMENT_CHECKOUT'
@@ -340,6 +343,8 @@ export default function ZeshuSuperApp() {
   const [availabilityFilter, setAvailabilityFilter] = useState<'ALL' | 'AVAILABLE'>('ALL');
   const [ratingFilter, setRatingFilter] = useState<'ALL' | '4_PLUS' | '3_PLUS'>('ALL');
   const [productSort, setProductSort] = useState<'recommended' | 'top_rated' | 'price_asc' | 'price_desc' | 'name'>('recommended');
+  const [fulfillmentFilter, setFulfillmentFilter] = useState<'ALL' | 'FRESH' | 'INDIA'>('ALL');
+  const [fulfillmentStatus, setFulfillmentStatus] = useState<{ nationwide_checkout_enabled: boolean; vendor_30_min: Record<string, boolean> }>({ nationwide_checkout_enabled: false, vendor_30_min: {} });
   const [isProductFiltersOpen, setIsProductFiltersOpen] = useState(false);
   
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -565,7 +570,10 @@ export default function ZeshuSuperApp() {
           || (reviewCount > 0 && ratingFilter === '4_PLUS' && rating >= 4)
           || (reviewCount > 0 && ratingFilter === '3_PLUS' && rating >= 3);
         const matchesCampaign = focusedProductIds.size === 0 || focusedProductIds.has(String(product.id));
-        return matchesSearch && matchesCategory && matchesBrand && matchesPrice && matchesAvailability && matchesRating && matchesCampaign;
+        const matchesFulfillment = fulfillmentFilter === 'ALL'
+          || (fulfillmentFilter === 'FRESH' && isFreshThirtyMinuteCandidate(product))
+          || (fulfillmentFilter === 'INDIA' && isIndiaReadyProduct(product));
+        return matchesSearch && matchesCategory && matchesBrand && matchesPrice && matchesAvailability && matchesRating && matchesCampaign && matchesFulfillment;
       });
 
     if (productSort === 'recommended') {
@@ -600,7 +608,7 @@ export default function ZeshuSuperApp() {
         return productSort === 'price_asc' ? priceA - priceB : priceB - priceA;
       })
       .map(({ product }) => product);
-  }, [products, normalizedSearch, activeCategory, brandFilter, priceFilter, availabilityFilter, ratingFilter, productSort, focusedProductIds, sponsoredProductIds, productAggregates]);
+  }, [products, normalizedSearch, activeCategory, brandFilter, priceFilter, availabilityFilter, ratingFilter, productSort, focusedProductIds, sponsoredProductIds, productAggregates, fulfillmentFilter]);
 
   const searchRecommendations = useMemo(() => {
     if (!normalizedSearch || filteredProducts.length > 0) return [];
@@ -629,7 +637,7 @@ export default function ZeshuSuperApp() {
       .sort((a, b) => b.score - a.score)
       .slice(0, 4);
   }, [normalizedSearch]);
-  const activeProductFilterCount = (activeCategory !== 'All' ? 1 : 0) + (brandFilter !== 'ALL' ? 1 : 0) + (priceFilter !== 'ALL' ? 1 : 0) + (availabilityFilter !== 'ALL' ? 1 : 0) + (ratingFilter !== 'ALL' ? 1 : 0);
+  const activeProductFilterCount = (activeCategory !== 'All' ? 1 : 0) + (brandFilter !== 'ALL' ? 1 : 0) + (priceFilter !== 'ALL' ? 1 : 0) + (availabilityFilter !== 'ALL' ? 1 : 0) + (ratingFilter !== 'ALL' ? 1 : 0) + (fulfillmentFilter !== 'ALL' ? 1 : 0);
   const clearProductFilters = () => {
     setActiveCategory('All');
     setBrandFilter('ALL');
@@ -637,6 +645,7 @@ export default function ZeshuSuperApp() {
     setAvailabilityFilter('ALL');
     setRatingFilter('ALL');
     setProductSort('recommended');
+    setFulfillmentFilter('ALL');
     setFocusedCampaignId(null);
   };
 
@@ -724,6 +733,29 @@ export default function ZeshuSuperApp() {
       window.removeEventListener('offline', updateOnlineState);
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadFulfillmentStatus = async () => {
+      try {
+        const response = await fetch('/api/fulfillment/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(locationSelection ? { latitude: locationSelection.latitude, longitude: locationSelection.longitude } : {}),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!active) return;
+        setFulfillmentStatus({
+          nationwide_checkout_enabled: payload?.nationwide_checkout_enabled === true,
+          vendor_30_min: payload?.vendor_30_min && typeof payload.vendor_30_min === 'object' ? payload.vendor_30_min : {},
+        });
+      } catch {
+        if (active) setFulfillmentStatus({ nationwide_checkout_enabled: false, vendor_30_min: {} });
+      }
+    };
+    void loadFulfillmentStatus();
+    return () => { active = false; };
+  }, [locationSelection?.latitude, locationSelection?.longitude, deliveryServiceability]);
 
   useEffect(() => {
     const standalone = window.matchMedia?.('(display-mode: standalone)').matches
@@ -2756,6 +2788,7 @@ export default function ZeshuSuperApp() {
 
         <div className="flex-1 min-w-0 pb-32">
            {activeTab === 'home' && <div className="mb-5 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar md:px-0 lg:hidden" aria-label="Product categories">{productCategories.map((category) => { const definition = categoryDefinition(category); return <button type="button" key={category} onClick={() => setActiveCategory(category)} aria-pressed={activeCategory === category} className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-black transition ${activeCategory === category ? 'border-[#087443] bg-[#087443] text-white' : 'border-[#dce8df] bg-white text-[#52645a]'}`}><span aria-hidden="true">{definition.icon}</span><span>{definition.label}</span></button>; })}</div>}
+           {activeTab === 'home' && <section className="mb-5 px-4 md:px-0" aria-label="Delivery choices"><div className="rounded-3xl border border-[#dce8df] bg-white p-3 shadow-[0_4px_18px_rgba(19,32,25,.04)]"><div className="flex gap-2 overflow-x-auto no-scrollbar"><button type="button" onClick={() => setFulfillmentFilter('ALL')} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${fulfillmentFilter === 'ALL' ? 'bg-[#087443] text-white' : 'bg-[#f1f5f2] text-[#52645a]'}`}>All delivery</button><button type="button" onClick={() => setFulfillmentFilter('FRESH')} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${fulfillmentFilter === 'FRESH' ? 'bg-[#087443] text-white' : 'bg-emerald-50 text-emerald-700'}`}>⚡ 30-min Fresh</button><button type="button" onClick={() => setFulfillmentFilter('INDIA')} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${fulfillmentFilter === 'INDIA' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700'}`}>🇮🇳 India Delivery{fulfillmentStatus.nationwide_checkout_enabled ? '' : ' · soon'}</button></div><p className="mt-2 text-[11px] font-semibold leading-5 text-slate-500">{fulfillmentFilter === 'FRESH' ? 'Fresh items show ~30 min only when your location, store and active rider availability qualify.' : fulfillmentFilter === 'INDIA' ? 'Only profitable, shelf-stable products approved for nationwide shipping appear here. Shipping prices will come from a real courier quote before payment.' : 'Fresh locally. India-wide only where delivery remains sensible for both the customer and Zeshu.'}</p></div></section>}
            {activeTab === 'home' && <>
              <div className="mb-5 flex items-center justify-between gap-3 px-4 md:px-0">
                <button type="button" aria-expanded={isProductFiltersOpen} aria-controls="product-filters" onClick={() => setIsProductFiltersOpen((current) => !current)} className="inline-flex items-center gap-2 rounded-xl border border-[#dce8df] bg-white px-3 py-2.5 text-xs font-black text-[#087443] shadow-sm"><SlidersHorizontal size={16} aria-hidden="true" /> Filters{activeProductFilterCount > 0 && <span className="rounded-full bg-[#087443] px-1.5 py-0.5 text-[10px] text-white">{activeProductFilterCount}</span>}</button>
@@ -3040,7 +3073,7 @@ export default function ZeshuSuperApp() {
                     {filteredProducts.map((p) => {
                       const inCart = cart.find(c => c.item.id === p.id);
                       const aggregate = productAggregates[String(p.id)];
-                      return <ProductCard key={p.id} product={p} quantity={inCart?.qty} onAdd={() => addToCart(p)} onRemove={() => removeFromCart(p.id)} isFavorite={favoriteIds.has(String(p.id))} favoriteBusy={favoriteBusyId === String(p.id)} onFavoriteToggle={() => void toggleFavorite(p)} reviewAverage={aggregate?.average_rating} reviewCount={aggregate?.review_count} onReviews={() => void openPublicReviews(p)} sponsored={sponsoredProductIds.has(String(p.id))} />;
+                      return <ProductCard key={p.id} product={p} quantity={inCart?.qty} onAdd={() => addToCart(p)} onRemove={() => removeFromCart(p.id)} isFavorite={favoriteIds.has(String(p.id))} favoriteBusy={favoriteBusyId === String(p.id)} onFavoriteToggle={() => void toggleFavorite(p)} reviewAverage={aggregate?.average_rating} reviewCount={aggregate?.review_count} onReviews={() => void openPublicReviews(p)} sponsored={sponsoredProductIds.has(String(p.id))} localThirtyMinuteAvailable={Boolean(fulfillmentStatus.vendor_30_min[String(p.vendor_id || '')])} nationwideCheckoutEnabled={fulfillmentStatus.nationwide_checkout_enabled} />;
                     })}
                   </div>
                 )}
