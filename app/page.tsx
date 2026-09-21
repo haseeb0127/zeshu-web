@@ -96,6 +96,20 @@ const CHECKOUT_ERROR_MESSAGES: Record<string, string> = {
   CHECKOUT_INTERNAL_ERROR: "We couldn't prepare your checkout. Please try again.",
   OUTSIDE_SERVICE_AREA: 'Fast physical delivery is currently available only in Jagtial. Digital services remain available across India.',
   SERVICE_AREA_UNAVAILABLE: 'Confirm a delivery pin inside the Jagtial delivery zone before checkout.',
+  MIXED_FULFILLMENT_CART: 'Fresh/local and India-delivery items need separate checkout for now. Please place them as separate orders.',
+  FULFILLMENT_CHANGED: 'A product delivery option changed. Please review your basket and try again.',
+  VENDOR_UNAVAILABLE: 'This store is currently unavailable. Please try again later.',
+  FRESH_DELIVERY_UNAVAILABLE: 'One or more items are not eligible for Fresh delivery.',
+  LOCAL_DELIVERY_PAUSED: 'Local delivery is temporarily paused for this store.',
+  INDIA_PINCODE_REQUIRED: 'Choose a saved address with a valid 6-digit PIN code for India delivery.',
+  INDIA_PRODUCT_NOT_READY: 'One or more items are not ready for safe India delivery yet.',
+  INDIA_DELIVERY_UNAVAILABLE: 'India delivery is temporarily unavailable. No payment was started.',
+  INDIA_DELIVERY_COMING_SOON: 'India delivery is being prepared and is not accepting payments yet.',
+  INDIA_DELIVERY_SETUP_PENDING: 'India delivery is temporarily unavailable while courier setup is completed.',
+  INDIA_PINCODE_UNSERVICEABLE: 'No prepaid courier is currently available for this PIN code.',
+  INDIA_MIN_QUANTITY: 'Add the minimum quantity shown for this item to unlock India delivery.',
+  INDIA_MIN_ORDER: 'Add more eligible India-delivery products to unlock delivery.',
+  INDIA_LOW_MARGIN: 'This basket is not economical for India delivery yet. Add more eligible items or choose a bundle.',
 };
 
 const checkoutFailureMessage = (code: unknown) => String(code || '') === 'ABANDONABLE_PAYMENT_CHECKOUT'
