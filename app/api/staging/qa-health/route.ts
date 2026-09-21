@@ -17,6 +17,32 @@ const placeholder = (value: string) => {
     || text.includes('dummy');
 };
 
+export async function GET(request: Request) {
+  const host = (request.headers.get('host') || '').toLowerCase().split(':')[0];
+  if (host !== STAGING_HOST) return NextResponse.json({ error: 'Not found.' }, { status: 404 });
+
+  const { url, anonKey, serviceRoleKey } = await getRuntimeSupabaseEnv();
+  const [razorpayKey, routesKey, routerMode, whatsappSender] = await Promise.all([
+    getRuntimeEnvValue('RAZORPAY_KEY_ID'),
+    getRuntimeEnvValue('GOOGLE_MAPS_ROUTES_API_KEY'),
+    getRuntimeEnvValue('PAYMENT_ROUTER_MODE'),
+    getRuntimeEnvValue('SUPPORT_WHATSAPP_SENDER_ENABLED'),
+  ]);
+
+  return NextResponse.json({
+    runtime: {
+      staging_supabase_url_present: Boolean(url),
+      staging_supabase_url_matches: Boolean(url && url.includes(STAGING_PROJECT_REF)),
+      anon_key_present: Boolean(anonKey),
+      service_secret_present: Boolean(serviceRoleKey),
+      payment_router_off: (routerMode || 'off').toLowerCase() === 'off',
+      whatsapp_sender_off: (whatsappSender || 'false').toLowerCase() !== 'true',
+      razorpay_real_test_configured: !placeholder(razorpayKey) && razorpayKey.startsWith('rzp_test_'),
+      google_routes_configured: !placeholder(routesKey),
+    },
+  }, { headers: { 'Cache-Control': 'no-store' } });
+}
+
 export async function POST(request: Request) {
   const host = (request.headers.get('host') || '').toLowerCase().split(':')[0];
   if (host !== STAGING_HOST) return NextResponse.json({ error: 'Not found.' }, { status: 404 });
