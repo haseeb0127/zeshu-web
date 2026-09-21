@@ -440,4 +440,5 @@ begin
 end;
 $$;
 revoke all on function public.admin_update_fulfillment_settings(uuid,boolean,numeric,numeric,numeric,numeric,numeric,boolean,text) from public;
+revoke execute on function public.admin_update_fulfillment_settings(uuid,boolean,numeric,numeric,numeric,numeric,numeric,boolean,text) from anon;
 grant execute on function public.admin_update_fulfillment_settings(uuid,boolean,numeric,numeric,numeric,numeric,numeric,boolean,text) to authenticated;
