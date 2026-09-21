@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getGoogleRoutesEta } from '../../../../lib/google-routes';
+import { getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const ACTIVE_STATUSES = new Set(['PICKED_UP', 'OUT_FOR_DELIVERY']);
 
 export async function GET(request: Request, context: { params: Promise<{ orderId: string }> }) {
+  const { url, anonKey, serviceRoleKey } = await getRuntimeSupabaseEnv();
   const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '').trim();
   const { orderId } = await context.params;
   if (!token || !orderId || !url || !anonKey || !serviceRoleKey) return NextResponse.json({ code: 'AUTH_REQUIRED', source: 'UNAVAILABLE' }, { status: 401 });
