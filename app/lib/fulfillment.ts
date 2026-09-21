@@ -29,8 +29,8 @@ export const deliveryBadge = (
       ? { label: '⚡ ~30 min Fresh', tone: 'fresh' as const }
       : { label: 'Fresh · local delivery', tone: 'local' as const };
   }
-  if (isIndiaReadyProduct(product)) {
-    return options?.nationwideCheckoutEnabled
+  if (product?.delivery_mode === 'INDIA_STANDARD') {
+    return isIndiaReadyProduct(product) && options?.nationwideCheckoutEnabled
       ? { label: '🇮🇳 India delivery', tone: 'india' as const }
       : { label: '🇮🇳 India delivery soon', tone: 'india' as const };
   }
