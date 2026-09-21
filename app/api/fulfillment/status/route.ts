@@ -2,12 +2,10 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { evaluateJagtialServiceArea } from '@/app/lib/service-area';
 import { isNationwideCourierReady } from '@/app/lib/courier-server';
+import { getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const finiteCoordinate = (value: unknown, min: number, max: number) => {
   const number = Number(value);
@@ -15,12 +13,15 @@ const finiteCoordinate = (value: unknown, min: number, max: number) => {
 };
 
 export async function POST(request: Request) {
+  const { url: supabaseUrl, serviceRoleKey } = await getRuntimeSupabaseEnv();
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const latitude = finiteCoordinate(body.latitude, -90, 90);
   const longitude = finiteCoordinate(body.longitude, -180, 180);
   const localStatus = latitude === null || longitude === null
     ? 'SERVICE_AREA_UNAVAILABLE'
     : evaluateJagtialServiceArea(latitude, longitude);
+
+  if (!supabaseUrl || !serviceRoleKey) return NextResponse.json({ local_status: localStatus, local_30_min_available: false, nationwide_checkout_enabled: false, vendor_30_min: {} });
 
   const service = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
