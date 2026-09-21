@@ -1,19 +1,9 @@
 import { NextResponse } from 'next/server';
 import { requireMarketingAdmin } from '@/app/lib/marketing-server';
+import { configuredCourierProvider, isNationwideCourierReady } from '@/app/lib/courier-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-// A provider is "connected" only after Zeshu has a reviewed adapter that can
-// perform real pincode serviceability + rate quotes. Environment variables alone
-// must never unlock nationwide payments.
-const SUPPORTED_COURIER_ADAPTERS = new Set<string>();
-
-const courierConnected = () => {
-  const provider = process.env.ZESHU_COURIER_PROVIDER?.trim().toLowerCase() || '';
-  const rateApiUrl = process.env.ZESHU_COURIER_RATE_API_URL?.trim() || '';
-  return Boolean(provider && rateApiUrl && SUPPORTED_COURIER_ADAPTERS.has(provider));
-};
 
 const numberOrNull = (value: unknown) => {
   if (value === null || value === undefined || value === '') return null;
@@ -44,7 +34,7 @@ export async function GET(request: Request) {
   }));
 
   return NextResponse.json({
-    courier_connected: courierConnected(),
+    courier_connected: isNationwideCourierReady(),
     settings: settingsResult.data || null,
     products,
     vendors: vendorsResult.data || [],
@@ -60,7 +50,7 @@ export async function PATCH(request: Request) {
 
   if (action === 'settings') {
     const nationwideEnabled = booleanValue(body.nationwide_checkout_enabled);
-    if (nationwideEnabled && !courierConnected()) {
+    if (nationwideEnabled && !isNationwideCourierReady()) {
       return NextResponse.json({
         error: 'Connect a real courier rate/serviceability provider before enabling India-wide checkout.',
       }, { status: 409 });
@@ -74,7 +64,7 @@ export async function PATCH(request: Request) {
       default_rto_allowance_percent: numberOrNull(body.default_rto_allowance_percent),
       default_operating_cost_percent: numberOrNull(body.default_operating_cost_percent),
       free_shipping_enabled: booleanValue(body.free_shipping_enabled),
-      courier_provider: courierConnected() ? process.env.ZESHU_COURIER_PROVIDER!.trim() : null,
+      courier_provider: configuredCourierProvider(),
       updated_at: new Date().toISOString(),
     };
 
@@ -90,7 +80,7 @@ export async function PATCH(request: Request) {
 
     const { data, error } = await context.service.from('fulfillment_settings').update(update).eq('id', 'default').select('*').single();
     if (error) return NextResponse.json({ error: 'Fulfillment settings could not be saved.' }, { status: 503 });
-    return NextResponse.json({ settings: data, courier_connected: courierConnected() });
+    return NextResponse.json({ settings: data, courier_connected: isNationwideCourierReady() });
   }
 
   if (action === 'vendor') {
