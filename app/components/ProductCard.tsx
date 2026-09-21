@@ -2,7 +2,7 @@ import { useState } from "react";
 import QuantityControl from "./QuantityControl";
 import { Heart } from "lucide-react";
 
-type Product = { id: string | number; name: string; brand?: string; price?: number; weight?: string; unit?: string; image_url?: string; in_stock?: boolean; quantity?: number; vendor_id?: string | null };
+type Product = { id: string | number; name: string; brand?: string; price?: number; weight?: string; unit?: string; image_url?: string; in_stock?: boolean; quantity?: number; vendor_id?: string | null; delivery_mode?: "LOCAL_30_MIN" | "INDIA_STANDARD" | "LOCAL_STANDARD"; nationwide_shipping_enabled?: boolean; fresh_eligible?: boolean };
 type Props = { product: Product; quantity?: number; onAdd: () => void; onRemove: () => void; isFavorite?: boolean; favoriteBusy?: boolean; onFavoriteToggle?: () => void; reviewAverage?: number; reviewCount?: number; onReviews?: () => void; sponsored?: boolean };
 
 export default function ProductCard({ product, quantity, onAdd, onRemove, isFavorite = false, favoriteBusy = false, onFavoriteToggle, reviewAverage, reviewCount = 0, onReviews, sponsored = false }: Props) {
@@ -13,8 +13,14 @@ export default function ProductCard({ product, quantity, onAdd, onRemove, isFavo
       {onFavoriteToggle && <button type="button" aria-label={isFavorite ? `Remove ${product.name} from favorites` : `Add ${product.name} to favorites`} aria-pressed={isFavorite} disabled={favoriteBusy} onClick={onFavoriteToggle} className="absolute right-2 top-2 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/95 text-[#087443] shadow-sm disabled:opacity-50"><Heart size={18} fill={isFavorite ? 'currentColor' : 'none'} /></button>}
       {product.image_url && !imageFailed ? <img src={product.image_url} alt={product.name} loading="lazy" onError={() => setImageFailed(true)} className="h-full w-full object-contain transition-transform duration-200 group-hover:scale-105" /> : <div className="grid h-full place-items-center text-center text-xs font-bold text-[#6b7b70]">Image unavailable</div>}
     </div>
-    {sponsored && <p className="mb-1 text-[10px] font-black uppercase tracking-[.12em] text-amber-700">Sponsored</p>}
+    <div className="mb-1 flex flex-wrap items-center gap-1.5">
+      {sponsored && <span className="text-[10px] font-black uppercase tracking-[.12em] text-amber-700">Sponsored</span>}
+      {product.delivery_mode === "LOCAL_30_MIN" && product.fresh_eligible && <span className="rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-[#087443]">⚡ Fresh · up to 30 min*</span>}
+      {product.delivery_mode === "INDIA_STANDARD" && product.nationwide_shipping_enabled && <span className="rounded-full bg-sky-50 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-sky-700">🇮🇳 India delivery</span>}
+      {product.delivery_mode === "LOCAL_STANDARD" && <span className="rounded-full bg-slate-50 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-slate-500">Local delivery</span>}
+    </div>
     <h3 className="min-h-10 text-sm font-bold leading-5 text-[#1b2c22] line-clamp-2">{product.name}</h3>
+    {product.delivery_mode === "LOCAL_30_MIN" && product.fresh_eligible && <p className="mt-1 text-[9px] font-semibold leading-4 text-slate-400">*30-minute target only when your location, store and delivery capacity are eligible.</p>}
     {product.brand && <p className="mt-1 truncate text-[11px] font-black uppercase tracking-wide text-[#087443]">{product.brand}</p>}
     <p className="mt-1 min-h-5 text-xs font-medium text-[#6b7b70]">{product.weight || product.unit || "1 unit"}</p>
     <div className="mt-1 flex items-center justify-between gap-2">{reviewCount > 0 ? <p className="text-xs font-black text-amber-600">★ {Number(reviewAverage || 0).toFixed(1)} <span className="font-medium text-slate-500">({reviewCount})</span></p> : <p className="text-[11px] font-medium text-slate-400">No reviews yet</p>}{onReviews && <button type="button" onClick={onReviews} className="text-[10px] font-black text-[#087443]">See reviews</button>}</div>
