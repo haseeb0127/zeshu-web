@@ -338,6 +338,7 @@ export default function ZeshuSuperApp() {
   const [brandFilter, setBrandFilter] = useState('ALL');
   const [priceFilter, setPriceFilter] = useState<'ALL' | 'UNDER_100' | '100_299' | '300_499' | '500_PLUS'>('ALL');
   const [availabilityFilter, setAvailabilityFilter] = useState<'ALL' | 'AVAILABLE'>('ALL');
+  const [deliveryFilter, setDeliveryFilter] = useState<'ALL' | 'FRESH' | 'INDIA'>('ALL');
   const [ratingFilter, setRatingFilter] = useState<'ALL' | '4_PLUS' | '3_PLUS'>('ALL');
   const [productSort, setProductSort] = useState<'recommended' | 'top_rated' | 'price_asc' | 'price_desc' | 'name'>('recommended');
   const [isProductFiltersOpen, setIsProductFiltersOpen] = useState(false);
@@ -558,6 +559,9 @@ export default function ZeshuSuperApp() {
           || (priceFilter === '500_PLUS' && Number.isFinite(numericPrice) && numericPrice >= 500);
         const isAvailable = isAvailableProduct(product);
         const matchesAvailability = availabilityFilter === 'ALL' || isAvailable;
+        const matchesDelivery = deliveryFilter === 'ALL'
+          || (deliveryFilter === 'FRESH' && product.delivery_mode === 'LOCAL_30_MIN' && product.fresh_eligible === true)
+          || (deliveryFilter === 'INDIA' && product.delivery_mode === 'INDIA_STANDARD' && product.nationwide_shipping_enabled === true);
         const aggregate = productAggregates[String(product.id)];
         const rating = Number(aggregate?.average_rating || 0);
         const reviewCount = Number(aggregate?.review_count || 0);
@@ -565,7 +569,7 @@ export default function ZeshuSuperApp() {
           || (reviewCount > 0 && ratingFilter === '4_PLUS' && rating >= 4)
           || (reviewCount > 0 && ratingFilter === '3_PLUS' && rating >= 3);
         const matchesCampaign = focusedProductIds.size === 0 || focusedProductIds.has(String(product.id));
-        return matchesSearch && matchesCategory && matchesBrand && matchesPrice && matchesAvailability && matchesRating && matchesCampaign;
+        return matchesSearch && matchesCategory && matchesBrand && matchesPrice && matchesAvailability && matchesDelivery && matchesRating && matchesCampaign;
       });
 
     if (productSort === 'recommended') {
@@ -600,7 +604,7 @@ export default function ZeshuSuperApp() {
         return productSort === 'price_asc' ? priceA - priceB : priceB - priceA;
       })
       .map(({ product }) => product);
-  }, [products, normalizedSearch, activeCategory, brandFilter, priceFilter, availabilityFilter, ratingFilter, productSort, focusedProductIds, sponsoredProductIds, productAggregates]);
+  }, [products, normalizedSearch, activeCategory, brandFilter, priceFilter, availabilityFilter, deliveryFilter, ratingFilter, productSort, focusedProductIds, sponsoredProductIds, productAggregates]);
 
   const searchRecommendations = useMemo(() => {
     if (!normalizedSearch || filteredProducts.length > 0) return [];
@@ -629,12 +633,13 @@ export default function ZeshuSuperApp() {
       .sort((a, b) => b.score - a.score)
       .slice(0, 4);
   }, [normalizedSearch]);
-  const activeProductFilterCount = (activeCategory !== 'All' ? 1 : 0) + (brandFilter !== 'ALL' ? 1 : 0) + (priceFilter !== 'ALL' ? 1 : 0) + (availabilityFilter !== 'ALL' ? 1 : 0) + (ratingFilter !== 'ALL' ? 1 : 0);
+  const activeProductFilterCount = (activeCategory !== 'All' ? 1 : 0) + (brandFilter !== 'ALL' ? 1 : 0) + (priceFilter !== 'ALL' ? 1 : 0) + (availabilityFilter !== 'ALL' ? 1 : 0) + (deliveryFilter !== 'ALL' ? 1 : 0) + (ratingFilter !== 'ALL' ? 1 : 0);
   const clearProductFilters = () => {
     setActiveCategory('All');
     setBrandFilter('ALL');
     setPriceFilter('ALL');
     setAvailabilityFilter('ALL');
+    setDeliveryFilter('ALL');
     setRatingFilter('ALL');
     setProductSort('recommended');
     setFocusedCampaignId(null);
@@ -2756,10 +2761,10 @@ export default function ZeshuSuperApp() {
 
         <div className="flex-1 min-w-0 pb-32">
            {activeTab === 'home' && normalizedSearch === '' && <section className="mx-4 mb-5 grid grid-cols-2 gap-2 md:mx-0" aria-label="Delivery options">
-             <button type="button" onClick={() => { setActiveCategory('Fresh Fruits'); document.getElementById('product-catalog')?.scrollIntoView({ behavior: 'smooth' }); }} className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-left transition active:scale-[.98]">
+             <button type="button" onClick={() => { setSearchQuery(''); setActiveCategory('All'); setDeliveryFilter('FRESH'); window.setTimeout(() => document.getElementById('product-catalog')?.scrollIntoView({ behavior: 'smooth' }), 30); }} className={`rounded-2xl border p-3 text-left transition active:scale-[.98] ${deliveryFilter === 'FRESH' ? 'border-emerald-400 bg-emerald-100 ring-2 ring-emerald-100' : 'border-emerald-100 bg-emerald-50'}`}>
                <p className="text-sm font-black text-[#087443]">⚡ 30-min Fresh</p><p className="mt-1 text-[10px] font-semibold leading-4 text-[#52645a]">Fresh items when your location and delivery capacity are eligible.</p>
              </button>
-             <button type="button" onClick={() => { setSearchQuery('india delivery'); document.getElementById('product-catalog')?.scrollIntoView({ behavior: 'smooth' }); }} className="rounded-2xl border border-sky-100 bg-sky-50 p-3 text-left transition active:scale-[.98]">
+             <button type="button" onClick={() => { setSearchQuery(''); setActiveCategory('All'); setDeliveryFilter('INDIA'); window.setTimeout(() => document.getElementById('product-catalog')?.scrollIntoView({ behavior: 'smooth' }), 30); }} className={`rounded-2xl border p-3 text-left transition active:scale-[.98] ${deliveryFilter === 'INDIA' ? 'border-sky-400 bg-sky-100 ring-2 ring-sky-100' : 'border-sky-100 bg-sky-50'}`}>
                <p className="text-sm font-black text-sky-700">🇮🇳 India Delivery</p><p className="mt-1 text-[10px] font-semibold leading-4 text-[#52645a]">Only eligible products that pass shipping and business rules.</p>
              </button>
            </section>}
