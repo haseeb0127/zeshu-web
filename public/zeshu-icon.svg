@@ -1,5 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Zeshu">
-  <rect width="512" height="512" rx="112" fill="#087443"/>
-  <path d="M104 112h304v72L226 328h190v72H96v-72l182-144H104z" fill="#FFFDF6"/>
-  <circle cx="394" cy="112" r="25" fill="#F4B740"/>
+  <defs>
+    <linearGradient id="zeshuBrand" x1="72" y1="56" x2="440" y2="456" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#13A05F"/>
+      <stop offset="1" stop-color="#0B6F47"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#zeshuBrand)"/>
+  <path d="M80 96h352v88L218 328h218v88H76v-88l214-144H80z" fill="#FFFFFF"/>
 </svg>
