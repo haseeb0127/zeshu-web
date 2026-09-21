@@ -132,6 +132,7 @@ export default function VendorDashboard() {
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authNotice, setAuthNotice] = useState("");
+  const [stagingQaAvailable, setStagingQaAvailable] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [accessError, setAccessError] = useState("");
   const [message, setMessage] = useState("");
@@ -168,6 +169,10 @@ export default function VendorDashboard() {
     }
     setIsLoading(false);
   };
+
+  useEffect(() => {
+    setStagingQaAvailable(window.location.hostname === "zeshu-web-staging.asif-mohammed0127.workers.dev");
+  }, []);
 
   useEffect(() => {
     const loadVendor = async () => {
@@ -585,10 +590,37 @@ export default function VendorDashboard() {
     setAuthRefresh((current) => current + 1);
   };
 
+  const continueAsStagingVendor = async () => {
+    if (!stagingQaAvailable || authSubmitting) return;
+    setAuthSubmitting(true);
+    setAuthError("");
+    setAuthNotice("");
+    try {
+      const response = await fetch("/api/staging/test-session", { method: "POST" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload?.tokenHash) throw new Error(typeof payload?.error === "string" ? payload.error : "Staging vendor sign-in is unavailable.");
+      const { data, error: verifyError } = await supabase.auth.verifyOtp({
+        token_hash: String(payload.tokenHash),
+        type: "magiclink",
+      });
+      if (verifyError || !data.user) throw new Error("Could not start the staging vendor session.");
+      setVendorOtp("");
+      setVendorOtpSent(false);
+      setAuthNotice("");
+      setIsAuthorizing(true);
+      setAccessError("");
+      setAuthRefresh((current) => current + 1);
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "Staging vendor sign-in is unavailable.");
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
   if (isAuthorizing) return <div className="min-h-screen bg-[#f7f9f5] text-[#132019] flex items-center justify-center"><Loader2 className="animate-spin" aria-label="Checking vendor access" /></div>;
   if (accessError) {
     const needsSignIn = accessError === "Please sign in with a vendor account.";
-    return <div className="min-h-screen bg-[#f7f9f5] px-6 flex items-center justify-center text-center text-[#132019]"><div className="max-w-md"><Package className="mx-auto mb-4 text-[#087443]" size={42} /><h1 className="text-2xl font-black">Vendor access required</h1><p className="mt-2 text-slate-500">{accessError}</p>{needsSignIn ? <div className="mt-6 rounded-2xl border border-[#dde7df] bg-white p-4 text-left">{authNotice && <p role="status" className="mb-3 text-sm font-bold text-emerald-700">{authNotice}</p>}{authError && <p role="alert" className="mb-3 text-sm font-bold text-red-700">{authError}</p>}{!vendorOtpSent ? <form onSubmit={sendVendorOtp} className="space-y-3"><label className="block text-sm font-bold text-slate-600">Vendor mobile number<input value={vendorPhone} onChange={(event) => setVendorPhone(event.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="numeric" autoComplete="tel" className="mt-1.5 w-full rounded-xl border border-[#dde7df] bg-white px-3 py-3 text-slate-900 outline-none focus:border-emerald-500" placeholder="10-digit mobile number" /></label><button disabled={authSubmitting} className="w-full rounded-xl bg-[#087443] py-3 font-black text-white disabled:opacity-60">{authSubmitting ? "Sending..." : "Send OTP"}</button></form> : <form onSubmit={verifyVendorOtp} className="space-y-3"><label className="block text-sm font-bold text-slate-600">6-digit OTP<input value={vendorOtp} onChange={(event) => setVendorOtp(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" className="mt-1.5 w-full rounded-xl border border-[#dde7df] bg-white px-3 py-3 text-center text-lg tracking-[0.35em] text-slate-900 outline-none focus:border-emerald-500" placeholder="000000" /></label><button disabled={authSubmitting} className="w-full rounded-xl bg-[#087443] py-3 font-black text-white disabled:opacity-60">{authSubmitting ? "Verifying..." : "Verify OTP"}</button><button type="button" disabled={authSubmitting} onClick={() => { setVendorOtpSent(false); setVendorOtp(""); setAuthError(""); setAuthNotice(""); }} className="w-full py-2 text-sm font-bold text-slate-600">Use a different number</button></form>}</div> : <p className="mt-2 text-sm text-slate-500">This signed-in account is not linked to a vendor profile.</p>}<button onClick={() => void logout()} className="mt-6 inline-flex items-center gap-2 rounded-xl border border-[#dde7df] bg-white px-4 py-3 text-sm font-black text-slate-100 hover:bg-slate-100"><LogOut size={17} />Log out</button></div></div>;
+    return <div className="min-h-screen bg-[#f7f9f5] px-6 flex items-center justify-center text-center text-[#132019]"><div className="max-w-md"><Package className="mx-auto mb-4 text-[#087443]" size={42} /><h1 className="text-2xl font-black">Vendor access required</h1><p className="mt-2 text-slate-500">{accessError}</p>{needsSignIn ? <div className="mt-6 rounded-2xl border border-[#dde7df] bg-white p-4 text-left">{authNotice && <p role="status" className="mb-3 text-sm font-bold text-emerald-700">{authNotice}</p>}{authError && <p role="alert" className="mb-3 text-sm font-bold text-red-700">{authError}</p>}{stagingQaAvailable && <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3"><p className="text-xs font-black text-emerald-900">Staging test mode</p><p className="mt-1 text-[11px] leading-4 text-emerald-800">Use the isolated QA vendor account. No SMS is sent.</p><button type="button" disabled={authSubmitting} onClick={() => void continueAsStagingVendor()} className="mt-3 w-full rounded-xl bg-[#087443] py-3 text-sm font-black text-white disabled:opacity-60">{authSubmitting ? "Signing in..." : "Continue as staging vendor"}</button></div>}{!vendorOtpSent ? <form onSubmit={sendVendorOtp} className="space-y-3"><label className="block text-sm font-bold text-slate-600">Vendor mobile number<input value={vendorPhone} onChange={(event) => setVendorPhone(event.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="numeric" autoComplete="tel" className="mt-1.5 w-full rounded-xl border border-[#dde7df] bg-white px-3 py-3 text-slate-900 outline-none focus:border-emerald-500" placeholder="10-digit mobile number" /></label><button disabled={authSubmitting} className="w-full rounded-xl bg-[#087443] py-3 font-black text-white disabled:opacity-60">{authSubmitting ? "Sending..." : "Send OTP"}</button></form> : <form onSubmit={verifyVendorOtp} className="space-y-3"><label className="block text-sm font-bold text-slate-600">6-digit OTP<input value={vendorOtp} onChange={(event) => setVendorOtp(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" className="mt-1.5 w-full rounded-xl border border-[#dde7df] bg-white px-3 py-3 text-center text-lg tracking-[0.35em] text-slate-900 outline-none focus:border-emerald-500" placeholder="000000" /></label><button disabled={authSubmitting} className="w-full rounded-xl bg-[#087443] py-3 font-black text-white disabled:opacity-60">{authSubmitting ? "Verifying..." : "Verify OTP"}</button><button type="button" disabled={authSubmitting} onClick={() => { setVendorOtpSent(false); setVendorOtp(""); setAuthError(""); setAuthNotice(""); }} className="w-full py-2 text-sm font-bold text-slate-600">Use a different number</button></form>}</div> : <p className="mt-2 text-sm text-slate-500">This signed-in account is not linked to a vendor profile.</p>}<button onClick={() => void logout()} className="mt-6 inline-flex items-center gap-2 rounded-xl border border-[#dde7df] bg-white px-4 py-3 text-sm font-black text-slate-100 hover:bg-slate-100"><LogOut size={17} />Log out</button></div></div>;
   }
 
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
