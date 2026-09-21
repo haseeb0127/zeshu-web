@@ -24,6 +24,10 @@ alter table public.orders
   add column if not exists fulfillment_mode text,
   add column if not exists shipping_snapshot jsonb not null default '{}'::jsonb;
 
+alter table public.inventory_reservations
+  add column if not exists fulfillment_mode text,
+  add column if not exists shipping_quote_snapshot jsonb not null default '{}'::jsonb;
+
 create table if not exists public.product_fulfillment_profiles (
   product_id uuid primary key references public.products(id) on delete cascade,
   cost_price numeric(12,2) null,
@@ -94,6 +98,10 @@ do $$ begin
   end if;
   if not exists (select 1 from pg_constraint where conname = 'orders_fulfillment_mode_check') then
     alter table public.orders add constraint orders_fulfillment_mode_check
+      check (fulfillment_mode is null or fulfillment_mode in ('LOCAL_30_MIN','LOCAL_STANDARD','INDIA_STANDARD'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'inventory_reservations_fulfillment_mode_check') then
+    alter table public.inventory_reservations add constraint inventory_reservations_fulfillment_mode_check
       check (fulfillment_mode is null or fulfillment_mode in ('LOCAL_30_MIN','LOCAL_STANDARD','INDIA_STANDARD'));
   end if;
   if not exists (select 1 from pg_constraint where conname = 'product_fulfillment_cost_price_nonnegative') then
