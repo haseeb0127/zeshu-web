@@ -257,14 +257,26 @@ export default function ZeshuSuperApp() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get('view') === 'services') {
-      setActiveTab('recharge');
-      const requestedService = params.get('service');
-      if (requestedService && SERVICES.some((service) => service.id === requestedService)) setActiveService(requestedService);
-      // Treat query-based service links as one-time deep links. Keeping the query
-      // caused mobile refreshes to reopen Services forever instead of Home.
-      window.history.replaceState({}, '', '/');
+    const requestedView = params.get('view');
+    if (requestedView !== 'services') return;
+
+    const navigationEntry = window.performance?.getEntriesByType?.('navigation')?.[0] as PerformanceNavigationTiming | undefined;
+    const isReload = navigationEntry?.type === 'reload';
+    const isStandalone = window.matchMedia?.('(display-mode: standalone)')?.matches === true
+      || Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
+
+    // Always clear the service deep-link after reading it. A browser refresh or an
+    // installed/PWA launch must reopen the storefront, never trap the customer in Services.
+    window.history.replaceState({}, '', '/');
+
+    if (isReload || isStandalone) {
+      setActiveTab('home');
+      return;
     }
+
+    setActiveTab('recharge');
+    const requestedService = params.get('service');
+    if (requestedService && SERVICES.some((service) => service.id === requestedService)) setActiveService(requestedService);
   }, []);
 
   const openServices = (serviceId?: string) => {
@@ -523,7 +535,11 @@ export default function ZeshuSuperApp() {
 
   const normalizedSearch = searchQuery.trim().replace(/\s+/g, ' ').toLowerCase();
   const filteredProducts = useMemo(() => {
-    const matchingProducts = products
+    // Normal storefront browsing shows only orderable inventory. When a customer
+    // actively searches, unavailable matching products may appear with a disabled
+    // "Currently unavailable" state so the catalog remains discoverable.
+    const storefrontProducts = normalizedSearch ? products : products.filter(isAvailableProduct);
+    const matchingProducts = storefrontProducts
       .map((product, index) => ({
         product,
         index,
@@ -540,9 +556,8 @@ export default function ZeshuSuperApp() {
           || (priceFilter === '100_299' && Number.isFinite(numericPrice) && numericPrice >= 100 && numericPrice < 300)
           || (priceFilter === '300_499' && Number.isFinite(numericPrice) && numericPrice >= 300 && numericPrice < 500)
           || (priceFilter === '500_PLUS' && Number.isFinite(numericPrice) && numericPrice >= 500);
-        const isAvailable = Boolean(product.vendor_id) && product.in_stock !== false && !(Number(product.quantity) <= 0);
-        const defaultCatalogVisibility = normalizedSearch ? true : isAvailable;
-        const matchesAvailability = defaultCatalogVisibility && (availabilityFilter === 'ALL' || isAvailable);
+        const isAvailable = isAvailableProduct(product);
+        const matchesAvailability = availabilityFilter === 'ALL' || isAvailable;
         const aggregate = productAggregates[String(product.id)];
         const rating = Number(aggregate?.average_rating || 0);
         const reviewCount = Number(aggregate?.review_count || 0);
