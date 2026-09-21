@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 const VALID_AUDIENCES = new Set(['INDIA', 'JAGTIAL']);
 
 export async function GET(request: Request) {
-  const service = getMarketingServiceClient();
+  const service = await getMarketingServiceClient();
   if (!service) return NextResponse.json({ campaigns: [] }, { status: 503 });
 
   const url = new URL(request.url);
