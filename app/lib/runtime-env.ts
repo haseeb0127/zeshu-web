@@ -1,4 +1,5 @@
 import { env as runtimeEnv } from 'node:process';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 const isPlaceholder = (value: string) => {
   const text = value.trim().toLowerCase();
@@ -9,28 +10,24 @@ const isPlaceholder = (value: string) => {
     || text.includes('dummy');
 };
 
-type OpenNextCloudflareContext = {
-  env?: Record<string, unknown>;
-};
-
-const getOpenNextBinding = (name: string) => {
+const getOpenNextBinding = async (name: string) => {
   try {
-    const contextSymbol = Symbol.for('__cloudflare-context__');
-    const context = (globalThis as typeof globalThis & Record<symbol, OpenNextCloudflareContext | undefined>)[contextSymbol];
-    const raw = context?.env?.[name];
+    // Official OpenNext API for accessing Worker vars/secrets at request time.
+    // Async mode is safe for route handlers and also avoids relying on internal
+    // symbols that can change between OpenNext releases.
+    const context = await getCloudflareContext({ async: true });
+    const raw = (context.env as Record<string, unknown> | undefined)?.[name];
     return typeof raw === 'string' ? raw.trim() : '';
   } catch {
+    // Outside Cloudflare (Vercel/local Node), fall back to process.env below.
     return '';
   }
 };
 
 export async function getRuntimeEnvValue(name: string): Promise<string> {
-  // OpenNext stores the active Worker context on the global scope in production.
-  // Read that binding first so Cloudflare dashboard vars/secrets remain runtime-only.
-  const bindingValue = getOpenNextBinding(name);
+  const bindingValue = await getOpenNextBinding(name);
   if (!isPlaceholder(bindingValue)) return bindingValue;
 
-  // Vercel/local Node and Workers with process-env population expose runtime env here.
   const processValue = String(runtimeEnv[name] || '').trim();
   return isPlaceholder(processValue) ? '' : processValue;
 }
