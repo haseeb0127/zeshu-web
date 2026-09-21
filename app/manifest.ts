@@ -20,7 +20,7 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: 'any',
       },
       {
-        src: '/zeshu-icon.svg',
+        src: '/zeshu-maskable.svg',
         sizes: 'any',
         type: 'image/svg+xml',
         purpose: 'maskable',
