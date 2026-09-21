@@ -4,10 +4,36 @@ import { useEffect, useRef, useState } from "react";
 
 type Props = { supabaseClient: any };
 
+async function showSupportNotification() {
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  try {
+    if ("serviceWorker" in navigator) {
+      const registration = await navigator.serviceWorker.ready;
+      await registration.showNotification("Zeshu customer needs support", { body: "Open Support in ZESHU HQ to reply.", icon: "/icon.svg", badge: "/icon.svg" });
+      return;
+    }
+  } catch {
+    // Fall back to the page notification API where supported.
+  }
+  try { new Notification("Zeshu customer needs support", { body: "Open Support in ZESHU HQ to reply." }); } catch {}
+}
+
 export default function SupportAlertManager({ supabaseClient }: Props) {
   const [enabled, setEnabled] = useState(false);
   const [notice, setNotice] = useState("");
   const seen = useRef<Set<string>>(new Set());
+  const storageKey = "zeshu:admin-support-alerts:enabled";
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem(storageKey) === "1";
+    const permissionGranted = typeof Notification !== "undefined" && Notification.permission === "granted";
+    if (stored || permissionGranted) {
+      window.localStorage.setItem(storageKey, "1");
+      setEnabled(true);
+      setNotice(permissionGranted ? "Support alerts automatically enabled on this device." : "Realtime support alerts automatically enabled.");
+    }
+  }, []);
 
   useEffect(() => {
     if (!enabled) return;
@@ -34,20 +60,22 @@ export default function SupportAlertManager({ supabaseClient }: Props) {
           oscillator.start();
           oscillator.stop(context.currentTime + 0.18);
         } catch {}
-        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-          new Notification("Zeshu customer needs support", { body: "Open Support in ZESHU HQ to reply." });
-        }
+        void showSupportNotification();
       })
       .subscribe();
     return () => { void supabaseClient.removeChannel(channel); };
   }, [enabled, supabaseClient]);
 
   const enable = async () => {
-    if (typeof Notification !== "undefined" && Notification.permission === "default") {
-      await Notification.requestPermission();
-    }
+    let permission = typeof Notification === "undefined" ? "unsupported" : Notification.permission;
+    if (typeof Notification !== "undefined" && permission === "default") permission = await Notification.requestPermission();
+    window.localStorage.setItem(storageKey, "1");
     setEnabled(true);
-    setNotice("Customer-support alerts enabled on this device.");
+    setNotice(permission === "granted"
+      ? "Support alerts enabled. They will turn on automatically after future logins."
+      : permission === "denied"
+        ? "Realtime support alerts are on, but system notifications are blocked in browser settings."
+        : "Realtime support alerts enabled on this device.");
   };
 
   return (
