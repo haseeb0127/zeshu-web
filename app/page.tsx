@@ -261,6 +261,9 @@ export default function ZeshuSuperApp() {
       setActiveTab('recharge');
       const requestedService = params.get('service');
       if (requestedService && SERVICES.some((service) => service.id === requestedService)) setActiveService(requestedService);
+      // Treat query-based service links as one-time deep links. Keeping the query
+      // caused mobile refreshes to reopen Services forever instead of Home.
+      window.history.replaceState({}, '', '/');
     }
   }, []);
 
@@ -274,10 +277,11 @@ export default function ZeshuSuperApp() {
     setIsAuthModalOpen(false);
     setIsTrackingOpen(false);
     setLocationSelectorOpen(false);
-    const params = new URLSearchParams(window.location.search);
-    params.set('view', 'services');
-    if (serviceId) params.set('service', serviceId); else params.delete('service');
-    window.history.replaceState({}, '', `/?${params.toString()}`);
+    // Internal tab navigation should not persist into the URL; refreshing Zeshu
+    // should always reopen the customer storefront.
+    if (typeof window !== 'undefined' && (window.location.search || window.location.hash)) {
+      window.history.replaceState({}, '', '/');
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const [products, setProducts] = useState<any[]>([]);
@@ -483,14 +487,17 @@ export default function ZeshuSuperApp() {
   const isPlanBased = activeService === 'mobile' || activeService === 'dth'; 
 
   const productCategories = useMemo(() => CUSTOMER_CATEGORY_DEFINITIONS.map((category) => category.id), []);
-  const categoryProductCounts = useMemo(() => Object.fromEntries(
-    CUSTOMER_CATEGORY_DEFINITIONS.map((category) => [
-      category.id,
-      category.id === 'All'
-        ? products.length
-        : products.filter((product) => productMatchesCustomerCategory(product?.category, category.id)).length,
-    ]),
-  ) as Record<string, number>, [products]);
+  const categoryProductCounts = useMemo(() => {
+    const availableCatalog = products.filter((product) => Boolean(product?.vendor_id) && product.in_stock !== false && !(Number(product?.quantity) <= 0));
+    return Object.fromEntries(
+      CUSTOMER_CATEGORY_DEFINITIONS.map((category) => [
+        category.id,
+        category.id === 'All'
+          ? availableCatalog.length
+          : availableCatalog.filter((product) => productMatchesCustomerCategory(product?.category, category.id)).length,
+      ]),
+    ) as Record<string, number>;
+  }, [products]);
 
   const productBrands = useMemo(() => Array.from(new Set(products.map((product) => String(product?.brand || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)), [products]);
 
@@ -530,8 +537,9 @@ export default function ZeshuSuperApp() {
           || (priceFilter === '100_299' && Number.isFinite(numericPrice) && numericPrice >= 100 && numericPrice < 300)
           || (priceFilter === '300_499' && Number.isFinite(numericPrice) && numericPrice >= 300 && numericPrice < 500)
           || (priceFilter === '500_PLUS' && Number.isFinite(numericPrice) && numericPrice >= 500);
-        const matchesAvailability = availabilityFilter === 'ALL'
-          || (Boolean(product.vendor_id) && product.in_stock !== false && !(Number(product.quantity) <= 0));
+        const isAvailable = Boolean(product.vendor_id) && product.in_stock !== false && !(Number(product.quantity) <= 0);
+        const defaultCatalogVisibility = normalizedSearch ? true : isAvailable;
+        const matchesAvailability = defaultCatalogVisibility && (availabilityFilter === 'ALL' || isAvailable);
         const aggregate = productAggregates[String(product.id)];
         const rating = Number(aggregate?.average_rating || 0);
         const reviewCount = Number(aggregate?.review_count || 0);
@@ -2092,6 +2100,7 @@ export default function ZeshuSuperApp() {
     setIsAuthModalOpen(false);
     setIsTrackingOpen(false);
     setLocationSelectorOpen(false);
+    if (typeof window !== 'undefined' && (window.location.search || window.location.hash)) window.history.replaceState({}, '', '/');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const askSupportAssistant = async (questionOverride?: string) => {
