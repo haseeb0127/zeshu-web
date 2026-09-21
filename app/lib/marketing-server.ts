@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
 
 export type MarketingAdminContext = {
   service: SupabaseClient;
@@ -10,9 +11,8 @@ const serverClientOptions = {
   auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
 } as const;
 
-export const getMarketingServiceClient = () => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+export const getMarketingServiceClient = async () => {
+  const { url, serviceRoleKey } = await getRuntimeSupabaseEnv();
   if (!url || !serviceRoleKey) return null;
   return createClient(url, serviceRoleKey, serverClientOptions);
 };
@@ -20,9 +20,7 @@ export const getMarketingServiceClient = () => {
 export const requireMarketingAdmin = async (
   request: Request,
 ): Promise<{ context?: MarketingAdminContext; response?: NextResponse }> => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const { url, anonKey, serviceRoleKey } = await getRuntimeSupabaseEnv();
   const authorization = request.headers.get('authorization');
   const token = authorization?.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
 
