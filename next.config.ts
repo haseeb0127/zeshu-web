@@ -12,20 +12,23 @@ const ZESHU_STAGING_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_SQcjikOTZSoHEh19U
 const configuredSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 const configuredSupabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
-const needsStagingPublicSupabaseFallback =
-  !configuredSupabaseUrl ||
-  !configuredSupabaseKey ||
-  configuredSupabaseUrl === CLOUDFLARE_BUILD_CHECK_SUPABASE_URL ||
-  configuredSupabaseKey === CLOUDFLARE_BUILD_CHECK_SUPABASE_KEY;
+const publicSupabaseUrl =
+  !configuredSupabaseUrl || configuredSupabaseUrl === CLOUDFLARE_BUILD_CHECK_SUPABASE_URL
+    ? ZESHU_STAGING_SUPABASE_URL
+    : configuredSupabaseUrl;
 
-if (needsStagingPublicSupabaseFallback) {
-  process.env.NEXT_PUBLIC_SUPABASE_URL = ZESHU_STAGING_SUPABASE_URL;
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = ZESHU_STAGING_SUPABASE_PUBLISHABLE_KEY;
-}
+const publicSupabaseKey =
+  !configuredSupabaseKey || configuredSupabaseKey === CLOUDFLARE_BUILD_CHECK_SUPABASE_KEY
+    ? ZESHU_STAGING_SUPABASE_PUBLISHABLE_KEY
+    : configuredSupabaseKey;
 
 const nextConfig: NextConfig = {
   turbopack: {
     root: projectRoot,
+  },
+  env: {
+    NEXT_PUBLIC_SUPABASE_URL: publicSupabaseUrl,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: publicSupabaseKey,
   },
 };
 
