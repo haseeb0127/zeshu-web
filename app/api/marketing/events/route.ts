@@ -21,7 +21,7 @@ const limited = (key: string) => {
 };
 
 export async function POST(request: Request) {
-  const service = getMarketingServiceClient();
+  const service = await getMarketingServiceClient();
   if (!service) return NextResponse.json({ success: false }, { status: 503 });
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const campaignId = String(body.campaign_id || '').trim();
