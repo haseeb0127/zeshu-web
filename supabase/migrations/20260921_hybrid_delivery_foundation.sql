@@ -338,9 +338,13 @@ set search_path = public, pg_temp
 as $$
 declare v_product public.products%rowtype;
 begin
-  if p_admin_user_id is null or p_product_id is null or not exists (
-    select 1 from public.admin_roles where user_id=p_admin_user_id and role='admin'
-  ) then raise exception 'admin access required'; end if;
+  if auth.uid() is null
+     or p_admin_user_id is distinct from auth.uid()
+     or p_product_id is null
+     or not exists (
+       select 1 from public.admin_roles where user_id=auth.uid() and role='admin'
+     )
+  then raise exception 'admin access required'; end if;
 
   if p_delivery_mode not in ('LOCAL_30_MIN','LOCAL_STANDARD','INDIA_STANDARD')
      or p_shipping_class not in ('STANDARD','FRAGILE','HEAVY','COLD_CHAIN','LOCAL_ONLY')
