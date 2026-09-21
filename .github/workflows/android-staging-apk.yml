@@ -7,6 +7,12 @@ on:
     paths:
       - "android-shell/**"
       - ".github/workflows/android-staging-apk.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "android-shell/**"
+      - ".github/workflows/android-staging-apk.yml"
   workflow_dispatch:
 
 permissions:
