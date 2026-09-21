@@ -408,9 +408,12 @@ set search_path = public, pg_temp
 as $$
 declare v_row public.fulfillment_settings%rowtype; v_provider text;
 begin
-  if p_admin_user_id is null or not exists (
-    select 1 from public.admin_roles where user_id=p_admin_user_id and role='admin'
-  ) then raise exception 'admin access required'; end if;
+  if auth.uid() is null
+     or p_admin_user_id is distinct from auth.uid()
+     or not exists (
+       select 1 from public.admin_roles where user_id=auth.uid() and role='admin'
+     )
+  then raise exception 'admin access required'; end if;
 
   v_provider := nullif(upper(btrim(coalesce(p_courier_provider,''))), '');
   if p_default_min_contribution_rupees < 0
