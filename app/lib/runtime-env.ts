@@ -1,5 +1,4 @@
 import { env as runtimeEnv } from 'node:process';
-import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 const isPlaceholder = (value: string) => {
   const text = value.trim().toLowerCase();
@@ -10,24 +9,10 @@ const isPlaceholder = (value: string) => {
     || text.includes('dummy');
 };
 
-const getOpenNextBinding = async (name: string) => {
-  try {
-    // Official OpenNext API for accessing Worker vars/secrets at request time.
-    // Async mode is safe for route handlers and also avoids relying on internal
-    // symbols that can change between OpenNext releases.
-    const context = await getCloudflareContext({ async: true });
-    const raw = (context.env as Record<string, unknown> | undefined)?.[name];
-    return typeof raw === 'string' ? raw.trim() : '';
-  } catch {
-    // Outside Cloudflare (Vercel/local Node), fall back to process.env below.
-    return '';
-  }
-};
-
 export async function getRuntimeEnvValue(name: string): Promise<string> {
-  const bindingValue = await getOpenNextBinding(name);
-  if (!isPlaceholder(bindingValue)) return bindingValue;
-
+  // Cloudflare Workers with a modern compatibility date and Node compatibility
+  // populate process.env from Worker variables and secrets. Dynamic lookup avoids
+  // Next.js treating these server-only values as build-time constants.
   const processValue = String(runtimeEnv[name] || '').trim();
   return isPlaceholder(processValue) ? '' : processValue;
 }
