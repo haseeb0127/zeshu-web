@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { rateLimitResponse } from '@/app/lib/provider-security';
 import { ZESHU_SUPPORT_KNOWLEDGE } from '@/app/lib/support-ai';
+import { getRuntimeEnvValue, getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -468,11 +469,13 @@ const createAutomaticHandoff = async ({
 };
 
 export async function GET() {
-  const aiEnabled = process.env.SUPPORT_AI_ENABLED === 'true' && Boolean(process.env.OPENAI_API_KEY);
-  const handoffConfigured = Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
+  const [{ url, serviceRoleKey }, aiFlag, apiKey] = await Promise.all([
+    getRuntimeSupabaseEnv(),
+    getRuntimeEnvValue('SUPPORT_AI_ENABLED'),
+    getRuntimeEnvValue('OPENAI_API_KEY'),
+  ]);
+  const aiEnabled = aiFlag === 'true' && Boolean(apiKey);
+  const handoffConfigured = Boolean(url && serviceRoleKey);
   return NextResponse.json({
     mode: aiEnabled ? 'ai' : 'guided',
     automatic_handoff: handoffConfigured,
@@ -482,9 +485,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const startedAt = Date.now();
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const { url: supabaseUrl, anonKey, serviceRoleKey } = await getRuntimeSupabaseEnv();
   const token = getBearer(request);
   if (!supabaseUrl || !anonKey || !token) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
 
@@ -526,8 +527,11 @@ export async function POST(request: Request) {
   let result = fallbackAnswer(message, liveContext);
   let source: 'ai' | 'guided' = 'guided';
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  const aiEnabled = process.env.SUPPORT_AI_ENABLED === 'true' && Boolean(apiKey);
+  const [apiKey, aiFlag] = await Promise.all([
+    getRuntimeEnvValue('OPENAI_API_KEY'),
+    getRuntimeEnvValue('SUPPORT_AI_ENABLED'),
+  ]);
+  const aiEnabled = aiFlag === 'true' && Boolean(apiKey);
   if (aiEnabled) {
     try {
       const conversationInput = history.map((turn) => ({
@@ -544,7 +548,7 @@ export async function POST(request: Request) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
-          model: process.env.SUPPORT_AI_MODEL || 'gpt-5.6-luna',
+          model: (await getRuntimeEnvValue('SUPPORT_AI_MODEL')) || 'gpt-5.6-luna',
           store: false,
           max_output_tokens: 600,
           text: {
