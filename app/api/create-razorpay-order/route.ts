@@ -11,6 +11,12 @@ export const dynamic = 'force-dynamic';
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const STAGING_WORKER_HOST = 'zeshu-web-staging.asif-mohammed0127.workers.dev';
+
+const isPlaceholderRazorpayValue = (value: string | undefined) => {
+  const text = String(value || '').trim().toLowerCase();
+  return !text || text.includes('build-check') || text.includes('build_check') || text.includes('placeholder') || text.includes('dummy');
+};
 
 type CartItem = { item?: { id?: string | number }; qty?: number };
 type ReservationItem = { product_id: string; quantity: number };
@@ -112,6 +118,8 @@ const reservationErrorResponse = (requestId: string, stage: string, message?: st
 
 export async function POST(request: Request) {
   const requestId = randomUUID();
+  const requestHost = (request.headers.get('host') || '').toLowerCase().split(':')[0];
+  const isStagingRequest = requestHost === STAGING_WORKER_HOST;
   let stage = 'REQUEST_PARSE';
   try {
     stage = 'AUTH';
@@ -235,8 +243,41 @@ export async function POST(request: Request) {
 
     const keyId = process.env.RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
-    if (!keyId || !keySecret) return checkoutError(requestId, stage, 'PAYMENT_SERVICE_UNAVAILABLE', 'Payment service is unavailable.', 503);
-    const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
+    const publicKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+    const stagingPaymentSimulator = isStagingRequest && (
+      isPlaceholderRazorpayValue(keyId)
+      || isPlaceholderRazorpayValue(keySecret)
+      || isPlaceholderRazorpayValue(publicKeyId)
+    );
+    if (!stagingPaymentSimulator && (!keyId || !keySecret)) {
+      return checkoutError(requestId, stage, 'PAYMENT_SERVICE_UNAVAILABLE', 'Payment service is unavailable.', 503);
+    }
+    const razorpay = new Razorpay({
+      key_id: keyId || 'rzp_test_staging_simulator',
+      key_secret: keySecret || 'staging-simulator-only',
+    });
+
+    if (stagingPaymentSimulator) {
+      const { data: staleSimulations } = await serviceClient
+        .from('inventory_reservations')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('status', 'PAYMENT_PENDING')
+        .like('razorpay_order_id', 'stg_order_%');
+      const staleIds = (staleSimulations || []).map((row: any) => String(row.id)).filter(Boolean);
+      if (staleIds.length > 0) {
+        await serviceClient
+          .from('reward_redemptions')
+          .update({ status: 'RELEASED', released_at: new Date().toISOString() })
+          .in('reservation_id', staleIds)
+          .eq('status', 'RESERVED');
+        await serviceClient
+          .from('inventory_reservations')
+          .update({ status: 'EXPIRED', abandoned_at: new Date().toISOString() })
+          .in('id', staleIds)
+          .eq('status', 'PAYMENT_PENDING');
+      }
+    }
 
     stage = 'EXISTING_CHECKOUT';
     const [resumableResult, expiredReservationResult] = await Promise.all([
@@ -1013,11 +1054,20 @@ export async function POST(request: Request) {
     }
 
     stage = 'RAZORPAY_CREATE';
-    let order;
-    try {
-      order = await razorpay.orders.create({ amount: amountPaise, currency: 'INR', receipt: `zeshu_${Date.now()}`, notes: { user_id: user.id, transaction_type: 'grocery', zeshu_cash_used: String(cashReservation?.approved_amount || 0) } });
-    } catch (error) {
-      return checkoutError(requestId, stage, 'RAZORPAY_CREATE_FAILED', "We couldn't start the payment service. Please try again.", 502, error);
+    let order: { id: string; amount: number; currency: string };
+    if (stagingPaymentSimulator) {
+      order = {
+        id: `stg_order_${randomUUID().replace(/-/g, '')}`,
+        amount: amountPaise,
+        currency: 'INR',
+      };
+    } else {
+      try {
+        const providerOrder = await razorpay.orders.create({ amount: amountPaise, currency: 'INR', receipt: `zeshu_${Date.now()}`, notes: { user_id: user.id, transaction_type: 'grocery', zeshu_cash_used: String(cashReservation?.approved_amount || 0) } });
+        order = { id: String(providerOrder.id), amount: Number(providerOrder.amount), currency: String(providerOrder.currency || 'INR') };
+      } catch (error) {
+        return checkoutError(requestId, stage, 'RAZORPAY_CREATE_FAILED', "We couldn't start the payment service. Please try again.", 502, error);
+      }
     }
 
     stage = 'RESERVATION_BIND';
@@ -1049,6 +1099,7 @@ export async function POST(request: Request) {
       courierName: indiaShipping?.quote.courierName || null,
       estimatedDeliveryDays: indiaShipping?.quote.estimatedDeliveryDays ?? null,
       requestId,
+      stagingPaymentSimulator,
     });
   } catch (error) {
     return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'We couldn\'t prepare your checkout. Please try again.', 500, error);
