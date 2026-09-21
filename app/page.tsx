@@ -2755,6 +2755,14 @@ export default function ZeshuSuperApp() {
         )}
 
         <div className="flex-1 min-w-0 pb-32">
+           {activeTab === 'home' && normalizedSearch === '' && <section className="mx-4 mb-5 grid grid-cols-2 gap-2 md:mx-0" aria-label="Delivery options">
+             <button type="button" onClick={() => { setActiveCategory('Fresh Fruits'); document.getElementById('product-catalog')?.scrollIntoView({ behavior: 'smooth' }); }} className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-left transition active:scale-[.98]">
+               <p className="text-sm font-black text-[#087443]">⚡ 30-min Fresh</p><p className="mt-1 text-[10px] font-semibold leading-4 text-[#52645a]">Fresh items when your location and delivery capacity are eligible.</p>
+             </button>
+             <button type="button" onClick={() => { setSearchQuery('india delivery'); document.getElementById('product-catalog')?.scrollIntoView({ behavior: 'smooth' }); }} className="rounded-2xl border border-sky-100 bg-sky-50 p-3 text-left transition active:scale-[.98]">
+               <p className="text-sm font-black text-sky-700">🇮🇳 India Delivery</p><p className="mt-1 text-[10px] font-semibold leading-4 text-[#52645a]">Only eligible products that pass shipping and business rules.</p>
+             </button>
+           </section>}
            {activeTab === 'home' && <div className="mb-5 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar md:px-0 lg:hidden" aria-label="Product categories">{productCategories.map((category) => { const definition = categoryDefinition(category); return <button type="button" key={category} onClick={() => setActiveCategory(category)} aria-pressed={activeCategory === category} className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-black transition ${activeCategory === category ? 'border-[#087443] bg-[#087443] text-white' : 'border-[#dce8df] bg-white text-[#52645a]'}`}><span aria-hidden="true">{definition.icon}</span><span>{definition.label}</span></button>; })}</div>}
            {activeTab === 'home' && <>
              <div className="mb-5 flex items-center justify-between gap-3 px-4 md:px-0">
@@ -3036,7 +3044,7 @@ export default function ZeshuSuperApp() {
                      <div className="flex flex-wrap justify-center gap-2"><button type="button" onClick={() => setSearchQuery('')} className="rounded-xl bg-[#087443] px-4 py-2 text-xs font-black text-white">Clear search</button><button type="button" onClick={() => setActiveCategory('All')} className="rounded-xl border border-[#087443] px-4 py-2 text-xs font-black text-[#087443]">Browse all categories</button>{user && recentlyPurchased.length > 0 && <button type="button" onClick={() => document.getElementById('recently-purchased')?.scrollIntoView({ behavior: 'smooth' })} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-700">Recently purchased</button>}</div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+                  <div id="product-catalog" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
                     {filteredProducts.map((p) => {
                       const inCart = cart.find(c => c.item.id === p.id);
                       const aggregate = productAggregates[String(p.id)];
