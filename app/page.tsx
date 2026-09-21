@@ -322,7 +322,8 @@ export default function ZeshuSuperApp() {
   const [brandFilter, setBrandFilter] = useState('ALL');
   const [priceFilter, setPriceFilter] = useState<'ALL' | 'UNDER_100' | '100_299' | '300_499' | '500_PLUS'>('ALL');
   const [availabilityFilter, setAvailabilityFilter] = useState<'ALL' | 'AVAILABLE'>('ALL');
-  const [productSort, setProductSort] = useState<'recommended' | 'price_asc' | 'price_desc' | 'name'>('recommended');
+  const [ratingFilter, setRatingFilter] = useState<'ALL' | '4_PLUS' | '3_PLUS'>('ALL');
+  const [productSort, setProductSort] = useState<'recommended' | 'top_rated' | 'price_asc' | 'price_desc' | 'name'>('recommended');
   const [isProductFiltersOpen, setIsProductFiltersOpen] = useState(false);
   
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -531,8 +532,14 @@ export default function ZeshuSuperApp() {
           || (priceFilter === '500_PLUS' && Number.isFinite(numericPrice) && numericPrice >= 500);
         const matchesAvailability = availabilityFilter === 'ALL'
           || (Boolean(product.vendor_id) && product.in_stock !== false && !(Number(product.quantity) <= 0));
+        const aggregate = productAggregates[String(product.id)];
+        const rating = Number(aggregate?.average_rating || 0);
+        const reviewCount = Number(aggregate?.review_count || 0);
+        const matchesRating = ratingFilter === 'ALL'
+          || (reviewCount > 0 && ratingFilter === '4_PLUS' && rating >= 4)
+          || (reviewCount > 0 && ratingFilter === '3_PLUS' && rating >= 3);
         const matchesCampaign = focusedProductIds.size === 0 || focusedProductIds.has(String(product.id));
-        return matchesSearch && matchesCategory && matchesBrand && matchesPrice && matchesAvailability && matchesCampaign;
+        return matchesSearch && matchesCategory && matchesBrand && matchesPrice && matchesAvailability && matchesRating && matchesCampaign;
       });
 
     if (productSort === 'recommended') {
@@ -548,6 +555,13 @@ export default function ZeshuSuperApp() {
     return [...matchingProducts]
       .sort((a, b) => {
         if (productSort === 'name') return String(a.product.name || '').localeCompare(String(b.product.name || ''));
+        if (productSort === 'top_rated') {
+          const aRating = Number(productAggregates[String(a.product.id)]?.average_rating || 0);
+          const bRating = Number(productAggregates[String(b.product.id)]?.average_rating || 0);
+          const aCount = Number(productAggregates[String(a.product.id)]?.review_count || 0);
+          const bCount = Number(productAggregates[String(b.product.id)]?.review_count || 0);
+          return bRating - aRating || bCount - aCount || a.index - b.index;
+        }
         const priceA = Number(a.product.price);
         const priceB = Number(b.product.price);
         if (!Number.isFinite(priceA) && Number.isFinite(priceB)) return 1;
@@ -556,7 +570,7 @@ export default function ZeshuSuperApp() {
         return productSort === 'price_asc' ? priceA - priceB : priceB - priceA;
       })
       .map(({ product }) => product);
-  }, [products, normalizedSearch, activeCategory, brandFilter, priceFilter, availabilityFilter, productSort, focusedProductIds, sponsoredProductIds]);
+  }, [products, normalizedSearch, activeCategory, brandFilter, priceFilter, availabilityFilter, ratingFilter, productSort, focusedProductIds, sponsoredProductIds, productAggregates]);
 
   const searchRecommendations = useMemo(() => {
     if (!normalizedSearch || filteredProducts.length > 0) return [];
@@ -585,12 +599,13 @@ export default function ZeshuSuperApp() {
       .sort((a, b) => b.score - a.score)
       .slice(0, 4);
   }, [normalizedSearch]);
-  const activeProductFilterCount = (activeCategory !== 'All' ? 1 : 0) + (brandFilter !== 'ALL' ? 1 : 0) + (priceFilter !== 'ALL' ? 1 : 0) + (availabilityFilter !== 'ALL' ? 1 : 0);
+  const activeProductFilterCount = (activeCategory !== 'All' ? 1 : 0) + (brandFilter !== 'ALL' ? 1 : 0) + (priceFilter !== 'ALL' ? 1 : 0) + (availabilityFilter !== 'ALL' ? 1 : 0) + (ratingFilter !== 'ALL' ? 1 : 0);
   const clearProductFilters = () => {
     setActiveCategory('All');
     setBrandFilter('ALL');
     setPriceFilter('ALL');
     setAvailabilityFilter('ALL');
+    setRatingFilter('ALL');
     setProductSort('recommended');
     setFocusedCampaignId(null);
   };
@@ -616,6 +631,7 @@ export default function ZeshuSuperApp() {
       setBrandFilter('ALL');
       setPriceFilter('ALL');
       setAvailabilityFilter('ALL');
+      setRatingFilter('ALL');
       setProductSort('recommended');
       setActiveTab('home');
       window.setTimeout(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
@@ -2721,7 +2737,8 @@ export default function ZeshuSuperApp() {
                  <label className="text-xs font-black text-slate-600">Brand<select value={brandFilter} onChange={(event) => setBrandFilter(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="ALL">All brands</option>{productBrands.map((brand) => <option key={brand} value={brand}>{brand}</option>)}</select></label>
                  <label className="text-xs font-black text-slate-600">Price<select value={priceFilter} onChange={(event) => setPriceFilter(event.target.value as typeof priceFilter)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="ALL">Any price</option><option value="UNDER_100">Under ₹100</option><option value="100_299">₹100–₹299</option><option value="300_499">₹300–₹499</option><option value="500_PLUS">₹500+</option></select></label>
                  <label className="text-xs font-black text-slate-600">Availability<select value={availabilityFilter} onChange={(event) => setAvailabilityFilter(event.target.value as typeof availabilityFilter)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="ALL">All products</option><option value="AVAILABLE">In stock / available</option></select></label>
-                 <label className="text-xs font-black text-slate-600">Sort<select value={productSort} onChange={(event) => setProductSort(event.target.value as typeof productSort)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="recommended">Recommended</option><option value="price_asc">Price: Low to High</option><option value="price_desc">Price: High to Low</option><option value="name">Name A-Z</option></select></label>
+                 <label className="text-xs font-black text-slate-600">Rating<select value={ratingFilter} onChange={(event) => setRatingFilter(event.target.value as typeof ratingFilter)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="ALL">Any rating</option><option value="4_PLUS">4★ &amp; up</option><option value="3_PLUS">3★ &amp; up</option></select><span className="mt-1 block text-[10px] font-semibold text-slate-400">Verified delivered-order ratings only</span></label>
+                 <label className="text-xs font-black text-slate-600">Sort<select value={productSort} onChange={(event) => setProductSort(event.target.value as typeof productSort)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700"><option value="recommended">Recommended</option><option value="top_rated">Top rated</option><option value="price_asc">Price: Low to High</option><option value="price_desc">Price: High to Low</option><option value="name">Name A-Z</option></select></label>
                </div>
              </div>}
            </>}
