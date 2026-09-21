@@ -8,18 +8,11 @@ const isPlaceholder = (value: string) => {
 };
 
 export async function getRuntimeEnvValue(name: string): Promise<string> {
-  const processValue = String(process.env[name] || '').trim();
-  if (!isPlaceholder(processValue)) return processValue;
-
-  try {
-    const { getCloudflareContext } = await import('@opennextjs/cloudflare');
-    const context = getCloudflareContext();
-    const raw = (context.env as Record<string, unknown>)[name];
-    const value = typeof raw === 'string' ? raw.trim() : '';
-    return isPlaceholder(value) ? '' : value;
-  } catch {
-    return '';
-  }
+  // Dynamic property access avoids Next.js statically baking build-time placeholder
+  // values into server routes. On Cloudflare Workers, our 2026 compatibility date
+  // with Node compatibility populates process.env from runtime vars/secrets.
+  const value = String(process.env[name] || '').trim();
+  return isPlaceholder(value) ? '' : value;
 }
 
 export async function getRuntimeSupabaseEnv() {
