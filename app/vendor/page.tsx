@@ -30,7 +30,7 @@ import { VENDOR_PRODUCT_CATEGORIES } from "../lib/catalog-categories";
 const supabase = vendorSupabase();
 
 type Tab = "dashboard" | "orders" | "products" | "analytics";
-type Vendor = { id: string; business_name: string | null; is_open: boolean | null };
+type Vendor = { id: string; business_name: string | null; is_open: boolean | null; local_30_min_enabled?: boolean | null; local_standard_enabled?: boolean | null };
 type Product = {
   id: string;
   name: string;
@@ -42,6 +42,18 @@ type Product = {
   brand: string | null;
   quantity: number | string | null;
   weight: string | null;
+  delivery_mode?: "LOCAL_30_MIN" | "INDIA_STANDARD" | "LOCAL_STANDARD";
+  fresh_eligible?: boolean | null;
+  nationwide_shipping_enabled?: boolean | null;
+  requires_cold_chain?: boolean | null;
+  packed_weight_grams?: number | string | null;
+  package_length_cm?: number | string | null;
+  package_width_cm?: number | string | null;
+  package_height_cm?: number | string | null;
+  shipping_class?: string | null;
+  min_nationwide_quantity?: number | string | null;
+  min_nationwide_order_value?: number | string | null;
+  handling_minutes?: number | string | null;
 };
 type Order = Record<string, any>;
 
@@ -55,6 +67,24 @@ const EMPTY_PRODUCT = {
   unit: "",
   image_url: "",
   in_stock: true,
+  delivery_mode: "LOCAL_STANDARD" as "LOCAL_30_MIN" | "INDIA_STANDARD" | "LOCAL_STANDARD",
+  fresh_eligible: false,
+  nationwide_shipping_enabled: false,
+  requires_cold_chain: false,
+  packed_weight_grams: "",
+  package_length_cm: "",
+  package_width_cm: "",
+  package_height_cm: "",
+  shipping_class: "STANDARD",
+  min_nationwide_quantity: "1",
+  min_nationwide_order_value: "0",
+  handling_minutes: "15",
+  cost_price: "",
+  packaging_cost: "0",
+  handling_cost: "0",
+  return_risk_percent: "0",
+  min_contribution_rupees: "",
+  min_margin_percent: "",
 };
 
 const PRODUCT_UNITS = ["pcs", "pack", "kg", "g", "L", "ml"] as const;
@@ -107,6 +137,7 @@ export default function VendorDashboard() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [storeSaving, setStoreSaving] = useState(false);
+  const [fulfillmentSaving, setFulfillmentSaving] = useState(false);
   const [transitioningOrderId, setTransitioningOrderId] = useState<string | null>(null);
   const [savingProduct, setSavingProduct] = useState(false);
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
@@ -122,9 +153,9 @@ export default function VendorDashboard() {
     if (!activeVendor?.id) return;
     setIsLoading(true);
     const [vendorResult, ordersResult, productsResult] = await Promise.all([
-      supabase.from("vendors").select("id,business_name,is_open").eq("id", activeVendor.id).maybeSingle(),
+      supabase.from("vendors").select("id,business_name,is_open,local_30_min_enabled,local_standard_enabled").eq("id", activeVendor.id).maybeSingle(),
       supabase.from("orders").select("*").eq("vendor_id", activeVendor.id).order("created_at", { ascending: false }).limit(100),
-      supabase.from("products").select("id,name,price,unit,image_url,in_stock,category,brand,quantity,weight").eq("vendor_id", activeVendor.id).order("created_at", { ascending: false }),
+      supabase.from("products").select("id,name,price,unit,image_url,in_stock,category,brand,quantity,weight,delivery_mode,fresh_eligible,nationwide_shipping_enabled,requires_cold_chain,packed_weight_grams,package_length_cm,package_width_cm,package_height_cm,shipping_class,min_nationwide_quantity,min_nationwide_order_value,handling_minutes").eq("vendor_id", activeVendor.id).order("created_at", { ascending: false }),
     ]);
     const firstError = vendorResult.error || ordersResult.error || productsResult.error;
     if (firstError) {
@@ -149,7 +180,7 @@ export default function VendorDashboard() {
       }
       const { data, error: vendorError } = await supabase
         .from("vendors")
-        .select("id,business_name,is_open")
+        .select("id,business_name,is_open,local_30_min_enabled,local_standard_enabled")
         .eq("owner_id", user.id)
         .maybeSingle();
       if (vendorError || !data) {
@@ -229,6 +260,21 @@ export default function VendorDashboard() {
     setStoreSaving(false);
   };
 
+  const setThirtyMinuteStatus = async (enabled: boolean) => {
+    if (fulfillmentSaving || !vendor) return;
+    setFulfillmentSaving(true);
+    setError("");
+    const { error: rpcError } = await supabase.rpc("vendor_set_fulfillment_status", { p_local_30_min_enabled: enabled });
+    if (rpcError) {
+      console.error("30-minute fulfillment status update failed:", rpcError);
+      setError("30-minute Fresh could not be changed. Please try again.");
+    } else {
+      setMessage(enabled ? "30-minute Fresh is enabled for eligible products." : "30-minute Fresh is paused. Local standard delivery remains available.");
+      await refreshData();
+    }
+    setFulfillmentSaving(false);
+  };
+
   const advanceOrder = async (order: Order) => {
     const transition = NEXT_STATUS[order.status || "PENDING"];
     if (!transition || transitioningOrderId) return;
@@ -252,8 +298,45 @@ export default function VendorDashboard() {
     setEditingProduct(product || null);
     if (product) {
       setProductForm({
-        name: product.name || "", price: String(product.price ?? ""), category: product.category || "", brand: product.brand || "", quantity: String(product.quantity ?? ""),
-        weight: product.weight || "", unit: product.unit || "", image_url: product.image_url || "", in_stock: product.in_stock !== false,
+        ...EMPTY_PRODUCT,
+        name: product.name || "",
+        price: String(product.price ?? ""),
+        category: product.category || "",
+        brand: product.brand || "",
+        quantity: String(product.quantity ?? ""),
+        weight: product.weight || "",
+        unit: product.unit || "",
+        image_url: product.image_url || "",
+        in_stock: product.in_stock !== false,
+        delivery_mode: product.delivery_mode || "LOCAL_STANDARD",
+        fresh_eligible: product.fresh_eligible === true,
+        nationwide_shipping_enabled: product.nationwide_shipping_enabled === true,
+        requires_cold_chain: product.requires_cold_chain === true,
+        packed_weight_grams: String(product.packed_weight_grams ?? ""),
+        package_length_cm: String(product.package_length_cm ?? ""),
+        package_width_cm: String(product.package_width_cm ?? ""),
+        package_height_cm: String(product.package_height_cm ?? ""),
+        shipping_class: product.shipping_class || "STANDARD",
+        min_nationwide_quantity: String(product.min_nationwide_quantity ?? 1),
+        min_nationwide_order_value: String(product.min_nationwide_order_value ?? 0),
+        handling_minutes: String(product.handling_minutes ?? 15),
+      });
+      void supabase.rpc("vendor_get_product_fulfillment", { p_product_id: product.id }).then(({ data, error: fulfillmentError }) => {
+        if (fulfillmentError) {
+          console.error("Product fulfillment profile load failed:", fulfillmentError);
+          return;
+        }
+        const row = Array.isArray(data) ? data[0] : data;
+        if (!row) return;
+        setProductForm((current) => ({
+          ...current,
+          cost_price: String(row.cost_price ?? ""),
+          packaging_cost: String(row.packaging_cost ?? 0),
+          handling_cost: String(row.handling_cost ?? 0),
+          return_risk_percent: String(row.return_risk_percent ?? 0),
+          min_contribution_rupees: String(row.min_contribution_rupees ?? ""),
+          min_margin_percent: String(row.min_margin_percent ?? ""),
+        }));
       });
     } else {
       let defaults: Partial<typeof EMPTY_PRODUCT> = {};
@@ -271,10 +354,49 @@ export default function VendorDashboard() {
     const price = Number(productForm.price);
     const quantity = productForm.quantity === "" ? null : Number(productForm.quantity);
     const unit = productForm.unit.trim();
+    const optionalNumber = (value: string) => value.trim() === "" ? null : Number(value);
+    const packedWeight = optionalNumber(productForm.packed_weight_grams);
+    const packageLength = optionalNumber(productForm.package_length_cm);
+    const packageWidth = optionalNumber(productForm.package_width_cm);
+    const packageHeight = optionalNumber(productForm.package_height_cm);
+    const minNationwideQuantity = Number(productForm.min_nationwide_quantity || 1);
+    const minNationwideOrderValue = Number(productForm.min_nationwide_order_value || 0);
+    const handlingMinutes = Number(productForm.handling_minutes || 0);
+    const costPrice = optionalNumber(productForm.cost_price);
+    const packagingCost = Number(productForm.packaging_cost || 0);
+    const handlingCost = Number(productForm.handling_cost || 0);
+    const returnRisk = Number(productForm.return_risk_percent || 0);
+    const minContribution = optionalNumber(productForm.min_contribution_rupees);
+    const minMargin = optionalNumber(productForm.min_margin_percent);
+
     if (!productForm.name.trim() || !productForm.category.trim() || !Number.isFinite(price) || price < 0 || (quantity !== null && (!Number.isFinite(quantity) || quantity < 0)) || !unit) {
       setError("Enter a product name, category, valid price, non-negative quantity, and unit.");
       return;
     }
+    const numericInputs = [packedWeight, packageLength, packageWidth, packageHeight, minNationwideQuantity, minNationwideOrderValue, handlingMinutes, costPrice, packagingCost, handlingCost, returnRisk, minContribution, minMargin];
+    if (numericInputs.some((value) => value !== null && !Number.isFinite(value))) {
+      setError("Check the delivery and profitability numbers before saving.");
+      return;
+    }
+    if (productForm.delivery_mode === "LOCAL_30_MIN" && !productForm.fresh_eligible) {
+      setError("30-minute Fresh products must be marked Fresh eligible.");
+      return;
+    }
+    if (productForm.fresh_eligible && productForm.delivery_mode !== "LOCAL_30_MIN") {
+      setError("Fresh eligible products must use the 30-minute Fresh delivery mode.");
+      return;
+    }
+    if (productForm.nationwide_shipping_enabled && (
+      productForm.delivery_mode !== "INDIA_STANDARD"
+      || productForm.requires_cold_chain
+      || productForm.shipping_class !== "STANDARD"
+      || !packedWeight
+      || costPrice === null
+    )) {
+      setError("India delivery requires India Standard mode, packed weight, cost price, standard shipping, and no cold-chain requirement.");
+      return;
+    }
+
     setSavingProduct(true);
     setError("");
     const payload = {
@@ -282,38 +404,77 @@ export default function VendorDashboard() {
       weight: productForm.weight.trim() || null, unit,
       image_url: productForm.image_url.trim() || null, in_stock: productForm.in_stock,
     };
-    let result = editingProduct
-      ? await supabase.rpc("vendor_update_product", {
-          p_product_id: editingProduct.id,
-          p_name: payload.name,
-          p_price: payload.price,
-          p_category: payload.category,
-          p_quantity: payload.quantity,
-          p_weight: payload.weight,
-          p_unit: payload.unit,
-          p_image_url: payload.image_url,
-          p_in_stock: payload.in_stock,
-          p_set_name: true,
-          p_set_price: true,
-          p_set_category: true,
-          p_set_quantity: true,
-          p_set_weight: true,
-          p_set_unit: true,
-          p_set_image_url: true,
-          p_set_in_stock: true,
-        })
-      : await supabase.from("products").insert({ ...payload, vendor_id: vendor.id });
-    let saveError = result.error;
-    if (!saveError && editingProduct) {
-      const brandResult = await supabase.rpc("vendor_update_product_brand", {
+
+    let productId = editingProduct?.id || "";
+    let createdProduct = false;
+    let saveError: any = null;
+
+    if (editingProduct) {
+      const baseResult = await supabase.rpc("vendor_update_product", {
         p_product_id: editingProduct.id,
-        p_brand: payload.brand,
+        p_name: payload.name,
+        p_price: payload.price,
+        p_category: payload.category,
+        p_quantity: payload.quantity,
+        p_weight: payload.weight,
+        p_unit: payload.unit,
+        p_image_url: payload.image_url,
+        p_in_stock: payload.in_stock,
+        p_set_name: true,
+        p_set_price: true,
+        p_set_category: true,
+        p_set_quantity: true,
+        p_set_weight: true,
+        p_set_unit: true,
+        p_set_image_url: true,
+        p_set_in_stock: true,
       });
-      saveError = brandResult.error;
+      saveError = baseResult.error;
+      if (!saveError) {
+        const brandResult = await supabase.rpc("vendor_update_product_brand", { p_product_id: editingProduct.id, p_brand: payload.brand });
+        saveError = brandResult.error;
+      }
+    } else {
+      const insertResult = await supabase.from("products")
+        .insert({ ...payload, vendor_id: vendor.id, delivery_mode: "LOCAL_STANDARD", fresh_eligible: false, nationwide_shipping_enabled: false })
+        .select("id")
+        .single();
+      saveError = insertResult.error;
+      productId = String(insertResult.data?.id || "");
+      createdProduct = Boolean(productId);
     }
+
+    if (!saveError && productId) {
+      const fulfillmentResult = await supabase.rpc("vendor_update_product_fulfillment", {
+        p_product_id: productId,
+        p_delivery_mode: productForm.delivery_mode,
+        p_fresh_eligible: productForm.fresh_eligible,
+        p_nationwide_shipping_enabled: productForm.nationwide_shipping_enabled,
+        p_requires_cold_chain: productForm.requires_cold_chain,
+        p_packed_weight_grams: packedWeight,
+        p_package_length_cm: packageLength,
+        p_package_width_cm: packageWidth,
+        p_package_height_cm: packageHeight,
+        p_shipping_class: productForm.shipping_class,
+        p_min_nationwide_quantity: minNationwideQuantity,
+        p_min_nationwide_order_value: minNationwideOrderValue,
+        p_handling_minutes: handlingMinutes,
+        p_cost_price: costPrice,
+        p_packaging_cost: packagingCost,
+        p_handling_cost: handlingCost,
+        p_return_risk_percent: returnRisk,
+        p_min_contribution_rupees: minContribution,
+        p_min_margin_percent: minMargin,
+      });
+      saveError = fulfillmentResult.error;
+    }
+
     if (saveError) {
       console.error("Product save failed:", saveError);
-      setError("Product could not be saved. Please review the fields and try again.");
+      if (createdProduct && productId) {
+        await supabase.from("products").delete().eq("id", productId).eq("vendor_id", vendor.id);
+      }
+      setError("Product could not be saved. Check the delivery settings and try again.");
     } else {
       setIsProductFormOpen(false);
       try {
@@ -323,7 +484,7 @@ export default function VendorDashboard() {
           unit: payload.unit,
         }));
       } catch {}
-      setMessage(editingProduct ? "Product updated." : "Product added. Category, brand and unit will be remembered for your next product.");
+      setMessage(editingProduct ? "Product and delivery settings updated." : "Product added with safe delivery settings.");
       await refreshData();
     }
     setSavingProduct(false);
@@ -476,10 +637,10 @@ export default function VendorDashboard() {
         ].map(([label, value, Icon, colour]: any) => <div key={label} className="rounded-2xl border border-[#dde7df] bg-white p-5"><Icon className={colour} size={20} /><p className="mt-4 text-xs font-black uppercase tracking-wider text-slate-500">{label}</p><p className="mt-1 text-3xl font-black">{value}</p></div>)}</section>
         <section className="mt-5 rounded-3xl border border-[#dde7df] bg-white p-4 md:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-black">Needs attention</h2><p className="text-xs text-slate-500">Zeshu brings the work that matters to the top so you do not need to search around.</p></div><div className="flex flex-wrap gap-2"><button onClick={() => openProductForm()} className="rounded-xl bg-[#087443] px-3 py-2 text-xs font-black text-white"><Plus size={15} className="mr-1 inline" />Add product</button><button onClick={() => setTab("orders")} className="rounded-xl border border-[#cfe8d7] px-3 py-2 text-xs font-black text-[#087443]">Open orders</button></div></div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <button onClick={() => setTab("orders")} className="rounded-2xl bg-amber-50 p-4 text-left"><p className="text-xs font-black uppercase tracking-wider text-amber-700">Orders to handle</p><p className="mt-1 text-3xl font-black text-slate-900">{attentionOrderCount}</p><p className="mt-1 text-xs text-slate-600">Pending, confirmed or preparing</p></button>
             <button onClick={() => { setTab("products"); setStockFilter("LOW"); }} className="rounded-2xl bg-orange-50 p-4 text-left"><p className="text-xs font-black uppercase tracking-wider text-orange-700">Low stock</p><p className="mt-1 text-3xl font-black text-slate-900">{lowStockCount}</p><p className="mt-1 text-xs text-slate-600">5 units or fewer</p></button>
-            <button onClick={() => void setStoreStatus(!(vendor?.is_open === true))} disabled={storeSaving} className="rounded-2xl bg-emerald-50 p-4 text-left disabled:opacity-60"><p className="text-xs font-black uppercase tracking-wider text-emerald-700">Store</p><p className="mt-1 text-xl font-black text-slate-900">{vendor?.is_open ? "Open" : "Closed"}</p><p className="mt-1 text-xs text-slate-600">{storeSaving ? "Saving..." : "Tap to change status"}</p></button>
+            <button onClick={() => void setStoreStatus(!(vendor?.is_open === true))} disabled={storeSaving} className="rounded-2xl bg-emerald-50 p-4 text-left disabled:opacity-60"><p className="text-xs font-black uppercase tracking-wider text-emerald-700">Store</p><p className="mt-1 text-xl font-black text-slate-900">{vendor?.is_open ? "Open" : "Closed"}</p><p className="mt-1 text-xs text-slate-600">{storeSaving ? "Saving..." : "Tap to change status"}</p></button><button onClick={() => void setThirtyMinuteStatus(!(vendor?.local_30_min_enabled === true))} disabled={fulfillmentSaving} className="rounded-2xl bg-sky-50 p-4 text-left disabled:opacity-60"><p className="text-xs font-black uppercase tracking-wider text-sky-700">⚡ 30-min Fresh</p><p className="mt-1 text-xl font-black text-slate-900">{vendor?.local_30_min_enabled ? "Enabled" : "Paused"}</p><p className="mt-1 text-xs text-slate-600">{fulfillmentSaving ? "Saving..." : "Only eligible Fresh products use this lane"}</p></button>
           </div>
         </section>
         <section className="mt-6 grid gap-6 lg:grid-cols-[1.1fr_.9fr]"><div className="rounded-3xl border border-[#dde7df] bg-white p-5"><div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-black">Recent orders</h2><button onClick={() => setTab("orders")} className="flex items-center text-sm font-bold text-[#087443]">View all <ChevronRight size={16} /></button></div><RecentOrders orders={orders.slice(0, 5)} /></div><div className="rounded-3xl border border-[#dde7df] bg-white p-5"><h2 className="text-lg font-black">Order flow</h2><div className="mt-4 grid grid-cols-2 gap-3">{["PENDING", "CONFIRMED", "PREPARING", "READY_FOR_PICKUP", "DELIVERED"].map((status) => <div key={status} className="rounded-2xl bg-[#f1f5f2] p-3"><p className="text-[11px] font-black text-slate-500">{status.replaceAll("_", " ")}</p><p className="mt-1 text-2xl font-black">{statusCount(status)}</p></div>)}</div></div></section>
@@ -508,7 +669,7 @@ function OrderCard({ order, isTransitioning, onAdvance }: { order: Order; isTran
 function ProductCard({ product, stockLoading, deleteLoading, onEdit, onToggle, onAdjustQuantity, onDelete }: { product: Product; stockLoading: boolean; deleteLoading: boolean; onEdit: () => void; onToggle: () => void; onAdjustQuantity: (delta: number) => void; onDelete: () => void }) {
   const [imageFailed, setImageFailed] = useState(false);
   const numericQuantity = Number(product.quantity); const lowStock = product.in_stock !== false && Number.isFinite(numericQuantity) && numericQuantity > 0 && numericQuantity <= 5;
-  return <article className="overflow-hidden rounded-3xl border border-[#dde7df] bg-white"><div className="flex gap-3 p-4"><div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl bg-[#f1f5f2]">{product.image_url && !imageFailed ? <img src={product.image_url} alt={product.name} onError={() => setImageFailed(true)} className="h-full w-full object-cover" /> : <ImageIcon aria-label="Product image unavailable" className="text-slate-500" />}</div><div className="min-w-0 flex-1"><h2 className="truncate font-black">{product.name}</h2><p className="mt-1 text-sm font-black text-[#087443]">₹{money(product.price)} <span className="font-medium text-slate-500">{product.unit || ""}</span></p><p className="mt-1 text-xs text-slate-500">{product.category || "Uncategorized"}{product.weight ? ` · ${product.weight}` : ""}</p></div></div><div className="flex flex-wrap items-center justify-between gap-2 border-y border-[#dde7df] px-4 py-3 text-xs font-bold"><div className="flex flex-wrap gap-2">{product.in_stock !== false ? <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-emerald-700">In stock</span> : <span className="rounded-full bg-red-50 px-2 py-1 text-red-700">Out of stock</span>}{product.quantity !== null && product.quantity !== "" && <span className={`rounded-full px-2 py-1 ${lowStock ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{lowStock ? "Low stock · " : "Quantity · "}{product.quantity}</span>}</div><div className="inline-flex items-center overflow-hidden rounded-lg border border-[#dde7df] bg-white"><button aria-label={`Reduce ${product.name} quantity`} onClick={() => onAdjustQuantity(-1)} disabled={stockLoading} className="px-2.5 py-1.5 text-base font-black text-slate-600 disabled:opacity-50">−</button><span className="min-w-8 border-x border-[#dde7df] px-2 py-1.5 text-center text-xs font-black">{Number.isFinite(Number(product.quantity)) ? Number(product.quantity) : 0}</span><button aria-label={`Increase ${product.name} quantity`} onClick={() => onAdjustQuantity(1)} disabled={stockLoading} className="px-2.5 py-1.5 text-base font-black text-[#087443] disabled:opacity-50">+</button></div></div><div className="grid grid-cols-3 gap-2 p-3"><button onClick={onToggle} disabled={stockLoading} className="inline-flex items-center justify-center gap-1 rounded-xl bg-slate-800 px-2 py-2 text-xs font-black hover:bg-slate-700 disabled:opacity-60">{stockLoading ? <Loader2 className="animate-spin" size={15} /> : product.in_stock !== false ? <EyeOff size={15} /> : <Eye size={15} />}{product.in_stock !== false ? "Hide" : "Stock"}</button><button onClick={onEdit} className="inline-flex items-center justify-center gap-1 rounded-xl bg-[#087443]/15 px-2 py-2 text-xs font-black text-[#087443] hover:bg-[#087443]/25"><Edit3 size={15} />Edit</button><button onClick={onDelete} disabled={deleteLoading} className="inline-flex items-center justify-center gap-1 rounded-xl bg-red-50 px-2 py-2 text-xs font-black text-red-700 hover:bg-red-100">{deleteLoading ? <Loader2 className="animate-spin" size={15} /> : <Trash2 size={15} />}Delete</button></div></article>;
+  return <article className="overflow-hidden rounded-3xl border border-[#dde7df] bg-white"><div className="flex gap-3 p-4"><div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl bg-[#f1f5f2]">{product.image_url && !imageFailed ? <img src={product.image_url} alt={product.name} onError={() => setImageFailed(true)} className="h-full w-full object-cover" /> : <ImageIcon aria-label="Product image unavailable" className="text-slate-500" />}</div><div className="min-w-0 flex-1"><h2 className="truncate font-black">{product.name}</h2><p className="mt-1 text-sm font-black text-[#087443]">₹{money(product.price)} <span className="font-medium text-slate-500">{product.unit || ""}</span></p><p className="mt-1 text-xs text-slate-500">{product.category || "Uncategorized"}{product.weight ? ` · ${product.weight}` : ""}</p><div className="mt-2 flex flex-wrap gap-1">{product.delivery_mode === "LOCAL_30_MIN" && <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-black text-emerald-700">⚡ 30-min Fresh</span>}{product.delivery_mode === "INDIA_STANDARD" && <span className="rounded-full bg-sky-50 px-2 py-1 text-[10px] font-black text-sky-700">🇮🇳 India{product.nationwide_shipping_enabled ? " enabled" : " setup"}</span>}{(!product.delivery_mode || product.delivery_mode === "LOCAL_STANDARD") && <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-600">Local standard</span>}</div></div></div><div className="flex flex-wrap items-center justify-between gap-2 border-y border-[#dde7df] px-4 py-3 text-xs font-bold"><div className="flex flex-wrap gap-2">{product.in_stock !== false ? <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-emerald-700">In stock</span> : <span className="rounded-full bg-red-50 px-2 py-1 text-red-700">Out of stock</span>}{product.quantity !== null && product.quantity !== "" && <span className={`rounded-full px-2 py-1 ${lowStock ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{lowStock ? "Low stock · " : "Quantity · "}{product.quantity}</span>}</div><div className="inline-flex items-center overflow-hidden rounded-lg border border-[#dde7df] bg-white"><button aria-label={`Reduce ${product.name} quantity`} onClick={() => onAdjustQuantity(-1)} disabled={stockLoading} className="px-2.5 py-1.5 text-base font-black text-slate-600 disabled:opacity-50">−</button><span className="min-w-8 border-x border-[#dde7df] px-2 py-1.5 text-center text-xs font-black">{Number.isFinite(Number(product.quantity)) ? Number(product.quantity) : 0}</span><button aria-label={`Increase ${product.name} quantity`} onClick={() => onAdjustQuantity(1)} disabled={stockLoading} className="px-2.5 py-1.5 text-base font-black text-[#087443] disabled:opacity-50">+</button></div></div><div className="grid grid-cols-3 gap-2 p-3"><button onClick={onToggle} disabled={stockLoading} className="inline-flex items-center justify-center gap-1 rounded-xl bg-slate-800 px-2 py-2 text-xs font-black hover:bg-slate-700 disabled:opacity-60">{stockLoading ? <Loader2 className="animate-spin" size={15} /> : product.in_stock !== false ? <EyeOff size={15} /> : <Eye size={15} />}{product.in_stock !== false ? "Hide" : "Stock"}</button><button onClick={onEdit} className="inline-flex items-center justify-center gap-1 rounded-xl bg-[#087443]/15 px-2 py-2 text-xs font-black text-[#087443] hover:bg-[#087443]/25"><Edit3 size={15} />Edit</button><button onClick={onDelete} disabled={deleteLoading} className="inline-flex items-center justify-center gap-1 rounded-xl bg-red-50 px-2 py-2 text-xs font-black text-red-700 hover:bg-red-100">{deleteLoading ? <Loader2 className="animate-spin" size={15} /> : <Trash2 size={15} />}Delete</button></div></article>;
 }
 
 function ProductForm({ form, editing, saving, onClose, onChange, onSubmit }: { form: typeof EMPTY_PRODUCT; editing: boolean; saving: boolean; onClose: () => void; onChange: React.Dispatch<React.SetStateAction<typeof EMPTY_PRODUCT>>; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
@@ -524,5 +685,27 @@ function ProductForm({ form, editing, saving, onClose, onChange, onSubmit }: { f
   const knownCategory = VENDOR_PRODUCT_CATEGORIES.some((category) => category.id === form.category);
   const categoryField = <label className="block text-sm font-bold text-slate-600">Category <span className="text-red-700">*</span><select required value={form.category} onChange={(event) => onChange((current) => ({ ...current, category: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-[#dde7df] bg-white px-3 py-2.5 text-slate-900 outline-none focus:border-emerald-500"><option value="">Select customer category</option>{form.category && !knownCategory && <option value={form.category}>{form.category} (legacy)</option>}{VENDOR_PRODUCT_CATEGORIES.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}</select><span className="mt-1 block text-[10px] font-medium leading-4 text-slate-500">Use the closest standard category so customers can find this item and Zeshu can match backup vendors correctly.</span></label>;
   const field = (key: keyof typeof EMPTY_PRODUCT, label: string, type = "text", required = false) => <label className="block text-sm font-bold text-slate-600">{label}<input required={required} type={type} min={type === "number" ? 0 : undefined} step={key === "price" ? "0.01" : undefined} value={String(form[key] ?? "")} onChange={(event) => onChange((current) => ({ ...current, [key]: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-[#dde7df] bg-white px-3 py-2.5 text-slate-900 outline-none focus:border-emerald-500" /></label>;
-  return <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="product-form-title" className="fixed inset-0 z-50 flex items-end bg-black/35 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4"><form onSubmit={onSubmit} className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-[#dde7df] bg-white p-5 shadow-2xl sm:rounded-3xl"><div className="mb-5 flex items-center justify-between"><div><h2 id="product-form-title" className="text-xl font-black">{editing ? "Edit product" : "Add product"}</h2><p className="text-sm text-slate-500">This product is saved only to your vendor store.</p></div><button type="button" aria-label="Close product form" onClick={onClose} disabled={saving} className="rounded-xl bg-slate-100 p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"><X size={18} /></button></div><div className="grid gap-4 sm:grid-cols-2">{field("name", "Product name", "text", true)}{field("price", "Price (₹)", "number", true)}{categoryField}{field("brand", "Brand")}{field("quantity", "Quantity", "number")}{field("weight", "Weight")}{unitField}</div><div className="mt-4">{field("image_url", "Image URL")}</div><label className="mt-4 flex items-center justify-between rounded-xl border border-[#dde7df] bg-[#f1f5f2] p-3"><span><span className="block font-black">Available for sale</span><span className="text-xs text-slate-500">Inventory is not reserved during checkout.</span></span><input type="checkbox" checked={form.in_stock} onChange={(event) => onChange((current) => ({ ...current, in_stock: event.target.checked }))} className="h-5 w-5 accent-[#087443]" /></label><div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" onClick={onClose} disabled={saving} className="rounded-xl px-4 py-3 font-black text-slate-600">Cancel</button><button disabled={saving} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#087443] px-5 py-3 font-black text-white disabled:opacity-60">{saving && <Loader2 className="animate-spin" size={17} />}{saving ? "Saving..." : editing ? "Save changes" : "Add product"}</button></div></form></div>;
+  return <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="product-form-title" className="fixed inset-0 z-50 flex items-end bg-black/35 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4"><form onSubmit={onSubmit} className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-[#dde7df] bg-white p-5 shadow-2xl sm:rounded-3xl"><div className="mb-5 flex items-center justify-between"><div><h2 id="product-form-title" className="text-xl font-black">{editing ? "Edit product" : "Add product"}</h2><p className="text-sm text-slate-500">This product is saved only to your vendor store.</p></div><button type="button" aria-label="Close product form" onClick={onClose} disabled={saving} className="rounded-xl bg-slate-100 p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"><X size={18} /></button></div><div className="grid gap-4 sm:grid-cols-2">{field("name", "Product name", "text", true)}{field("price", "Price (₹)", "number", true)}{categoryField}{field("brand", "Brand")}{field("quantity", "Quantity", "number")}{field("weight", "Weight")}{unitField}</div><div className="mt-4">{field("image_url", "Image URL")}</div>
+  <section className="mt-5 rounded-2xl border border-[#dce8df] bg-[#f8fbf9] p-4">
+    <div><h3 className="font-black text-slate-900">Delivery setup</h3><p className="mt-1 text-xs leading-5 text-slate-500">Choose where this product should be offered. India delivery stays protected by Zeshu profitability and courier checks before customer payment.</p></div>
+    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <label className="block text-sm font-bold text-slate-600">Delivery mode<select value={form.delivery_mode} onChange={(event) => onChange((current) => ({ ...current, delivery_mode: event.target.value as typeof current.delivery_mode, fresh_eligible: event.target.value === "LOCAL_30_MIN" ? current.fresh_eligible : false, nationwide_shipping_enabled: event.target.value === "INDIA_STANDARD" ? current.nationwide_shipping_enabled : false }))} className="mt-1.5 w-full rounded-xl border border-[#dde7df] bg-white px-3 py-2.5 text-slate-900"><option value="LOCAL_STANDARD">Local standard</option><option value="LOCAL_30_MIN">⚡ 30-min Fresh</option><option value="INDIA_STANDARD">🇮🇳 India delivery</option></select></label>
+      <label className="block text-sm font-bold text-slate-600">Handling time (minutes)<input type="number" min="0" max="10080" value={form.handling_minutes} onChange={(event) => onChange((current) => ({ ...current, handling_minutes: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-[#dde7df] bg-white px-3 py-2.5" /></label>
+    </div>
+    {form.delivery_mode === "LOCAL_30_MIN" && <div className="mt-4 space-y-3"><label className="flex items-center justify-between rounded-xl bg-white p-3 text-sm font-bold"><span>Fresh eligible<span className="block text-[10px] font-medium text-slate-500">Required for the 30-minute Fresh lane.</span></span><input type="checkbox" checked={form.fresh_eligible} onChange={(event) => onChange((current) => ({ ...current, fresh_eligible: event.target.checked }))} className="h-5 w-5 accent-[#087443]" /></label><label className="flex items-center justify-between rounded-xl bg-white p-3 text-sm font-bold"><span>Requires cold chain<span className="block text-[10px] font-medium text-slate-500">Use for chilled items such as milk, curd, paneer or meat.</span></span><input type="checkbox" checked={form.requires_cold_chain} onChange={(event) => onChange((current) => ({ ...current, requires_cold_chain: event.target.checked }))} className="h-5 w-5 accent-[#087443]" /></label></div>}
+    {form.delivery_mode === "INDIA_STANDARD" && <div className="mt-4">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <label className="block text-sm font-bold text-slate-600">Packed weight (g)<input type="number" min="1" value={form.packed_weight_grams} onChange={(event) => onChange((current) => ({ ...current, packed_weight_grams: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-[#dde7df] bg-white px-3 py-2.5" /></label>
+        <label className="block text-sm font-bold text-slate-600">Min quantity<input type="number" min="1" value={form.min_nationwide_quantity} onChange={(event) => onChange((current) => ({ ...current, min_nationwide_quantity: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-[#dde7df] bg-white px-3 py-2.5" /></label>
+        <label className="block text-sm font-bold text-slate-600">Min India basket (₹)<input type="number" min="0" step="0.01" value={form.min_nationwide_order_value} onChange={(event) => onChange((current) => ({ ...current, min_nationwide_order_value: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-[#dde7df] bg-white px-3 py-2.5" /></label>
+      </div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">{(["package_length_cm","package_width_cm","package_height_cm"] as const).map((key) => <label key={key} className="block text-sm font-bold text-slate-600">{key === "package_length_cm" ? "Length (cm)" : key === "package_width_cm" ? "Width (cm)" : "Height (cm)"}<input type="number" min="0" step="0.1" value={form[key]} onChange={(event) => onChange((current) => ({ ...current, [key]: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-[#dde7df] bg-white px-3 py-2.5" /></label>)}</div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="block text-sm font-bold text-slate-600">Shipping class<select value={form.shipping_class} onChange={(event) => onChange((current) => ({ ...current, shipping_class: event.target.value, nationwide_shipping_enabled: event.target.value === "STANDARD" ? current.nationwide_shipping_enabled : false }))} className="mt-1.5 w-full rounded-xl border border-[#dde7df] bg-white px-3 py-2.5"><option value="STANDARD">Standard</option><option value="FRAGILE">Fragile / admin review</option><option value="HEAVY">Heavy / local recommended</option><option value="LOCAL_ONLY">Local only</option></select></label><label className="flex items-center justify-between rounded-xl bg-white p-3 text-sm font-bold"><span>Requires cold chain<span className="block text-[10px] font-medium text-slate-500">Cold-chain items cannot be enabled nationwide.</span></span><input type="checkbox" checked={form.requires_cold_chain} onChange={(event) => onChange((current) => ({ ...current, requires_cold_chain: event.target.checked, nationwide_shipping_enabled: event.target.checked ? false : current.nationwide_shipping_enabled }))} className="h-5 w-5 accent-[#087443]" /></label></div>
+      <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50 p-3"><p className="text-xs font-black text-amber-800">Private profitability inputs — customers never see these values.</p><div className="mt-3 grid gap-3 sm:grid-cols-3">
+        {(["cost_price","packaging_cost","handling_cost","return_risk_percent","min_contribution_rupees","min_margin_percent"] as const).map((key) => <label key={key} className="block text-xs font-bold text-slate-600">{key === "cost_price" ? "Your cost (₹)" : key === "packaging_cost" ? "Packaging (₹)" : key === "handling_cost" ? "Handling (₹)" : key === "return_risk_percent" ? "Return/RTO risk %" : key === "min_contribution_rupees" ? "Min profit contribution ₹" : "Min margin %"}<input type="number" min="0" step="0.01" value={form[key]} onChange={(event) => onChange((current) => ({ ...current, [key]: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5" /></label>)}
+      </div></div>
+      <label className="mt-4 flex items-center justify-between rounded-xl border border-sky-100 bg-sky-50 p-3"><span><span className="block font-black text-sky-800">Eligible for India delivery</span><span className="text-[10px] font-medium text-sky-700">This only marks the product ready. Checkout still requires a live courier quote and Zeshu profit gate.</span></span><input type="checkbox" checked={form.nationwide_shipping_enabled} disabled={form.shipping_class !== "STANDARD" || form.requires_cold_chain} onChange={(event) => onChange((current) => ({ ...current, nationwide_shipping_enabled: event.target.checked }))} className="h-5 w-5 accent-sky-600 disabled:opacity-40" /></label>
+    </div>}
+  </section>
+  <label className="mt-4 flex items-center justify-between rounded-xl border border-[#dde7df] bg-[#f1f5f2] p-3"><span><span className="block font-black">Available for sale</span><span className="text-xs text-slate-500">Inventory is not reserved during checkout.</span></span><input type="checkbox" checked={form.in_stock} onChange={(event) => onChange((current) => ({ ...current, in_stock: event.target.checked }))} className="h-5 w-5 accent-[#087443]" /></label><div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" onClick={onClose} disabled={saving} className="rounded-xl px-4 py-3 font-black text-slate-600">Cancel</button><button disabled={saving} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#087443] px-5 py-3 font-black text-white disabled:opacity-60">{saving && <Loader2 className="animate-spin" size={17} />}{saving ? "Saving..." : editing ? "Save changes" : "Add product"}</button></div></form></div>;
 }
