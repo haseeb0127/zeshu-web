@@ -4,10 +4,16 @@ import { requireMarketingAdmin } from '@/app/lib/marketing-server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const courierConnected = () => Boolean(
-  process.env.ZESHU_COURIER_PROVIDER?.trim()
-  && process.env.ZESHU_COURIER_RATE_API_URL?.trim()
-);
+// A provider is "connected" only after Zeshu has a reviewed adapter that can
+// perform real pincode serviceability + rate quotes. Environment variables alone
+// must never unlock nationwide payments.
+const SUPPORTED_COURIER_ADAPTERS = new Set<string>();
+
+const courierConnected = () => {
+  const provider = process.env.ZESHU_COURIER_PROVIDER?.trim().toLowerCase() || '';
+  const rateApiUrl = process.env.ZESHU_COURIER_RATE_API_URL?.trim() || '';
+  return Boolean(provider && rateApiUrl && SUPPORTED_COURIER_ADAPTERS.has(provider));
+};
 
 const numberOrNull = (value: unknown) => {
   if (value === null || value === undefined || value === '') return null;
