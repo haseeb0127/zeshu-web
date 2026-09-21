@@ -12,6 +12,9 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const STAGING_WORKER_HOST = 'zeshu-web-staging.asif-mohammed0127.workers.dev';
+const STAGING_PROJECT_REF = 'xdzgdhupfgsdyzellpqq';
+const STAGING_PREPARE_CHECKOUT_URL = `https://${STAGING_PROJECT_REF}.supabase.co/functions/v1/staging-prepare-test-checkout`;
+const STAGING_ORIGIN = `https://${STAGING_WORKER_HOST}`;
 
 const isPlaceholderRazorpayValue = (value: string | undefined) => {
   const text = String(value || '').trim().toLowerCase();
@@ -120,6 +123,43 @@ export async function POST(request: Request) {
   const requestId = randomUUID();
   const requestHost = (request.headers.get('host') || '').toLowerCase().split(':')[0];
   const isStagingRequest = requestHost === STAGING_WORKER_HOST;
+
+  if (isStagingRequest) {
+    const authorization = request.headers.get('authorization') || '';
+    const requestBody = await request.text();
+    try {
+      const response = await fetch(STAGING_PREPARE_CHECKOUT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: authorization,
+          Origin: STAGING_ORIGIN,
+        },
+        body: requestBody,
+        cache: 'no-store',
+      });
+      const payload = await response.json().catch(() => ({
+        success: false,
+        code: 'STAGING_BACKEND_INVALID_RESPONSE',
+        message: 'Staging checkout returned an invalid response.',
+        requestId,
+      }));
+      return NextResponse.json(payload, {
+        status: response.status,
+        headers: { 'Cache-Control': 'no-store' },
+      });
+    } catch (error) {
+      return checkoutError(
+        requestId,
+        'STAGING_PROXY',
+        'STAGING_BACKEND_UNAVAILABLE',
+        'Staging checkout is temporarily unavailable. Please try again.',
+        503,
+        error,
+      );
+    }
+  }
+
   let stage = 'REQUEST_PARSE';
   try {
     stage = 'AUTH';
