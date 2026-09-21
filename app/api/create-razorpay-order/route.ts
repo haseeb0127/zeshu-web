@@ -308,6 +308,9 @@ export async function POST(request: Request) {
         : NaN;
       const recoverySnapshot = recoveryReservation.pricing_snapshot || {};
       const recoverySnapshotDeliveryFee = Number(recoverySnapshot.delivery_fee);
+      const recoveryFulfillmentCompatible = hasIndiaItems
+        ? recoverySnapshot.fulfillment_mode === 'INDIA_STANDARD'
+        : recoverySnapshot.fulfillment_mode !== 'INDIA_STANDARD';
       const recoveryDeliveryFee = recoverySnapshot.fulfillment_mode === 'INDIA_STANDARD' && Number.isFinite(recoverySnapshotDeliveryFee)
         ? recoverySnapshotDeliveryFee
         : Number.isFinite(recoveryMerchandiseSubtotal) && recoveryMerchandiseSubtotal >= 299 ? 0 : 30;
@@ -340,6 +343,7 @@ export async function POST(request: Request) {
         && sameRecoveryPrices
         && sameRecoveryVendor
         && sameRecoveryAddress
+        && recoveryFulfillmentCompatible
         && sameRecoveryCoordinates;
       const recoveryMatchesCurrentPricing = sameRecoveryPricing
         && sameNumber(recoveryCashDiscount, requestedZeshuCash)
@@ -412,6 +416,9 @@ export async function POST(request: Request) {
         : NaN;
       const snapshot = activeResumable.pricing_snapshot || {};
       const snapshotDeliveryFee = Number(snapshot.delivery_fee);
+      const fulfillmentCompatible = hasIndiaItems
+        ? snapshot.fulfillment_mode === 'INDIA_STANDARD'
+        : snapshot.fulfillment_mode !== 'INDIA_STANDARD';
       const deliveryFee = snapshot.fulfillment_mode === 'INDIA_STANDARD' && Number.isFinite(snapshotDeliveryFee)
         ? snapshotDeliveryFee
         : Number.isFinite(merchandiseSubtotal) && merchandiseSubtotal >= 299 ? 0 : 30;
@@ -433,6 +440,7 @@ export async function POST(request: Request) {
         && sameProductSet
         && currentVendorId === activeResumable.vendor_id
         && activeResumable.delivery_address === deliveryAddress
+        && fulfillmentCompatible
         && samePricing
         && sameNumber(existingCashDiscount, requestedZeshuCash)
         && sameNumber(activeResumable.expected_total_paid, expectedTotal - existingCashDiscount);
