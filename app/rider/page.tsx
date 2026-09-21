@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   MapPin,
   Power,
@@ -35,6 +35,8 @@ export default function RiderDashboard() {
   const [availabilityUpdating, setAvailabilityUpdating] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [ordersError, setOrdersError] = useState("");
+  const [locationStatus, setLocationStatus] = useState<"idle" | "sharing" | "blocked" | "error">("idle");
+  const lastLocationSentAtRef = useRef(0);
 
   const loadRider = useCallback(async () => {
     const {
@@ -232,6 +234,36 @@ export default function RiderDashboard() {
     };
   }, [fetchMyOrders, riderId]);
 
+  useEffect(() => {
+    if (!stagingQaAvailable || !isOnline || !riderId || !navigator.geolocation) {
+      if (!isOnline) setLocationStatus("idle");
+      return;
+    }
+
+    setLocationStatus("sharing");
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const now = Date.now();
+        if (now - lastLocationSentAtRef.current < 8000) return;
+        lastLocationSentAtRef.current = now;
+        const accuracy = Number(position.coords.accuracy);
+        void supabase.rpc("rider_update_location", {
+          p_latitude: position.coords.latitude,
+          p_longitude: position.coords.longitude,
+          p_accuracy_meters: Number.isFinite(accuracy) && accuracy >= 0 ? accuracy : null,
+        }).then(({ error }) => {
+          setLocationStatus(error ? "error" : "sharing");
+        });
+      },
+      (error) => {
+        setLocationStatus(error.code === 1 ? "blocked" : "error");
+      },
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 12000 },
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [isOnline, riderId, stagingQaAvailable]);
+
   const toggleOnline = async () => {
     if (availabilityUpdating || !sessionUserId || !riderId) return;
 
@@ -406,6 +438,9 @@ export default function RiderDashboard() {
           {availabilityUpdating ? "Updating..." : isOnline ? "Go Offline" : "Go Online"}
         </button>
 
+        {stagingQaAvailable && isOnline && <p className="mt-3 text-center text-xs font-bold text-slate-300">
+          {locationStatus === "sharing" ? "Live GPS sharing active for staging delivery tracking." : locationStatus === "blocked" ? "Location permission is blocked. Allow location to test live tracking." : "Trying to share rider GPS…"}
+        </p>}
         {isAdminSuspended && <p role="alert" className="mt-3 text-center text-sm font-bold text-amber-200">Your rider account has been suspended by admin.</p>}
 
         <button
