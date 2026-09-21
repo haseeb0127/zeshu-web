@@ -127,40 +127,32 @@ export async function PATCH(request: Request) {
       }, { status: 400 });
     }
 
-    const publicUpdate = {
-      delivery_mode: deliveryMode,
-      fresh_eligible: deliveryMode === 'LOCAL_30_MIN' && booleanValue(body.fresh_eligible),
-      nationwide_shipping_enabled: nationwide,
-      requires_cold_chain: requiresColdChain,
-      packed_weight_grams: packedWeight,
-      package_length_cm: numberOrNull(body.package_length_cm),
-      package_width_cm: numberOrNull(body.package_width_cm),
-      package_height_cm: numberOrNull(body.package_height_cm),
-      shipping_class: shippingClass,
-      min_nationwide_quantity: Math.max(1, Math.floor(Number(body.min_nationwide_quantity || 1))),
-      min_nationwide_order_value: Math.max(0, Number(body.min_nationwide_order_value || 0)),
-      handling_minutes: Math.max(0, Math.floor(Number(body.handling_minutes || 0))),
-    };
-
-    const profile = {
-      product_id: productId,
-      cost_price: costPrice,
-      packaging_cost: Math.max(0, Number(body.packaging_cost || 0)),
-      handling_cost: Math.max(0, Number(body.handling_cost || 0)),
-      return_risk_percent: Math.min(100, Math.max(0, Number(body.return_risk_percent || 0))),
-      min_contribution_rupees: numberOrNull(body.min_contribution_rupees),
-      min_margin_percent: numberOrNull(body.min_margin_percent),
-      updated_at: new Date().toISOString(),
-    };
-
-    const [productResult, profileResult] = await Promise.all([
-      context.service.from('products').update(publicUpdate).eq('id', productId).select('id').single(),
-      context.service.from('product_fulfillment_profiles').upsert(profile, { onConflict: 'product_id' }),
-    ]);
-    if (productResult.error || profileResult.error) {
+    const { data: updatedProduct, error: updateError } = await context.service.rpc('admin_update_product_fulfillment', {
+      p_admin_user_id: context.userId,
+      p_product_id: productId,
+      p_delivery_mode: deliveryMode,
+      p_fresh_eligible: deliveryMode === 'LOCAL_30_MIN' && booleanValue(body.fresh_eligible),
+      p_nationwide_shipping_enabled: nationwide,
+      p_requires_cold_chain: requiresColdChain,
+      p_packed_weight_grams: packedWeight,
+      p_package_length_cm: numberOrNull(body.package_length_cm),
+      p_package_width_cm: numberOrNull(body.package_width_cm),
+      p_package_height_cm: numberOrNull(body.package_height_cm),
+      p_shipping_class: shippingClass,
+      p_min_nationwide_quantity: Math.max(1, Math.floor(Number(body.min_nationwide_quantity || 1))),
+      p_min_nationwide_order_value: Math.max(0, Number(body.min_nationwide_order_value || 0)),
+      p_handling_minutes: Math.max(0, Math.floor(Number(body.handling_minutes || 0))),
+      p_cost_price: costPrice,
+      p_packaging_cost: Math.max(0, Number(body.packaging_cost || 0)),
+      p_handling_cost: Math.max(0, Number(body.handling_cost || 0)),
+      p_return_risk_percent: Math.min(100, Math.max(0, Number(body.return_risk_percent || 0))),
+      p_min_contribution_rupees: numberOrNull(body.min_contribution_rupees),
+      p_min_margin_percent: numberOrNull(body.min_margin_percent),
+    });
+    if (updateError || !updatedProduct) {
       return NextResponse.json({ error: 'Product fulfillment settings could not be saved.' }, { status: 503 });
     }
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, product: updatedProduct });
   }
 
   return NextResponse.json({ error: 'Unsupported fulfillment action.' }, { status: 400 });
