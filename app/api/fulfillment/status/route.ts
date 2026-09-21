@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { evaluateJagtialServiceArea } from '@/app/lib/service-area';
+import { isNationwideCourierReady } from '@/app/lib/courier-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     local_status: localStatus,
     local_30_min_available: Object.values(vendor30Min).some(Boolean),
-    nationwide_checkout_enabled: settingsResult.data?.nationwide_checkout_enabled === true,
+    nationwide_checkout_enabled: settingsResult.data?.nationwide_checkout_enabled === true && isNationwideCourierReady(),
     vendor_30_min: vendor30Min,
   });
 }
