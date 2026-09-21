@@ -645,6 +645,10 @@ export async function POST(request: Request) {
       customerShippingCharge: number;
       subtotal: number;
       freeShipping: boolean;
+      contributionRupees: number;
+      marginPercent: number;
+      minimumContributionRupees: number;
+      minimumMarginPercent: number;
       deliveryPostcode: string;
       weightKg: number;
       dimensions: { lengthCm: number; breadthCm: number; heightCm: number };
@@ -802,6 +806,10 @@ export async function POST(request: Request) {
         customerShippingCharge: selected.customerShippingCharge,
         subtotal,
         freeShipping: selected.freeShipping,
+        contributionRupees: selected.decision.contributionRupees,
+        marginPercent: selected.decision.marginPercent,
+        minimumContributionRupees: minimumContribution,
+        minimumMarginPercent: minimumMargin,
         deliveryPostcode,
         weightKg,
         dimensions: { lengthCm, breadthCm, heightCm },
@@ -887,7 +895,6 @@ export async function POST(request: Request) {
         provider: 'shiprocket',
         courier_id: indiaShipping.quote.courierId,
         courier_name: indiaShipping.quote.courierName,
-        courier_cost: indiaShipping.quote.courierCost,
         customer_shipping_charge: indiaShipping.customerShippingCharge,
         free_shipping: indiaShipping.freeShipping,
         estimated_delivery_days: indiaShipping.quote.estimatedDeliveryDays,
@@ -914,6 +921,30 @@ export async function POST(request: Request) {
     reservationExpectedTotal = Number(updatedReservation.expected_total_paid);
     if (!Number.isFinite(reservationExpectedTotal) || reservationExpectedTotal <= 0) {
       return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to prepare the database-verified checkout total.', 500);
+    }
+
+    if (indiaShipping) {
+      const { error: auditError } = await serviceClient
+        .from('fulfillment_quote_audits')
+        .upsert({
+          reservation_id: reservationId,
+          provider: 'shiprocket',
+          courier_company_id: indiaShipping.quote.courierId,
+          courier_name: indiaShipping.quote.courierName,
+          courier_cost: indiaShipping.quote.courierCost,
+          customer_shipping_charge: indiaShipping.customerShippingCharge,
+          free_shipping: indiaShipping.freeShipping,
+          contribution_rupees: indiaShipping.contributionRupees,
+          margin_percent: indiaShipping.marginPercent,
+          minimum_contribution_rupees: indiaShipping.minimumContributionRupees,
+          minimum_margin_percent: indiaShipping.minimumMarginPercent,
+          shipment_weight_kg: Math.round(indiaShipping.weightKg * 1000) / 1000,
+          delivery_postcode: indiaShipping.deliveryPostcode,
+          quoted_at: new Date().toISOString(),
+        }, { onConflict: 'reservation_id' });
+      if (auditError) {
+        return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to lock in the India-delivery quote safely. No payment was started.', 500, auditError);
+      }
     }
 
     stage = 'CASH_RESERVATION';
