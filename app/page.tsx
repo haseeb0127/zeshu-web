@@ -2686,6 +2686,56 @@ export default function ZeshuSuperApp() {
         }
       }
 
+      if (orderData.stagingPaymentSimulator === true) {
+        const confirmed = window.confirm(
+          'STAGING TEST ONLY\n\nNo real money will be charged and Razorpay will not be contacted.\n\nSimulate a successful test payment and create this order in the isolated staging database?',
+        );
+        if (!confirmed) {
+          setIsLoading(false);
+          setIsCheckoutOpening(false);
+          showToast('Staging test payment cancelled. No money was charged.');
+          return;
+        }
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          setIsLoading(false);
+          setIsCheckoutOpening(false);
+          showCheckoutError('Your staging session has expired. Please sign in again.', 'SESSION_EXPIRED');
+          return;
+        }
+
+        const simulationResponse = await fetch('/api/staging/complete-test-order', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ reservationId, orderId }),
+        });
+        const simulationData = await simulationResponse.json().catch(() => ({}));
+        if (!simulationResponse.ok || simulationData?.success !== true || !simulationData?.order) {
+          setIsLoading(false);
+          setIsCheckoutOpening(false);
+          showCheckoutError(
+            typeof simulationData?.error === 'string' ? simulationData.error : 'The staging test order could not be completed.',
+            'STAGING_TEST_CHECKOUT_FAILED',
+          );
+          return;
+        }
+
+        setCart([]);
+        setIsCartOpen(false);
+        setCheckoutError(null);
+        setTrackedOrder(simulationData.order);
+        setMyOrders((current) => [simulationData.order, ...current.filter((order) => order.id !== simulationData.order.id)]);
+        setIsTrackingOpen(true);
+        setIsLoading(false);
+        setIsCheckoutOpening(false);
+        showToast('Staging test order placed. No real payment was taken.');
+        return;
+      }
+
       let paymentSucceeded = false;
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, amount: Number(orderData.amount), currency: orderData.currency || 'INR', name: "Zeshu Super App", order_id: orderId,
