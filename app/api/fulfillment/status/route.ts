@@ -25,13 +25,15 @@ export async function POST(request: Request) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const [settingsResult, vendorsResult, ridersResult] = await Promise.all([
+  const activeOrderStatuses = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'PICKED_UP', 'OUT_FOR_DELIVERY'];
+  const [settingsResult, vendorsResult, ridersResult, activeOrdersResult] = await Promise.all([
     service.from('fulfillment_settings').select('nationwide_checkout_enabled').eq('id', 'default').maybeSingle(),
     service.from('vendors').select('id,is_open,admin_suspended,local_30_min_enabled'),
-    service.from('riders').select('id').eq('is_active', true).eq('admin_suspended', false).limit(1),
+    service.from('riders').select('id,user_id').eq('is_active', true).eq('admin_suspended', false),
+    service.from('orders').select('assigned_rider_id,rider_id,status').in('status', activeOrderStatuses),
   ]);
 
-  if (settingsResult.error || vendorsResult.error || ridersResult.error) {
+  if (settingsResult.error || vendorsResult.error || ridersResult.error || activeOrdersResult.error) {
     return NextResponse.json({
       local_status: localStatus,
       local_30_min_available: false,
@@ -40,11 +42,18 @@ export async function POST(request: Request) {
     }, { status: 200 });
   }
 
-  const hasActiveRider = (ridersResult.data || []).length > 0;
+  const busyRiderIds = new Set<string>();
+  for (const order of activeOrdersResult.data || []) {
+    if (order.assigned_rider_id) busyRiderIds.add(String(order.assigned_rider_id));
+    if (order.rider_id) busyRiderIds.add(String(order.rider_id));
+  }
+  const hasAvailableRider = (ridersResult.data || []).some((rider: any) =>
+    !busyRiderIds.has(String(rider.id)) && !busyRiderIds.has(String(rider.user_id || ''))
+  );
   const localServiceable = localStatus === 'ELIGIBLE';
   const vendor30Min = Object.fromEntries((vendorsResult.data || []).map((vendor: any) => [
     String(vendor.id),
-    Boolean(localServiceable && hasActiveRider && vendor.is_open === true && vendor.admin_suspended !== true && vendor.local_30_min_enabled === true),
+    Boolean(localServiceable && hasAvailableRider && vendor.is_open === true && vendor.admin_suspended !== true && vendor.local_30_min_enabled === true),
   ]));
 
   return NextResponse.json({
