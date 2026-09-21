@@ -9,13 +9,30 @@ const isPlaceholder = (value: string) => {
     || text.includes('dummy');
 };
 
+type OpenNextCloudflareContext = {
+  env?: Record<string, unknown>;
+};
+
+const getOpenNextBinding = (name: string) => {
+  try {
+    const contextSymbol = Symbol.for('__cloudflare-context__');
+    const context = (globalThis as typeof globalThis & Record<symbol, OpenNextCloudflareContext | undefined>)[contextSymbol];
+    const raw = context?.env?.[name];
+    return typeof raw === 'string' ? raw.trim() : '';
+  } catch {
+    return '';
+  }
+};
+
 export async function getRuntimeEnvValue(name: string): Promise<string> {
-  // Use the Node process module directly so Next.js does not statically inline
-  // server build placeholders. Cloudflare Workers populates node:process env
-  // from runtime variables/secrets for our current compatibility date, while
-  // Vercel/local Node expose their normal runtime environment here as well.
-  const value = String(runtimeEnv[name] || '').trim();
-  return isPlaceholder(value) ? '' : value;
+  // OpenNext stores the active Worker context on the global scope in production.
+  // Read that binding first so Cloudflare dashboard vars/secrets remain runtime-only.
+  const bindingValue = getOpenNextBinding(name);
+  if (!isPlaceholder(bindingValue)) return bindingValue;
+
+  // Vercel/local Node and Workers with process-env population expose runtime env here.
+  const processValue = String(runtimeEnv[name] || '').trim();
+  return isPlaceholder(processValue) ? '' : processValue;
 }
 
 export async function getRuntimeSupabaseEnv() {
