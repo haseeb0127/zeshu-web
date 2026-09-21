@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   const [settingsResult, vendorsResult, ridersResult, activeOrdersResult] = await Promise.all([
     service.from('fulfillment_settings').select('nationwide_checkout_enabled').eq('id', 'default').maybeSingle(),
     service.from('vendors').select('id,is_open,admin_suspended,local_30_min_enabled'),
-    service.from('riders').select('id,user_id').eq('is_active', true).eq('admin_suspended', false),
+    service.from('riders').select('id,user_id,location_updated_at').eq('is_active', true).eq('admin_suspended', false),
     service.from('orders').select('assigned_rider_id,rider_id,status').in('status', activeOrderStatuses),
   ]);
 
@@ -47,9 +47,14 @@ export async function POST(request: Request) {
     if (order.assigned_rider_id) busyRiderIds.add(String(order.assigned_rider_id));
     if (order.rider_id) busyRiderIds.add(String(order.rider_id));
   }
-  const hasAvailableRider = (ridersResult.data || []).some((rider: any) =>
-    !busyRiderIds.has(String(rider.id)) && !busyRiderIds.has(String(rider.user_id || ''))
-  );
+  const riderFreshnessCutoff = Date.now() - 5 * 60 * 1000;
+  const hasAvailableRider = (ridersResult.data || []).some((rider: any) => {
+    const locationUpdatedAt = Date.parse(String(rider.location_updated_at || ''));
+    const hasFreshLocation = Number.isFinite(locationUpdatedAt) && locationUpdatedAt >= riderFreshnessCutoff;
+    return hasFreshLocation
+      && !busyRiderIds.has(String(rider.id))
+      && !busyRiderIds.has(String(rider.user_id || ''));
+  });
   const localServiceable = localStatus === 'ELIGIBLE';
   const vendor30Min = Object.fromEntries((vendorsResult.data || []).map((vendor: any) => [
     String(vendor.id),
