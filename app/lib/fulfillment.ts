@@ -22,7 +22,10 @@ export const deliveryBadge = (
   options?: { localThirtyMinuteAvailable?: boolean; nationwideCheckoutEnabled?: boolean },
 ) => {
   if (isFreshThirtyMinuteCandidate(product)) {
-    return options?.localThirtyMinuteAvailable
+    const productAvailable = Boolean(product?.vendor_id)
+      && product?.in_stock !== false
+      && Number(product?.quantity) > 0;
+    return options?.localThirtyMinuteAvailable && productAvailable
       ? { label: '⚡ ~30 min Fresh', tone: 'fresh' as const }
       : { label: 'Fresh · local delivery', tone: 'local' as const };
   }
