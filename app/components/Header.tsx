@@ -1,5 +1,6 @@
 "use client";
 import React from 'react';
+import Image from 'next/image';
 import { Search, Zap, ChevronDown, ShoppingBag, User, X, Mic } from 'lucide-react';
 
 // We strictly define the wiring to the main page here
@@ -43,11 +44,10 @@ export default function Header({
           
           <div className="flex items-center gap-4 md:gap-6">
             <button type="button" aria-label="Zeshu home" className="flex shrink-0 items-center gap-2 md:gap-3 md:border-r border-gray-200/60 md:pr-6 active:scale-[0.97] transition-transform" onClick={() => setActiveTab('home')}>
-              <span className="relative grid h-11 w-11 md:h-12 md:w-12 place-items-center rounded-[14px] md:rounded-2xl bg-[#087443] text-[25px] md:text-[28px] font-black leading-none tracking-[-0.08em] text-[#FFFDF6] shadow-[0_5px_14px_rgba(8,116,67,.20)] ring-1 ring-[#065F38]/10">
-                Z
-                <span aria-hidden="true" className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-[#F4B740] ring-2 ring-[#087443]" />
+              <span className="relative h-[50px] w-[50px] shrink-0 overflow-hidden rounded-[15px] shadow-[0_6px_18px_rgba(11,111,71,.20)] ring-1 ring-[#0B6F47]/10 md:h-[54px] md:w-[54px] md:rounded-[17px]">
+                <Image src="/zeshu-icon.svg" alt="" fill priority sizes="54px" className="object-cover" />
               </span>
-              <span className="hidden md:flex flex-col text-left"><span className="text-[22px] font-black tracking-tighter leading-none text-[#132019]">ZESHU</span><span className="text-[10px] font-extrabold text-[#087443] tracking-[0.2em] uppercase mt-0.5">Super App</span></span>
+              <span className="hidden md:flex flex-col text-left"><span className="text-[22px] font-black tracking-tighter leading-none text-[#132019]">ZESHU</span><span className="text-[10px] font-extrabold text-[#0B6F47] tracking-[0.2em] uppercase mt-0.5">Super App</span></span>
             </button>
             <div className="flex flex-col cursor-pointer max-w-[160px] md:max-w-[220px] group active:scale-[0.97] transition-transform" onClick={handleAutoDetectLocation}>
               <div className="font-black text-[13px] md:text-[15px] flex items-center gap-1.5">Delivery in 12 min <Zap size={14} className="text-[#F59E0B] fill-[#F59E0B]"/></div>
