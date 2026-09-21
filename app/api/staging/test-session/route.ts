@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -6,11 +5,8 @@ export const dynamic = 'force-dynamic';
 
 const STAGING_HOST = 'zeshu-web-staging.asif-mohammed0127.workers.dev';
 const STAGING_PROJECT_REF = 'xdzgdhupfgsdyzellpqq';
-const STAGING_QA_EMAIL = 'qa.customer@staging.zeshu.in';
-
-const serverClientOptions = {
-  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-} as const;
+const STAGING_ORIGIN = `https://${STAGING_HOST}`;
+const STAGING_FUNCTION_URL = `https://${STAGING_PROJECT_REF}.supabase.co/functions/v1/staging-test-session`;
 
 export async function POST(request: Request) {
   const host = (request.headers.get('host') || '').toLowerCase().split(':')[0];
@@ -18,41 +14,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Not found.' }, { status: 404 });
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || `https://${STAGING_PROJECT_REF}.supabase.co`;
-  const secretKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  try {
+    const response = await fetch(STAGING_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: STAGING_ORIGIN,
+      },
+      cache: 'no-store',
+    });
 
-  if (!url.includes(STAGING_PROJECT_REF) || !secretKey) {
-    return NextResponse.json({ error: 'Staging test sign-in is not configured.' }, { status: 503 });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload?.tokenHash) {
+      return NextResponse.json(
+        { error: typeof payload?.error === 'string' ? payload.error : 'Staging test sign-in is temporarily unavailable.' },
+        { status: response.status >= 400 && response.status < 600 ? response.status : 503 },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        tokenHash: String(payload.tokenHash),
+        type: 'magiclink',
+      },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
+  } catch {
+    return NextResponse.json({ error: 'Staging test sign-in is temporarily unavailable.' }, { status: 503 });
   }
-
-  const admin = createClient(url, secretKey, serverClientOptions);
-
-  const created = await admin.auth.admin.createUser({
-    email: STAGING_QA_EMAIL,
-    email_confirm: true,
-    user_metadata: {
-      full_name: 'Zeshu Staging Customer',
-      staging_qa: true,
-    },
-  });
-
-  if (created.error && !/already|registered|exists/i.test(created.error.message || '')) {
-    return NextResponse.json({ error: 'Could not create the staging test customer.' }, { status: 503 });
-  }
-
-  const link = await admin.auth.admin.generateLink({
-    type: 'magiclink',
-    email: STAGING_QA_EMAIL,
-  });
-
-  const tokenHash = link.data?.properties?.hashed_token;
-  if (link.error || !tokenHash) {
-    return NextResponse.json({ error: 'Could not create a staging test session.' }, { status: 503 });
-  }
-
-  return NextResponse.json({
-    success: true,
-    tokenHash,
-    type: 'magiclink',
-  });
 }
