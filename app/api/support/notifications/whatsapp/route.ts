@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+import { getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
 
 const preferenceColumns = 'whatsapp_transactional_enabled,consented_at,revoked_at';
 
@@ -22,6 +19,7 @@ function serviceUnavailable() {
 }
 
 async function getAuthenticatedUser(request: Request): Promise<User | null> {
+  const { url: supabaseUrl, anonKey: supabaseAnonKey } = await getRuntimeSupabaseEnv();
   const authorization = request.headers.get('authorization');
   const token = authorization?.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
   if (!token || !supabaseUrl || !supabaseAnonKey) return null;
@@ -63,9 +61,10 @@ function isPreferenceBody(value: unknown): value is { enabled: boolean } {
 }
 
 export async function GET(request: Request) {
+  const { url: supabaseUrl, serviceRoleKey } = await getRuntimeSupabaseEnv();
   const user = await getAuthenticatedUser(request);
   if (!user) return authenticationRequired();
-  if (!serviceRoleKey) return serviceUnavailable();
+  if (!supabaseUrl || !serviceRoleKey) return serviceUnavailable();
 
   const service = createClient(supabaseUrl, serviceRoleKey);
   const { data: preference, error } = await readPreference(service, user.id);
@@ -75,9 +74,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const { url: supabaseUrl, serviceRoleKey } = await getRuntimeSupabaseEnv();
   const user = await getAuthenticatedUser(request);
   if (!user) return authenticationRequired();
-  if (!serviceRoleKey) return serviceUnavailable();
+  if (!supabaseUrl || !serviceRoleKey) return serviceUnavailable();
 
   const body = await request.json().catch(() => null);
   if (!isPreferenceBody(body)) {
