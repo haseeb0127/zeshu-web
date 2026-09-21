@@ -185,6 +185,43 @@ export async function POST(request: Request) {
       }
     }
 
+    stage = 'FULFILLMENT_CLASSIFICATION';
+    const requestedFulfillmentIds = Array.from(new Set(reservationItems.map((item) => item.product_id)));
+    const { data: fulfillmentProducts, error: fulfillmentProductsError } = await serviceClient
+      .from('products')
+      .select('id,delivery_mode,nationwide_shipping_enabled,requires_cold_chain,shipping_class,packed_weight_grams')
+      .in('id', requestedFulfillmentIds);
+    if (fulfillmentProductsError) return checkoutError(requestId, stage, 'PRODUCT_LOOKUP_FAILED', 'Unable to verify delivery eligibility.', 500, fulfillmentProductsError);
+    if ((fulfillmentProducts || []).length !== requestedFulfillmentIds.length) {
+      return checkoutError(requestId, stage, 'PRODUCT_UNAVAILABLE', 'One or more items are currently unavailable.', 400);
+    }
+
+    const fulfillmentModes = new Set((fulfillmentProducts || []).map((product: any) => String(product.delivery_mode || 'LOCAL_STANDARD')));
+    const hasIndiaItems = fulfillmentModes.has('INDIA_STANDARD');
+    const hasLocalItems = [...fulfillmentModes].some((mode) => mode !== 'INDIA_STANDARD');
+
+    if (hasIndiaItems && hasLocalItems) {
+      return checkoutError(
+        requestId,
+        stage,
+        'MIXED_FULFILLMENT_UNSUPPORTED',
+        'Fresh/local and India-delivery items need separate shipments. Split checkout is being prepared.',
+        409,
+      );
+    }
+
+    if (hasIndiaItems) {
+      // Nationwide payment stays locked until a real courier quote, pincode
+      // serviceability and the server-side profitability gate are all live.
+      return checkoutError(
+        requestId,
+        stage,
+        'NATIONWIDE_DELIVERY_UNAVAILABLE',
+        'India-wide physical delivery is being prepared. We will enable payment only after live courier rates and profitability checks are connected.',
+        409,
+      );
+    }
+
     if (isJagtialServiceAreaEnforced()) {
       const serviceAreaResult = deliveryCoordinates
         ? evaluateJagtialServiceArea(deliveryCoordinates.latitude, deliveryCoordinates.longitude)
