@@ -23,6 +23,7 @@ export default function RiderDashboard() {
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authMessage, setAuthMessage] = useState("");
   const [authError, setAuthError] = useState("");
+  const [stagingQaAvailable, setStagingQaAvailable] = useState(false);
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [riderId, setRiderId] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(false);
@@ -75,6 +76,10 @@ export default function RiderDashboard() {
     setIsOnline(Boolean(data.is_active));
     setIsAdminSuspended(Boolean(data.admin_suspended));
     setAuthState("dashboard");
+  }, []);
+
+  useEffect(() => {
+    setStagingQaAvailable(window.location.hostname === "zeshu-web-staging.asif-mohammed0127.workers.dev");
   }, []);
 
   useEffect(() => {
@@ -137,6 +142,29 @@ export default function RiderDashboard() {
 
     setAuthState("checking");
     await loadRider();
+  };
+
+  const continueAsStagingRider = async () => {
+    if (!stagingQaAvailable || authSubmitting) return;
+    setAuthSubmitting(true);
+    setAuthError("");
+    setAuthMessage("");
+    try {
+      const response = await fetch("/api/staging/test-session", { method: "POST" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload?.tokenHash) throw new Error(typeof payload?.error === "string" ? payload.error : "Staging rider sign-in is unavailable.");
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: String(payload.tokenHash),
+        type: "magiclink",
+      });
+      if (error || !data.user) throw new Error("Could not start the staging rider session.");
+      setAuthState("checking");
+      await loadRider();
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "Staging rider sign-in is unavailable.");
+    } finally {
+      setAuthSubmitting(false);
+    }
   };
 
   const fetchMyOrders = useCallback(async () => {
@@ -308,6 +336,7 @@ export default function RiderDashboard() {
           {authError && <p role="alert" className="mt-5 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{authError}</p>}
           {authMessage && <p role="status" className="mt-5 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{authMessage}</p>}
           <div className="mt-6 space-y-4">
+            {stagingQaAvailable && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3"><p className="text-xs font-black text-emerald-900">Staging test mode</p><p className="mt-1 text-[11px] leading-4 text-emerald-800">Use the isolated QA rider account. No SMS is sent.</p><button type="button" disabled={authSubmitting} onClick={() => void continueAsStagingRider()} className="mt-3 w-full rounded-xl bg-emerald-700 py-3 text-sm font-black text-white disabled:opacity-60">{authSubmitting ? "Signing in..." : "Continue as staging rider"}</button></div>}
             <div>
               <label className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-500">Mobile number</label>
               <input type="tel" inputMode="numeric" maxLength={13} value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} placeholder="10-digit mobile number" className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 font-bold outline-none focus:border-slate-900" />
