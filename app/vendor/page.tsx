@@ -341,6 +341,9 @@ export default function VendorDashboard() {
     const quantity = productForm.quantity === "" ? null : Number(productForm.quantity);
     const unit = productForm.unit.trim();
     const packedWeight = productForm.packed_weight_grams === "" ? null : Number(productForm.packed_weight_grams);
+    const packageLength = productForm.package_length_cm === "" ? null : Number(productForm.package_length_cm);
+    const packageWidth = productForm.package_width_cm === "" ? null : Number(productForm.package_width_cm);
+    const packageHeight = productForm.package_height_cm === "" ? null : Number(productForm.package_height_cm);
     const minNationwideQty = Number(productForm.min_nationwide_quantity || 1);
     const minNationwideValue = Number(productForm.min_nationwide_order_value || 0);
     const handlingMinutes = Number(productForm.handling_minutes || 0);
@@ -349,8 +352,17 @@ export default function VendorDashboard() {
       setError("Enter a product name, category, valid price, non-negative quantity, and unit.");
       return;
     }
-    if (productForm.nationwide_shipping_enabled && (productForm.delivery_mode !== "INDIA_STANDARD" || !packedWeight || packedWeight <= 0 || productForm.requires_cold_chain || ["COLD_CHAIN","LOCAL_ONLY"].includes(productForm.shipping_class) || costPrice === null || !Number.isFinite(costPrice))) {
-      setError("For India delivery, choose India Standard, enter packed weight and cost price, and keep cold-chain/local-only shipping off.");
+    if (productForm.nationwide_shipping_enabled && (
+      productForm.delivery_mode !== "INDIA_STANDARD"
+      || !packedWeight || packedWeight <= 0
+      || !packageLength || packageLength <= 0
+      || !packageWidth || packageWidth <= 0
+      || !packageHeight || packageHeight <= 0
+      || productForm.requires_cold_chain
+      || productForm.shipping_class !== "STANDARD"
+      || costPrice === null || !Number.isFinite(costPrice)
+    )) {
+      setError("For India delivery, choose India Standard, enter packed weight, all package dimensions and cost price, and use Standard non-cold-chain shipping.");
       return;
     }
     if (!Number.isFinite(minNationwideQty) || minNationwideQty < 1 || !Number.isFinite(minNationwideValue) || minNationwideValue < 0 || !Number.isFinite(handlingMinutes) || handlingMinutes < 0) {
@@ -368,9 +380,9 @@ export default function VendorDashboard() {
       nationwide_shipping_enabled: productForm.nationwide_shipping_enabled,
       requires_cold_chain: productForm.requires_cold_chain,
       packed_weight_grams: packedWeight,
-      package_length_cm: productForm.package_length_cm === "" ? null : Number(productForm.package_length_cm),
-      package_width_cm: productForm.package_width_cm === "" ? null : Number(productForm.package_width_cm),
-      package_height_cm: productForm.package_height_cm === "" ? null : Number(productForm.package_height_cm),
+      package_length_cm: packageLength,
+      package_width_cm: packageWidth,
+      package_height_cm: packageHeight,
       shipping_class: productForm.shipping_class,
       min_nationwide_quantity: minNationwideQty,
       min_nationwide_order_value: minNationwideValue,
@@ -399,7 +411,13 @@ export default function VendorDashboard() {
         p_set_in_stock: true,
       });
     } else {
-      result = await supabase.from("products").insert({ ...payload, vendor_id: vendor.id }).select("id").single();
+      result = await supabase.from("products").insert({
+        ...payload,
+        // New India candidates start disabled and are only switched on by the
+        // fulfillment RPC after the private cost profile is saved successfully.
+        nationwide_shipping_enabled: false,
+        vendor_id: vendor.id,
+      }).select("id").single();
       productId = String(result.data?.id || "");
     }
     let saveError = result.error;
