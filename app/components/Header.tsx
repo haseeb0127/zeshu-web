@@ -42,10 +42,13 @@ export default function Header({
         <div className="flex items-center justify-between w-full md:w-auto gap-4">
           
           <div className="flex items-center gap-4 md:gap-6">
-            <div className="flex items-center gap-2 md:gap-3 cursor-pointer md:border-r border-gray-200/60 md:pr-6 active:scale-[0.97] transition-transform" onClick={() => setActiveTab('home')}>
-              <div className="bg-gradient-to-br from-[#16A663] to-[#087443] text-white font-black p-2 md:p-2.5 rounded-xl md:rounded-2xl text-xl md:text-2xl tracking-tighter shadow-sm">Z</div>
-              <div className="hidden md:flex flex-col"><span className="text-[22px] font-black tracking-tighter leading-none">ZESHU</span><span className="text-[10px] font-extrabold text-[#087443] tracking-[0.2em] uppercase mt-0.5">Super App</span></div>
-            </div>
+            <button type="button" aria-label="Zeshu home" className="flex shrink-0 items-center gap-2 md:gap-3 md:border-r border-gray-200/60 md:pr-6 active:scale-[0.97] transition-transform" onClick={() => setActiveTab('home')}>
+              <span className="relative grid h-11 w-11 md:h-12 md:w-12 place-items-center rounded-[14px] md:rounded-2xl bg-[#087443] text-[25px] md:text-[28px] font-black leading-none tracking-[-0.08em] text-[#FFFDF6] shadow-[0_5px_14px_rgba(8,116,67,.20)] ring-1 ring-[#065F38]/10">
+                Z
+                <span aria-hidden="true" className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-[#F4B740] ring-2 ring-[#087443]" />
+              </span>
+              <span className="hidden md:flex flex-col text-left"><span className="text-[22px] font-black tracking-tighter leading-none text-[#132019]">ZESHU</span><span className="text-[10px] font-extrabold text-[#087443] tracking-[0.2em] uppercase mt-0.5">Super App</span></span>
+            </button>
             <div className="flex flex-col cursor-pointer max-w-[160px] md:max-w-[220px] group active:scale-[0.97] transition-transform" onClick={handleAutoDetectLocation}>
               <div className="font-black text-[13px] md:text-[15px] flex items-center gap-1.5">Delivery in 12 min <Zap size={14} className="text-[#F59E0B] fill-[#F59E0B]"/></div>
               <div className="flex items-center text-[10px] md:text-xs text-[#6B7280] mt-0.5 font-medium truncate">
