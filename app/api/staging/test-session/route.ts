@@ -15,12 +15,14 @@ export async function POST(request: Request) {
   }
 
   try {
+    const requestBody = await request.text();
     const response = await fetch(STAGING_FUNCTION_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Origin: STAGING_ORIGIN,
       },
+      body: requestBody || '{}',
       cache: 'no-store',
     });
 
