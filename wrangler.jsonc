@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "zeshu-web-staging",
+  "keep_vars": true,
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-09-21",
   "compatibility_flags": ["nodejs_compat", "nodejs_compat_populate_process_env"],
