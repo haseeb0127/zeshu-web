@@ -199,6 +199,9 @@ export async function POST(request: Request) {
     const fulfillmentModes = new Set((fulfillmentProducts || []).map((product: any) => String(product.delivery_mode || 'LOCAL_STANDARD')));
     const hasIndiaItems = fulfillmentModes.has('INDIA_STANDARD');
     const hasLocalItems = [...fulfillmentModes].some((mode) => mode !== 'INDIA_STANDARD');
+    const checkoutFulfillmentMode = fulfillmentModes.size === 1 && fulfillmentModes.has('LOCAL_30_MIN')
+      ? 'LOCAL_30_MIN'
+      : 'LOCAL_STANDARD';
 
     if (hasIndiaItems && hasLocalItems) {
       return checkoutError(
@@ -611,6 +614,26 @@ export async function POST(request: Request) {
     if (typeof reservationId !== 'string' || !Number.isFinite(reservationExpectedTotal) || reservationExpectedTotal <= 0) {
       return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to prepare the database-verified checkout total.', 500);
     }
+
+    stage = 'FULFILLMENT_SNAPSHOT';
+    const { error: fulfillmentSnapshotError } = await serviceClient
+      .from('inventory_reservations')
+      .update({
+        fulfillment_mode: checkoutFulfillmentMode,
+        shipping_quote_snapshot: {
+          mode: checkoutFulfillmentMode,
+          scope: 'JAGTIAL_LOCAL',
+          rate_source: 'LOCAL_PRICING',
+          thirty_minute_candidate: checkoutFulfillmentMode === 'LOCAL_30_MIN',
+          promised_eta_minutes: null,
+        },
+      })
+      .eq('id', reservationId)
+      .eq('user_id', user.id);
+    if (fulfillmentSnapshotError) {
+      return checkoutError(requestId, stage, 'CHECKOUT_INTERNAL_ERROR', 'Unable to save the delivery plan for this checkout.', 500, fulfillmentSnapshotError);
+    }
+
     stage = 'CASH_RESERVATION';
     const [, cashResult] = await Promise.all([
       deliveryCoordinates
