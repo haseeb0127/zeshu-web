@@ -10,7 +10,7 @@ export default function ProductCard({ product, quantity, onAdd, onRemove, isFavo
   const [imageFailed, setImageFailed] = useState(false);
   const unavailable = !product.vendor_id || product.in_stock === false || Number(product.quantity) <= 0;
   const badge = deliveryBadge(product, { localThirtyMinuteAvailable, nationwideCheckoutEnabled });
-  const indiaLocked = product.delivery_mode === "INDIA_STANDARD" && product.nationwide_shipping_enabled === true && !nationwideCheckoutEnabled;
+  const indiaLocked = product.delivery_mode === "INDIA_STANDARD" && !(product.nationwide_shipping_enabled === true && nationwideCheckoutEnabled);
   const nationwideMinimum = Number(product.min_nationwide_order_value || 0);
   const nationwideQty = Math.max(1, Number(product.min_nationwide_quantity || 1));
   return <article className="group flex min-h-[290px] flex-col rounded-3xl border border-[#e3e9e4] bg-white p-3 shadow-[0_2px_10px_rgba(20,45,31,.04)] transition-shadow hover:shadow-[0_10px_28px_rgba(20,45,31,.09)] md:p-4">
