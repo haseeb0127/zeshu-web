@@ -98,7 +98,17 @@ const CHECKOUT_ERROR_MESSAGES: Record<string, string> = {
   OUTSIDE_SERVICE_AREA: 'Fast physical delivery is currently available only in Jagtial. Digital services remain available across India.',
   SERVICE_AREA_UNAVAILABLE: 'Confirm a delivery pin inside the Jagtial delivery zone before checkout.',
   MIXED_FULFILLMENT_UNSUPPORTED: 'Fresh/local and India-delivery items need separate shipments. Please place them separately for now.',
-  NATIONWIDE_DELIVERY_UNAVAILABLE: 'India-wide physical delivery is being prepared. Payment will open only after live courier rates and delivery checks are connected.',
+  NATIONWIDE_DELIVERY_UNAVAILABLE: 'India-wide delivery is not accepting payments yet. Please try again after courier setup is complete.',
+  FULFILLMENT_CHANGED: 'A product delivery option changed. Please review your basket and try again.',
+  VENDOR_UNAVAILABLE: 'This store is currently unavailable. Please try again later.',
+  LOCAL_DELIVERY_PAUSED: 'Local delivery is temporarily paused for this store.',
+  INDIA_PINCODE_REQUIRED: 'Choose a saved address with a valid 6-digit PIN code for India delivery.',
+  INDIA_PRODUCT_NOT_READY: 'One or more items still need complete India-delivery setup.',
+  INDIA_DELIVERY_UNAVAILABLE: 'We could not get a live courier rate right now. No payment was started.',
+  INDIA_MIN_ORDER: 'Add more eligible India-delivery products to unlock delivery.',
+  INDIA_MIN_QUANTITY: 'Add the minimum quantity required for India delivery.',
+  INDIA_PINCODE_UNSERVICEABLE: 'No prepaid courier is currently available for this PIN code.',
+  INDIA_LOW_MARGIN: 'This basket is not economical for India delivery yet. Add more eligible items or choose a bundle.',
 };
 
 const checkoutFailureMessage = (code: unknown) => String(code || '') === 'ABANDONABLE_PAYMENT_CHECKOUT'
@@ -2536,7 +2546,19 @@ export default function ZeshuSuperApp() {
       return showCheckoutError('Enter a delivery address before checkout.', 'INVALID_CHECKOUT_DATA');
     }
     if (currentAddress === 'Fetching precise location...') return showCheckoutError('Enter a delivery address before checkout.', 'INVALID_CHECKOUT_DATA');
-    if (selectedDeliveryAddress?.city && !isJagtialDeliveryCity(selectedDeliveryAddress.city)) {
+    const checkoutDeliveryModes = new Set(cart.map((entry) => String(entry.item?.delivery_mode || 'LOCAL_STANDARD')));
+    const checkoutHasIndia = checkoutDeliveryModes.has('INDIA_STANDARD');
+    const checkoutHasLocal = [...checkoutDeliveryModes].some((mode) => mode !== 'INDIA_STANDARD');
+    if (checkoutHasIndia && checkoutHasLocal) {
+      setIsCartOpen(true);
+      return showCheckoutError(CHECKOUT_ERROR_MESSAGES.MIXED_FULFILLMENT_UNSUPPORTED, 'MIXED_FULFILLMENT_UNSUPPORTED');
+    }
+    if (checkoutHasIndia) {
+      if (!selectedAddressId || !/^\d{6}$/.test(String(selectedDeliveryAddress?.postal_code || ''))) {
+        setIsCartOpen(true);
+        return showCheckoutError(CHECKOUT_ERROR_MESSAGES.INDIA_PINCODE_REQUIRED, 'INDIA_PINCODE_REQUIRED');
+      }
+    } else if (selectedDeliveryAddress?.city && !isJagtialDeliveryCity(selectedDeliveryAddress.city)) {
       setIsCartOpen(true);
       return showCheckoutError(CHECKOUT_ERROR_MESSAGES.OUTSIDE_SERVICE_AREA, 'OUTSIDE_SERVICE_AREA');
     }
@@ -2567,7 +2589,10 @@ export default function ZeshuSuperApp() {
         }
         setIsLoading(false);
         setIsCheckoutOpening(false);
-        showCheckoutError(checkoutFailureMessage(code), code, typeof orderData?.requestId === 'string' ? orderData.requestId : undefined);
+        const serverMessage = typeof orderData?.message === 'string' && orderData.message.trim()
+          ? orderData.message.trim()
+          : checkoutFailureMessage(code);
+        showCheckoutError(serverMessage, code, typeof orderData?.requestId === 'string' ? orderData.requestId : undefined);
         return;
       }
       if (orderData.abandonedCheckoutReleased) showToast('Previous payment was cancelled. You can continue with a new checkout.');
@@ -2575,6 +2600,40 @@ export default function ZeshuSuperApp() {
       const orderId = orderData.orderId || orderData.id || orderData.order?.id;
       const reservationId = orderData.reservationId;
       if (typeof orderId !== 'string' || typeof reservationId !== 'string' || !Number.isSafeInteger(Number(orderData.amount)) || Number(orderData.amount) <= 0) throw new Error('Unable to prepare a verified payment checkout.');
+
+      const resolvedFulfillmentMode = String(orderData.fulfillmentMode || 'LOCAL_STANDARD');
+      if (resolvedFulfillmentMode === 'INDIA_STANDARD') {
+        const shippingCharge = Math.max(0, Number(orderData.shippingCharge || 0));
+        const payableNow = Math.max(0, Number(orderData.totalAmount || Number(orderData.amount) / 100));
+        const etaDays = Number(orderData.estimatedDeliveryDays);
+        const courierName = typeof orderData.courierName === 'string' && orderData.courierName.trim()
+          ? orderData.courierName.trim()
+          : 'selected courier';
+        const shippingLine = orderData.freeShipping === true || shippingCharge === 0
+          ? 'Shipping: FREE'
+          : `Shipping: ₹${shippingCharge.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+        const etaLine = Number.isFinite(etaDays) && etaDays >= 0
+          ? `Estimated delivery: about ${Math.ceil(etaDays)} day${Math.ceil(etaDays) === 1 ? '' : 's'}`
+          : 'Estimated delivery will be shown by the courier after dispatch';
+        const confirmed = window.confirm(
+          `India delivery summary\n\n${shippingLine}\nCourier: ${courierName}\n${etaLine}\nPayable now: ₹${payableNow.toLocaleString('en-IN', { maximumFractionDigits: 2 })}\n\nContinue to secure payment?`,
+        );
+        if (!confirmed) {
+          setIsLoading(false);
+          setIsCheckoutOpening(false);
+          showToast('Payment not started. Your checkout can be resumed if you continue later.');
+          return;
+        }
+      } else if (checkoutDeliveryModes.size === 1 && checkoutDeliveryModes.has('LOCAL_30_MIN') && resolvedFulfillmentMode === 'LOCAL_STANDARD') {
+        const confirmed = window.confirm('30-minute delivery is not available right now. Continue with standard local delivery instead?');
+        if (!confirmed) {
+          setIsLoading(false);
+          setIsCheckoutOpening(false);
+          showToast('Payment not started. Try again when 30-minute capacity is available.');
+          return;
+        }
+      }
+
       let paymentSucceeded = false;
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, amount: Number(orderData.amount), currency: orderData.currency || 'INR', name: "Zeshu Super App", order_id: orderId,

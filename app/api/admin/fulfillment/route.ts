@@ -103,6 +103,9 @@ export async function PATCH(request: Request) {
     const nationwide = booleanValue(body.nationwide_shipping_enabled);
     const requiresColdChain = booleanValue(body.requires_cold_chain);
     const packedWeight = numberOrNull(body.packed_weight_grams);
+    const packageLength = numberOrNull(body.package_length_cm);
+    const packageWidth = numberOrNull(body.package_width_cm);
+    const packageHeight = numberOrNull(body.package_height_cm);
     const costPrice = numberOrNull(body.cost_price);
 
     if (!productId || !['LOCAL_30_MIN','LOCAL_STANDARD','INDIA_STANDARD'].includes(deliveryMode)) {
@@ -116,10 +119,13 @@ export async function PATCH(request: Request) {
       || requiresColdChain
       || ['COLD_CHAIN','LOCAL_ONLY'].includes(shippingClass)
       || packedWeight === null || packedWeight <= 0
+      || packageLength === null || packageLength <= 0
+      || packageWidth === null || packageWidth <= 0
+      || packageHeight === null || packageHeight <= 0
       || costPrice === null || costPrice < 0
     )) {
       return NextResponse.json({
-        error: 'India shipping requires India Standard mode, packed weight, cost price, and a non-cold-chain shipping class.',
+        error: 'India shipping requires India Standard mode, packed weight, package dimensions, verified cost price, Standard shipping, and no cold-chain requirement.',
       }, { status: 400 });
     }
 
@@ -131,9 +137,9 @@ export async function PATCH(request: Request) {
       p_nationwide_shipping_enabled: nationwide,
       p_requires_cold_chain: requiresColdChain,
       p_packed_weight_grams: packedWeight,
-      p_package_length_cm: numberOrNull(body.package_length_cm),
-      p_package_width_cm: numberOrNull(body.package_width_cm),
-      p_package_height_cm: numberOrNull(body.package_height_cm),
+      p_package_length_cm: packageLength,
+      p_package_width_cm: packageWidth,
+      p_package_height_cm: packageHeight,
       p_shipping_class: shippingClass,
       p_min_nationwide_quantity: Math.max(1, Math.floor(Number(body.min_nationwide_quantity || 1))),
       p_min_nationwide_order_value: Math.max(0, Number(body.min_nationwide_order_value || 0)),
