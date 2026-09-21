@@ -1,3 +1,5 @@
+import { env as runtimeEnv } from 'node:process';
+
 const isPlaceholder = (value: string) => {
   const text = value.trim().toLowerCase();
   return !text
@@ -8,10 +10,11 @@ const isPlaceholder = (value: string) => {
 };
 
 export async function getRuntimeEnvValue(name: string): Promise<string> {
-  // Dynamic property access avoids Next.js statically baking build-time placeholder
-  // values into server routes. On Cloudflare Workers, our 2026 compatibility date
-  // with Node compatibility populates process.env from runtime vars/secrets.
-  const value = String(process.env[name] || '').trim();
+  // Use the Node process module directly so Next.js does not statically inline
+  // server build placeholders. Cloudflare Workers populates node:process env
+  // from runtime variables/secrets for our current compatibility date, while
+  // Vercel/local Node expose their normal runtime environment here as well.
+  const value = String(runtimeEnv[name] || '').trim();
   return isPlaceholder(value) ? '' : value;
 }
 
