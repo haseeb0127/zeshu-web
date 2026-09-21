@@ -10,6 +10,7 @@ export default function ProductCard({ product, quantity, onAdd, onRemove, isFavo
   const [imageFailed, setImageFailed] = useState(false);
   const unavailable = !product.vendor_id || product.in_stock === false || Number(product.quantity) <= 0;
   const badge = deliveryBadge(product, { localThirtyMinuteAvailable, nationwideCheckoutEnabled });
+  const indiaLocked = product.delivery_mode === "INDIA_STANDARD" && product.nationwide_shipping_enabled === true && !nationwideCheckoutEnabled;
   const nationwideMinimum = Number(product.min_nationwide_order_value || 0);
   const nationwideQty = Math.max(1, Number(product.min_nationwide_quantity || 1));
   return <article className="group flex min-h-[290px] flex-col rounded-3xl border border-[#e3e9e4] bg-white p-3 shadow-[0_2px_10px_rgba(20,45,31,.04)] transition-shadow hover:shadow-[0_10px_28px_rgba(20,45,31,.09)] md:p-4">
@@ -24,7 +25,7 @@ export default function ProductCard({ product, quantity, onAdd, onRemove, isFavo
     <div className="mt-1 flex items-center justify-between gap-2">{reviewCount > 0 ? <p className="text-xs font-black text-amber-600">★ {Number(reviewAverage || 0).toFixed(1)} <span className="font-medium text-slate-500">({reviewCount})</span></p> : <p className="text-[11px] font-medium text-slate-400">No reviews yet</p>}{onReviews && <button type="button" onClick={onReviews} className="text-[10px] font-black text-[#087443]">See reviews</button>}</div>
     <div className="mt-auto flex items-center justify-between gap-2 border-t border-[#edf1ed] pt-3">
       <span className="text-base font-black text-[#17261d]">₹{product.price || 0}</span>
-      {unavailable ? <span className="rounded-lg bg-[#f3f5f3] px-2 py-2 text-[10px] font-black uppercase tracking-wide text-[#78857c]">Currently unavailable</span> : quantity ? <QuantityControl quantity={quantity} label={product.name} onAdd={onAdd} onRemove={onRemove} /> : <button type="button" onClick={onAdd} className="h-10 min-w-[84px] rounded-xl border border-[#087443] bg-[#e9f7ef] px-4 text-xs font-black text-[#075b36] active:scale-95">ADD</button>}
+      {unavailable ? <span className="rounded-lg bg-[#f3f5f3] px-2 py-2 text-[10px] font-black uppercase tracking-wide text-[#78857c]">Currently unavailable</span> : indiaLocked ? <span className="rounded-lg bg-blue-50 px-2 py-2 text-[10px] font-black uppercase tracking-wide text-blue-700">India delivery soon</span> : quantity ? <QuantityControl quantity={quantity} label={product.name} onAdd={onAdd} onRemove={onRemove} /> : <button type="button" onClick={onAdd} className="h-10 min-w-[84px] rounded-xl border border-[#087443] bg-[#e9f7ef] px-4 text-xs font-black text-[#075b36] active:scale-95">ADD</button>}
     </div>
   </article>;
 }
