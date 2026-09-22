@@ -3209,7 +3209,7 @@ export default function ZeshuSuperApp() {
               )}
               {user && availableRecentlyPurchased.length > 0 && normalizedSearch === '' && (
                 <section id="recently-purchased" className="mx-4 mb-8 rounded-[24px] border border-[#dce8df] bg-white p-5 md:mx-0 md:p-7" aria-labelledby="recently-purchased-title">
-                  <div className="flex items-center justify-between gap-3"><div><h2 id="recently-purchased-title" className="text-xl font-black tracking-tight">{t('Recently Purchased')}</h2><p className="mt-1 text-xs text-slate-500">{t('Current prices and availability from your delivered orders.')}</p></div><span className="rounded-lg bg-[#eef8f1] px-2 py-1 text-xs font-black text-[#087443]">Buy Again</span></div>
+                  <div className="flex items-center justify-between gap-3"><div><h2 id="recently-purchased-title" className="text-xl font-black tracking-tight">{t('Recently Purchased')}</h2><p className="mt-1 text-xs text-slate-500">{t('Current prices and availability from your delivered orders.')}</p></div><span className="rounded-lg bg-[#eef8f1] px-2 py-1 text-xs font-black text-[#087443]">{t('Buy Again')}</span></div>
                   <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
                     {availableRecentlyPurchased.map((product: any) => {
                       const unavailable = product.in_stock === false || (product.quantity !== null && Number(product.quantity) <= 0) || !product.vendor_id;
@@ -3221,14 +3221,14 @@ export default function ZeshuSuperApp() {
               )}
               <div id="products" className="px-4 md:px-0">
                 <div className="flex flex-wrap items-end justify-between gap-3 mb-6 md:mb-8 border-b pb-4 md:pb-5">
-                  <div><h2 className="text-2xl md:text-3xl font-black tracking-tighter">{focusedCampaignId ? 'Sponsored selection' : normalizedSearch ? `Results for “${searchQuery.trim()}”` : `${activeCategory} Items`}</h2>{focusedCampaignId ? <button type="button" onClick={() => setFocusedCampaignId(null)} className="mt-2 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-black text-amber-800">{t('Clear sponsored selection')}</button> : normalizedSearch && <p className="mt-1 text-xs font-medium text-slate-500">{t('Matches names, brands, categories, related words and spelling mistakes.')}</p>}</div>
-                  <div className="flex items-center gap-2"><span className="text-[#6B7280] font-bold text-xs md:text-sm bg-gray-100 px-3 py-1 rounded-xl">{filteredProducts.length} items</span></div>
+                  <div><h2 className="text-2xl md:text-3xl font-black tracking-tighter">{focusedCampaignId ? t('Sponsored selection') : normalizedSearch ? `${t('Results for')} “${searchQuery.trim()}”` : t(categoryDefinition(activeCategory).label)}</h2>{focusedCampaignId ? <button type="button" onClick={() => setFocusedCampaignId(null)} className="mt-2 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-black text-amber-800">{t('Clear sponsored selection')}</button> : normalizedSearch && <p className="mt-1 text-xs font-medium text-slate-500">{t('Matches names, brands, categories, related words and spelling mistakes.')}</p>}</div>
+                  <div className="flex items-center gap-2"><span className="text-[#6B7280] font-bold text-xs md:text-sm bg-gray-100 px-3 py-1 rounded-xl">{filteredProducts.length} {t('items')}</span></div>
                 </div>
                 
                 {productsLoading ? (
-                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" aria-label="Loading products" aria-busy="true">{Array.from({ length: 6 }, (_, index) => <div key={index} className="min-h-[290px] animate-pulse rounded-3xl border border-[#e3e9e4] bg-white p-3 md:p-4"><div className="aspect-square rounded-2xl bg-[#edf2ed]" /><div className="mt-4 h-4 w-4/5 rounded bg-[#edf2ed]" /><div className="mt-3 h-3 w-2/5 rounded bg-[#edf2ed]" /><div className="mt-8 h-10 rounded-xl bg-[#edf2ed]" /></div>)}</div>
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" aria-label={t('Loading products')} aria-busy="true">{Array.from({ length: 6 }, (_, index) => <div key={index} className="min-h-[290px] animate-pulse rounded-3xl border border-[#e3e9e4] bg-white p-3 md:p-4"><div className="aspect-square rounded-2xl bg-[#edf2ed]" /><div className="mt-4 h-4 w-4/5 rounded bg-[#edf2ed]" /><div className="mt-3 h-3 w-2/5 rounded bg-[#edf2ed]" /><div className="mt-8 h-10 rounded-xl bg-[#edf2ed]" /></div>)}</div>
                 ) : contentError ? (
-                  <div className="bg-white p-12 md:p-20 rounded-[32px] border border-[#dce8df] text-center flex flex-col items-center justify-center gap-4"><AlertCircle size={32} className="text-[#087443]"/><h3 className="text-xl font-black">Couldn&apos;t load products</h3><p className="text-gray-500 text-sm">{t('Check your connection and try again.')}</p><button onClick={() => { setContentError(false); window.location.reload(); }} className="rounded-xl bg-[#087443] px-4 py-2.5 text-sm font-bold text-white">{t('Try again')}</button></div>
+                  <div className="bg-white p-12 md:p-20 rounded-[32px] border border-[#dce8df] text-center flex flex-col items-center justify-center gap-4"><AlertCircle size={32} className="text-[#087443]"/><h3 className="text-xl font-black">{t("Couldn't load products")}</h3><p className="text-gray-500 text-sm">{t('Check your connection and try again.')}</p><button onClick={() => { setContentError(false); window.location.reload(); }} className="rounded-xl bg-[#087443] px-4 py-2.5 text-sm font-bold text-white">{t('Try again')}</button></div>
                 ) : filteredProducts.length === 0 ? (
                   <div className="bg-white p-12 md:p-20 rounded-[32px] border-2 border-dashed border-gray-200 text-center flex flex-col items-center justify-center gap-4">
                      {activeProductFilterCount > 0 && <button type="button" onClick={clearProductFilters} className="order-3 rounded-xl border border-[#087443] px-4 py-2 text-xs font-black text-[#087443]">{t('Clear filters')}</button>}
@@ -3267,13 +3267,13 @@ export default function ZeshuSuperApp() {
 
       <footer className="border-t border-[#dce8df] bg-white px-4 pb-28 pt-8 text-sm text-slate-600 lg:px-8 lg:py-8">
         <div className="mx-auto flex max-w-[1400px] flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <span className="font-bold">© Zeshu · Everyday, simply</span>
+          <span className="font-bold">© Zeshu · {t('Everyday, simply')}</span>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <Link href="/services" className="font-black text-[#087443] underline-offset-4 hover:underline">Recharge &amp; Bills</Link>
-                        <Link href="/policies" className="font-black text-[#087443] underline-offset-4 hover:underline">Policies &amp; Trust Center</Link>
-            <Link href="/partners" className="font-black text-[#087443] underline-offset-4 hover:underline">Brands &amp; Suppliers</Link>
-            <Link href="/app" className="font-black text-[#087443] underline-offset-4 hover:underline">Get Zeshu</Link>
-            <span>Real support is provided through verified order communication.</span>
+            <Link href="/services" className="font-black text-[#087443] underline-offset-4 hover:underline">{t('Recharge & Bills')}</Link>
+                        <Link href="/policies" className="font-black text-[#087443] underline-offset-4 hover:underline">{t('Policies & Trust Center')}</Link>
+            <Link href="/partners" className="font-black text-[#087443] underline-offset-4 hover:underline">{t('Brands & Suppliers')}</Link>
+            <Link href="/app" className="font-black text-[#087443] underline-offset-4 hover:underline">{t('Get Zeshu')}</Link>
+            <span>{t('Real support is provided through verified order communication.')}</span>
           </div>
         </div>
       </footer>
