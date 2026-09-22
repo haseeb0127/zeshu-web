@@ -2740,7 +2740,7 @@ export default function ZeshuSuperApp() {
 
       let paymentSucceeded = false;
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, amount: Number(orderData.amount), currency: orderData.currency || 'INR', name: "Zeshu Super App", order_id: orderId,
+        key: orderData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, amount: Number(orderData.amount), currency: orderData.currency || 'INR', name: "Zeshu Super App", order_id: orderId,
         retry: { enabled: true },
         handler: async function (response: any) {
           paymentSucceeded = true;
