@@ -31,7 +31,7 @@ const SYNONYM_GROUPS = [
   ['bread', 'pav'],
   ['biscuit', 'biscuits', 'cookie', 'cookies'],
   ['chips', 'chip', 'snack', 'snacks', 'namkeen'],
-  ['soft drink', 'cold drink', 'soda'],
+  ['soft drink', 'cold drink', 'cool drink', 'cooldrink', 'soda', 'cola', 'coke', 'coca cola', 'cocacola'],
   ['water', 'mineral water', 'drinking water'],
   ['chicken', 'poultry'],
   ['mutton', 'goat', 'goat meat'],

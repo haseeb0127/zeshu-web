@@ -565,7 +565,7 @@ export default function ZeshuSuperApp() {
       .filter(({ product, searchScore }) => {
         if (!product || !product.name) return false;
         const matchesSearch = !normalizedSearch || (searchScore > 0 && isCatalogSearchMatch(product, normalizedSearch));
-        const matchesCategory = productMatchesCustomerCategory(product.category, activeCategory);
+        const matchesCategory = normalizedSearch ? true : productMatchesCustomerCategory(product.category, activeCategory);
         const matchesBrand = brandFilter === 'ALL' || String(product.brand || '').trim() === brandFilter;
         const numericPrice = Number(product.price);
         const matchesPrice = priceFilter === 'ALL'
