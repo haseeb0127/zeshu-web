@@ -1,0 +1,104 @@
+name: Customer staging browser QA
+
+on:
+  workflow_run:
+    workflows:
+      - Deploy Cloudflare staging
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-browser:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASE_URL: https://zeshu-web-staging.asif-mohammed0127.workers.dev
+    steps:
+      - name: Checkout tested main revision
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install browser QA dependency
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Verify mobile storefront search and controls
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+
+          const base = process.env.BASE_URL;
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage({
+            viewport: { width: 390, height: 844 },
+            deviceScaleFactor: 1,
+          });
+
+          const assert = (condition, message) => {
+            if (!condition) throw new Error(message);
+          };
+
+          try {
+            await page.goto(base, { waitUntil: 'networkidle', timeout: 60000 });
+
+            const search = page.locator('input[aria-label="Search Zeshu"]');
+            await search.waitFor({ state: 'visible', timeout: 20000 });
+
+            const categories = page.locator('[aria-label="Product categories"]');
+            await categories.waitFor({ state: 'visible', timeout: 10000 });
+            const categoryText = await categories.innerText();
+            console.log('Mobile categories:', categoryText.replace(/\s+/g, ' ').trim());
+            assert(categoryText.includes('All Products'), 'All Products category is missing');
+            assert(categoryText.includes('Drinks & Beverages'), 'Drinks & Beverages category is missing');
+
+            const filters = page.getByRole('button', { name: 'Filters' }).first();
+            await filters.waitFor({ state: 'visible', timeout: 10000 });
+            assert(await filters.isVisible(), 'Filters button is hidden on mobile');
+
+            const cases = [
+              ['cold drink', ['Coca-Cola', 'pepsi']],
+              ['doodh', ['milk', 'Amul milk']],
+              ['biskut', ['britania marie gold']],
+            ];
+
+            for (const [query, expected] of cases) {
+              await search.fill(query);
+              await page.waitForTimeout(900);
+              const text = (await page.locator('body').innerText()).toLowerCase();
+              const matched = expected.some((name) => text.includes(name.toLowerCase()));
+              console.log(`Search "${query}" -> ${matched ? 'matched' : 'NO MATCH'}`);
+              assert(matched, `Search "${query}" did not return an expected product`);
+            }
+
+            await search.fill('');
+            await page.waitForTimeout(500);
+            await page.screenshot({ path: 'mobile-storefront.png', fullPage: true });
+            console.log('CUSTOMER_STAGING_BROWSER_QA=PASS');
+          } finally {
+            await browser.close();
+          }
+          NODE
+
+      - name: Upload mobile QA screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer-staging-mobile-qa
+          path: mobile-storefront.png
+          retention-days: 7
