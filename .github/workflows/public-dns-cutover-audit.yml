@@ -82,3 +82,5 @@ jobs:
           echo '=== HTTPS HEADERS ==='
           curl -IsS --max-time 15 https://zeshu.in | sed -n '1,20p' || true
           curl -IsS --max-time 15 https://www.zeshu.in | sed -n '1,20p' || true
+          echo '=== API HTTPS HEADERS ==='
+          curl -IsS --max-time 15 https://api.zeshu.in | sed -n '1,25p' || true
