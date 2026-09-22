@@ -63,13 +63,25 @@ const safeNumber = (value: unknown) => Number.isFinite(Number(value)) ? Number(v
 
 const shortOrderRef = (value: unknown) => String(value || '').split('-')[0]?.toUpperCase() || '';
 
+const SECRET_LABEL_PATTERN = /\b(otp|cvv|upi\s*pin|password|api\s*key|access\s*token|refresh\s*token|app\s*secret|client\s*secret|service\s*role(?:\s*key)?|secret\s*key)\s*[:=-]?\s*[^\s,;]{3,}/gi;
+const BEARER_TOKEN_PATTERN = /\bbearer\s+[a-z0-9._~+\/-]{12,}={0,2}/gi;
+const JWT_PATTERN = /\beyJ[a-z0-9_-]{10,}\.[a-z0-9_-]{10,}\.[a-z0-9_-]{10,}\b/gi;
+const PROVIDER_SECRET_PATTERN = /\b(?:sk-[a-z0-9_-]{16,}|rzp_(?:test|live)_[a-z0-9]{16,}|whsec_[a-z0-9_-]{16,})\b/gi;
+
 const redactSensitive = (value: string) => value
   .replace(/\b\d[\d\s-]{10,18}\d\b/g, '[redacted payment number]')
-  .replace(/\b(otp|cvv|upi\s*pin|password)\s*[:=-]?\s*[a-z0-9!@#$%^&*_-]{3,}\b/gi, '$1 [redacted]');
+  .replace(SECRET_LABEL_PATTERN, '$1 [redacted]')
+  .replace(BEARER_TOKEN_PATTERN, 'Bearer [redacted]')
+  .replace(JWT_PATTERN, '[redacted access token]')
+  .replace(PROVIDER_SECRET_PATTERN, '[redacted secret]');
 
 const containsLikelySecret = (value: string) => {
   if (/\b\d[\d\s-]{10,18}\d\b/.test(value)) return true;
-  return /\b(otp|cvv|upi\s*pin|password)\s*[:=-]?\s*[a-z0-9!@#$%^&*_-]{3,}\b/i.test(value);
+  return [SECRET_LABEL_PATTERN, BEARER_TOKEN_PATTERN, JWT_PATTERN, PROVIDER_SECRET_PATTERN]
+    .some((pattern) => {
+      pattern.lastIndex = 0;
+      return pattern.test(value);
+    });
 };
 
 const sanitizeHistory = (value: unknown): AssistantTurn[] => {
