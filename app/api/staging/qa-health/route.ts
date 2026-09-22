@@ -22,8 +22,9 @@ export async function GET(request: Request) {
   if (host !== STAGING_HOST) return NextResponse.json({ error: 'Not found.' }, { status: 404 });
 
   const { url, anonKey, serviceRoleKey } = await getRuntimeSupabaseEnv();
-  const [razorpayKey, razorpaySecret, razorpayWebhookSecret, routesKey, routerMode, whatsappSender] = await Promise.all([
+  const [razorpayKey, razorpayPublicKey, razorpaySecret, razorpayWebhookSecret, routesKey, routerMode, whatsappSender] = await Promise.all([
     getRuntimeEnvValue('RAZORPAY_KEY_ID'),
+    getRuntimeEnvValue('NEXT_PUBLIC_RAZORPAY_KEY_ID'),
     getRuntimeEnvValue('RAZORPAY_KEY_SECRET'),
     getRuntimeEnvValue('RAZORPAY_WEBHOOK_SECRET'),
     getRuntimeEnvValue('GOOGLE_MAPS_ROUTES_API_KEY'),
@@ -39,7 +40,8 @@ export async function GET(request: Request) {
       service_secret_present: Boolean(serviceRoleKey),
       payment_router_off: (routerMode || 'off').toLowerCase() === 'off',
       whatsapp_sender_off: (whatsappSender || 'false').toLowerCase() !== 'true',
-      razorpay_real_test_configured: !placeholder(razorpayKey) && razorpayKey.startsWith('rzp_test_') && !placeholder(razorpaySecret) && !placeholder(razorpayWebhookSecret),
+      razorpay_real_test_configured: !placeholder(razorpayKey) && razorpayKey.startsWith('rzp_test_') && razorpayPublicKey === razorpayKey && !placeholder(razorpaySecret) && !placeholder(razorpayWebhookSecret),
+      razorpay_public_key_matches: !placeholder(razorpayPublicKey) && razorpayPublicKey === razorpayKey,
       razorpay_key_secret_present: !placeholder(razorpaySecret),
       razorpay_webhook_secret_present: !placeholder(razorpayWebhookSecret),
       google_routes_configured: !placeholder(routesKey),
@@ -80,6 +82,7 @@ export async function POST(request: Request) {
     marketing,
     support,
     razorpayKey,
+    razorpayPublicKey,
     razorpaySecret,
     razorpayWebhookSecret,
     routesKey,
@@ -97,6 +100,7 @@ export async function POST(request: Request) {
     service.from('marketing_campaigns').select('id', { head: true, count: 'exact' }),
     service.from('support_conversations').select('id', { head: true, count: 'exact' }),
     getRuntimeEnvValue('RAZORPAY_KEY_ID'),
+    getRuntimeEnvValue('NEXT_PUBLIC_RAZORPAY_KEY_ID'),
     getRuntimeEnvValue('RAZORPAY_KEY_SECRET'),
     getRuntimeEnvValue('RAZORPAY_WEBHOOK_SECRET'),
     getRuntimeEnvValue('GOOGLE_MAPS_ROUTES_API_KEY'),
@@ -122,7 +126,8 @@ export async function POST(request: Request) {
     service_secret_present: Boolean(serviceRoleKey),
     payment_router_off: (routerMode || 'off').toLowerCase() === 'off',
     whatsapp_sender_off: (whatsappSender || 'false').toLowerCase() !== 'true',
-    razorpay_real_test_configured: !placeholder(razorpayKey) && razorpayKey.startsWith('rzp_test_') && !placeholder(razorpaySecret) && !placeholder(razorpayWebhookSecret),
+    razorpay_real_test_configured: !placeholder(razorpayKey) && razorpayKey.startsWith('rzp_test_') && razorpayPublicKey === razorpayKey && !placeholder(razorpaySecret) && !placeholder(razorpayWebhookSecret),
+    razorpay_public_key_matches: !placeholder(razorpayPublicKey) && razorpayPublicKey === razorpayKey,
     razorpay_key_secret_present: !placeholder(razorpaySecret),
     razorpay_webhook_secret_present: !placeholder(razorpayWebhookSecret),
     google_routes_configured: !placeholder(routesKey),
