@@ -40,16 +40,25 @@ jobs:
           q 'APEX A' A zeshu.in
           q 'APEX AAAA' AAAA zeshu.in
           q 'WWW CNAME' CNAME www.zeshu.in
+          q 'WWW A' A www.zeshu.in
+          q 'WWW AAAA' AAAA www.zeshu.in
           q 'API CNAME' CNAME api.zeshu.in
+          q 'API A' A api.zeshu.in
+          q 'API AAAA' AAAA api.zeshu.in
           q 'AUTODISCOVER CNAME' CNAME autodiscover.zeshu.in
+          q 'AUTODISCOVER A' A autodiscover.zeshu.in
           q 'AUTOCONFIG CNAME' CNAME autoconfig.zeshu.in
+          q 'AUTOCONFIG A' A autoconfig.zeshu.in
           q 'MX' MX zeshu.in
           q 'ROOT TXT ALL' TXT zeshu.in
           q 'DMARC TXT' TXT _dmarc.zeshu.in
           q 'CAA' CAA zeshu.in
           q 'HOSTINGERMAIL-A DKIM CNAME' CNAME hostingermail-a._domainkey.zeshu.in
+          q 'HOSTINGERMAIL-A DKIM A' A hostingermail-a._domainkey.zeshu.in
           q 'HOSTINGERMAIL-B DKIM CNAME' CNAME hostingermail-b._domainkey.zeshu.in
+          q 'HOSTINGERMAIL-B DKIM A' A hostingermail-b._domainkey.zeshu.in
           q 'HOSTINGERMAIL-C DKIM CNAME' CNAME hostingermail-c._domainkey.zeshu.in
+          q 'HOSTINGERMAIL-C DKIM A' A hostingermail-c._domainkey.zeshu.in
           q 'HOSTINGERMAIL-A DKIM TXT' TXT hostingermail-a._domainkey.zeshu.in
           q 'HOSTINGERMAIL-B DKIM TXT' TXT hostingermail-b._domainkey.zeshu.in
           q 'HOSTINGERMAIL-C DKIM TXT' TXT hostingermail-c._domainkey.zeshu.in
