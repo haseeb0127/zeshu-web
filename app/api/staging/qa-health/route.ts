@@ -22,11 +22,15 @@ export async function GET(request: Request) {
   if (host !== STAGING_HOST) return NextResponse.json({ error: 'Not found.' }, { status: 404 });
 
   const { url, anonKey, serviceRoleKey } = await getRuntimeSupabaseEnv();
-  const [razorpayKey, razorpayPublicKey, razorpaySecret, razorpayWebhookSecret, routesKey, routerMode, whatsappSender] = await Promise.all([
+  const [razorpayKey, razorpayPublicKey, razorpaySecret, razorpayWebhookSecret, phonePeEnv, phonePeClientId, phonePeClientSecret, phonePeClientVersion, routesKey, routerMode, whatsappSender] = await Promise.all([
     getRuntimeEnvValue('RAZORPAY_KEY_ID'),
     getRuntimeEnvValue('NEXT_PUBLIC_RAZORPAY_KEY_ID'),
     getRuntimeEnvValue('RAZORPAY_KEY_SECRET'),
     getRuntimeEnvValue('RAZORPAY_WEBHOOK_SECRET'),
+    getRuntimeEnvValue('PHONEPE_ENV'),
+    getRuntimeEnvValue('PHONEPE_CLIENT_ID'),
+    getRuntimeEnvValue('PHONEPE_CLIENT_SECRET'),
+    getRuntimeEnvValue('PHONEPE_CLIENT_VERSION'),
     getRuntimeEnvValue('GOOGLE_MAPS_ROUTES_API_KEY'),
     getRuntimeEnvValue('PAYMENT_ROUTER_MODE'),
     getRuntimeEnvValue('SUPPORT_WHATSAPP_SENDER_ENABLED'),
@@ -44,6 +48,10 @@ export async function GET(request: Request) {
       razorpay_public_key_matches: !placeholder(razorpayPublicKey) && razorpayPublicKey === razorpayKey,
       razorpay_key_secret_present: !placeholder(razorpaySecret),
       razorpay_webhook_secret_present: !placeholder(razorpayWebhookSecret),
+      phonepe_sandbox_configured: (phonePeEnv || 'sandbox').toLowerCase() === 'sandbox' && !placeholder(phonePeClientId) && !placeholder(phonePeClientSecret) && /^\\d+$/.test(phonePeClientVersion),
+      phonepe_client_id_present: !placeholder(phonePeClientId),
+      phonepe_client_secret_present: !placeholder(phonePeClientSecret),
+      phonepe_client_version_present: /^\\d+$/.test(phonePeClientVersion),
       google_routes_configured: !placeholder(routesKey),
     },
   }, { headers: { 'Cache-Control': 'no-store' } });
@@ -85,6 +93,10 @@ export async function POST(request: Request) {
     razorpayPublicKey,
     razorpaySecret,
     razorpayWebhookSecret,
+    phonePeEnv,
+    phonePeClientId,
+    phonePeClientSecret,
+    phonePeClientVersion,
     routesKey,
     routerMode,
     whatsappSender,
@@ -103,6 +115,10 @@ export async function POST(request: Request) {
     getRuntimeEnvValue('NEXT_PUBLIC_RAZORPAY_KEY_ID'),
     getRuntimeEnvValue('RAZORPAY_KEY_SECRET'),
     getRuntimeEnvValue('RAZORPAY_WEBHOOK_SECRET'),
+    getRuntimeEnvValue('PHONEPE_ENV'),
+    getRuntimeEnvValue('PHONEPE_CLIENT_ID'),
+    getRuntimeEnvValue('PHONEPE_CLIENT_SECRET'),
+    getRuntimeEnvValue('PHONEPE_CLIENT_VERSION'),
     getRuntimeEnvValue('GOOGLE_MAPS_ROUTES_API_KEY'),
     getRuntimeEnvValue('PAYMENT_ROUTER_MODE'),
     getRuntimeEnvValue('SUPPORT_WHATSAPP_SENDER_ENABLED'),
@@ -130,6 +146,10 @@ export async function POST(request: Request) {
     razorpay_public_key_matches: !placeholder(razorpayPublicKey) && razorpayPublicKey === razorpayKey,
     razorpay_key_secret_present: !placeholder(razorpaySecret),
     razorpay_webhook_secret_present: !placeholder(razorpayWebhookSecret),
+    phonepe_sandbox_configured: (phonePeEnv || 'sandbox').toLowerCase() === 'sandbox' && !placeholder(phonePeClientId) && !placeholder(phonePeClientSecret) && /^\\d+$/.test(phonePeClientVersion),
+    phonepe_client_id_present: !placeholder(phonePeClientId),
+    phonepe_client_secret_present: !placeholder(phonePeClientSecret),
+    phonepe_client_version_present: /^\\d+$/.test(phonePeClientVersion),
     google_routes_configured: !placeholder(routesKey),
   };
 
@@ -145,6 +165,7 @@ export async function POST(request: Request) {
     runtime: runtimeChecks,
     provider_tests_pending: {
       razorpay_test_gateway: !runtimeChecks.razorpay_real_test_configured,
+      phonepe_test_gateway: !runtimeChecks.phonepe_sandbox_configured,
       google_routes_eta: !runtimeChecks.google_routes_configured,
       whatsapp_real_send: true,
       sms_otp: true,
