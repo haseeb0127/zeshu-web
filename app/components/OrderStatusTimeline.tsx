@@ -1,9 +1,12 @@
+"use client";
+
 import { Check } from "lucide-react";
+import { useCustomerLanguage } from "./CustomerLanguageProvider";
 
 const stages = [
   ["PENDING", "Order placed"],
   ["CONFIRMED", "Confirmed"],
-  ["PREPARING", "Preparing"],
+  ["PREPARING", "Being prepared"],
   ["READY_FOR_PICKUP", "Ready for pickup"],
   ["PICKED_UP", "Picked up"],
   ["OUT_FOR_DELIVERY", "Out for delivery"],
@@ -11,10 +14,11 @@ const stages = [
 ] as const;
 
 export default function OrderStatusTimeline({ status }: { status?: string }) {
+  const { t } = useCustomerLanguage();
   const visibleStages = status === "CANCELLED" ? [...stages.slice(0, -1), ["CANCELLED", "Cancelled"] as const] : stages;
   const activeIndex = Math.max(0, visibleStages.findIndex(([value]) => value === status));
   return (
-    <ol className="space-y-0" aria-label="Order progress">
+    <ol className="space-y-0" aria-label={t("Order progress")}>
       {visibleStages.map(([value, label], index) => {
         const complete = index <= activeIndex;
         const current = index === activeIndex;
@@ -23,7 +27,7 @@ export default function OrderStatusTimeline({ status }: { status?: string }) {
           <span className={`z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 ${complete ? "border-[#087443] bg-[#087443] text-white" : "border-[#cbd5cf] bg-white text-transparent"}`}>
             {complete && <Check size={14} strokeWidth={3} />}
           </span>
-          <span className="pt-1"><span className={`block text-sm font-bold ${current ? "text-[#075b36]" : complete ? "text-[#25332b]" : "text-[#7a887f]"}`}>{label}</span>{current && <span className="text-xs text-[#587065]">Current order status</span>}</span>
+          <span className="pt-1"><span className={`block text-sm font-bold ${current ? "text-[#075b36]" : complete ? "text-[#25332b]" : "text-[#7a887f]"}`}>{t(label)}</span>{current && <span className="text-xs text-[#587065]">{t("Current order status")}</span>}</span>
         </li>;
       })}
     </ol>
