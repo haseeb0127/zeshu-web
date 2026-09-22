@@ -1,7 +1,6 @@
 import { useState } from "react";
 import QuantityControl from "./QuantityControl";
 import { Heart } from "lucide-react";
-import { deliveryBadge } from "../lib/fulfillment";
 import { marketplaceDeliveryPromise, sellerTrustBadges, type MarketplaceSeller } from "../lib/marketplace";
 import { useCustomerLanguage } from "./CustomerLanguageProvider";
 
@@ -12,7 +11,6 @@ export default function ProductCard({ product, quantity, onAdd, onRemove, isFavo
   const { t } = useCustomerLanguage();
   const [imageFailed, setImageFailed] = useState(false);
   const unavailable = !product.vendor_id || product.in_stock === false || Number(product.quantity) <= 0;
-  const badge = deliveryBadge(product, { localThirtyMinuteAvailable, nationwideCheckoutEnabled });
   const promise = marketplaceDeliveryPromise(product, { localThirtyMinuteAvailable, nationwideCheckoutEnabled });
   const trustBadges = sellerTrustBadges(seller).slice(0, 2);
   const indiaLocked = product.delivery_mode === "INDIA_STANDARD" && !(product.nationwide_shipping_enabled === true && nationwideCheckoutEnabled);
