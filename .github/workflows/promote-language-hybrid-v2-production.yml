@@ -1,0 +1,296 @@
+name: Promote tested main to Cloudflare production
+
+on:
+  push:
+    branches:
+      - ops/promote-language-hybrid-v2-20260923
+    paths:
+      - ".github/workflows/promote-language-hybrid-v2-production.yml"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: cloudflare-production-release
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.CLOUDFLARE_PRODUCTION_NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.CLOUDFLARE_PRODUCTION_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY: ${{ secrets.CLOUDFLARE_PRODUCTION_NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY }}
+      NEXT_PUBLIC_RAZORPAY_KEY_ID: rzp_test_build_check
+      NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED: 'false'
+      SUPABASE_SERVICE_ROLE_KEY: build-only-placeholder
+      RAZORPAY_KEY_ID: build-only-placeholder
+      RAZORPAY_KEY_SECRET: build-only-placeholder
+      RAZORPAY_WEBHOOK_SECRET: build-only-placeholder
+      GOOGLE_MAPS_ROUTES_API_KEY: build-only-placeholder
+      PLANAPI_MEMBER_ID: build-only-placeholder
+      PLANAPI_PASSWORD: build-only-placeholder
+      PLANAPI_TOKEN_ID: build-only-placeholder
+      SUPPORT_AI_ENABLED: 'false'
+      ENFORCE_JAGTIAL_SERVICE_AREA: 'false'
+      SUPPORT_WHATSAPP_SENDER_ENABLED: 'false'
+      PAYMENT_ROUTER_MODE: 'off'
+
+    steps:
+      - name: Checkout current main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Require successful staging browser QA for this exact main SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="$(git rev-parse HEAD)"
+          response="$(curl -fsS             -H "Authorization: Bearer $GH_TOKEN"             -H "Accept: application/vnd.github+json"             "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/customer-staging-browser-qa.yml/runs?branch=main&status=success&per_page=30")"
+          echo "$response" | node -e '
+            let input = "";
+            process.stdin.on("data", c => input += c);
+            process.stdin.on("end", () => {
+              const payload = JSON.parse(input);
+              const sha = process.argv[1];
+              const ok = Array.isArray(payload.workflow_runs)
+                && payload.workflow_runs.some(run => run.head_sha === sha && run.conclusion === "success");
+              if (!ok) {
+                console.error("No successful staging browser QA exists for current main SHA " + sha);
+                process.exit(1);
+              }
+              console.log("Exact main SHA has a successful staging browser QA run.");
+            });
+          ' "$sha"
+
+      - name: Verify release configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY)
+          for key in "${required[@]}"; do
+            test -n "${!key:-}" || { echo "Missing required release secret for $key"; exit 1; }
+          done
+
+      - name: Capture current Worker version for rollback
+        id: previous
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE' >> "$GITHUB_OUTPUT"
+          const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+          const token = process.env.CLOUDFLARE_API_TOKEN;
+          const script = 'zeshu-web-production-candidate';
+          const response = await fetch(
+            `https://api.cloudflare.com/client/v4/accounts/${accountId}/workers/scripts/${script}/deployments`,
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+          if (!response.ok) throw new Error(`Could not read current Worker deployment: HTTP ${response.status}`);
+          const payload = await response.json();
+          const deployments = Array.isArray(payload?.result)
+            ? payload.result
+            : Array.isArray(payload?.result?.deployments) ? payload.result.deployments : [];
+          deployments.sort((a, b) => Date.parse(b.created_on || 0) - Date.parse(a.created_on || 0));
+          const current = deployments[0];
+          const active = Array.isArray(current?.versions)
+            ? current.versions.slice().sort((a,b) => Number(b.percentage || 0) - Number(a.percentage || 0))[0]
+            : null;
+          if (!active?.version_id) throw new Error('Could not determine currently serving Worker version.');
+          console.log(`version_id=${active.version_id}`);
+          NODE
+
+      - run: npm ci
+
+      - name: Build tested Cloudflare Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2; do
+            if npx --yes @opennextjs/cloudflare@1.20.6 build; then
+              exit 0
+            fi
+            if [ "$attempt" = "2" ]; then
+              echo "OpenNext build failed twice."
+              exit 1
+            fi
+            echo "OpenNext transient install/build failed once; retrying with a fresh npm cache."
+            npm cache clean --force
+            sleep 10
+          done
+
+      - name: Deploy tested revision to live Worker
+        id: deploy
+        run: npx --yes wrangler@4.68.0 deploy --config wrangler.production-candidate.jsonc --name zeshu-web-production-candidate
+
+      - name: Verify Worker runtime safety
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const url = 'https://zeshu-web-production-candidate.asif-mohammed0127.workers.dev/api/production-candidate/qa-health';
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+          let body = null;
+          let lastError = null;
+          for (let attempt = 1; attempt <= 10; attempt += 1) {
+            try {
+              const response = await fetch(url, { headers: { 'cache-control': 'no-cache' } });
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              body = await response.json();
+              break;
+            } catch (error) {
+              lastError = error;
+              if (attempt < 10) await sleep(3000);
+            }
+          }
+          if (!body) throw lastError || new Error('Production Worker health endpoint did not respond.');
+          const runtime = body.runtime || {};
+          const checks = {
+            production_supabase_url_present: runtime.production_supabase_url_present === true,
+            production_supabase_url_matches: runtime.production_supabase_url_matches === true,
+            anon_key_present: runtime.anon_key_present === true,
+            service_secret_present: runtime.service_secret_present === true,
+            payment_router_off: runtime.payment_router_off === true,
+            whatsapp_sender_off: runtime.whatsapp_sender_off === true,
+            razorpay_test_configured: runtime.razorpay_test_configured === true,
+          };
+          const failed = Object.entries(checks).filter(([, ok]) => ok !== true).map(([name]) => name);
+          console.log('Production runtime checks:', checks);
+          if (failed.length) throw new Error(`Production runtime verification failed: ${failed.join(', ')}`);
+          NODE
+
+      - name: Verify live domains and auth boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          for base in "https://zeshu.in" "https://www.zeshu.in"; do
+            headers="$(mktemp)"
+            curl -fsS -D "$headers" -o /dev/null "$base/"
+            grep -qi '^server: cloudflare' "$headers" || { echo "$base is not fronted by Cloudflare"; exit 1; }
+            grep -qi '^x-opennext: 1' "$headers" || { echo "$base is not serving the OpenNext Worker"; exit 1; }
+            for route in "/" "/policies" "/partners" "/app" "/scanner"; do
+              code="$(curl -L -sS -o /tmp/live-body -w '%{http_code}' "$base$route" || true)"
+              test "$code" = "200" || { echo "Expected 200 from $base$route, got $code"; exit 1; }
+            done
+          done
+
+          code="$(curl -L -sS -o /tmp/assistant -w '%{http_code}' -X POST "https://zeshu.in/api/support/assistant" -H 'Content-Type: application/json' --data '{"message":"hello"}' || true)"
+          test "$code" = "401" || { echo "Assistant expected 401, got $code"; exit 1; }
+
+          code="$(curl -L -sS -o /tmp/admin-support -w '%{http_code}' "https://zeshu.in/api/admin/support/conversations" || true)"
+          test "$code" = "401" || { echo "Admin support expected 401, got $code"; exit 1; }
+
+          code="$(curl -L -sS -o /tmp/whatsapp-readiness -w '%{http_code}' "https://zeshu.in/api/admin/support/whatsapp-readiness" || true)"
+          test "$code" = "401" || { echo "WhatsApp readiness expected 401, got $code"; exit 1; }
+
+          headers="$(mktemp)"
+          curl -sS -D "$headers" -o /dev/null "https://api.zeshu.in/" || true
+          grep -qi '^x-vercel-' "$headers" || { echo "api.zeshu.in no longer exposes expected Vercel origin metadata"; exit 1; }
+
+      - name: Verify live mobile search/category UX
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+          const assert = (condition, message) => { if (!condition) throw new Error(message); };
+          try {
+            await page.goto('https://zeshu.in', { waitUntil: 'networkidle', timeout: 60000 });
+            const search = page.locator('input[aria-label="Search Zeshu"]');
+            await search.waitFor({ state: 'visible', timeout: 20000 });
+            const categories = page.locator('[aria-label="Shop by Category"]');
+            await categories.waitFor({ state: 'visible', timeout: 10000 });
+            const categoryText = await categories.innerText();
+            assert(categoryText.includes('All Products'), 'All Products category missing on live mobile UI');
+            assert(categoryText.includes('Drinks & Beverages'), 'Drinks & Beverages category missing on live mobile UI');
+            await page.getByRole('button', { name: 'Filters' }).first().waitFor({ state: 'visible', timeout: 10000 });
+            const cases = [
+              ['cold drink', ['Coca-Cola', 'pepsi']],
+              ['doodh', ['milk', 'Amul milk']],
+              ['biskut', ['britania marie gold']],
+            ];
+            for (const [query, expected] of cases) {
+              await search.fill(query);
+              await page.waitForTimeout(900);
+              const text = (await page.locator('body').innerText()).toLowerCase();
+              assert(expected.some((name) => text.includes(name.toLowerCase())), `Live search "${query}" did not return an expected product`);
+            }
+
+            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'hi'));
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+            const hindi = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(hindi.includes('एक Zeshu। आपकी ज़रूरतों के लिए तीन आसान रास्ते।'), 'Hybrid Zeshu heading is not localized in Hindi');
+            assert(hindi.includes('सभी प्रोडक्ट'), 'All Products heading is not localized in Hindi');
+            assert(hindi.includes('आइटम'), 'Product count is not localized in Hindi');
+            assert(hindi.includes('अभी कोई समीक्षा नहीं'), 'Review empty state is not localized in Hindi');
+            assert(hindi.includes('समीक्षाएँ देखें'), 'Review action is not localized in Hindi');
+            assert(hindi.includes('जोड़ें'), 'ADD action is not localized in Hindi');
+            assert(hindi.includes('रीचार्ज और बिल'), 'Footer recharge link is not localized in Hindi');
+            for (const english of ['All Items', 'No reviews yet', 'See reviews', 'Image unavailable']) {
+              assert(!hindi.includes(english), `English storefront label still visible in Hindi: ${english}`);
+            }
+
+            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'ur'));
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+            await page.waitForFunction(() => document.documentElement.dir === 'rtl', null, { timeout: 10000 });
+            const urdu = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(await page.locator('html').getAttribute('dir') === 'rtl', 'Urdu page is not RTL');
+            assert(urdu.includes('ایک Zeshu۔ آپ کی ضرورت کے لیے تین آسان راستے۔'), 'Hybrid Zeshu heading is not localized in Urdu');
+            assert(urdu.includes('سب کچھ خریدیں'), 'Shop Everything is not localized in Urdu');
+            assert(urdu.includes('ریچارج اور بل'), 'Footer recharge link is not localized in Urdu');
+          } finally {
+            await browser.close();
+          }
+          NODE
+
+      - name: Roll back previous Worker version if post-deploy verification failed
+        if: failure() && steps.deploy.outcome == 'success' && steps.previous.outputs.version_id != ''
+        shell: bash
+        env:
+          PREVIOUS_VERSION_ID: ${{ steps.previous.outputs.version_id }}
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+          const token = process.env.CLOUDFLARE_API_TOKEN;
+          const previous = process.env.PREVIOUS_VERSION_ID;
+          const script = 'zeshu-web-production-candidate';
+          const response = await fetch(
+            `https://api.cloudflare.com/client/v4/accounts/${accountId}/workers/scripts/${script}/deployments?force=true`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                strategy: 'percentage',
+                versions: [{ percentage: 100, version_id: previous }],
+                annotations: { 'workers/message': 'Automatic rollback after Zeshu production verification failure' },
+              }),
+            },
+          );
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok || payload?.success !== true) throw new Error(`Automatic rollback failed with HTTP ${response.status}`);
+          console.log('Automatic rollback restored the previously serving Worker version.');
+          NODE
+          curl -fsS -o /dev/null "https://zeshu.in/"
+
+      - name: Release summary
+        if: success()
+        run: echo "Current main was staging-verified, promoted to Cloudflare production, and passed runtime, live-route, auth, API-origin and mobile-browser checks."
