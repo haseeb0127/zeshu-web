@@ -117,6 +117,9 @@ jobs:
             payment_router_off: runtime.payment_router_off === true,
             whatsapp_sender_off: runtime.whatsapp_sender_off === true,
             razorpay_real_test_configured: runtime.razorpay_real_test_configured === true,
+            razorpay_public_key_matches: runtime.razorpay_public_key_matches === true,
+            razorpay_key_secret_present: runtime.razorpay_key_secret_present === true,
+            razorpay_webhook_secret_present: runtime.razorpay_webhook_secret_present === true,
           };
 
           const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
