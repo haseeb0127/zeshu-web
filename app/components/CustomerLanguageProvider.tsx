@@ -661,7 +661,7 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Contact payments unavailable": "కాంటాక్ట్ చెల్లింపులు అందుబాటులో లేవు",
     "QR payments unavailable": "QR చెల్లింపులు అందుబాటులో లేవు",
     "Scan a QR instead": "బదులుగా QR స్కాన్ చేయండి",
-    "Scan Different QR": "మరో QR స్కాన్ చేయండి"
+    "Scan Different QR": "మరో QR స్కాన్ చేయండి",
     "Your rider": "మీ రైడర్",
     "online": "ఆన్‌లైన్",
     "offline": "ఆఫ్‌లైన్",
@@ -1326,7 +1326,7 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Contact payments unavailable": "कॉन्टैक्ट भुगतान उपलब्ध नहीं",
     "QR payments unavailable": "QR भुगतान उपलब्ध नहीं",
     "Scan a QR instead": "इसके बजाय QR स्कैन करें",
-    "Scan Different QR": "दूसरा QR स्कैन करें"
+    "Scan Different QR": "दूसरा QR स्कैन करें",
     "Your rider": "आपका राइडर",
     "online": "ऑनलाइन",
     "offline": "ऑफ़लाइन",
@@ -1991,7 +1991,7 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Contact payments unavailable": "کانٹیکٹ ادائیگی دستیاب نہیں",
     "QR payments unavailable": "QR ادائیگی دستیاب نہیں",
     "Scan a QR instead": "اس کے بجائے QR اسکین کریں",
-    "Scan Different QR": "دوسرا QR اسکین کریں"
+    "Scan Different QR": "دوسرا QR اسکین کریں",
     "Your rider": "آپ کا رائیڈر",
     "online": "آن لائن",
     "offline": "آف لائن",
