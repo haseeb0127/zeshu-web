@@ -1,0 +1,86 @@
+name: Cloudflare cutover audit
+
+on:
+  push:
+    branches:
+      - ops/cloudflare-cutover-20260922
+    paths:
+      - .github/workflows/cloudflare-cutover-audit.yml
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Verify credentials are available
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+
+      - name: Audit Cloudflare zone and web DNS
+        shell: bash
+        run: |
+          set -euo pipefail
+          auth=(-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json")
+
+          zones="$(curl -fsS "https://api.cloudflare.com/client/v4/zones?name=zeshu.in&account.id=$CLOUDFLARE_ACCOUNT_ID" "${auth[@]}")"
+          echo "$zones" | jq -e '.success == true' >/dev/null
+          zone_count="$(echo "$zones" | jq '.result | length')"
+          test "$zone_count" = "1" || { echo "Expected exactly one zeshu.in Cloudflare zone, found $zone_count"; exit 1; }
+          zone_id="$(echo "$zones" | jq -r '.result[0].id')"
+          zone_status="$(echo "$zones" | jq -r '.result[0].status')"
+          echo "ZONE_ID=$zone_id" >> "$GITHUB_ENV"
+          echo "Cloudflare zone status: $zone_status"
+
+          dns="$(curl -fsS "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records?per_page=500" "${auth[@]}")"
+          echo "$dns" | jq -e '.success == true' >/dev/null
+
+          echo "=== CURRENT WEB DNS: zeshu.in ==="
+          echo "$dns" | jq -c '.result[] | select(.name=="zeshu.in" and (.type=="A" or .type=="AAAA" or .type=="CNAME")) | {id,type,name,content,proxied,ttl}'
+          echo "=== CURRENT WEB DNS: www.zeshu.in ==="
+          echo "$dns" | jq -c '.result[] | select(.name=="www.zeshu.in" and (.type=="A" or .type=="AAAA" or .type=="CNAME")) | {id,type,name,content,proxied,ttl}'
+
+          apex_count="$(echo "$dns" | jq '[.result[] | select(.name=="zeshu.in" and (.type=="A" or .type=="AAAA" or .type=="CNAME"))] | length')"
+          www_count="$(echo "$dns" | jq '[.result[] | select(.name=="www.zeshu.in" and (.type=="A" or .type=="AAAA" or .type=="CNAME"))] | length')"
+          mx_count="$(echo "$dns" | jq '[.result[] | select(.type=="MX" and .name=="zeshu.in")] | length')"
+          spf_count="$(echo "$dns" | jq '[.result[] | select(.type=="TXT" and .name=="zeshu.in" and (.content|startswith("v=spf1")))] | length')"
+          dkim_count="$(echo "$dns" | jq '[.result[] | select(.type=="TXT" and (.name|contains("._domainkey.")))] | length')"
+          dmarc_count="$(echo "$dns" | jq '[.result[] | select(.type=="TXT" and .name=="_dmarc.zeshu.in")] | length')"
+
+          echo "WEB_APEX_RECORD_COUNT=$apex_count"
+          echo "WEB_WWW_RECORD_COUNT=$www_count"
+          echo "MAIL_MX_COUNT=$mx_count"
+          echo "MAIL_SPF_COUNT=$spf_count"
+          echo "MAIL_DKIM_COUNT=$dkim_count"
+          echo "MAIL_DMARC_COUNT=$dmarc_count"
+
+          echo "=== HOSTINGER / MAIL RECORD NAMES (values intentionally omitted) ==="
+          echo "$dns" | jq -r '.result[] | select(.type=="MX" or (.type=="TXT" and ((.name=="zeshu.in") or (.name=="_dmarc.zeshu.in") or (.name|contains("._domainkey."))))) | [.type,.name] | @tsv' | sort -u
+
+      - name: Audit existing Worker routes and custom domains
+        shell: bash
+        run: |
+          set -euo pipefail
+          auth=(-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json")
+
+          routes="$(curl -fsS "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/workers/routes" "${auth[@]}")"
+          echo "$routes" | jq -e '.success == true' >/dev/null
+          echo "=== WORKER ROUTES FOR ZESHU HOSTNAMES ==="
+          echo "$routes" | jq -c '.result[] | select(.pattern|test("(^|\\.)zeshu\\.in")) | {id,pattern,script}'
+
+          domains="$(curl -fsS "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains" "${auth[@]}")"
+          echo "$domains" | jq -e '.success == true' >/dev/null
+          echo "=== WORKER CUSTOM DOMAINS FOR ZESHU HOSTNAMES ==="
+          echo "$domains" | jq -c '.result[] | select(.hostname=="zeshu.in" or .hostname=="www.zeshu.in") | {id,hostname,service,environment,zone_id,zone_name}'
+
+      - name: Audit summary
+        run: |
+          echo "Read-only Cloudflare cutover audit completed. No DNS, Worker route, custom domain, email, Vercel, Supabase, Razorpay, or production traffic setting was changed."
