@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { evaluateJagtialServiceArea, isJagtialServiceAreaEnforced } from '../../lib/service-area';
 import { getNationwideCourierQuotes, isNationwideCourierReady } from '../../lib/courier-server';
 import { evaluateNationwideProfitability } from '../../lib/nationwide-profitability';
+import { getRuntimeEnvValue, getRuntimeSupabaseEnv } from '../../lib/runtime-env';
 
 export const dynamic = 'force-dynamic';
 
@@ -124,40 +125,89 @@ export async function POST(request: Request) {
   const requestHost = (request.headers.get('host') || '').toLowerCase().split(':')[0];
   const isStagingRequest = requestHost === STAGING_WORKER_HOST;
 
+  let effectiveUrl = url;
+  let effectiveAnonKey = anonKey;
+  let effectiveServiceRoleKey = serviceRoleKey;
+  let effectiveRazorpayKeyId = process.env.RAZORPAY_KEY_ID;
+  let effectiveRazorpayKeySecret = process.env.RAZORPAY_KEY_SECRET;
+  let effectivePublicRazorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+
   if (isStagingRequest) {
-    const authorization = request.headers.get('authorization') || '';
-    const requestBody = await request.text();
-    try {
-      const response = await fetch(STAGING_PREPARE_CHECKOUT_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: authorization,
-          Origin: STAGING_ORIGIN,
-        },
-        body: requestBody,
-        cache: 'no-store',
-      });
-      const payload = await response.json().catch(() => ({
-        success: false,
-        code: 'STAGING_BACKEND_INVALID_RESPONSE',
-        message: 'Staging checkout returned an invalid response.',
-        requestId,
-      }));
-      return NextResponse.json(payload, {
-        status: response.status,
-        headers: { 'Cache-Control': 'no-store' },
-      });
-    } catch (error) {
+    const [stagingSupabase, stagingKeyId, stagingKeySecret, stagingPublicKeyId] = await Promise.all([
+      getRuntimeSupabaseEnv(),
+      getRuntimeEnvValue('RAZORPAY_KEY_ID'),
+      getRuntimeEnvValue('RAZORPAY_KEY_SECRET'),
+      getRuntimeEnvValue('NEXT_PUBLIC_RAZORPAY_KEY_ID'),
+    ]);
+
+    const liveKeyDetected = stagingKeyId.startsWith('rzp_live_') || stagingPublicKeyId.startsWith('rzp_live_');
+    if (liveKeyDetected) {
       return checkoutError(
         requestId,
-        'STAGING_PROXY',
-        'STAGING_BACKEND_UNAVAILABLE',
-        'Staging checkout is temporarily unavailable. Please try again.',
+        'STAGING_CONFIG',
+        'STAGING_LIVE_PAYMENT_BLOCKED',
+        'Live Razorpay credentials are blocked on staging.',
         503,
-        error,
       );
     }
+
+    const realTestReady = stagingKeyId.startsWith('rzp_test_')
+      && stagingPublicKeyId === stagingKeyId
+      && !isPlaceholderRazorpayValue(stagingKeySecret);
+
+    if (!realTestReady) {
+      const authorization = request.headers.get('authorization') || '';
+      const requestBody = await request.text();
+      try {
+        const response = await fetch(STAGING_PREPARE_CHECKOUT_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: authorization,
+            Origin: STAGING_ORIGIN,
+          },
+          body: requestBody,
+          cache: 'no-store',
+        });
+        const payload = await response.json().catch(() => ({
+          success: false,
+          code: 'STAGING_BACKEND_INVALID_RESPONSE',
+          message: 'Staging checkout returned an invalid response.',
+          requestId,
+        }));
+        return NextResponse.json(payload, {
+          status: response.status,
+          headers: { 'Cache-Control': 'no-store' },
+        });
+      } catch (error) {
+        return checkoutError(
+          requestId,
+          'STAGING_PROXY',
+          'STAGING_BACKEND_UNAVAILABLE',
+          'Staging checkout is temporarily unavailable. Please try again.',
+          503,
+          error,
+        );
+      }
+    }
+
+    if (!stagingSupabase.url || !stagingSupabase.anonKey || !stagingSupabase.serviceRoleKey
+      || !stagingSupabase.url.includes(STAGING_PROJECT_REF)) {
+      return checkoutError(
+        requestId,
+        'STAGING_CONFIG',
+        'STAGING_SUPABASE_MISMATCH',
+        'Staging payment configuration is unavailable.',
+        503,
+      );
+    }
+
+    effectiveUrl = stagingSupabase.url;
+    effectiveAnonKey = stagingSupabase.anonKey;
+    effectiveServiceRoleKey = stagingSupabase.serviceRoleKey;
+    effectiveRazorpayKeyId = stagingKeyId;
+    effectiveRazorpayKeySecret = stagingKeySecret;
+    effectivePublicRazorpayKeyId = stagingPublicKeyId;
   }
 
   let stage = 'REQUEST_PARSE';
@@ -168,7 +218,7 @@ export async function POST(request: Request) {
 
     const accessToken = authorization.slice('Bearer '.length).trim();
     if (!accessToken) return checkoutError(requestId, stage, 'SESSION_EXPIRED', 'Your customer session has expired. Please sign in again.', 401);
-    const authClient = createClient(url, anonKey);
+    const authClient = createClient(effectiveUrl, effectiveAnonKey);
     const { data: { user }, error: authError } = await authClient.auth.getUser(accessToken);
     if (authError || !user) return checkoutError(requestId, stage, 'SESSION_EXPIRED', 'Your customer session has expired. Please sign in again.', 401, authError);
 
@@ -206,7 +256,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const serviceClient = createClient(url, serviceRoleKey);
+    const serviceClient = createClient(effectiveUrl, effectiveServiceRoleKey);
     stage = 'CUSTOMER_PROFILE';
     let deliveryCoordinates: { latitude: number; longitude: number; accuracyMeters: number | null; source: 'DEVICE' | 'MANUAL_PIN' | 'LEGACY' } | null = null;
     let savedDeliveryAddress: any = null;
@@ -281,9 +331,9 @@ export async function POST(request: Request) {
 
     const canonicalRequestedItems = canonicalizeItems(reservationItems);
 
-    const keyId = process.env.RAZORPAY_KEY_ID;
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
-    const publicKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+    const keyId = effectiveRazorpayKeyId;
+    const keySecret = effectiveRazorpayKeySecret;
+    const publicKeyId = effectivePublicRazorpayKeyId;
     const stagingPaymentSimulator = isStagingRequest && (
       isPlaceholderRazorpayValue(keyId)
       || isPlaceholderRazorpayValue(keySecret)

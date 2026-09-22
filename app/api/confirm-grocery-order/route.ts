@@ -2,10 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+import { getRuntimeEnvValue, getRuntimeSupabaseEnv } from '../../lib/runtime-env';
 
 type RazorpayPaymentRecord = { id?: string; order_id?: string; amount?: number | string; status?: string; captured?: boolean };
 
@@ -27,12 +24,20 @@ const finalizationErrorResponse = (message?: string) => {
 
 export async function POST(req: Request) {
   try {
+    const [{ url: runtimeSupabaseUrl, anonKey: runtimeSupabaseAnonKey, serviceRoleKey: runtimeServiceRoleKey }, runtimeRazorpayKeyId, runtimeRazorpayKeySecret] = await Promise.all([
+      getRuntimeSupabaseEnv(),
+      getRuntimeEnvValue('RAZORPAY_KEY_ID'),
+      getRuntimeEnvValue('RAZORPAY_KEY_SECRET'),
+    ]);
+    if (!runtimeSupabaseUrl || !runtimeSupabaseAnonKey || !runtimeServiceRoleKey || !runtimeRazorpayKeyId || !runtimeRazorpayKeySecret) {
+      return NextResponse.json({ success: false, error: 'Server configuration error' }, { status: 503 });
+    }
     const authorization = req.headers.get('authorization');
     if (!authorization?.startsWith('Bearer ')) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
 
     const accessToken = authorization.slice('Bearer '.length).trim();
     if (!accessToken) return NextResponse.json({ success: false, error: 'Your customer session has expired. Please sign in again.' }, { status: 401 });
-    const authClient = createClient(supabaseUrl, supabaseAnonKey);
+    const authClient = createClient(runtimeSupabaseUrl, runtimeSupabaseAnonKey);
     const { data: { user }, error: authError } = await authClient.auth.getUser(accessToken);
     if (authError || !user) return NextResponse.json({ success: false, error: 'Your customer session has expired. Please sign in again.' }, { status: 401 });
 
@@ -46,15 +51,14 @@ export async function POST(req: Request) {
     }
     logPaymentDiagnostic('confirmation payload received', { hasReservationId: true, hasRazorpayOrderId: true, hasRazorpayPaymentId: true, hasRazorpaySignature: true });
 
-    const secret = process.env.RAZORPAY_KEY_SECRET;
-    if (!secret) return NextResponse.json({ success: false, error: 'Server configuration error' }, { status: 500 });
+    const secret = runtimeRazorpayKeySecret;
     const generatedSignature = crypto.createHmac('sha256', secret).update(`${razorpayOrderId}|${razorpayPaymentId}`).digest('hex');
     if (razorpaySignature.length !== generatedSignature.length || !crypto.timingSafeEqual(Buffer.from(generatedSignature), Buffer.from(razorpaySignature))) {
       console.warn('Razorpay signature validation failed.');
       return NextResponse.json({ success: false, error: 'Payment verification failed. Invalid signature.' }, { status: 400 });
     }
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const supabase = createClient(runtimeSupabaseUrl, runtimeServiceRoleKey);
     const { data: adminRole, error: adminRoleError } = await supabase.from('admin_roles').select('user_id').eq('user_id', user.id).eq('role', 'admin').maybeSingle();
     if (adminRoleError) return NextResponse.json({ success: false, error: 'Unable to verify checkout identity.' }, { status: 500 });
     if (adminRole) return NextResponse.json({ success: false, error: 'Admin sessions cannot confirm customer orders.' }, { status: 403 });
@@ -63,7 +67,7 @@ export async function POST(req: Request) {
     if (customerProfileError) return NextResponse.json({ success: false, error: 'Unable to verify customer profile.' }, { status: 500 });
     if (!customerProfile) return NextResponse.json({ success: false, error: 'Customer profile required before order confirmation.' }, { status: 403 });
 
-    const razorpay = new Razorpay({ key_id: process.env.RAZORPAY_KEY_ID!, key_secret: secret });
+    const razorpay = new Razorpay({ key_id: runtimeRazorpayKeyId, key_secret: secret });
     let payment: RazorpayPaymentRecord | undefined;
     try {
       const fetchedPayment = await razorpay.payments.fetch(razorpayPaymentId);

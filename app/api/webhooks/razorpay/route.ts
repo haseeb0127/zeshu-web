@@ -2,12 +2,9 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import { createClient } from '@supabase/supabase-js';
+import { getRuntimeEnvValue, getRuntimeSupabaseEnv } from '../../../lib/runtime-env';
 
 export const dynamic = 'force-dynamic';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
 const isValidSignature = (rawBody: string, signature: string, secret: string) => {
   const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
@@ -29,7 +26,13 @@ const markRefundedHoldReleased = async (client: any, reservationId: string, paym
 };
 
 export async function POST(request: Request) {
-  if (!webhookSecret) {
+  const [{ url: runtimeSupabaseUrl, serviceRoleKey: runtimeServiceRoleKey }, webhookSecret, runtimeRazorpayKeyId, runtimeRazorpayKeySecret] = await Promise.all([
+    getRuntimeSupabaseEnv(),
+    getRuntimeEnvValue('RAZORPAY_WEBHOOK_SECRET'),
+    getRuntimeEnvValue('RAZORPAY_KEY_ID'),
+    getRuntimeEnvValue('RAZORPAY_KEY_SECRET'),
+  ]);
+  if (!runtimeSupabaseUrl || !runtimeServiceRoleKey || !webhookSecret) {
     return NextResponse.json({ success: false, error: 'Webhook service is not configured.' }, { status: 503 });
   }
 
@@ -60,7 +63,7 @@ export async function POST(request: Request) {
       ? refundEntity.order_id
       : typeof orderEntity?.id === 'string' ? orderEntity.id : null;
   const payloadHash = crypto.createHash('sha256').update(rawBody).digest('hex');
-  const serviceClient = createClient(supabaseUrl, serviceRoleKey);
+  const serviceClient = createClient(runtimeSupabaseUrl, runtimeServiceRoleKey);
 
   const { data: insertedEvent, error: insertError } = await (serviceClient as any)
     .from('payment_provider_events')
@@ -148,8 +151,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true, review: true });
   }
 
-  const keyId = process.env.RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  const keyId = runtimeRazorpayKeyId;
+  const keySecret = runtimeRazorpayKeySecret;
   if (!keyId || !keySecret) return NextResponse.json({ success: false, error: 'Payment service is unavailable.' }, { status: 503 });
   const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
 
