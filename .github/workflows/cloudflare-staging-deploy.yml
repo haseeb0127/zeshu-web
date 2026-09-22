@@ -81,7 +81,7 @@ jobs:
       - name: Deploy only to workers.dev staging
         run: npx --yes wrangler@4.68.0 deploy --config wrangler.jsonc --name zeshu-web-staging
 
-      - name: Verify staging runtime safety and Razorpay TEST readiness
+      - name: Verify staging runtime safety and payment sandbox readiness
         shell: bash
         run: |
           set -euo pipefail
