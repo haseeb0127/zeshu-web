@@ -1,4 +1,4 @@
-package in.zeshu.staging
+package com.zeshu.staging
 
 import android.Manifest
 import android.content.Intent
