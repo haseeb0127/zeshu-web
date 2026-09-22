@@ -209,7 +209,7 @@ jobs:
             await page.waitForTimeout(500);
             const addButton = page.getByRole('button', { name: 'ADD' }).first();
             await addButton.click();
-            await page.getByRole('button', { name: /Open cart|My Cart/ }).last().click();
+            await page.getByRole('button', { name: 'Cart', exact: true }).click();
             await page.getByRole('dialog').waitFor({ state: 'visible', timeout: 10000 });
             const cartText = (await page.getByRole('dialog').innerText()).replace(/\s+/g, ' ');
             assert(cartText.includes('Arriving today') || cartText.includes('Arriving in ~10–30 min'), 'Cart fulfillment group is missing');
