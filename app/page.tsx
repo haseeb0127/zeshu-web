@@ -2883,19 +2883,18 @@ export default function ZeshuSuperApp() {
 
       <header className={`fixed top-0 w-full z-40 pt-[env(safe-area-inset-top)] lg:pt-0 transition-all duration-500 ${isScrolled ? 'bg-white/90 backdrop-blur-2xl shadow-sm border-b border-gray-200/40' : 'bg-white border-b border-[#E3EAE4]'}`}>
         <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 lg:py-0 lg:h-[88px] flex flex-col lg:flex-row items-center justify-between gap-3 lg:gap-4 2xl:gap-8">
-          <div className="flex items-center justify-between w-full lg:w-auto gap-4">
-            <div className="flex items-center gap-4 lg:gap-6">
-              <button aria-label="Go to Zeshu home" className="flex items-center gap-2 lg:gap-3 lg:border-r border-gray-200/60 lg:pr-6 active:scale-[0.97] transition-transform" onClick={goToHome}>
+          <div className="flex min-w-0 items-center justify-between w-full lg:w-auto gap-2 sm:gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4 lg:gap-6">
+              <button aria-label="Go to Zeshu home" className="flex shrink-0 items-center gap-2 lg:gap-3 lg:border-r border-gray-200/60 lg:pr-6 active:scale-[0.97] transition-transform" onClick={goToHome}>
                 <div className="bg-[#087443] text-white font-black p-2 md:p-2.5 rounded-xl md:rounded-2xl text-xl md:text-2xl tracking-tighter shadow-sm">Z</div>
                 <div className="hidden lg:flex flex-col text-left"><span className="text-[22px] font-black tracking-tighter leading-none">ZESHU</span><span className="text-[10px] font-extrabold text-[#087443] tracking-[0.2em] uppercase mt-0.5">{t('Everyday, simply')}</span></div>
               </button>
-              <button type="button" aria-label="Detect or change delivery location" className="flex min-w-0 max-w-[240px] flex-col cursor-pointer text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443] sm:max-w-[360px] lg:max-w-[220px]" onClick={handleAutoDetectLocation}>
-                <div className="flex items-center gap-1.5 whitespace-nowrap text-[12px] font-black md:text-[15px]">{currentAddress !== 'Location not set' ? t('Deliver to') : t('Set delivery location')} <MapPin size={14} className="shrink-0 text-[#087443]"/></div>
+              <button type="button" aria-label="Detect or change delivery location" className="flex min-w-0 flex-1 max-w-[240px] flex-col cursor-pointer text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443] sm:max-w-[360px] lg:flex-none lg:max-w-[220px]" onClick={handleAutoDetectLocation}>
+                <div className="flex min-w-0 items-center gap-1.5 text-[12px] font-black md:text-[15px]"><span className="truncate">{currentAddress !== 'Location not set' ? t('Deliver to') : t('Set delivery location')}</span><MapPin size={14} className="shrink-0 text-[#087443]"/></div>
                 <div className="mt-0.5 flex min-w-0 items-center text-[10px] font-medium text-[#6B7280] md:text-xs"><span className="truncate">{currentAddress === 'Location not set' ? t('Location not set') : currentAddress}</span><ChevronDown size={14} className="ml-1 shrink-0"/></div>
               </button>
-              <LanguageSwitcher className="lg:hidden" compact />
             </div>
-
+            <LanguageSwitcher className="shrink-0 lg:hidden" compact />
           </div>
 
           <div className="w-full min-w-0 lg:flex-1 max-w-3xl order-last lg:order-none mt-1 lg:mt-0">
