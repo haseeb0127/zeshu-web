@@ -221,4 +221,4 @@ jobs:
           NODE
 
       - name: Staging deployment summary
-        run: echo "Cloudflare staging deploy, marketplace seller trust, recommendation/search stability, and grouped-cart browser QA passed."
+        run: echo "Cloudflare staging deploy, marketplace seller trust, recommendation/search stability, and grouped-cart browser QA passed on the marketplace branch."
