@@ -24,6 +24,10 @@ android {
         jvmTarget = "17"
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
