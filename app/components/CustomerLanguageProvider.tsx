@@ -214,7 +214,9 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "This conversation could not be loaded.": "ఈ సంభాషణను లోడ్ చేయలేకపోయాం.",
     "For urgent safety issues, contact support@zeshu.in. Never share OTPs or full payment credentials.": "అత్యవసర భద్రతా సమస్యలకు support@zeshu.in ను సంప్రదించండి. OTPలు లేదా పూర్తి చెల్లింపు వివరాలు పంచుకోకండి.",
     "Continue shopping": "కొనుగోలు కొనసాగించండి",
-    "Adding…": "జోడిస్తున్నాం…"
+    "Adding…": "జోడిస్తున్నాం…",
+    "Order progress": "ఆర్డర్ పురోగతి",
+    "Current order status": "ప్రస్తుత ఆర్డర్ స్థితి"
   },
   hi: {
     "Choose language": "भाषा चुनें",
@@ -408,7 +410,9 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "This conversation could not be loaded.": "यह बातचीत लोड नहीं हो सकी।",
     "For urgent safety issues, contact support@zeshu.in. Never share OTPs or full payment credentials.": "तत्काल सुरक्षा समस्या के लिए support@zeshu.in पर संपर्क करें। OTP या पूरी भुगतान जानकारी साझा न करें।",
     "Continue shopping": "खरीदारी जारी रखें",
-    "Adding…": "जोड़ा जा रहा है…"
+    "Adding…": "जोड़ा जा रहा है…",
+    "Order progress": "ऑर्डर की प्रगति",
+    "Current order status": "वर्तमान ऑर्डर स्थिति"
   },
   ur: {
     "Choose language": "زبان منتخب کریں",
@@ -602,7 +606,9 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "This conversation could not be loaded.": "یہ گفتگو لوڈ نہیں ہو سکی۔",
     "For urgent safety issues, contact support@zeshu.in. Never share OTPs or full payment credentials.": "فوری حفاظتی مسئلے کے لیے support@zeshu.in سے رابطہ کریں۔ OTP یا مکمل ادائیگی کی معلومات شیئر نہ کریں۔",
     "Continue shopping": "خریداری جاری رکھیں",
-    "Adding…": "شامل کیا جا رہا ہے…"
+    "Adding…": "شامل کیا جا رہا ہے…",
+    "Order progress": "آرڈر کی پیش رفت",
+    "Current order status": "موجودہ آرڈر کی حالت"
   }
 };
 
