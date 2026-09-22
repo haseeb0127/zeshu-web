@@ -701,6 +701,7 @@ export async function POST(request: Request) {
           success: true,
           resumed: true,
           resumePayment: true,
+          keyId: publicKeyId,
           orderId: existingOrder.id,
           amount: existingOrder.amount,
           currency: existingOrder.currency,
@@ -1176,6 +1177,7 @@ export async function POST(request: Request) {
     stage = 'COMPLETE';
     return NextResponse.json({
       success: true,
+      keyId: publicKeyId,
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
