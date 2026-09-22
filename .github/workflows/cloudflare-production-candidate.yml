@@ -1,0 +1,140 @@
+name: Deploy Cloudflare production candidate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-production-candidate
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      # Production public client configuration used only for the isolated workers.dev candidate.
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.CLOUDFLARE_PRODUCTION_NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.CLOUDFLARE_PRODUCTION_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY: ${{ secrets.CLOUDFLARE_PRODUCTION_NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY }}
+      NEXT_PUBLIC_RAZORPAY_KEY_ID: rzp_test_build_check
+      NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED: 'false'
+
+      # Build-only placeholders. Real server values must be configured on the
+      # isolated Cloudflare Worker before the final health check can pass.
+      SUPABASE_SERVICE_ROLE_KEY: build-only-placeholder
+      RAZORPAY_KEY_ID: build-only-placeholder
+      RAZORPAY_KEY_SECRET: build-only-placeholder
+      RAZORPAY_WEBHOOK_SECRET: build-only-placeholder
+      GOOGLE_MAPS_ROUTES_API_KEY: build-only-placeholder
+      PLANAPI_MEMBER_ID: build-only-placeholder
+      PLANAPI_PASSWORD: build-only-placeholder
+      PLANAPI_TOKEN_ID: build-only-placeholder
+      SUPPORT_AI_ENABLED: 'false'
+      ENFORCE_JAGTIAL_SERVICE_AREA: 'false'
+      SUPPORT_WHATSAPP_SENDER_ENABLED: 'false'
+      PAYMENT_ROUTER_MODE: 'off'
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Verify candidate build configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            CLOUDFLARE_ACCOUNT_ID
+            CLOUDFLARE_API_TOKEN
+            NEXT_PUBLIC_SUPABASE_URL
+            NEXT_PUBLIC_SUPABASE_ANON_KEY
+            NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY
+          )
+          for key in "${required[@]}"; do
+            if [ -z "${!key:-}" ]; then
+              echo "Missing required GitHub secret for $key"
+              exit 1
+            fi
+          done
+
+      - run: npm ci
+
+      - name: Build Cloudflare Worker
+        run: npx --yes @opennextjs/cloudflare@1.20.6 build
+
+      - name: Deploy isolated workers.dev production candidate
+        run: npx --yes wrangler@4.68.0 deploy --config wrangler.production-candidate.jsonc --name zeshu-web-production-candidate
+
+      - name: Verify production-candidate runtime safety
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const url = 'https://zeshu-web-production-candidate.asif-mohammed0127.workers.dev/api/production-candidate/qa-health';
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+          let body = null;
+          let lastError = null;
+          for (let attempt = 1; attempt <= 10; attempt += 1) {
+            try {
+              const response = await fetch(url, { headers: { 'cache-control': 'no-cache' } });
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              body = await response.json();
+              break;
+            } catch (error) {
+              lastError = error;
+              if (attempt < 10) await sleep(3000);
+            }
+          }
+
+          if (!body) throw lastError || new Error('Production candidate health endpoint did not respond.');
+
+          const runtime = body.runtime || {};
+          const checks = {
+            production_supabase_url_present: runtime.production_supabase_url_present === true,
+            production_supabase_url_matches: runtime.production_supabase_url_matches === true,
+            anon_key_present: runtime.anon_key_present === true,
+            service_secret_present: runtime.service_secret_present === true,
+            payment_router_off: runtime.payment_router_off === true,
+            whatsapp_sender_off: runtime.whatsapp_sender_off === true,
+            razorpay_test_configured: runtime.razorpay_test_configured === true,
+          };
+
+          const failed = Object.entries(checks).filter(([, ok]) => ok !== true).map(([name]) => name);
+          console.log('Production candidate runtime checks:', checks);
+          if (failed.length) throw new Error(`Production candidate verification failed: ${failed.join(', ')}`);
+          NODE
+
+      - name: Smoke test isolated production candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://zeshu-web-production-candidate.asif-mohammed0127.workers.dev"
+          for route in "/" "/policies" "/partners" "/app" "/scanner"; do
+            code="$(curl -L -sS -o /tmp/zeshu-candidate-body -w '%{http_code}' "$base$route" || true)"
+            test "$code" = "200" || { echo "Expected 200 from candidate $route, got $code"; exit 1; }
+          done
+
+      - name: Verify candidate auth boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://zeshu-web-production-candidate.asif-mohammed0127.workers.dev"
+
+          code="$(curl -L -sS -o /tmp/assistant -w '%{http_code}' -X POST "$base/api/support/assistant" -H 'Content-Type: application/json' --data '{"message":"hello"}' || true)"
+          test "$code" = "401" || { echo "Assistant expected 401, got $code"; exit 1; }
+
+          code="$(curl -L -sS -o /tmp/admin-support -w '%{http_code}' "$base/api/admin/support/conversations" || true)"
+          test "$code" = "401" || { echo "Admin support expected 401, got $code"; exit 1; }
+
+      - name: Candidate summary
+        run: echo "Production candidate passed isolated workers.dev runtime and smoke checks. No custom domain or DNS was changed."
