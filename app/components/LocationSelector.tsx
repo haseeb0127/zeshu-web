@@ -342,7 +342,7 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=1&countrycodes=in&q=${encodeURIComponent(query)}`,
-        { headers: { 'Accept-Language': 'en-IN,en;q=0.9' } },
+        { headers: { 'Accept-Language': addressLanguageHeader } },
       );
       const results = response.ok ? await response.json() : [];
       const result = Array.isArray(results) ? results[0] : null;
