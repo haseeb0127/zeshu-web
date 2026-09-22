@@ -382,7 +382,7 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Detecting location…": "స్థానం గుర్తిస్తున్నాం…",
     "Delivery address": "డెలివరీ చిరునామా",
     "House / flat, street, area and landmark": "ఇంటి / ఫ్లాట్, వీధి, ప్రాంతం మరియు ల్యాండ్‌మార్క్",
-    "Your address is used only for this checkout and is validated again on the server.": "మీ చిరునామా ఈ చెకౌట్‌కే ఉపయోగించబడుతుంది మరియు సర్వర్‌లో మళ్లీ ధృవీకరించబడుతుంది."
+    "Your address is used only for this checkout and is validated again on the server.": "మీ చిరునామా ఈ చెకౌట్‌కే ఉపయోగించబడుతుంది మరియు సర్వర్‌లో మళ్లీ ధృవీకరించబడుతుంది,",
   
     "Filter products": "ఉత్పత్తులను ఫిల్టర్ చేయండి",
     "Amount": "మొత్తం",
@@ -827,7 +827,7 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Detecting location…": "लोकेशन खोजी जा रही है…",
     "Delivery address": "डिलीवरी पता",
     "House / flat, street, area and landmark": "घर / फ्लैट, सड़क, क्षेत्र और लैंडमार्क",
-    "Your address is used only for this checkout and is validated again on the server.": "आपका पता केवल इस चेकआउट के लिए उपयोग होता है और सर्वर पर फिर से सत्यापित किया जाता है।"
+    "Your address is used only for this checkout and is validated again on the server.": "आपका पता केवल इस चेकआउट के लिए उपयोग होता है और सर्वर पर फिर से सत्यापित किया जाता है।",
   
     "Filter products": "प्रोडक्ट फ़िल्टर करें",
     "Amount": "राशि",
@@ -1272,7 +1272,7 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Detecting location…": "جگہ معلوم کی جا رہی ہے…",
     "Delivery address": "ڈیلیوری پتہ",
     "House / flat, street, area and landmark": "گھر / فلیٹ، گلی، علاقہ اور نشانِ راہ",
-    "Your address is used only for this checkout and is validated again on the server.": "آپ کا پتہ صرف اس چیک آؤٹ کے لیے استعمال ہوتا ہے اور سرور پر دوبارہ تصدیق کی جاتی ہے۔"
+    "Your address is used only for this checkout and is validated again on the server.": "آپ کا پتہ صرف اس چیک آؤٹ کے لیے استعمال ہوتا ہے اور سرور پر دوبارہ تصدیق کی جاتی ہے۔",
   
     "Filter products": "مصنوعات فلٹر کریں",
     "Amount": "رقم",
