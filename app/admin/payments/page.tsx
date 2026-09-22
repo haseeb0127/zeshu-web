@@ -63,6 +63,12 @@ export default function AdminPaymentsPage() {
   const [saving, setSaving] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [isStagingHost, setIsStagingHost] = useState(false);
+  const [phonePeConfigured, setPhonePeConfigured] = useState<boolean | null>(null);
+  const [phonePeAmount, setPhonePeAmount] = useState("1");
+  const [phonePeOrderId, setPhonePeOrderId] = useState("");
+  const [phonePeState, setPhonePeState] = useState("");
+  const [phonePeBusy, setPhonePeBusy] = useState("");
 
   const getToken = async () => {
     const { data } = await supabase.auth.getSession();
@@ -91,8 +97,93 @@ export default function AdminPaymentsPage() {
     }
   };
 
+  const loadPhonePeReadiness = async () => {
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const response = await fetch("/api/staging/phonepe/readiness", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const payload = await response.json().catch(() => ({}));
+      setPhonePeConfigured(response.ok ? payload.configured === true : false);
+    } catch {
+      setPhonePeConfigured(false);
+    }
+  };
+
+  const startPhonePeSandboxPayment = async () => {
+    setPhonePeBusy("create");
+    setError("");
+    setNotice("");
+    try {
+      const amountPaise = Math.round(Number(phonePeAmount) * 100);
+      const token = await getToken();
+      if (!token) throw new Error("Admin session expired. Sign in again.");
+      const response = await fetch("/api/staging/phonepe/create-test-payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ amountPaise }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.success !== true || typeof payload.redirectUrl !== "string") {
+        throw new Error(payload.error || "PhonePe sandbox payment could not be created.");
+      }
+      setPhonePeOrderId(String(payload.merchantOrderId || ""));
+      try {
+        sessionStorage.setItem("zeshu.phonepe.sandbox.order", String(payload.merchantOrderId || ""));
+      } catch {}
+      window.location.assign(payload.redirectUrl);
+    } catch (createError) {
+      setError(createError instanceof Error ? createError.message : "PhonePe sandbox payment could not be created.");
+      setPhonePeBusy("");
+    }
+  };
+
+  const checkPhonePeSandboxStatus = async (orderIdOverride?: string) => {
+    const orderId = String(orderIdOverride || phonePeOrderId).trim();
+    if (!orderId) return;
+    setPhonePeBusy("status");
+    setError("");
+    try {
+      const token = await getToken();
+      if (!token) throw new Error("Admin session expired. Sign in again.");
+      const response = await fetch(`/api/staging/phonepe/status?merchantOrderId=${encodeURIComponent(orderId)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.success !== true) throw new Error(payload.error || "PhonePe sandbox status could not be checked.");
+      setPhonePeOrderId(orderId);
+      setPhonePeState(String(payload.state || "UNKNOWN"));
+      setNotice(`PhonePe sandbox order status: ${String(payload.state || "UNKNOWN")}. No Zeshu fulfillment was submitted.`);
+    } catch (statusError) {
+      setError(statusError instanceof Error ? statusError.message : "PhonePe sandbox status could not be checked.");
+    } finally {
+      setPhonePeBusy("");
+    }
+  };
+
   useEffect(() => {
     void load();
+    if (typeof window === "undefined") return;
+    const staging = window.location.hostname === "zeshu-web-staging.asif-mohammed0127.workers.dev";
+    setIsStagingHost(staging);
+    if (!staging) return;
+    void loadPhonePeReadiness();
+
+    const params = new URLSearchParams(window.location.search);
+    const returnedOrder = params.get("phonepe_order")
+      || (() => {
+        try { return sessionStorage.getItem("zeshu.phonepe.sandbox.order"); } catch { return ""; }
+      })();
+    if (returnedOrder) {
+      setPhonePeOrderId(returnedOrder);
+      void checkPhonePeSandboxStatus(returnedOrder);
+    }
   }, []);
 
   const configuredCount = useMemo(() => profiles.filter((profile) => profile.configured).length, [profiles]);
@@ -169,6 +260,36 @@ export default function AdminPaymentsPage() {
       <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-900">
         <div className="flex gap-3"><ShieldCheck className="mt-0.5 shrink-0" size={18} /><p><strong>Safe rollout:</strong> record merchant-specific commercial rates only after approval. Never choose a gateway only because it looks cheaper; Zeshu routing prioritizes payment health and successful completion before cost.</p></div>
       </div>
+
+      {isStagingHost && <section className="mt-5 rounded-2xl border border-indigo-100 bg-white p-5 shadow-[0_4px_16px_rgba(19,32,25,.06)]">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Staging only</p>
+            <h2 className="mt-1 font-black">PhonePe Sandbox Test</h2>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">Creates a PhonePe sandbox checkout only. It does not create a Zeshu order, submit fulfillment, switch the smart router, or use live money.</p>
+          </div>
+          <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${phonePeConfigured ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+            {phonePeConfigured === null ? "CHECKING" : phonePeConfigured ? "SANDBOX READY" : "CREDENTIALS NEEDED"}
+          </span>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <label className="text-xs font-black text-slate-600">Test amount ₹
+            <input type="number" min={1} max={100} step="1" value={phonePeAmount} onChange={(e) => setPhonePeAmount(e.target.value)} className="mt-1 block w-32 rounded-xl border border-slate-200 p-2.5 text-sm" />
+          </label>
+          <button type="button" disabled={!phonePeConfigured || phonePeBusy !== ""} onClick={() => void startPhonePeSandboxPayment()} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-black text-white disabled:opacity-50">
+            {phonePeBusy === "create" ? "Opening PhonePe…" : "Start PhonePe sandbox"}
+          </button>
+          <button type="button" disabled={!phonePeOrderId || phonePeBusy !== ""} onClick={() => void checkPhonePeSandboxStatus()} className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-xs font-black text-indigo-800 disabled:opacity-50">
+            {phonePeBusy === "status" ? "Checking…" : "Check status"}
+          </button>
+        </div>
+
+        {phonePeOrderId && <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs">
+          <p><span className="font-black">Sandbox order:</span> <span className="break-all font-mono">{phonePeOrderId}</span></p>
+          <p className="mt-1"><span className="font-black">Provider state:</span> {phonePeState || "Not checked yet"}</p>
+        </div>}
+      </section>}
 
       {loading ? <div className="grid min-h-64 place-items-center"><div className="h-10 w-10 animate-spin rounded-full border-4 border-[#087443] border-t-transparent" /></div> :
         <section className="mt-6 grid gap-5 xl:grid-cols-2">
