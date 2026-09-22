@@ -2937,7 +2937,7 @@ export default function ZeshuSuperApp() {
               <p className="mt-1 text-xs font-semibold leading-5 text-slate-400">{t('Everyday essentials, grouped the way customers shop.')}</p>
             </div>
             <div className="flex flex-col gap-1.5">
-              {productCategories.map((cat) => {
+              {mobileProductCategories.map((cat) => {
                 const definition = categoryDefinition(cat);
                 const count = Number(categoryProductCounts[cat] || 0);
                 const isSelected = activeCategory === cat;
@@ -2957,7 +2957,38 @@ export default function ZeshuSuperApp() {
         )}
 
         <div className="flex-1 min-w-0 pb-32">
-           {activeTab === 'home' && <div className="mb-5 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar md:px-0 lg:hidden" aria-label="Product categories">{mobileProductCategories.map((category) => { const definition = categoryDefinition(category); return <button type="button" key={category} onClick={() => setActiveCategory(category)} aria-pressed={activeCategory === category} className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-black transition ${activeCategory === category ? 'border-[#087443] bg-[#087443] text-white' : 'border-[#dce8df] bg-white text-[#52645a]'}`}><span aria-hidden="true">{definition.icon}</span><span>{t(definition.label)}</span></button>; })}</div>}
+           {activeTab === 'home' && normalizedSearch === '' && (
+             <section className="mb-5 px-4 md:px-0" aria-labelledby="zeshu-entry-title">
+               <div className="mb-3">
+                 <h1 id="zeshu-entry-title" className="text-xl font-black tracking-tight text-[#17261d] md:text-2xl">{t('One Zeshu. Three simple ways to get what you need.')}</h1>
+                 <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 md:text-sm">{t('Fast nearby. Everything else delivered or fulfilled by verified partners.')}</p>
+               </div>
+               <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar lg:grid lg:grid-cols-3 lg:overflow-visible">
+                 <button type="button" onClick={() => { setFulfillmentFilter('ALL'); setActiveCategory('All'); requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="min-w-[240px] flex-1 rounded-3xl border border-emerald-100 bg-gradient-to-br from-[#effaf3] to-white p-4 text-left shadow-[0_4px_16px_rgba(19,32,25,.04)] transition hover:-translate-y-0.5 hover:shadow-md">
+                   <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[#087443] text-white"><Zap size={20} /></span>
+                   <p className="mt-3 text-[10px] font-black uppercase tracking-[.16em] text-[#087443]">Zeshu Now</p>
+                   <h2 className="mt-1 text-lg font-black text-slate-950">{t('Fast nearby')}</h2>
+                   <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{t('Groceries, fresh food and daily essentials from nearby verified sellers.')}</p>
+                   <span className="mt-3 inline-flex items-center gap-1 text-xs font-black text-[#087443]">{t('Shop nearby')} <ChevronRight size={14} /></span>
+                 </button>
+                 <button type="button" onClick={() => { setFulfillmentFilter(fulfillmentStatus.nationwide_checkout_enabled ? 'INDIA' : 'ALL'); setActiveCategory('All'); requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="min-w-[240px] flex-1 rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4 text-left shadow-[0_4px_16px_rgba(19,32,25,.04)] transition hover:-translate-y-0.5 hover:shadow-md">
+                   <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-600 text-white"><ShoppingBag size={20} /></span>
+                   <div className="mt-3 flex items-center gap-2"><p className="text-[10px] font-black uppercase tracking-[.16em] text-blue-700">{t('Shop Everything')}</p>{!fulfillmentStatus.nationwide_checkout_enabled && <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-blue-700">{t('Growing')}</span>}</div>
+                   <h2 className="mt-1 text-lg font-black text-slate-950">{t('Shop Everything')}</h2>
+                   <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{t('Marketplace range grows as verified sellers join Zeshu.')}</p>
+                   <span className="mt-3 inline-flex items-center gap-1 text-xs font-black text-blue-700">{t('Browse catalog')} <ChevronRight size={14} /></span>
+                 </button>
+                 <button type="button" onClick={() => openServices()} className="min-w-[240px] flex-1 rounded-3xl border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-4 text-left shadow-[0_4px_16px_rgba(19,32,25,.04)] transition hover:-translate-y-0.5 hover:shadow-md">
+                   <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500 text-white"><Receipt size={20} /></span>
+                   <p className="mt-3 text-[10px] font-black uppercase tracking-[.16em] text-amber-700">{t('Book & Pay')}</p>
+                   <h2 className="mt-1 text-lg font-black text-slate-950">{t('Book & Pay')}</h2>
+                   <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{t('Recharge, bills and digital services in one place.')}</p>
+                   <span className="mt-3 inline-flex items-center gap-1 text-xs font-black text-amber-700">{t('Open services')} <ChevronRight size={14} /></span>
+                 </button>
+               </div>
+             </section>
+           )}
+           {activeTab === 'home' && <div className="mb-5 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar md:px-0 lg:hidden" aria-label={t('Shop by Category')}>{mobileProductCategories.map((category) => { const definition = categoryDefinition(category); return <button type="button" key={category} onClick={() => setActiveCategory(category)} aria-pressed={activeCategory === category} className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-black transition ${activeCategory === category ? 'border-[#087443] bg-[#087443] text-white' : 'border-[#dce8df] bg-white text-[#52645a]'}`}><span aria-hidden="true">{definition.icon}</span><span>{t(definition.label)}</span></button>; })}</div>}
            {activeTab === 'home' && <section className="mb-5 px-4 md:px-0" aria-label="Delivery choices"><div className="rounded-3xl border border-[#dce8df] bg-white p-3 shadow-[0_4px_18px_rgba(19,32,25,.04)]"><div className="flex gap-2 overflow-x-auto no-scrollbar"><button type="button" onClick={() => setFulfillmentFilter('ALL')} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${fulfillmentFilter === 'ALL' ? 'bg-[#087443] text-white' : 'bg-[#f1f5f2] text-[#52645a]'}`}>{t('All delivery')}</button><button type="button" onClick={() => setFulfillmentFilter('FRESH')} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${fulfillmentFilter === 'FRESH' ? 'bg-[#087443] text-white' : 'bg-emerald-50 text-emerald-700'}`}>⚡ {t('30-min Fresh')}</button><button type="button" onClick={() => setFulfillmentFilter('INDIA')} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${fulfillmentFilter === 'INDIA' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700'}`}>🇮🇳 {t('India Delivery')}{fulfillmentStatus.nationwide_checkout_enabled ? '' : ` · ${t('soon')}`}</button></div><p className="mt-2 text-[11px] font-semibold leading-5 text-slate-500">{fulfillmentFilter === 'FRESH' ? t('Fresh items show ~30 min only when your location, store and active rider availability qualify.') : fulfillmentFilter === 'INDIA' ? t('Only profitable, shelf-stable products approved for nationwide shipping appear here. Shipping prices will come from a real courier quote before payment.') : t('Fresh locally. India-wide only where delivery remains sensible for both the customer and Zeshu.')}</p></div></section>}
            {activeTab === 'home' && <>
              <div className="mb-5 flex items-center justify-between gap-3 px-4 md:px-0">
