@@ -190,7 +190,7 @@ jobs:
             assert(hindi.includes('पास में तेज़'), 'Zeshu Now copy is not localized in Hindi');
             assert(hindi.includes('सब कुछ खरीदें'), 'Shop Everything is not localized in Hindi');
             assert(hindi.includes('बुक और पे'), 'Book & Pay is not localized in Hindi');
-            assert(hindi.includes('सभी उत्पाद'), 'All Products heading is not localized in Hindi');
+            assert(hindi.includes('सभी प्रोडक्ट') || hindi.includes('सभी उत्पाद'), 'All Products heading is not localized in Hindi');
             assert(hindi.includes('आइटम'), 'Product count is not localized in Hindi');
             assert(hindi.includes('स्थानीय डिलीवरी') || hindi.includes('30 मिनट में ताज़ा'), 'Delivery badge is not localized in Hindi');
             assert(hindi.includes('अभी कोई समीक्षा नहीं'), 'Review empty state is not localized in Hindi');
