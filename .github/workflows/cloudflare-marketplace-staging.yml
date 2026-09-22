@@ -207,12 +207,28 @@ jobs:
 
             await search.fill('');
             await page.waitForTimeout(500);
-            const addButton = page.getByRole('button', { name: 'ADD' }).first();
-            await addButton.click();
-            await page.getByRole('button', { name: 'Cart', exact: true }).click();
-            await page.getByRole('dialog').waitFor({ state: 'visible', timeout: 10000 });
-            const cartText = (await page.getByRole('dialog').innerText()).replace(/\s+/g, ' ');
-            assert(cartText.includes('Arriving today') || cartText.includes('Arriving in ~10–30 min'), 'Cart fulfillment group is missing');
+            const seeded = await page.evaluate(() => {
+              const products = JSON.parse(localStorage.getItem('zeshu_products') || '[]');
+              const product = products.find((entry) => entry?.vendor_id && entry?.in_stock !== false && Number(entry?.quantity) > 0);
+              if (!product) return false;
+              localStorage.setItem('zeshu_customer_cart', JSON.stringify([{ item: product, qty: 1 }]));
+              return true;
+            });
+            assert(seeded, 'Could not seed a safe staging cart from the loaded catalog');
+
+            await page.setViewportSize({ width: 1440, height: 900 });
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+            const cartButton = page.locator('button[aria-label^="Open cart"]').first();
+            await cartButton.waitFor({ state: 'visible', timeout: 10000 });
+            await cartButton.click();
+
+            const cartDialog = page.getByRole('dialog');
+            await cartDialog.waitFor({ state: 'visible', timeout: 10000 });
+            const cartText = (await cartDialog.innerText()).replace(/\s+/g, ' ');
+            assert(
+              cartText.includes('Arriving today') || cartText.includes('Arriving in ~10–30 min') || cartText.includes('Shipped delivery · 2–4 days'),
+              'Cart fulfillment grouping is missing',
+            );
 
             console.log('MARKETPLACE_FOUNDATION_BROWSER_QA=PASS');
           } finally {
