@@ -2882,7 +2882,7 @@ export default function ZeshuSuperApp() {
       </div>
 
       <header className={`fixed top-0 w-full z-40 pt-[env(safe-area-inset-top)] lg:pt-0 transition-all duration-500 ${isScrolled ? 'bg-white/90 backdrop-blur-2xl shadow-sm border-b border-gray-200/40' : 'bg-white border-b border-[#E3EAE4]'}`}>
-        <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 lg:py-0 lg:h-[88px] flex flex-col lg:flex-row items-center justify-between gap-3 lg:gap-8">
+        <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 lg:py-0 lg:h-[88px] flex flex-col lg:flex-row items-center justify-between gap-3 lg:gap-4 2xl:gap-8">
           <div className="flex items-center justify-between w-full lg:w-auto gap-4">
             <div className="flex items-center gap-4 lg:gap-6">
               <button aria-label="Go to Zeshu home" className="flex items-center gap-2 lg:gap-3 lg:border-r border-gray-200/60 lg:pr-6 active:scale-[0.97] transition-transform" onClick={goToHome}>
@@ -2898,27 +2898,30 @@ export default function ZeshuSuperApp() {
 
           </div>
 
-          <div className="w-full lg:flex-1 max-w-3xl order-last lg:order-none mt-1 lg:mt-0">
+          <div className="w-full min-w-0 lg:flex-1 max-w-3xl order-last lg:order-none mt-1 lg:mt-0">
             <div className="bg-[#f1f4f1] transition-all rounded-[14px] md:rounded-[20px] flex items-center px-4 py-3 md:py-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#087443]/25">
               <Search className="text-[#9CA3AF] w-[18px] h-[18px] md:w-[22px] md:h-[22px]" />
-              <input aria-label="Search Zeshu" type="search" placeholder={t('Search milk, atta, snacks, recharge...')} className="bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => { const value = e.target.value; setSearchQuery(value); setVoiceSearchMessage(''); if (value.trim()) setActiveTab('home'); }} />
+              <input aria-label="Search Zeshu" type="search" placeholder={t('Search milk, atta, snacks, recharge...')} className="min-w-0 bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => { const value = e.target.value; setSearchQuery(value); setVoiceSearchMessage(''); if (value.trim()) setActiveTab('home'); }} />
               {searchQuery && <button type="button" aria-label="Clear search" className="text-gray-500 p-1" onClick={() => setSearchQuery('')}><X size={16}/></button>}
               <button type="button" aria-label={isVoiceListening ? 'Stop voice search' : 'Search by voice'} aria-pressed={isVoiceListening} className={`ml-1 rounded-full p-1.5 text-[#087443] transition ${isVoiceListening ? 'bg-[#d9f4e3] animate-pulse' : 'hover:bg-[#e5f4ea]'}`} onClick={toggleVoiceSearch}><Mic size={18} aria-hidden="true" /></button>
             </div>
             {(isVoiceListening || voiceSearchMessage) && <p className="mt-1 px-2 text-xs font-bold text-[#087443]" role="status" aria-live="polite">{isVoiceListening ? 'Listening…' : voiceSearchMessage}</p>}
           </div>
 
-          <div className="hidden lg:flex items-center gap-3 shrink-0">
-            <LanguageSwitcher />
-            <button type="button" onClick={() => openServices()} aria-current={activeTab === 'recharge' ? 'page' : undefined} className={`flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-black transition-all active:scale-95 ${activeTab === 'recharge' ? 'border-[#087443] bg-emerald-50 text-[#087443]' : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50'}`}>
-              <Smartphone size={18} /><span>{t('Bills & Services')}</span>
+          <div className="hidden lg:flex items-center gap-2 shrink-0">
+            <LanguageSwitcher className="2xl:hidden" compact />
+            <LanguageSwitcher className="hidden 2xl:flex" />
+            <button type="button" aria-label={t('Bills & Services')} onClick={() => openServices()} aria-current={activeTab === 'recharge' ? 'page' : undefined} className={`flex items-center gap-2 rounded-full border px-3 2xl:px-4 py-2.5 text-sm font-black transition-all active:scale-95 ${activeTab === 'recharge' ? 'border-[#087443] bg-emerald-50 text-[#087443]' : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50'}`}>
+              <Smartphone size={18} /><span className="hidden 2xl:inline">{t('Bills & Services')}</span>
             </button>
-            <Link href="/scanner" className="flex items-center gap-2 bg-[#087443] text-white px-4 py-2.5 rounded-full font-black text-sm transition-all active:scale-95 shadow-sm">
-              <QrCode size={18} /><span>{t('Scan')}</span>
+            <Link href="/scanner" aria-label={t('Scan')} className="flex items-center gap-2 bg-[#087443] text-white px-3 2xl:px-4 py-2.5 rounded-full font-black text-sm transition-all active:scale-95 shadow-sm">
+              <QrCode size={18} /><span className="hidden 2xl:inline">{t('Scan')}</span>
             </Link>
-            <button onClick={() => user ? openAccountHome() : setIsAuthModalOpen(true)} className="flex items-center gap-2 text-[#4B5563] font-extrabold text-sm active:scale-95"><User size={20}/>{user ? t('Account') : t('Login')}</button>
-            <button onClick={() => setIsCartOpen(true)} className="bg-gradient-to-b from-[#059669] to-[#047857] text-white px-5 py-3.5 rounded-[20px] flex items-center gap-3 font-bold text-sm min-w-[120px] justify-center active:scale-[0.96]">
-              <ShoppingBag size={22} /> {cart.length > 0 ? `₹${finalCartTotal}` : t('My Cart')}
+            <button aria-label={user ? t('Account') : t('Login')} onClick={() => user ? openAccountHome() : setIsAuthModalOpen(true)} className="flex items-center gap-2 rounded-full px-2 py-2.5 text-[#4B5563] font-extrabold text-sm active:scale-95"><User size={20}/><span className="hidden 2xl:inline">{user ? t('Account') : t('Login')}</span></button>
+            <button aria-label={cart.length > 0 ? `Open cart, total ₹${finalCartTotal}` : t('My Cart')} onClick={() => setIsCartOpen(true)} className="bg-gradient-to-b from-[#059669] to-[#047857] text-white px-3 2xl:px-5 py-3 rounded-[18px] flex items-center gap-2 font-bold text-sm min-w-[52px] 2xl:min-w-[120px] justify-center active:scale-[0.96]">
+              <ShoppingBag size={22} />
+              <span className="hidden xl:inline">{cart.length > 0 ? `₹${finalCartTotal}` : t('My Cart')}</span>
+              {cart.length > 0 && <span className="xl:hidden rounded-full bg-white/20 px-1.5 py-0.5 text-[10px]">{cartItemCount}</span>}
             </button>
           </div>
         </div>
