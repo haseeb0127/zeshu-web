@@ -1,0 +1,76 @@
+name: Deploy Cloudflare staging QA release
+
+on:
+  push:
+    branches:
+      - qa/staging-release-20260922
+    paths-ignore:
+      - "android-shell/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.CLOUDFLARE_STAGING_NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.CLOUDFLARE_STAGING_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_RAZORPAY_KEY_ID: ${{ secrets.CLOUDFLARE_STAGING_NEXT_PUBLIC_RAZORPAY_KEY_ID }}
+      NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY: ${{ secrets.CLOUDFLARE_STAGING_NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY }}
+      NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED: 'false'
+
+      SUPABASE_SERVICE_ROLE_KEY: build-only-placeholder
+      RAZORPAY_KEY_ID: build-only-placeholder
+      RAZORPAY_KEY_SECRET: build-only-placeholder
+      RAZORPAY_WEBHOOK_SECRET: build-only-placeholder
+      GOOGLE_MAPS_ROUTES_API_KEY: build-only-placeholder
+      PLANAPI_MEMBER_ID: build-only-placeholder
+      PLANAPI_PASSWORD: build-only-placeholder
+      PLANAPI_TOKEN_ID: build-only-placeholder
+      SUPPORT_AI_ENABLED: 'false'
+      ENFORCE_JAGTIAL_SERVICE_AREA: 'false'
+      SUPPORT_WHATSAPP_SENDER_ENABLED: 'false'
+      PAYMENT_ROUTER_MODE: 'off'
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Verify staging-only deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            CLOUDFLARE_ACCOUNT_ID
+            CLOUDFLARE_API_TOKEN
+            NEXT_PUBLIC_SUPABASE_URL
+            NEXT_PUBLIC_SUPABASE_ANON_KEY
+            NEXT_PUBLIC_RAZORPAY_KEY_ID
+            NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY
+          )
+          for key in "${required[@]}"; do
+            if [ -z "${!key:-}" ]; then
+              echo "Missing required GitHub secret for $key"
+              exit 1
+            fi
+          done
+
+      - run: npm ci
+
+      - name: Build Cloudflare Worker
+        run: npx --yes @opennextjs/cloudflare@1.20.6 build
+
+      - name: Deploy only to workers.dev staging
+        run: npx --yes wrangler@4.68.0 deploy --config wrangler.jsonc --name zeshu-web-staging
