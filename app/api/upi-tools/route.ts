@@ -8,6 +8,17 @@ export async function POST(request: Request) {
     if (!user) return authRequiredResponse();
     const limited = rateLimitResponse(user.id, 'upi-tools');
     if (limited) return limited;
+
+    // PlanAPI UPI/eKYC endpoints run in provider live mode and may debit the
+    // provider wallet. Keep them fail-closed until the previously exposed
+    // credential is rotated and provider/compliance readiness is re-approved.
+    if (process.env.PLANAPI_EKYC_EXECUTION_ENABLED !== 'true') {
+      return NextResponse.json({
+        success: false,
+        message: 'UPI verification is temporarily unavailable.',
+      }, { status: 503 });
+    }
+
     // Read the incoming request from your frontend
     const body = await request.json();
     const { action, upiId, mobileNo, name } = body;
