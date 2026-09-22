@@ -8,6 +8,7 @@ import OrderStatusTimeline from './components/OrderStatusTimeline';
 import ProductCard from './components/ProductCard';
 import ReviewForm, { ReviewProduct } from './components/ReviewForm';
 import LocationSelector, { type LocationSelection } from './components/LocationSelector';
+import { LanguageSwitcher, useCustomerLanguage } from './components/CustomerLanguageProvider';
 import { 
   Mic, MapPin, Search, User, ChevronRight, Zap, Smartphone, 
   Tv, HeartHandshake, Plus, Minus, ShoppingBag, X, LogOut, Ticket, QrCode,
@@ -264,6 +265,7 @@ function formatDthMetric(value: unknown, label: string) {
 const electricityLabels: Record<string, string> = { customerName: 'Customer name', dueAmount: 'Due amount', dueDate: 'Due date', billNumber: 'Bill number', billDate: 'Bill date', balance: 'Balance', billPeriod: 'Bill period' };
 
 export default function ZeshuSuperApp() {
+  const { t } = useCustomerLanguage();
   const [activeTab, setActiveTab] = useState('home'); 
   const [activeService, setActiveService] = useState('mobile');
 
@@ -2885,12 +2887,13 @@ export default function ZeshuSuperApp() {
             <div className="flex items-center gap-4 lg:gap-6">
               <button aria-label="Go to Zeshu home" className="flex items-center gap-2 lg:gap-3 lg:border-r border-gray-200/60 lg:pr-6 active:scale-[0.97] transition-transform" onClick={goToHome}>
                 <div className="bg-[#087443] text-white font-black p-2 md:p-2.5 rounded-xl md:rounded-2xl text-xl md:text-2xl tracking-tighter shadow-sm">Z</div>
-                <div className="hidden lg:flex flex-col text-left"><span className="text-[22px] font-black tracking-tighter leading-none">ZESHU</span><span className="text-[10px] font-extrabold text-[#087443] tracking-[0.2em] uppercase mt-0.5">Everyday, simply</span></div>
+                <div className="hidden lg:flex flex-col text-left"><span className="text-[22px] font-black tracking-tighter leading-none">ZESHU</span><span className="text-[10px] font-extrabold text-[#087443] tracking-[0.2em] uppercase mt-0.5">{t('Everyday, simply')}</span></div>
               </button>
               <button type="button" aria-label="Detect or change delivery location" className="flex min-w-0 max-w-[240px] flex-col cursor-pointer text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443] sm:max-w-[360px] lg:max-w-[220px]" onClick={handleAutoDetectLocation}>
-                <div className="flex items-center gap-1.5 whitespace-nowrap text-[12px] font-black md:text-[15px]">{currentAddress !== 'Location not set' ? 'Deliver to' : 'Set delivery location'} <MapPin size={14} className="shrink-0 text-[#087443]"/></div>
-                <div className="mt-0.5 flex min-w-0 items-center text-[10px] font-medium text-[#6B7280] md:text-xs"><span className="truncate">{currentAddress}</span><ChevronDown size={14} className="ml-1 shrink-0"/></div>
+                <div className="flex items-center gap-1.5 whitespace-nowrap text-[12px] font-black md:text-[15px]">{currentAddress !== 'Location not set' ? t('Deliver to') : t('Set delivery location')} <MapPin size={14} className="shrink-0 text-[#087443]"/></div>
+                <div className="mt-0.5 flex min-w-0 items-center text-[10px] font-medium text-[#6B7280] md:text-xs"><span className="truncate">{currentAddress === 'Location not set' ? t('Location not set') : currentAddress}</span><ChevronDown size={14} className="ml-1 shrink-0"/></div>
               </button>
+              <LanguageSwitcher className="lg:hidden" compact />
             </div>
 
           </div>
@@ -2898,7 +2901,7 @@ export default function ZeshuSuperApp() {
           <div className="w-full lg:flex-1 max-w-3xl order-last lg:order-none mt-1 lg:mt-0">
             <div className="bg-[#f1f4f1] transition-all rounded-[14px] md:rounded-[20px] flex items-center px-4 py-3 md:py-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#087443]/25">
               <Search className="text-[#9CA3AF] w-[18px] h-[18px] md:w-[22px] md:h-[22px]" />
-              <input aria-label="Search Zeshu" type="search" placeholder="Search milk, atta, snacks, recharge..." className="bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => { const value = e.target.value; setSearchQuery(value); setVoiceSearchMessage(''); if (value.trim()) setActiveTab('home'); }} />
+              <input aria-label="Search Zeshu" type="search" placeholder={t('Search milk, atta, snacks, recharge...')} className="bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => { const value = e.target.value; setSearchQuery(value); setVoiceSearchMessage(''); if (value.trim()) setActiveTab('home'); }} />
               {searchQuery && <button type="button" aria-label="Clear search" className="text-gray-500 p-1" onClick={() => setSearchQuery('')}><X size={16}/></button>}
               <button type="button" aria-label={isVoiceListening ? 'Stop voice search' : 'Search by voice'} aria-pressed={isVoiceListening} className={`ml-1 rounded-full p-1.5 text-[#087443] transition ${isVoiceListening ? 'bg-[#d9f4e3] animate-pulse' : 'hover:bg-[#e5f4ea]'}`} onClick={toggleVoiceSearch}><Mic size={18} aria-hidden="true" /></button>
             </div>
@@ -2906,15 +2909,16 @@ export default function ZeshuSuperApp() {
           </div>
 
           <div className="hidden lg:flex items-center gap-3 shrink-0">
+            <LanguageSwitcher />
             <button type="button" onClick={() => openServices()} aria-current={activeTab === 'recharge' ? 'page' : undefined} className={`flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-black transition-all active:scale-95 ${activeTab === 'recharge' ? 'border-[#087443] bg-emerald-50 text-[#087443]' : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50'}`}>
-              <Smartphone size={18} /><span>Bills &amp; Services</span>
+              <Smartphone size={18} /><span>{t('Bills & Services')}</span>
             </button>
             <Link href="/scanner" className="flex items-center gap-2 bg-[#087443] text-white px-4 py-2.5 rounded-full font-black text-sm transition-all active:scale-95 shadow-sm">
-              <QrCode size={18} /><span>Scan</span>
+              <QrCode size={18} /><span>{t('Scan')}</span>
             </Link>
-            <button onClick={() => user ? openAccountHome() : setIsAuthModalOpen(true)} className="flex items-center gap-2 text-[#4B5563] font-extrabold text-sm active:scale-95"><User size={20}/>{user ? 'Account' : 'Login'}</button>
+            <button onClick={() => user ? openAccountHome() : setIsAuthModalOpen(true)} className="flex items-center gap-2 text-[#4B5563] font-extrabold text-sm active:scale-95"><User size={20}/>{user ? t('Account') : t('Login')}</button>
             <button onClick={() => setIsCartOpen(true)} className="bg-gradient-to-b from-[#059669] to-[#047857] text-white px-5 py-3.5 rounded-[20px] flex items-center gap-3 font-bold text-sm min-w-[120px] justify-center active:scale-[0.96]">
-              <ShoppingBag size={22} /> {cart.length > 0 ? `₹${finalCartTotal}` : 'My Cart'}
+              <ShoppingBag size={22} /> {cart.length > 0 ? `₹${finalCartTotal}` : t('My Cart')}
             </button>
           </div>
         </div>
@@ -2924,8 +2928,8 @@ export default function ZeshuSuperApp() {
         {activeTab === 'home' && normalizedSearch === '' && (
           <aside className="hidden lg:block w-[280px] shrink-0 sticky top-[120px] h-[calc(100vh-120px)] overflow-y-auto no-scrollbar pr-5">
             <div className="mb-4 px-3">
-              <h3 className="text-lg font-black tracking-tight text-[#111827]">Shop by Category</h3>
-              <p className="mt-1 text-xs font-semibold leading-5 text-slate-400">Everyday essentials, grouped the way customers shop.</p>
+              <h3 className="text-lg font-black tracking-tight text-[#111827]">{t('Shop by Category')}</h3>
+              <p className="mt-1 text-xs font-semibold leading-5 text-slate-400">{t('Everyday essentials, grouped the way customers shop.')}</p>
             </div>
             <div className="flex flex-col gap-1.5">
               {productCategories.map((cat) => {
@@ -2936,7 +2940,7 @@ export default function ZeshuSuperApp() {
                   <button key={cat} type="button" onClick={() => setActiveCategory(cat)} aria-pressed={isSelected} className={`group flex w-full items-center gap-3 rounded-[18px] border px-3.5 py-3 text-left transition-all active:scale-[0.98] ${isSelected ? 'border-emerald-100 bg-emerald-50 text-[#087443] shadow-[inset_4px_0_0_0_#087443]' : 'border-transparent text-slate-600 hover:border-slate-200 hover:bg-white'}`}>
                     <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-lg ${isSelected ? 'bg-white' : 'bg-slate-100 group-hover:bg-emerald-50'}`} aria-hidden="true">{definition.icon}</span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-black">{definition.label}</span>
+                      <span className="block truncate text-sm font-black">{t(definition.label)}</span>
                       {cat !== 'All' && <span className={`mt-0.5 block text-[10px] font-bold ${count > 0 ? 'text-slate-400' : 'text-amber-600'}`}>{count > 0 ? `${count} available` : 'Coming soon'}</span>}
                     </span>
                     {cat === 'All' && <span className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-slate-500">{count}</span>}
@@ -2948,7 +2952,7 @@ export default function ZeshuSuperApp() {
         )}
 
         <div className="flex-1 min-w-0 pb-32">
-           {activeTab === 'home' && <div className="mb-5 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar md:px-0 lg:hidden" aria-label="Product categories">{productCategories.map((category) => { const definition = categoryDefinition(category); return <button type="button" key={category} onClick={() => setActiveCategory(category)} aria-pressed={activeCategory === category} className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-black transition ${activeCategory === category ? 'border-[#087443] bg-[#087443] text-white' : 'border-[#dce8df] bg-white text-[#52645a]'}`}><span aria-hidden="true">{definition.icon}</span><span>{definition.label}</span></button>; })}</div>}
+           {activeTab === 'home' && <div className="mb-5 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar md:px-0 lg:hidden" aria-label="Product categories">{productCategories.map((category) => { const definition = categoryDefinition(category); return <button type="button" key={category} onClick={() => setActiveCategory(category)} aria-pressed={activeCategory === category} className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-black transition ${activeCategory === category ? 'border-[#087443] bg-[#087443] text-white' : 'border-[#dce8df] bg-white text-[#52645a]'}`}><span aria-hidden="true">{definition.icon}</span><span>{t(definition.label)}</span></button>; })}</div>}
            {activeTab === 'home' && <section className="mb-5 px-4 md:px-0" aria-label="Delivery choices"><div className="rounded-3xl border border-[#dce8df] bg-white p-3 shadow-[0_4px_18px_rgba(19,32,25,.04)]"><div className="flex gap-2 overflow-x-auto no-scrollbar"><button type="button" onClick={() => setFulfillmentFilter('ALL')} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${fulfillmentFilter === 'ALL' ? 'bg-[#087443] text-white' : 'bg-[#f1f5f2] text-[#52645a]'}`}>All delivery</button><button type="button" onClick={() => setFulfillmentFilter('FRESH')} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${fulfillmentFilter === 'FRESH' ? 'bg-[#087443] text-white' : 'bg-emerald-50 text-emerald-700'}`}>⚡ 30-min Fresh</button><button type="button" onClick={() => setFulfillmentFilter('INDIA')} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${fulfillmentFilter === 'INDIA' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700'}`}>🇮🇳 India Delivery{fulfillmentStatus.nationwide_checkout_enabled ? '' : ' · soon'}</button></div><p className="mt-2 text-[11px] font-semibold leading-5 text-slate-500">{fulfillmentFilter === 'FRESH' ? 'Fresh items show ~30 min only when your location, store and active rider availability qualify.' : fulfillmentFilter === 'INDIA' ? 'Only profitable, shelf-stable products approved for nationwide shipping appear here. Shipping prices will come from a real courier quote before payment.' : 'Fresh locally. India-wide only where delivery remains sensible for both the customer and Zeshu.'}</p></div></section>}
            {activeTab === 'home' && <>
              <div className="mb-5 flex items-center justify-between gap-3 px-4 md:px-0">
@@ -3178,17 +3182,17 @@ export default function ZeshuSuperApp() {
               )}
               {user && (availableFavoriteProducts.length > 0 || availableRecentlyPurchased.length > 0 || frequentCategories.length > 0) && normalizedSearch === '' && (
                 <section className="mx-4 mb-6 rounded-[20px] border border-[#dce8df] bg-[#f7fbf8] p-4 md:mx-0" aria-labelledby="quick-picks-title">
-                  <div className="flex items-center justify-between"><h2 id="quick-picks-title" className="text-lg font-black tracking-tight text-[#173d27]">Quick Picks</h2><span className="text-[10px] font-black uppercase tracking-wider text-[#5d8069]">For you</span></div>
+                  <div className="flex items-center justify-between"><h2 id="quick-picks-title" className="text-lg font-black tracking-tight text-[#173d27]">{t('Quick Picks')}</h2><span className="text-[10px] font-black uppercase tracking-wider text-[#5d8069]">{t('For you')}</span></div>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {availableRecentlyPurchased.length > 0 && <button type="button" onClick={() => document.getElementById('recently-purchased')?.scrollIntoView({ behavior: 'smooth' })} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-[#087443] shadow-sm">Buy Again</button>}
-                    {availableFavoriteProducts.length > 0 && <button type="button" onClick={() => document.getElementById('favorites')?.scrollIntoView({ behavior: 'smooth' })} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-[#087443] shadow-sm">Favorites</button>}
+                    {availableRecentlyPurchased.length > 0 && <button type="button" onClick={() => document.getElementById('recently-purchased')?.scrollIntoView({ behavior: 'smooth' })} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-[#087443] shadow-sm">{t('Buy Again')}</button>}
+                    {availableFavoriteProducts.length > 0 && <button type="button" onClick={() => document.getElementById('favorites')?.scrollIntoView({ behavior: 'smooth' })} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-[#087443] shadow-sm">{t('Favorites')}</button>}
                     {frequentCategories.map((category) => <button type="button" key={category} onClick={() => { setActiveCategory(category); document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' }); }} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-[#087443] shadow-sm">{category}</button>)}
                   </div>
                 </section>
               )}
               {user && availableFavoriteProducts.length > 0 && normalizedSearch === '' && (
                 <section id="favorites" className="mx-4 mb-8 rounded-[24px] border border-[#dce8df] bg-white p-5 md:mx-0 md:p-7" aria-labelledby="favorites-title">
-                  <div className="flex items-center justify-between gap-3"><div><h2 id="favorites-title" className="text-xl font-black tracking-tight">Your Favorites</h2><p className="mt-1 text-xs text-slate-500">Live prices and availability from your saved products.</p></div><HeartHandshake size={22} className="text-[#087443]" /></div>
+                  <div className="flex items-center justify-between gap-3"><div><h2 id="favorites-title" className="text-xl font-black tracking-tight">{t('Your Favorites')}</h2><p className="mt-1 text-xs text-slate-500">Live prices and availability from your saved products.</p></div><HeartHandshake size={22} className="text-[#087443]" /></div>
                   <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
                     {availableFavoriteProducts.slice(0, 10).map((product: any) => {
                       const unavailable = product.in_stock === false || (product.quantity !== null && Number(product.quantity) <= 0) || !product.vendor_id;
@@ -3500,7 +3504,7 @@ export default function ZeshuSuperApp() {
           <div className="fixed inset-0 bg-[#111827]/40 backdrop-blur-sm z-[60]" onClick={closeAccount}></div>
           <div role="dialog" aria-modal="true" aria-labelledby="account-title" className="fixed top-0 right-0 h-full w-full md:w-[460px] bg-[#F7F9F5] z-[70] shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col md:rounded-l-[32px] overflow-hidden">
             <div className="bg-white px-6 py-5 flex justify-between items-center border-b">
-              <h2 id="account-title" className="text-2xl font-black tracking-tighter">My Account</h2>
+              <h2 id="account-title" className="text-2xl font-black tracking-tighter">{t('My Account')}</h2>
               <button ref={modalCloseRef} aria-label="Close account" onClick={closeAccount} className="p-2.5 bg-[#F3F4F6] rounded-full active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443]"><X size={20}/></button>
             </div>
             <div className="flex flex-1 flex-col overflow-y-auto p-6 space-y-6">
@@ -3509,28 +3513,28 @@ export default function ZeshuSuperApp() {
                    <div className="h-16 w-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md border border-white/30"><User size={32} className="text-white" aria-hidden="true"/></div>
                    <div>
                      <p className="text-emerald-100 text-sm font-bold uppercase tracking-wider">Hi, {getCustomerFirstName(user)}</p>
-                     <p className="mt-1 text-sm font-bold text-white/90">Manage your Zeshu account</p>
+                     <p className="mt-1 text-sm font-bold text-white/90">{t('Manage your Zeshu account')}</p>
                      <p className="mt-1 text-xs font-bold text-emerald-100">{user?.phone ? maskedPhone(user.phone) : user?.email || 'Signed in securely'}</p>
                    </div>
                  </div>
               </div>}
               {accountView === 'HOME' && <div className="space-y-3" aria-label="Account menu">
                 {[
-                  { view: 'CASH', title: 'ZESHU CASH', summary: `₹${rewardBalance.toFixed(2)} · Rewards & transaction history`, icon: <Ticket size={20} aria-hidden="true" /> },
-                  { view: 'ORDERS', title: 'Your Orders & Buy Again', summary: `${myOrders.length} orders`, icon: <Package size={20} aria-hidden="true" /> },
-                  { view: 'ADDRESSES', title: 'Saved Addresses', summary: `${addresses.length} saved`, icon: <MapPin size={20} aria-hidden="true" /> },
-                  { view: 'REFERRAL', title: 'Invite & Earn', summary: 'Share your Zeshu invite code', icon: <HeartHandshake size={20} aria-hidden="true" /> },
-                  { view: 'SUPPORT', title: 'Help & Support', summary: 'Orders, delivery, payments & more', icon: <PhoneCall size={20} aria-hidden="true" /> },
-                  { view: 'POLICIES', title: 'Policies & Trust', summary: 'Customer policies and service information', icon: <ShieldCheck size={20} aria-hidden="true" /> },
-                  { view: 'PASS', title: 'Zeshu Pass', summary: 'Coming soon', icon: <Crown size={20} aria-hidden="true" /> },
-                  { view: 'SUBSCRIBE', title: 'Subscribe & Save', summary: 'Coming soon', icon: <History size={20} aria-hidden="true" /> },
-                  { view: 'SERVICES', title: 'More from Zeshu', summary: 'Rides, Rentals & Courier', icon: <Menu size={20} aria-hidden="true" /> },
-                  { view: 'SETTINGS', title: 'Account Settings', summary: 'Personal sign-in information', icon: <BookUser size={20} aria-hidden="true" /> },
+                  { view: 'CASH', title: t('ZESHU CASH'), summary: `₹${rewardBalance.toFixed(2)} · Rewards & transaction history`, icon: <Ticket size={20} aria-hidden="true" /> },
+                  { view: 'ORDERS', title: t('Your Orders & Buy Again'), summary: `${myOrders.length} orders`, icon: <Package size={20} aria-hidden="true" /> },
+                  { view: 'ADDRESSES', title: t('Saved Addresses'), summary: `${addresses.length} saved`, icon: <MapPin size={20} aria-hidden="true" /> },
+                  { view: 'REFERRAL', title: t('Invite & Earn'), summary: t('Share your Zeshu invite code'), icon: <HeartHandshake size={20} aria-hidden="true" /> },
+                  { view: 'SUPPORT', title: t('Help & Support'), summary: t('Orders, delivery, payments & more'), icon: <PhoneCall size={20} aria-hidden="true" /> },
+                  { view: 'POLICIES', title: t('Policies & Trust'), summary: t('Customer policies and service information'), icon: <ShieldCheck size={20} aria-hidden="true" /> },
+                  { view: 'PASS', title: t('Zeshu Pass'), summary: t('Coming soon'), icon: <Crown size={20} aria-hidden="true" /> },
+                  { view: 'SUBSCRIBE', title: t('Subscribe & Save'), summary: t('Coming soon'), icon: <History size={20} aria-hidden="true" /> },
+                  { view: 'SERVICES', title: t('More from Zeshu'), summary: 'Rides, Rentals & Courier', icon: <Menu size={20} aria-hidden="true" /> },
+                  { view: 'SETTINGS', title: t('Account Settings'), summary: t('Personal sign-in information'), icon: <BookUser size={20} aria-hidden="true" /> },
                 ].map((item) => <button type="button" key={item.view} onClick={() => setAccountView(item.view as AccountView)} className="flex min-h-16 w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-emerald-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443]"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[#087443]">{item.icon}</span><span className="min-w-0 flex-1"><span className="block text-sm font-black text-slate-900">{item.title}</span><span className="mt-1 block truncate text-xs font-bold text-slate-500">{item.summary}</span></span><ChevronRight size={18} className="shrink-0 text-slate-400" aria-hidden="true" /></button>)}
               </div>}
-              {accountView !== 'HOME' && <div className="flex items-center"><button type="button" onClick={() => setAccountView('HOME')} className="inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-black text-[#087443] hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443]"><span aria-hidden="true">←</span> Back to My Account</button></div>}
+              {accountView !== 'HOME' && <div className="flex items-center"><button type="button" onClick={() => setAccountView('HOME')} className="inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-black text-[#087443] hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087443]"><span aria-hidden="true">←</span> {t('Back to My Account')}</button></div>}
               {accountView === 'ADDRESSES' && <section className="rounded-[24px] border border-slate-200 bg-white p-5" aria-labelledby="saved-addresses-title">
-                <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 id="saved-addresses-title" className="font-black text-slate-900">Saved Addresses</h3><p className="mt-1 text-xs text-slate-500">Choose a saved address at checkout.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => { openAddressForm(); handleAutoDetectLocation(); }} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">Use my current location</button><button type="button" onClick={() => openAddressForm()} className="rounded-xl bg-[#087443] px-3 py-2 text-xs font-black text-white">+ Add Address</button></div></div>
+                <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 id="saved-addresses-title" className="font-black text-slate-900">{t('Saved Addresses')}</h3><p className="mt-1 text-xs text-slate-500">Choose a saved address at checkout.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => { openAddressForm(); handleAutoDetectLocation(); }} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">Use my current location</button><button type="button" onClick={() => openAddressForm()} className="rounded-xl bg-[#087443] px-3 py-2 text-xs font-black text-white">+ Add Address</button></div></div>
                 <div className="mt-4 space-y-3">{addresses.length === 0 ? <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No saved addresses yet.</p> : addresses.map((address) => <div key={address.id} className="rounded-xl border border-slate-100 p-3"><div className="flex items-start justify-between gap-3"><div><p className="font-black text-slate-900">{address.label} {address.is_default && <span className="ml-1 rounded bg-emerald-100 px-2 py-1 text-[10px] text-emerald-700">Default</span>}</p><p className="mt-1 text-xs text-slate-600">{address.recipient_name || 'Recipient'} · {formatAddress(address)}</p></div><button type="button" onClick={() => void deleteAddress(address.id)} className="text-xs font-black text-red-600">Delete</button></div><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => openAddressForm(address)} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black">Edit</button>{!address.is_default && <button type="button" onClick={() => void setDefaultAddress(address.id)} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">Set default</button>}<button type="button" onClick={() => void useSavedAddressForCheckout(address, true)} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-black text-[#087443]">Use for checkout</button></div></div>)}</div>
               </section>}
               {accountView === 'REFERRAL' && <section className="rounded-[24px] border border-emerald-100 bg-white p-5" aria-labelledby="invite-earn-title">
@@ -3594,9 +3598,9 @@ export default function ZeshuSuperApp() {
                   {ordersLoadError ? <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm font-bold text-red-700">Recent orders are temporarily unavailable. Please try again later.</p> : myOrders.length === 0 ? <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">No confirmed grocery orders yet.</p> : myOrders.map((order) => { const status = String(order.status || 'PENDING'); const delivered = status === 'DELIVERED'; return <div key={order.id} className="rounded-xl border border-slate-100 bg-white p-3"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black text-slate-800">Order #{order.id?.split('-')[0]?.toUpperCase()}</p><p className="mt-1 text-[11px] font-medium text-slate-500">{order.created_at ? new Date(order.created_at).toLocaleString() : 'Order date unavailable'}</p></div><div className="text-right"><p className="text-sm font-black text-slate-900">₹{Number(order.total_paid || 0).toFixed(2)}</p><span className="mt-1 inline-block rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-black text-[#087443]">{status.replaceAll('_', ' ')}</span></div></div><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => { setTrackedOrder(order); setIsTrackingOpen(true); setIsAccountOpen(false); }} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-black text-[#087443]">{delivered ? 'View order' : 'Track order'}</button>{delivered && <button type="button" disabled={reorderingId === order.id} onClick={() => void reorder(order)} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 disabled:opacity-60">{reorderingId === order.id ? 'Adding...' : 'Buy again'}</button>}</div></div>; })}
                 </div>
               </section>}
-              {accountView === 'ORDERS' && <section className="rounded-[24px] border border-slate-200 bg-white p-5"><h3 className="font-black text-slate-900">Buy again</h3><p className="mt-1 text-xs text-slate-500">Use current prices and availability from delivered orders.</p><div className="mt-3 space-y-2">{myOrders.filter((order) => order.status === 'DELIVERED').slice(0, 5).length === 0 ? <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-500">No delivered orders yet.</p> : myOrders.filter((order) => order.status === 'DELIVERED').slice(0, 5).map((order) => <button type="button" key={`reorder-${order.id}`} disabled={reorderingId === order.id} onClick={() => void reorder(order)} className="flex w-full items-center justify-between rounded-xl border border-slate-100 p-3 text-left text-xs font-black disabled:opacity-60"><span>Order #{order.id?.split('-')[0]?.toUpperCase()}</span><span className="text-[#087443]">{reorderingId === order.id ? 'Adding...' : 'Reorder'}</span></button>)}</div></section>}
+              {accountView === 'ORDERS' && <section className="rounded-[24px] border border-slate-200 bg-white p-5"><h3 className="font-black text-slate-900">{t('Buy again')}</h3><p className="mt-1 text-xs text-slate-500">Use current prices and availability from delivered orders.</p><div className="mt-3 space-y-2">{myOrders.filter((order) => order.status === 'DELIVERED').slice(0, 5).length === 0 ? <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-500">No delivered orders yet.</p> : myOrders.filter((order) => order.status === 'DELIVERED').slice(0, 5).map((order) => <button type="button" key={`reorder-${order.id}`} disabled={reorderingId === order.id} onClick={() => void reorder(order)} className="flex w-full items-center justify-between rounded-xl border border-slate-100 p-3 text-left text-xs font-black disabled:opacity-60"><span>Order #{order.id?.split('-')[0]?.toUpperCase()}</span><span className="text-[#087443]">{reorderingId === order.id ? 'Adding...' : t('Reorder')}</span></button>)}</div></section>}
               {accountView === 'SUPPORT' && <section className="rounded-[24px] border border-slate-200 bg-white p-5" aria-labelledby="support-title">
-                <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 id="support-title" className="font-black text-slate-900">Help &amp; Support</h3><p className="mt-2 text-sm leading-6 text-slate-600">Start a support conversation with the Zeshu team. Never share OTPs, passwords, or payment credentials.</p></div>{selectedSupportConversationId && <button type="button" onClick={startNewSupportConversation} className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-[#087443]">New conversation</button>}</div>
+                <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 id="support-title" className="font-black text-slate-900">{t('Help & Support')}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{t('Start a support conversation with the Zeshu team. Never share OTPs, passwords, or payment credentials.')}</p></div>{selectedSupportConversationId && <button type="button" onClick={startNewSupportConversation} className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-[#087443]">{t('New conversation')}</button>}</div>
                 {!selectedSupportConversationId && <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
@@ -3654,7 +3658,7 @@ export default function ZeshuSuperApp() {
             </div>
             {accountView === 'HOME' && <div className="bg-white p-6 border-t shadow-2xl">
               <button onClick={handleLogout} className="w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-4 rounded-2xl flex justify-center items-center gap-2 transition-colors active:scale-95">
-                <LogOut size={20} /> Logout
+                <LogOut size={20} /> {t('Logout')}
               </button>
             </div>}
           </div>
