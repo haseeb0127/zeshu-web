@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Razorpay from 'razorpay';
+import { getRuntimeEnvValue, getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
 import { discoverPlans } from '@/app/lib/planapi';
 
 export const dynamic = 'force-dynamic';
@@ -11,9 +12,7 @@ export async function POST(request: Request) {
     const authorization = request.headers.get('authorization');
     if (!authorization?.startsWith('Bearer ')) return NextResponse.json({ success: false, error: 'Authentication required.' }, { status: 401 });
     const accessToken = authorization.slice('Bearer '.length).trim();
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const { url: supabaseUrl, anonKey, serviceRoleKey } = await getRuntimeSupabaseEnv();
     if (!accessToken || !supabaseUrl || !anonKey || !serviceRoleKey) return NextResponse.json({ success: false, error: 'Test payment is unavailable.' }, { status: 401 });
     const authClient = createClient(supabaseUrl, anonKey);
     const { data: { user }, error: authError } = await authClient.auth.getUser(accessToken);
@@ -37,8 +36,10 @@ export async function POST(request: Request) {
     if (!selected || Number(selected.amount) !== amount) {
       return NextResponse.json({ success: false, error: 'The selected plan is no longer available.' }, { status: 400 });
     }
-    const keyId = process.env.RAZORPAY_KEY_ID;
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    const [keyId, keySecret] = await Promise.all([
+      getRuntimeEnvValue('RAZORPAY_KEY_ID'),
+      getRuntimeEnvValue('RAZORPAY_KEY_SECRET'),
+    ]);
     if (!keyId || !keySecret || !keyId.startsWith('rzp_test_')) return NextResponse.json({ success: false, error: 'Test payment is unavailable.' }, { status: 503 });
     const customerRef = crypto.createHmac('sha256', keySecret).update(`recharge-test-customer:${user.id}`).digest('hex').slice(0, 24);
     const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
