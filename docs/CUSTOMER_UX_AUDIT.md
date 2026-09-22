@@ -52,7 +52,7 @@ Last reviewed: 2026-09-20
 - Split the large storefront page into customer-domain components without changing behavior.
 - Replace remaining third-party product images with controlled/optimized assets where practical.
 - Expand safe offline behavior for browsing while never caching authenticated checkout/payment/provider requests.
-- Add a permanent browser E2E suite once the repository adopts a supported browser test runner.
+- ✅ Permanent mobile browser E2E now runs automatically after successful Cloudflare staging deployments, covering category/filter visibility and intent-aware search regression.
 
 ## Design rules
 
