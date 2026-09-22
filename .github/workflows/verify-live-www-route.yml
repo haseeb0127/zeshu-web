@@ -1,0 +1,61 @@
+name: Verify live www Worker route
+
+on:
+  push:
+    branches:
+      - ops/cloudflare-cutover-20260922
+    paths:
+      - .github/workflows/verify-live-www-route.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      LIVE_BASE: https://www.zeshu.in
+      CANDIDATE_BASE: https://zeshu-web-production-candidate.asif-mohammed0127.workers.dev
+    steps:
+      - name: Compare build identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate_build="$(curl -fsSL --retry 3 --retry-delay 1 "$CANDIDATE_BASE/BUILD_ID" | tr -d '\r\n')"
+          live_build="$(curl -fsSL --retry 3 --retry-delay 1 "$LIVE_BASE/BUILD_ID" | tr -d '\r\n')"
+          echo "Candidate BUILD_ID: $candidate_build"
+          echo "Live www BUILD_ID: $live_build"
+          test -n "$candidate_build"
+          test "$live_build" = "$candidate_build"
+
+      - name: Smoke test live public routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          for route in / /policies /partners /app /scanner; do
+            code="$(curl -L -sS -o /dev/null -w '%{http_code}' "$LIVE_BASE$route" || true)"
+            echo "$route -> $code"
+            test "$code" = "200"
+          done
+
+      - name: Verify anonymous auth boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -L -sS -o /dev/null -w '%{http_code}' -X POST "$LIVE_BASE/api/support/assistant" -H 'Content-Type: application/json' --data '{"message":"hello"}' || true)"
+          echo "/api/support/assistant -> $code"
+          test "$code" = "401"
+          code="$(curl -L -sS -o /dev/null -w '%{http_code}' "$LIVE_BASE/api/admin/support/conversations" || true)"
+          echo "/api/admin/support/conversations -> $code"
+          test "$code" = "401"
+
+      - name: Confirm Cloudflare fronting and candidate Worker response
+        shell: bash
+        run: |
+          set -euo pipefail
+          headers="$(mktemp)"
+          curl -fsS -D "$headers" -o /dev/null "$LIVE_BASE/"
+          cat "$headers"
+          grep -qi '^server: cloudflare' "$headers"
+          echo "LIVE_WWW_WORKER_ROUTE_VERIFIED=true"
