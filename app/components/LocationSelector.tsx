@@ -212,7 +212,7 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
 
     const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY?.trim();
     if (!key || key === BUILD_CHECK_MAP_KEY || key.startsWith('build-check-')) {
-      enableFallbackMap('Using the staging map fallback. GPS detection and address search are available without a Google browser key.');
+      enableFallbackMap(t('Using the staging map fallback. GPS detection and address search are available without a Google browser key.'));
       return;
     }
 
@@ -290,7 +290,7 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
       }
       setMapsReady(true);
     }).catch(() => {
-      if (!cancelled) enableFallbackMap('Google Maps is not configured for staging, so Zeshu switched to the GPS/OpenStreetMap fallback.');
+      if (!cancelled) enableFallbackMap(t('Google Maps is not configured for staging, so Zeshu switched to the GPS/OpenStreetMap fallback.'));
     });
 
     return () => {
@@ -304,11 +304,11 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
 
   const detectFallbackLocation = () => {
     if (!('geolocation' in navigator)) {
-      setFallbackMessage('This browser does not provide GPS location. Search for your area instead.');
+      setFallbackMessage(t('This browser does not provide GPS location. Search for your area instead.'));
       return;
     }
     setFallbackBusy(true);
-    setFallbackMessage('Detecting your current location…');
+    setFallbackMessage(t('Detecting your current location…'));
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const accuracy = Number(position.coords.accuracy);
@@ -320,15 +320,15 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
         setServiceAreaStatus(null);
         setServiceAreaMessage('');
         setFallbackBusy(false);
-        setFallbackMessage(detectedAccuracyRef.current !== null ? `GPS detected · accuracy about ${Math.round(detectedAccuracyRef.current)} m` : 'GPS location detected.');
+        setFallbackMessage(detectedAccuracyRef.current !== null ? `${t('GPS detected · accuracy about')} ${Math.round(detectedAccuracyRef.current)} m` : t('GPS location detected.'));
         void reverseFallback(next.lat, next.lng);
       },
       (error) => {
         setFallbackBusy(false);
         const denied = error?.code === 1;
         setFallbackMessage(denied
-          ? 'Location permission is blocked. Allow location for this site, then try again, or search for your area.'
-          : 'GPS could not get a reliable fix. Search for your area or try again outdoors.');
+          ? t('Location permission is blocked. Allow location for this site, then try again, or search for your area.')
+          : t('GPS could not get a reliable fix. Search for your area or try again outdoors.'));
       },
       { enableHighAccuracy: true, maximumAge: 15000, timeout: 12000 },
     );
@@ -338,7 +338,7 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
     const query = fallbackQuery.trim();
     if (!query || fallbackBusy) return;
     setFallbackBusy(true);
-    setFallbackMessage('Searching…');
+    setFallbackMessage(t('Searching…'));
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=1&countrycodes=in&q=${encodeURIComponent(query)}`,
@@ -349,7 +349,7 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
       const lat = Number(result?.lat);
       const lng = Number(result?.lon);
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-        setFallbackMessage('No matching place found. Try an area, street, landmark or PIN code.');
+        setFallbackMessage(t('No matching place found. Try an area, street, landmark or PIN code.'));
         return;
       }
       detectedAccuracyRef.current = null;
@@ -361,9 +361,9 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
       const details = parseOpenStreetMapAddress(result);
       setAddressDetails(details);
       setAddress(details?.formattedAddress || String(result?.display_name || SELECTED_LOCATION_PROMPT));
-      setFallbackMessage('Location found. Confirm the preview below.');
+      setFallbackMessage(t('Location found. Confirm the preview below.'));
     } catch {
-      setFallbackMessage('Location search is temporarily unavailable. You can still use GPS.');
+      setFallbackMessage(t('Location search is temporarily unavailable. You can still use GPS.'));
     } finally {
       setFallbackBusy(false);
     }
@@ -387,7 +387,7 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
         ? payload.status
         : 'SERVICE_AREA_UNAVAILABLE';
       setServiceAreaStatus(status);
-      setServiceAreaMessage(String(payload?.message || 'We could not verify this delivery location.'));
+      setServiceAreaMessage(String(payload?.message || t('We could not verify this delivery location.')));
 
       if (!response.ok || status !== 'ELIGIBLE') return;
 
@@ -402,7 +402,7 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
       }, address);
     } catch {
       setServiceAreaStatus('SERVICE_AREA_UNAVAILABLE');
-      setServiceAreaMessage('We could not verify this delivery location. Check your connection and try again.');
+      setServiceAreaMessage(t('We could not verify this delivery location. Check your connection and try again.'));
     } finally {
       setCheckingServiceArea(false);
     }
@@ -410,7 +410,7 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
 
   return <div className="fixed inset-0 z-[180] flex flex-col bg-white" role="dialog" aria-modal="true" aria-labelledby="location-selector-title">
     <div className="flex items-center gap-3 border-b bg-white px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-      <button type="button" aria-label="Close location selector" onClick={onClose} className="min-h-11 min-w-11 rounded-full bg-slate-100 text-xl">×</button>
+      <button type="button" aria-label={t('Close location selector')} onClick={onClose} className="min-h-11 min-w-11 rounded-full bg-slate-100 text-xl">×</button>
       <div>
         <h2 id="location-selector-title" className="font-black text-slate-900">{t('Choose delivery location')}</h2>
         {fallbackMap && <p className="text-[10px] font-bold text-emerald-700">{t('GPS map fallback active')}</p>}
@@ -419,27 +419,27 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
 
     <div className="relative flex-1 bg-slate-100">
       {fallbackMap ? <>
-        <iframe title="Delivery location map preview" src={fallbackMapUrl} className="h-full w-full border-0" loading="eager" referrerPolicy="strict-origin-when-cross-origin" />
+        <iframe title={t('Delivery location map preview')} src={fallbackMapUrl} className="h-full w-full border-0" loading="eager" referrerPolicy="strict-origin-when-cross-origin" />
         <div className="absolute left-3 right-3 top-3 space-y-2 rounded-2xl bg-white/95 p-3 shadow-lg backdrop-blur">
           <div className="flex gap-2">
             <input
               value={fallbackQuery}
               onChange={(event) => setFallbackQuery(event.target.value)}
               onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void searchFallbackLocation(); } }}
-              placeholder="Search area, street, landmark or PIN"
+              placeholder={t('Search area, street, landmark or PIN')}
               className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-bold outline-none focus:border-[#087443]"
             />
-            <button type="button" disabled={fallbackBusy || !fallbackQuery.trim()} onClick={() => void searchFallbackLocation()} className="rounded-xl bg-[#111827] px-3 py-2.5 text-xs font-black text-white disabled:opacity-50">Search</button>
+            <button type="button" disabled={fallbackBusy || !fallbackQuery.trim()} onClick={() => void searchFallbackLocation()} className="rounded-xl bg-[#111827] px-3 py-2.5 text-xs font-black text-white disabled:opacity-50">{t('Search')}</button>
           </div>
           <button type="button" disabled={fallbackBusy} onClick={detectFallbackLocation} className="w-full rounded-xl bg-[#087443] px-3 py-2.5 text-xs font-black text-white disabled:opacity-50">
-            {fallbackBusy ? 'Working…' : 'Use my current GPS location'}
+            {fallbackBusy ? t('Working…') : t('Use my current GPS location')}
           </button>
           {fallbackMessage && <p className="text-[11px] font-bold leading-4 text-slate-600">{fallbackMessage}</p>}
         </div>
-      </> : mapsError ? <div className="flex h-full items-center justify-center p-6 text-center"><div><p className="font-bold text-slate-800">Maps are unavailable right now.</p><p className="mt-2 text-sm text-slate-600">You can still enter your address manually.</p><button type="button" onClick={onClose} className="mt-4 rounded-xl bg-[#087443] px-5 py-3 font-black text-white">Enter address manually</button></div></div> : <>
-        <div ref={mapElement} className="h-full w-full" aria-label="Delivery location map" />
+      </> : mapsError ? <div className="flex h-full items-center justify-center p-6 text-center"><div><p className="font-bold text-slate-800">{t('Maps are unavailable right now.')}</p><p className="mt-2 text-sm text-slate-600">{t('You can still enter your address manually.')}</p><button type="button" onClick={onClose} className="mt-4 rounded-xl bg-[#087443] px-5 py-3 font-black text-white">{t('Enter address manually')}</button></div></div> : <>
+        <div ref={mapElement} className="h-full w-full" aria-label={t('Delivery location map')} />
         {mapsReady && <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full text-4xl drop-shadow-md" aria-hidden="true">📍</div>}
-        <div ref={searchElement} className="absolute left-3 right-3 top-3 rounded-2xl bg-white shadow-lg" aria-label="Search delivery location" />
+        <div ref={searchElement} className="absolute left-3 right-3 top-3 rounded-2xl bg-white shadow-lg" aria-label={t('Search delivery location')} />
       </>}
     </div>
 
@@ -451,9 +451,9 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
         {addressDetails?.postalCode && <span className="rounded-full bg-slate-100 px-2.5 py-1">PIN {addressDetails.postalCode}</span>}
       </div>
       <p className="mt-2 text-sm font-black text-slate-800">{fallbackMap ? t('Confirm the detected/search result') : t('Place the pin at your delivery entrance')}</p>
-      <p className="mt-1 text-xs leading-5 text-slate-500">We&apos;ll verify this location against the Jagtial delivery area before saving it. Street/area, city, state and PIN are filled automatically when available.</p>
+      <p className="mt-1 text-xs leading-5 text-slate-500">{t("We'll verify this location against the Jagtial delivery area before saving it. Street/area, city, state and PIN are filled automatically when available.")}</p>
       {serviceAreaStatus === 'ELIGIBLE' && <div role="status" className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3"><p className="text-sm font-black text-emerald-800">{t('Delivery available here')}</p><p className="mt-1 text-xs leading-5 text-emerald-700">{serviceAreaMessage}</p></div>}
-      {serviceAreaStatus === 'OUTSIDE_SERVICE_AREA' && <div role="alert" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3"><p className="text-sm font-black text-amber-900">{t("We're not delivering physical products here yet")}</p><p className="mt-1 text-xs leading-5 text-amber-800">{serviceAreaMessage} Digital services remain available across India.</p>{onExploreDigital && <button type="button" onClick={onExploreDigital} className="mt-2 rounded-lg bg-white px-3 py-2 text-xs font-black text-indigo-700 shadow-sm">{t('Explore digital services')}</button>}</div>}
+      {serviceAreaStatus === 'OUTSIDE_SERVICE_AREA' && <div role="alert" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3"><p className="text-sm font-black text-amber-900">{t("We're not delivering physical products here yet")}</p><p className="mt-1 text-xs leading-5 text-amber-800">{serviceAreaMessage} {t('Digital services remain available across India.')}</p>{onExploreDigital && <button type="button" onClick={onExploreDigital} className="mt-2 rounded-lg bg-white px-3 py-2 text-xs font-black text-indigo-700 shadow-sm">{t('Explore digital services')}</button>}</div>}
       {serviceAreaStatus === 'SERVICE_AREA_UNAVAILABLE' && <div role="alert" className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3"><p className="text-sm font-black text-slate-800">{t('Location could not be verified')}</p><p className="mt-1 text-xs leading-5 text-slate-600">{serviceAreaMessage}</p></div>}
       <button type="button" disabled={!mapsReady || checkingServiceArea} onClick={() => void confirm()} className="mt-3 min-h-12 w-full rounded-2xl bg-[#087443] px-4 py-3 font-black text-white disabled:opacity-50">{checkingServiceArea ? t('Checking delivery area…') : serviceAreaStatus === 'OUTSIDE_SERVICE_AREA' ? t('Check another location') : t('Use this location')}</button>
     </div>
