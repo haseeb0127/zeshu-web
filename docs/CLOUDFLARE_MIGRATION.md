@@ -25,3 +25,15 @@ Cloudflare currently recommends vinext for existing Next.js 16 applications, but
 - No payment gateway secret is stored in GitHub.
 - No customer-facing multi-gateway routing is enabled until each provider has merchant approval, credentials, webhook verification and reconciliation coverage.
 - Current Razorpay flow remains the production path until the smart router is explicitly enabled.
+
+
+## Production candidate phase
+
+After staging passes, deploy a **separate workers.dev production candidate** before any DNS change:
+
+- Worker name: `zeshu-web-production-candidate`
+- Candidate URL: `https://zeshu-web-production-candidate.asif-mohammed0127.workers.dev`
+- Deployment is **manual-only** through GitHub Actions.
+- The candidate must use production Supabase client configuration and production runtime secrets, while keeping `PAYMENT_ROUTER_MODE=off`, WhatsApp sending off, and Razorpay in TEST mode until the final migration decision.
+- The candidate workflow never configures a custom domain, Worker route, or DNS record.
+- The final `zeshu.in` cutover is a separate explicit step after candidate smoke tests, login/address checks, and Razorpay TEST checkout open/cancel verification pass.
