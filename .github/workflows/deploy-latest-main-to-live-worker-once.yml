@@ -1,0 +1,198 @@
+name: Deploy latest main to live Cloudflare Worker once
+
+on:
+  push:
+    branches:
+      - ops/cloudflare-cutover-20260922
+    paths:
+      - ".github/workflows/deploy-latest-main-to-live-worker-once.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-production-live
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.CLOUDFLARE_PRODUCTION_NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.CLOUDFLARE_PRODUCTION_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY: ${{ secrets.CLOUDFLARE_PRODUCTION_NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY }}
+      NEXT_PUBLIC_RAZORPAY_KEY_ID: rzp_test_build_check
+      NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED: 'false'
+
+      SUPABASE_SERVICE_ROLE_KEY: build-only-placeholder
+      RAZORPAY_KEY_ID: build-only-placeholder
+      RAZORPAY_KEY_SECRET: build-only-placeholder
+      RAZORPAY_WEBHOOK_SECRET: build-only-placeholder
+      GOOGLE_MAPS_ROUTES_API_KEY: build-only-placeholder
+      PLANAPI_MEMBER_ID: build-only-placeholder
+      PLANAPI_PASSWORD: build-only-placeholder
+      PLANAPI_TOKEN_ID: build-only-placeholder
+      PLANAPI_EKYC_EXECUTION_ENABLED: 'false'
+      SUPPORT_AI_ENABLED: 'false'
+      ENFORCE_JAGTIAL_SERVICE_AREA: 'false'
+      SUPPORT_WHATSAPP_SENDER_ENABLED: 'false'
+      PAYMENT_ROUTER_MODE: 'off'
+
+    steps:
+      - name: Checkout latest main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Verify deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            CLOUDFLARE_ACCOUNT_ID
+            CLOUDFLARE_API_TOKEN
+            NEXT_PUBLIC_SUPABASE_URL
+            NEXT_PUBLIC_SUPABASE_ANON_KEY
+            NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY
+          )
+          for key in "${required[@]}"; do
+            test -n "${!key:-}" || { echo "Missing required configuration: $key"; exit 1; }
+          done
+
+      - run: npm ci
+
+      - name: Build Cloudflare Worker
+        run: npx --yes @opennextjs/cloudflare@1.20.6 build
+
+      - name: Deploy latest main to live Worker
+        id: deploy_worker
+        run: npx --yes wrangler@4.68.0 deploy --config wrangler.production-candidate.jsonc --name zeshu-web-production-candidate
+
+      - name: Verify candidate runtime safety
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const url = 'https://zeshu-web-production-candidate.asif-mohammed0127.workers.dev/api/production-candidate/qa-health';
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+          let body = null;
+          let lastError = null;
+
+          for (let attempt = 1; attempt <= 12; attempt += 1) {
+            try {
+              const response = await fetch(url, { headers: { 'cache-control': 'no-cache' } });
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              body = await response.json();
+              break;
+            } catch (error) {
+              lastError = error;
+              if (attempt < 12) await sleep(3000);
+            }
+          }
+
+          if (!body) throw lastError || new Error('Production candidate health endpoint did not respond.');
+          const runtime = body.runtime || {};
+          const checks = {
+            production_supabase_url_present: runtime.production_supabase_url_present === true,
+            production_supabase_url_matches: runtime.production_supabase_url_matches === true,
+            anon_key_present: runtime.anon_key_present === true,
+            service_secret_present: runtime.service_secret_present === true,
+            payment_router_off: runtime.payment_router_off === true,
+            whatsapp_sender_off: runtime.whatsapp_sender_off === true,
+            razorpay_test_configured: runtime.razorpay_test_configured === true,
+          };
+          console.log('Runtime checks:', checks);
+          const failed = Object.entries(checks).filter(([, ok]) => ok !== true).map(([name]) => name);
+          if (failed.length) throw new Error(`Runtime verification failed: ${failed.join(', ')}`);
+          NODE
+
+      - name: Verify live build identity and routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate_build="$(curl -fsSL --retry 4 --retry-delay 1 https://zeshu-web-production-candidate.asif-mohammed0127.workers.dev/BUILD_ID | tr -d '\r\n')"
+          root_build="$(curl -fsSL --retry 4 --retry-delay 1 https://zeshu.in/BUILD_ID | tr -d '\r\n')"
+          www_build="$(curl -fsSL --retry 4 --retry-delay 1 https://www.zeshu.in/BUILD_ID | tr -d '\r\n')"
+
+          echo "candidate BUILD_ID: $candidate_build"
+          echo "root BUILD_ID:      $root_build"
+          echo "www BUILD_ID:       $www_build"
+
+          test -n "$candidate_build"
+          test "$root_build" = "$candidate_build"
+          test "$www_build" = "$candidate_build"
+
+          for base in "https://zeshu.in" "https://www.zeshu.in"; do
+            for route in "/" "/policies" "/partners" "/app" "/scanner"; do
+              code="$(curl -L -sS -o /dev/null -w '%{http_code}' "$base$route" || true)"
+              echo "$base$route -> $code"
+              test "$code" = "200"
+            done
+
+            headers="$(mktemp)"
+            curl -fsS -D "$headers" -o /dev/null "$base/"
+            grep -qi '^server: cloudflare' "$headers"
+            grep -qi '^x-opennext: 1' "$headers"
+          done
+
+      - name: Verify auth boundaries and API isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -L -sS -o /dev/null -w '%{http_code}' -X POST https://www.zeshu.in/api/support/assistant -H 'Content-Type: application/json' --data '{"message":"hello"}' || true)"
+          test "$code" = "401" || { echo "support assistant expected 401, got $code"; exit 1; }
+
+          code="$(curl -L -sS -o /dev/null -w '%{http_code}' https://www.zeshu.in/api/admin/support/conversations || true)"
+          test "$code" = "401" || { echo "admin support expected 401, got $code"; exit 1; }
+
+          code="$(curl -L -sS -o /dev/null -w '%{http_code}' https://www.zeshu.in/api/admin/support/whatsapp-readiness || true)"
+          test "$code" = "401" || { echo "WhatsApp readiness expected 401, got $code"; exit 1; }
+
+          code="$(curl -L -sS -o /dev/null -w '%{http_code}' https://www.zeshu.in/api/cron/support-whatsapp || true)"
+          test "$code" = "401" || { echo "WhatsApp cron expected 401, got $code"; exit 1; }
+
+          headers="$(mktemp)"
+          curl -sS -D "$headers" -o /dev/null https://api.zeshu.in/ || true
+          grep -qi '^x-vercel-' "$headers" || { echo "api.zeshu.in is no longer on expected Vercel-backed API origin"; exit 1; }
+
+      - name: Verify Hostinger mail DNS
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v dig >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq dnsutils
+          fi
+
+          dig +short MX zeshu.in | grep -q 'mx1.hostinger.com.'
+          dig +short MX zeshu.in | grep -q 'mx2.hostinger.com.'
+          dig +short TXT zeshu.in | grep -q 'include:_spf.mail.hostinger.com'
+          dig +short TXT _dmarc.zeshu.in | grep -q 'v=DMARC1'
+          test "$(dig +short CNAME hostingermail-a._domainkey.zeshu.in)" = 'hostingermail-a.dkim.mail.hostinger.com.'
+          test "$(dig +short CNAME hostingermail-b._domainkey.zeshu.in)" = 'hostingermail-b.dkim.mail.hostinger.com.'
+          test "$(dig +short CNAME hostingermail-c._domainkey.zeshu.in)" = 'hostingermail-c.dkim.mail.hostinger.com.'
+          echo "Hostinger mail DNS intact"
+
+      - name: Roll back Worker automatically if post-deploy verification failed
+        if: failure() && steps.deploy_worker.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Post-deploy verification failed. Rolling Worker back to the prior deployed version."
+          npx --yes wrangler@4.68.0 rollback --config wrangler.production-candidate.jsonc --name zeshu-web-production-candidate --message "Automatic rollback after failed Zeshu production verification"
+
+      - name: Deployment summary
+        if: success()
+        run: |
+          echo "ZESHU_LIVE_CLOUDFLARE_DEPLOYMENT_VERIFIED=true"
+          echo "Latest main is serving through zeshu.in and www.zeshu.in."
+          echo "Razorpay remains TEST, WhatsApp sender/UI remain disabled, API remains Vercel-backed, and mail DNS remains intact."
