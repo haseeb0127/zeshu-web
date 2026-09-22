@@ -905,22 +905,19 @@ export default function ZeshuSuperApp() {
       if (cachedProducts) {
         try { setProducts(JSON.parse(cachedProducts)); } catch { localStorage.removeItem('zeshu_products'); }
       }
-      const [productsResult, sellerResult] = await Promise.all([
-        supabase.from('products').select('*'),
-        supabase.from('vendors').select('id,business_name,is_open,admin_suspended,marketplace_status,kyc_verified,gst_verified,authorized_brand_partner,invoice_available,seller_quality_score'),
-      ]);
+      const productsResult = await supabase.from('products').select('*');
       const pData = productsResult.data;
       const productsError = productsResult.error;
       if (pData) { setProducts(pData); localStorage.setItem('zeshu_products', JSON.stringify(pData)); }
       if (productsError) setContentError(true);
 
-      let sellerRows = sellerResult.data as MarketplaceSeller[] | null;
-      if (sellerResult.error) {
-        const fallback = await supabase.from('vendors').select('id,business_name,is_open,admin_suspended');
-        sellerRows = fallback.data as MarketplaceSeller[] | null;
-      }
-      if (sellerRows) {
+      try {
+        const sellerResponse = await fetch('/api/marketplace/sellers', { cache: 'no-store' });
+        const sellerPayload = await sellerResponse.json().catch(() => ({}));
+        const sellerRows = Array.isArray(sellerPayload?.sellers) ? sellerPayload.sellers as MarketplaceSeller[] : [];
         setMarketplaceSellers(Object.fromEntries(sellerRows.map((seller) => [String(seller.id), seller])));
+      } catch {
+        setMarketplaceSellers({});
       }
       setProductsLoading(false);
     };
