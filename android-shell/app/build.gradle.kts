@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "in.zeshu.staging"
+    namespace = "com.zeshu.staging"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "in.zeshu.staging"
+        applicationId = "com.zeshu.staging"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
