@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  statuses: read
 
 concurrency:
   group: production-smoke
@@ -18,39 +17,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - name: Wait for Vercel deployment for this commit
+      - name: Verify Cloudflare production front door
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          deployed=0
-
-          for attempt in {1..30}; do
-            payload="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status")"
-            state="$(jq -r '[.statuses[] | select(.context | ascii_downcase | contains("vercel"))][0].state // empty' <<<"$payload")"
-            target="$(jq -r '[.statuses[] | select(.context | ascii_downcase | contains("vercel"))][0].target_url // empty' <<<"$payload")"
-
-            echo "Vercel status for ${GITHUB_SHA}: ${state:-pending} ${target}"
-
-            case "$state" in
-              success)
-                deployed=1
-                break
-                ;;
-              failure|error)
-                echo "Vercel deployment failed for commit ${GITHUB_SHA}."
-                exit 1
-                ;;
-            esac
-
-            sleep 10
+          for base in "https://zeshu.in" "https://www.zeshu.in"; do
+            headers="$(mktemp)"
+            curl -fsS -D "$headers" -o /dev/null "$base/"
+            grep -qi '^server: cloudflare' "$headers" || { echo "$base is not fronted by Cloudflare"; exit 1; }
+            grep -qi '^x-opennext: 1' "$headers" || { echo "$base is not serving the OpenNext Worker"; exit 1; }
+            echo "$base -> Cloudflare OpenNext confirmed"
           done
-
-          if [ "$deployed" != "1" ]; then
-            echo "Timed out waiting for the Vercel status attached to commit ${GITHUB_SHA}."
-            exit 1
-          fi
 
       - name: Verify production routes
         shell: bash
@@ -90,5 +67,13 @@ jobs:
           code="$(curl -L -sS -o /tmp/cron -w '%{http_code}'             "https://zeshu.in/api/cron/support-whatsapp" || true)"
           test "$code" = "401" || { echo "WhatsApp cron expected 401 without bearer token, got $code"; exit 1; }
 
+      - name: Verify API remains outside storefront Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          headers="$(mktemp)"
+          curl -sS -D "$headers" -o /dev/null "https://api.zeshu.in/" || true
+          grep -qi '^x-vercel-' "$headers" || { echo "api.zeshu.in no longer exposes the expected Vercel origin metadata"; exit 1; }
+
       - name: Summary
-        run: echo "Zeshu production deployment and auth-boundary smoke tests passed for ${GITHUB_SHA}."
+        run: echo "Zeshu Cloudflare production and auth-boundary smoke tests passed."
