@@ -81,3 +81,50 @@ jobs:
 
       - name: Deploy only to workers.dev staging
         run: npx --yes wrangler@4.68.0 deploy --config wrangler.jsonc --name zeshu-web-staging
+
+      - name: Verify staging runtime safety and Razorpay TEST readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const url = 'https://zeshu-web-staging.asif-mohammed0127.workers.dev/api/staging/qa-health';
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+          let body = null;
+          let lastError = null;
+          for (let attempt = 1; attempt <= 10; attempt += 1) {
+            try {
+              const response = await fetch(url, {
+                headers: { 'cache-control': 'no-cache' },
+              });
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              body = await response.json();
+              break;
+            } catch (error) {
+              lastError = error;
+              if (attempt < 10) await sleep(3000);
+            }
+          }
+
+          if (!body) throw lastError || new Error('Staging health endpoint did not respond.');
+
+          const runtime = body.runtime || {};
+          const checks = {
+            staging_supabase_url_present: runtime.staging_supabase_url_present === true,
+            staging_supabase_url_matches: runtime.staging_supabase_url_matches === true,
+            anon_key_present: runtime.anon_key_present === true,
+            service_secret_present: runtime.service_secret_present === true,
+            payment_router_off: runtime.payment_router_off === true,
+            whatsapp_sender_off: runtime.whatsapp_sender_off === true,
+            razorpay_real_test_configured: runtime.razorpay_real_test_configured === true,
+            razorpay_public_key_matches: runtime.razorpay_public_key_matches === true,
+            razorpay_key_secret_present: runtime.razorpay_key_secret_present === true,
+            razorpay_webhook_secret_present: runtime.razorpay_webhook_secret_present === true,
+          };
+
+          const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+          console.log('Staging runtime checks:', checks);
+          if (failed.length) {
+            throw new Error(`Staging runtime verification failed: ${failed.join(', ')}`);
+          }
+          NODE
