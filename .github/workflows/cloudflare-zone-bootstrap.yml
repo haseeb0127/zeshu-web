@@ -1,0 +1,117 @@
+name: Bootstrap Cloudflare production DNS zone
+
+on:
+  push:
+    branches:
+      - ops/cloudflare-cutover-20260922
+    paths:
+      - .github/workflows/cloudflare-zone-bootstrap.yml
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Create pending zone and clone authoritative DNS
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+
+          auth=(-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json")
+
+          zones="$(curl -fsS "https://api.cloudflare.com/client/v4/zones?name=zeshu.in&account.id=$CLOUDFLARE_ACCOUNT_ID" "${auth[@]}")"
+          echo "$zones" | jq -e '.success == true' >/dev/null
+
+          if [ "$(echo "$zones" | jq '.result | length')" = "0" ]; then
+            payload="$(jq -cn --arg account "$CLOUDFLARE_ACCOUNT_ID" '{name:"zeshu.in",account:{id:$account},type:"full"}')"
+            create="$(curl -fsS -X POST "https://api.cloudflare.com/client/v4/zones" "${auth[@]}" --data "$payload")"
+            echo "$create" | jq -e '.success == true' >/dev/null
+            zone_id="$(echo "$create" | jq -r '.result.id')"
+            echo "Created pending Cloudflare zone zeshu.in"
+          else
+            test "$(echo "$zones" | jq '.result | length')" = "1" || { echo "Multiple zeshu.in zones found"; exit 1; }
+            zone_id="$(echo "$zones" | jq -r '.result[0].id')"
+            echo "Using existing Cloudflare zone zeshu.in"
+          fi
+
+          zone="$(curl -fsS "https://api.cloudflare.com/client/v4/zones/$zone_id" "${auth[@]}")"
+          echo "$zone" | jq -e '.success == true' >/dev/null
+          echo "Zone status: $(echo "$zone" | jq -r '.result.status')"
+          echo "Cloudflare assigned nameservers:"
+          echo "$zone" | jq -r '.result.name_servers[]?'
+
+          records="$(curl -fsS "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records?per_page=500" "${auth[@]}")"
+          echo "$records" | jq -e '.success == true' >/dev/null
+
+          ensure_record() {
+            type="$1"
+            name="$2"
+            content="$3"
+            ttl="$4"
+            proxied="$5"
+            priority="${6:-}"
+
+            exact="$(echo "$records" | jq --arg t "$type" --arg n "$name" --arg c "$content" '[.result[] | select(.type==$t and .name==$n and .content==$c)] | length')"
+            if [ "$exact" -ge 1 ]; then
+              echo "Already present: $type $name"
+              return
+            fi
+
+            conflicting="$(echo "$records" | jq --arg t "$type" --arg n "$name" '[.result[] | select(.type==$t and .name==$n)] | length')"
+            if [ "$type" = "A" ] || [ "$type" = "AAAA" ] || [ "$type" = "CNAME" ]; then
+              test "$conflicting" = "0" || { echo "Conflicting $type/$name record already exists; refusing overwrite"; exit 1; }
+            fi
+
+            if [ -n "$priority" ]; then
+              payload="$(jq -cn --arg t "$type" --arg n "$name" --arg c "$content" --argjson ttl "$ttl" --argjson p "$priority" '{type:$t,name:$n,content:$c,ttl:$ttl,priority:$p}')"
+            else
+              payload="$(jq -cn --arg t "$type" --arg n "$name" --arg c "$content" --argjson ttl "$ttl" --argjson proxied "$proxied" '{type:$t,name:$n,content:$c,ttl:$ttl,proxied:$proxied}')"
+            fi
+
+            response="$(curl -fsS -X POST "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records" "${auth[@]}" --data "$payload")"
+            echo "$response" | jq -e '.success == true' >/dev/null
+            echo "Created: $type $name"
+            records="$(curl -fsS "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records?per_page=500" "${auth[@]}")"
+          }
+
+          # Existing Vercel web origins, cloned DNS-only until final Worker routing cutover.
+          ensure_record A zeshu.in 216.198.79.1 1 false
+          ensure_record CNAME www.zeshu.in c39a5dd49513d547.vercel-dns-017.com 1 false
+          ensure_record CNAME api.zeshu.in a8b87d3c7a66e643.vercel-dns-017.com 1 false
+
+          # Hostinger email/service discovery records.
+          ensure_record CNAME autodiscover.zeshu.in autodiscover.mail.hostinger.com 300 false
+          ensure_record CNAME autoconfig.zeshu.in autoconfig.mail.hostinger.com 300 false
+          ensure_record MX zeshu.in mx1.hostinger.com 14400 false 5
+          ensure_record MX zeshu.in mx2.hostinger.com 14400 false 10
+          ensure_record TXT zeshu.in 'v=spf1 include:_spf.mail.hostinger.com ~all' 14400 false
+          ensure_record TXT _dmarc.zeshu.in 'v=DMARC1; p=none' 14400 false
+          ensure_record CNAME hostingermail-a._domainkey.zeshu.in hostingermail-a.dkim.mail.hostinger.com 300 false
+          ensure_record CNAME hostingermail-b._domainkey.zeshu.in hostingermail-b.dkim.mail.hostinger.com 300 false
+          ensure_record CNAME hostingermail-c._domainkey.zeshu.in hostingermail-c.dkim.mail.hostinger.com 300 false
+
+          final="$(curl -fsS "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records?per_page=500" "${auth[@]}")"
+          echo "$final" | jq -e '.success == true' >/dev/null
+
+          echo '=== CLOUDFLARE STAGED DNS INVENTORY ==='
+          echo "$final" | jq -r '.result[] | select(.name=="zeshu.in" or .name=="www.zeshu.in" or .name=="api.zeshu.in" or .name=="autodiscover.zeshu.in" or .name=="autoconfig.zeshu.in" or .name=="_dmarc.zeshu.in" or (.name|contains("._domainkey.zeshu.in"))) | [.type,.name,.content,(.priority // ""),(.proxied // false)] | @tsv' | sort
+
+          mx_count="$(echo "$final" | jq '[.result[] | select(.type=="MX" and .name=="zeshu.in")] | length')"
+          spf_count="$(echo "$final" | jq '[.result[] | select(.type=="TXT" and .name=="zeshu.in" and .content=="v=spf1 include:_spf.mail.hostinger.com ~all")] | length')"
+          dmarc_count="$(echo "$final" | jq '[.result[] | select(.type=="TXT" and .name=="_dmarc.zeshu.in" and .content=="v=DMARC1; p=none")] | length')"
+          dkim_count="$(echo "$final" | jq '[.result[] | select(.type=="CNAME" and (.name|contains("hostingermail-")) and (.name|contains("._domainkey.zeshu.in")))] | length')"
+          test "$mx_count" = "2"
+          test "$spf_count" = "1"
+          test "$dmarc_count" = "1"
+          test "$dkim_count" = "3"
+
+          echo 'BOOTSTRAP_SUCCESS=true'
+          echo 'No registrar nameserver was changed. Live traffic and Hostinger mail remain on the current authoritative DNS.'
