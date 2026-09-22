@@ -1746,30 +1746,39 @@ function detectDeviceLanguage(): CustomerLanguageCode {
   return "en";
 }
 
+function applyDocumentLanguage(language: CustomerLanguageCode) {
+  if (typeof document === "undefined") return;
+  const direction = language === "ur" ? "rtl" : "ltr";
+  document.documentElement.lang = language;
+  document.documentElement.dir = direction;
+  document.body.dir = direction;
+  document.body.dataset.customerLanguage = language;
+}
+
 export function CustomerLanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguageState] = useState<CustomerLanguageCode>("en");
 
   useEffect(() => {
+    let next = detectDeviceLanguage();
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY) as CustomerLanguageCode | null;
-      if (saved && LANGUAGE_OPTIONS.some((option) => option.code === saved)) {
-        setLanguageState(saved);
-      } else {
-        setLanguageState(detectDeviceLanguage());
-      }
+      if (saved && LANGUAGE_OPTIONS.some((option) => option.code === saved)) next = saved;
     } catch {
-      setLanguageState(detectDeviceLanguage());
+      // Device language remains the fallback in private/restricted browser contexts.
     }
+    // Apply language and direction before waiting for a second render so Urdu
+    // does not flash LTR on reload or inside the Android shell.
+    applyDocumentLanguage(next);
+    setLanguageState(next);
   }, []);
 
   useEffect(() => {
-    const direction = language === "ur" ? "rtl" : "ltr";
-    document.documentElement.lang = language;
-    document.documentElement.dir = direction;
-    document.body.dataset.customerLanguage = language;
+    applyDocumentLanguage(language);
   }, [language]);
 
   const setLanguage = useCallback((next: CustomerLanguageCode) => {
+    // Make language selection visually immediate, especially for Urdu RTL.
+    applyDocumentLanguage(next);
     setLanguageState(next);
     try {
       window.localStorage.setItem(STORAGE_KEY, next);
