@@ -469,13 +469,12 @@ export function LanguageSwitcher({ className = "", compact = false }: { classNam
   const { language, setLanguage, t } = useCustomerLanguage();
   return (
     <label className={`inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-xs font-black text-slate-700 shadow-sm ${className}`}>
-      {!compact && <span className="hidden xl:inline">{t("Language")}</span>}
-      <span aria-hidden="true" className="text-sm">अ/A</span>
+      <span aria-hidden="true" className="text-sm">🌐</span>
       <select
         aria-label={t("Choose language")}
         value={language}
         onChange={(event) => setLanguage(event.target.value as CustomerLanguageCode)}
-        className="max-w-[84px] bg-transparent text-xs font-black outline-none"
+        className="max-w-[96px] bg-transparent text-xs font-black outline-none"
       >
         {LANGUAGE_OPTIONS.map((option) => <option key={option.code} value={option.code}>{compact ? option.short : option.label}</option>)}
       </select>
