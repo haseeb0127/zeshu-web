@@ -1,12 +1,10 @@
 name: Deploy Cloudflare staging
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
-    inputs:
-      confirmation:
-        description: Type DEPLOY_STAGING after Cloudflare Worker secrets are configured.
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -17,18 +15,17 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.event.inputs.confirmation == 'DEPLOY_STAGING'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
-      # These values are public client configuration but are stored as GitHub
-      # secrets so the staging build does not hard-code placeholders.
+      # Public client configuration needed at build time.
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.CLOUDFLARE_STAGING_NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.CLOUDFLARE_STAGING_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-      NEXT_PUBLIC_RAZORPAY_KEY_ID: ${{ secrets.CLOUDFLARE_STAGING_NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_build_check' }}
+      # Checkout receives the active public Razorpay key from the server at runtime.
+      NEXT_PUBLIC_RAZORPAY_KEY_ID: rzp_test_build_check
       NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY: ${{ secrets.CLOUDFLARE_STAGING_NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY }}
       NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED: 'false'
 
