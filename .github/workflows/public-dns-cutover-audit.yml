@@ -36,6 +36,7 @@ jobs:
           }
 
           q 'NS' NS zeshu.in
+          q 'DS / DNSSEC' DS zeshu.in
           q 'APEX A' A zeshu.in
           q 'APEX AAAA' AAAA zeshu.in
           q 'WWW CNAME' CNAME www.zeshu.in
