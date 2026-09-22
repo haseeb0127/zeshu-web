@@ -205,8 +205,17 @@ jobs:
 
             await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'ur'));
             await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+            await page.waitForFunction(() =>
+              document.documentElement.dir === 'rtl'
+              && document.documentElement.lang === 'ur'
+              && document.body.dataset.customerLanguage === 'ur'
+              && document.body.dir === 'rtl',
+              null,
+              { timeout: 10000 },
+            );
             const urdu = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
             assert(await page.locator('html').getAttribute('dir') === 'rtl', 'Urdu page is not RTL');
+            assert(await page.locator('body').getAttribute('dir') === 'rtl', 'Urdu body is not RTL');
             assert(urdu.includes('ایک Zeshu۔ آپ کی ضرورت کے لیے تین آسان راستے۔'), 'Hybrid Zeshu heading is not localized in Urdu');
             assert(urdu.includes('سب کچھ خریدیں'), 'Shop Everything is not localized in Urdu');
             assert(urdu.includes('ریچارج اور بل'), 'Footer recharge link is not localized in Urdu');
