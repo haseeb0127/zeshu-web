@@ -209,7 +209,9 @@ jobs:
             await page.goto('https://zeshu.in', { waitUntil: 'networkidle', timeout: 60000 });
             const search = page.locator('input[aria-label="Search Zeshu"]');
             await search.waitFor({ state: 'visible', timeout: 20000 });
-            const categoryText = await page.locator('[aria-label="Product categories"]').innerText();
+            const categories = page.locator('[aria-label="Shop by Category"]');
+            await categories.waitFor({ state: 'visible', timeout: 10000 });
+            const categoryText = await categories.innerText();
             assert(categoryText.includes('All Products'), 'All Products category missing on live mobile UI');
             assert(categoryText.includes('Drinks & Beverages'), 'Drinks & Beverages category missing on live mobile UI');
             await page.getByRole('button', { name: 'Filters' }).first().waitFor({ state: 'visible', timeout: 10000 });
@@ -224,6 +226,29 @@ jobs:
               const text = (await page.locator('body').innerText()).toLowerCase();
               assert(expected.some((name) => text.includes(name.toLowerCase())), `Live search "${query}" did not return an expected product`);
             }
+
+            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'hi'));
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+            const hindi = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(hindi.includes('एक Zeshu। आपकी ज़रूरतों के लिए तीन आसान रास्ते।'), 'Hybrid Zeshu heading is not localized in Hindi');
+            assert(hindi.includes('सभी प्रोडक्ट'), 'All Products heading is not localized in Hindi');
+            assert(hindi.includes('आइटम'), 'Product count is not localized in Hindi');
+            assert(hindi.includes('अभी कोई समीक्षा नहीं'), 'Review empty state is not localized in Hindi');
+            assert(hindi.includes('समीक्षाएँ देखें'), 'Review action is not localized in Hindi');
+            assert(hindi.includes('जोड़ें'), 'ADD action is not localized in Hindi');
+            assert(hindi.includes('रीचार्ज और बिल'), 'Footer recharge link is not localized in Hindi');
+            for (const english of ['All Items', 'No reviews yet', 'See reviews', 'Image unavailable']) {
+              assert(!hindi.includes(english), `English storefront label still visible in Hindi: ${english}`);
+            }
+
+            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'ur'));
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+            await page.waitForFunction(() => document.documentElement.dir === 'rtl', null, { timeout: 10000 });
+            const urdu = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(await page.locator('html').getAttribute('dir') === 'rtl', 'Urdu page is not RTL');
+            assert(urdu.includes('ایک Zeshu۔ آپ کی ضرورت کے لیے تین آسان راستے۔'), 'Hybrid Zeshu heading is not localized in Urdu');
+            assert(urdu.includes('سب کچھ خریدیں'), 'Shop Everything is not localized in Urdu');
+            assert(urdu.includes('ریچارج اور بل'), 'Footer recharge link is not localized in Urdu');
           } finally {
             await browser.close();
           }
