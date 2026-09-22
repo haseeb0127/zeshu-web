@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { NextResponse } from 'next/server';
+import { getRuntimeEnvValue } from '../../lib/runtime-env';
 
 export async function POST(request: Request) {
   try {
@@ -8,7 +9,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, verified: false, message: 'Invalid payment verification request' }, { status: 400 });
     }
 
-    const secret = process.env.RAZORPAY_KEY_SECRET;
+    const secret = await getRuntimeEnvValue('RAZORPAY_KEY_SECRET');
     if (!secret) {
       return NextResponse.json({ success: false, verified: false, message: 'Payment verification is unavailable' }, { status: 503 });
     }
