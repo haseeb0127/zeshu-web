@@ -1,0 +1,111 @@
+name: Post-cutover production QA
+
+on:
+  push:
+    branches:
+      - ops/cloudflare-cutover-20260922
+    paths:
+      - .github/workflows/post-cutover-production-qa.yml
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ROOT_BASE: https://zeshu.in
+      WWW_BASE: https://www.zeshu.in
+      API_BASE: https://api.zeshu.in
+    steps:
+      - name: Verify public surfaces are healthy
+        shell: bash
+        run: |
+          set -euo pipefail
+          routes=(
+            /
+            /policies
+            /partners
+            /app
+            /scanner
+            /services
+            /vendor
+            /rider
+            /admin
+            /admin/login
+            /admin/dashboard
+            /admin/marketing
+            /admin/partners
+            /admin/payments
+            /admin/fulfillment
+            /admin/gst
+          )
+
+          for base in "$ROOT_BASE" "$WWW_BASE"; do
+            echo "=== $base ==="
+            for route in "${routes[@]}"; do
+              code="$(curl -L -sS -o /dev/null -w '%{http_code}' --max-time 20 "$base$route" || true)"
+              echo "$route -> $code"
+              case "$code" in
+                200|204|301|302|303|307|308|401|403) ;;
+                *) echo "Unexpected status on $base$route"; exit 1 ;;
+              esac
+            done
+          done
+
+      - name: Verify production Worker headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          for base in "$ROOT_BASE" "$WWW_BASE"; do
+            headers="$(mktemp)"
+            curl -fsS -D "$headers" -o /dev/null "$base/"
+            grep -qi '^server: cloudflare' "$headers"
+            grep -qi '^x-opennext: 1' "$headers"
+            echo "$base -> Cloudflare OpenNext confirmed"
+          done
+
+      - name: Verify anonymous protected endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -L -sS -o /dev/null -w '%{http_code}' -X POST "$WWW_BASE/api/support/assistant" -H 'Content-Type: application/json' --data '{"message":"hello"}' || true)"
+          echo "support assistant anonymous -> $code"
+          test "$code" = "401"
+
+          code="$(curl -L -sS -o /dev/null -w '%{http_code}' "$WWW_BASE/api/admin/support/conversations" || true)"
+          echo "admin support anonymous -> $code"
+          test "$code" = "401"
+
+      - name: Verify API hostname remains Vercel-backed
+        shell: bash
+        run: |
+          set -euo pipefail
+          headers="$(mktemp)"
+          curl -sS -D "$headers" -o /dev/null "$API_BASE/" || true
+          grep -qi '^x-vercel-' "$headers"
+          echo "api.zeshu.in remains outside the storefront Worker routes"
+
+      - name: Verify Hostinger mail DNS
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v dig >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq dnsutils
+          fi
+
+          dig +short MX zeshu.in | grep -q 'mx1.hostinger.com.'
+          dig +short MX zeshu.in | grep -q 'mx2.hostinger.com.'
+          dig +short TXT zeshu.in | grep -q 'include:_spf.mail.hostinger.com'
+          dig +short TXT _dmarc.zeshu.in | grep -q 'v=DMARC1'
+          test "$(dig +short CNAME hostingermail-a._domainkey.zeshu.in)" = 'hostingermail-a.dkim.mail.hostinger.com.'
+          test "$(dig +short CNAME hostingermail-b._domainkey.zeshu.in)" = 'hostingermail-b.dkim.mail.hostinger.com.'
+          test "$(dig +short CNAME hostingermail-c._domainkey.zeshu.in)" = 'hostingermail-c.dkim.mail.hostinger.com.'
+          echo "Hostinger email DNS healthy"
+
+      - name: Summary
+        run: |
+          echo "POST_CUTOVER_PRODUCTION_QA=PASS"
+          echo "Storefront routes healthy, auth boundaries enforced, API isolated, mail DNS intact."
