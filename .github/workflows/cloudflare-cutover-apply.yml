@@ -1,0 +1,162 @@
+name: Cloudflare reversible production cutover
+
+on:
+  push:
+    branches:
+      - ops/cloudflare-cutover-20260922
+    paths:
+      - .github/workflows/cloudflare-cutover-apply.yml
+
+permissions:
+  contents: read
+
+jobs:
+  cutover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      WORKER_SCRIPT: zeshu-web-production-candidate
+      CANDIDATE_BASE: https://zeshu-web-production-candidate.asif-mohammed0127.workers.dev
+    steps:
+      - name: Reversible production cutover with automatic rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+
+          auth=(-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json")
+
+          zones="$(curl -fsS "https://api.cloudflare.com/client/v4/zones?name=zeshu.in&account.id=$CLOUDFLARE_ACCOUNT_ID" "${auth[@]}")"
+          echo "$zones" | jq -e '.success == true' >/dev/null
+          test "$(echo "$zones" | jq '.result | length')" = "1" || { echo "Expected exactly one zeshu.in zone"; exit 1; }
+          zone_id="$(echo "$zones" | jq -r '.result[0].id')"
+          test "$(echo "$zones" | jq -r '.result[0].status')" = "active" || { echo "Cloudflare zone is not active"; exit 1; }
+
+          dns="$(curl -fsS "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records?per_page=500" "${auth[@]}")"
+          echo "$dns" | jq -e '.success == true' >/dev/null
+
+          apex_web="$(echo "$dns" | jq -c '[.result[] | select(.name=="zeshu.in" and (.type=="A" or .type=="AAAA" or .type=="CNAME"))]')"
+          www_web="$(echo "$dns" | jq -c '[.result[] | select(.name=="www.zeshu.in" and (.type=="A" or .type=="AAAA" or .type=="CNAME"))]')"
+
+          echo "Current apex web DNS:"
+          echo "$apex_web" | jq -c '.[] | {type,name,content,proxied,ttl}'
+          echo "Current www web DNS:"
+          echo "$www_web" | jq -c '.[] | {type,name,content,proxied,ttl}'
+
+          test "$(echo "$apex_web" | jq 'length')" -ge 1 || { echo "No apex web DNS record found"; exit 1; }
+          test "$(echo "$www_web" | jq 'length')" -ge 1 || { echo "No www web DNS record found"; exit 1; }
+          test "$(echo "$apex_web" | jq 'all(.[]; .proxied == true)')" = "true" || { echo "Apex web DNS is not fully Cloudflare-proxied; refusing cutover"; exit 1; }
+          test "$(echo "$www_web" | jq 'all(.[]; .proxied == true)')" = "true" || { echo "www web DNS is not fully Cloudflare-proxied; refusing cutover"; exit 1; }
+
+          mx_count="$(echo "$dns" | jq '[.result[] | select(.type=="MX" and .name=="zeshu.in")] | length')"
+          spf_count="$(echo "$dns" | jq '[.result[] | select(.type=="TXT" and .name=="zeshu.in" and (.content|startswith("v=spf1")))] | length')"
+          dkim_count="$(echo "$dns" | jq '[.result[] | select(.type=="TXT" and (.name|contains("._domainkey.")))] | length')"
+          dmarc_count="$(echo "$dns" | jq '[.result[] | select(.type=="TXT" and .name=="_dmarc.zeshu.in")] | length')"
+          test "$mx_count" -ge 1 || { echo "MX record missing; refusing cutover"; exit 1; }
+          test "$spf_count" -ge 1 || { echo "SPF record missing; refusing cutover"; exit 1; }
+          test "$dkim_count" -ge 1 || { echo "DKIM record missing; refusing cutover"; exit 1; }
+          test "$dmarc_count" -ge 1 || { echo "DMARC record missing; refusing cutover"; exit 1; }
+
+          mail_snapshot() {
+            curl -fsS "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records?per_page=500" "${auth[@]}"               | jq -c '[.result[] | select(.type=="MX" or (.type=="TXT" and ((.name=="zeshu.in") or (.name=="_dmarc.zeshu.in") or (.name|contains("._domainkey."))))) | {type,name,content,priority}] | sort_by(.type,.name,.content)'               | sha256sum | awk '{print $1}'
+          }
+          mail_before="$(mail_snapshot)"
+          echo "Mail DNS snapshot captured."
+
+          routes="$(curl -fsS "https://api.cloudflare.com/client/v4/zones/$zone_id/workers/routes" "${auth[@]}")"
+          echo "$routes" | jq -e '.success == true' >/dev/null
+
+          for pattern in 'zeshu.in/*' 'www.zeshu.in/*'; do
+            conflicts="$(echo "$routes" | jq --arg p "$pattern" --arg s "$WORKER_SCRIPT" '[.result[] | select(.pattern==$p and (.script // "") != $s)] | length')"
+            test "$conflicts" = "0" || { echo "Conflicting Worker route already owns $pattern; refusing cutover"; exit 1; }
+          done
+
+          candidate_build="$(curl -fsSL --retry 3 --retry-delay 1 "$CANDIDATE_BASE/BUILD_ID" | tr -d '\r\n')"
+          test -n "$candidate_build" || { echo "Candidate BUILD_ID unavailable"; exit 1; }
+          for route in / /policies /partners /app /scanner; do
+            code="$(curl -L -sS -o /dev/null -w '%{http_code}' "$CANDIDATE_BASE$route" || true)"
+            test "$code" = "200" || { echo "Candidate preflight $route returned $code"; exit 1; }
+          done
+
+          created_ids=()
+          rollback() {
+            status=$?
+            if [ "$status" -ne 0 ] && [ "${#created_ids[@]}" -gt 0 ]; then
+              echo "Cutover verification failed. Rolling back newly-created Worker routes..."
+              for id in "${created_ids[@]}"; do
+                curl -fsS -X DELETE "https://api.cloudflare.com/client/v4/zones/$zone_id/workers/routes/$id" "${auth[@]}" >/dev/null || true
+              done
+              echo "New Worker routes removed; Vercel DNS origin remains unchanged."
+            fi
+            exit "$status"
+          }
+          trap rollback EXIT
+
+          create_route_if_missing() {
+            pattern="$1"
+            existing_id="$(echo "$routes" | jq -r --arg p "$pattern" --arg s "$WORKER_SCRIPT" '.result[] | select(.pattern==$p and (.script // "")==$s) | .id' | head -n1)"
+            if [ -n "$existing_id" ]; then
+              echo "Route already present: $pattern -> $WORKER_SCRIPT"
+              return
+            fi
+            payload="$(jq -cn --arg pattern "$pattern" --arg script "$WORKER_SCRIPT" '{pattern:$pattern,script:$script}')"
+            response="$(curl -fsS -X POST "https://api.cloudflare.com/client/v4/zones/$zone_id/workers/routes" "${auth[@]}" --data "$payload")"
+            echo "$response" | jq -e '.success == true' >/dev/null
+            route_id="$(echo "$response" | jq -r '.result.id')"
+            test -n "$route_id" && test "$route_id" != "null"
+            created_ids+=("$route_id")
+            echo "Created route: $pattern -> $WORKER_SCRIPT"
+          }
+
+          create_route_if_missing 'zeshu.in/*'
+          create_route_if_missing 'www.zeshu.in/*'
+
+          verify_routes="$(curl -fsS "https://api.cloudflare.com/client/v4/zones/$zone_id/workers/routes" "${auth[@]}")"
+          for pattern in 'zeshu.in/*' 'www.zeshu.in/*'; do
+            count="$(echo "$verify_routes" | jq --arg p "$pattern" --arg s "$WORKER_SCRIPT" '[.result[] | select(.pattern==$p and (.script // "")==$s)] | length')"
+            test "$count" = "1" || { echo "Route verification failed for $pattern"; false; }
+          done
+
+          wait_for_build() {
+            base="$1"
+            label="$2"
+            for attempt in $(seq 1 12); do
+              got="$(curl -fsSL --max-time 10 "$base/BUILD_ID" 2>/dev/null | tr -d '\r\n' || true)"
+              if [ "$got" = "$candidate_build" ]; then
+                echo "$label is serving candidate BUILD_ID $candidate_build"
+                return 0
+              fi
+              echo "$label BUILD_ID not switched yet (attempt $attempt/12)"
+              sleep 3
+            done
+            echo "$label did not switch to candidate build"
+            return 1
+          }
+
+          wait_for_build 'https://zeshu.in' 'zeshu.in'
+          wait_for_build 'https://www.zeshu.in' 'www.zeshu.in'
+
+          for base in 'https://zeshu.in' 'https://www.zeshu.in'; do
+            for route in / /policies /partners /app /scanner; do
+              code="$(curl -L -sS -o /dev/null -w '%{http_code}' "$base$route" || true)"
+              test "$code" = "200" || { echo "$base$route returned $code"; false; }
+            done
+          done
+
+          code="$(curl -L -sS -o /dev/null -w '%{http_code}' -X POST 'https://zeshu.in/api/support/assistant' -H 'Content-Type: application/json' --data '{"message":"hello"}' || true)"
+          test "$code" = "401" || { echo "Anonymous support boundary expected 401, got $code"; false; }
+          code="$(curl -L -sS -o /dev/null -w '%{http_code}' 'https://zeshu.in/api/admin/support/conversations' || true)"
+          test "$code" = "401" || { echo "Anonymous admin support boundary expected 401, got $code"; false; }
+
+          mail_after="$(mail_snapshot)"
+          test "$mail_after" = "$mail_before" || { echo "Mail DNS snapshot changed unexpectedly"; false; }
+
+          trap - EXIT
+          echo "CUTOVER_SUCCESS=true"
+          echo "zeshu.in and www.zeshu.in are now routed to $WORKER_SCRIPT."
+          echo "Vercel DNS records were not deleted or modified and remain available for rollback."
+          echo "Hostinger MX/SPF/DKIM/DMARC records were not modified."
