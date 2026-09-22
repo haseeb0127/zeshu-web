@@ -1,0 +1,51 @@
+name: Public DNS cutover audit
+
+on:
+  push:
+    branches:
+      - ops/cloudflare-cutover-20260922
+    paths:
+      - .github/workflows/public-dns-cutover-audit.yml
+
+permissions:
+  contents: read
+
+jobs:
+  dns:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Install DNS tools
+        run: |
+          if ! command -v dig >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq dnsutils
+          fi
+      - name: Resolve current public DNS
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== NS ==='
+          dig +short NS zeshu.in
+          echo '=== APEX A ==='
+          dig +short A zeshu.in
+          echo '=== APEX AAAA ==='
+          dig +short AAAA zeshu.in
+          echo '=== WWW CNAME ==='
+          dig +short CNAME www.zeshu.in
+          echo '=== WWW A ==='
+          dig +short A www.zeshu.in
+          echo '=== MX ==='
+          dig +short MX zeshu.in
+          echo '=== SPF ==='
+          dig +short TXT zeshu.in | grep -i 'v=spf1' || true
+          echo '=== DMARC ==='
+          dig +short TXT _dmarc.zeshu.in || true
+          echo '=== DKIM selectors discovered from common Hostinger names ==='
+          for selector in hostingermail default selector1 selector2; do
+            value="$(dig +short TXT "$selector._domainkey.zeshu.in" || true)"
+            if [ -n "$value" ]; then echo "$selector._domainkey.zeshu.in present"; fi
+          done
+          echo '=== HTTPS HEADERS ==='
+          curl -IsS --max-time 15 https://zeshu.in | sed -n '1,20p' || true
+          curl -IsS --max-time 15 https://www.zeshu.in | sed -n '1,20p' || true
