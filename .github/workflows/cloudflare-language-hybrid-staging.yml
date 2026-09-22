@@ -1,0 +1,219 @@
+name: Deploy language hybrid branch to Cloudflare staging
+
+on:
+  push:
+    branches:
+      - feat/storefront-language-hybrid-home-20260923
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      # Public client configuration needed at build time.
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.CLOUDFLARE_STAGING_NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.CLOUDFLARE_STAGING_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      # Checkout receives the active public Razorpay key from the server at runtime.
+      NEXT_PUBLIC_RAZORPAY_KEY_ID: rzp_test_build_check
+      NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY: ${{ secrets.CLOUDFLARE_STAGING_NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY }}
+      NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED: 'false'
+
+      # Build-only placeholders. Real server secrets must already exist as
+      # encrypted Cloudflare Worker secrets before this workflow is run.
+      SUPABASE_SERVICE_ROLE_KEY: build-only-placeholder
+      RAZORPAY_KEY_ID: build-only-placeholder
+      RAZORPAY_KEY_SECRET: build-only-placeholder
+      RAZORPAY_WEBHOOK_SECRET: build-only-placeholder
+      GOOGLE_MAPS_ROUTES_API_KEY: build-only-placeholder
+      PLANAPI_MEMBER_ID: build-only-placeholder
+      PLANAPI_PASSWORD: build-only-placeholder
+      PLANAPI_TOKEN_ID: build-only-placeholder
+      SUPPORT_AI_ENABLED: 'false'
+      ENFORCE_JAGTIAL_SERVICE_AREA: 'false'
+      SUPPORT_WHATSAPP_SENDER_ENABLED: 'false'
+      PAYMENT_ROUTER_MODE: 'off'
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Verify Cloudflare authentication and client build configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            CLOUDFLARE_ACCOUNT_ID
+            CLOUDFLARE_API_TOKEN
+            NEXT_PUBLIC_SUPABASE_URL
+            NEXT_PUBLIC_SUPABASE_ANON_KEY
+            NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY
+          )
+          for key in "${required[@]}"; do
+            if [ -z "${!key:-}" ]; then
+              echo "Missing required GitHub secret for $key"
+              exit 1
+            fi
+          done
+
+      - run: npm ci
+
+      - name: Build Cloudflare Worker
+        run: npx --yes @opennextjs/cloudflare@1.20.6 build
+
+      - name: Deploy only to workers.dev staging
+        run: npx --yes wrangler@4.68.0 deploy --config wrangler.jsonc --name zeshu-web-staging
+
+      - name: Verify staging runtime safety and payment sandbox readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const url = 'https://zeshu-web-staging.asif-mohammed0127.workers.dev/api/staging/qa-health';
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+          let body = null;
+          let lastError = null;
+          for (let attempt = 1; attempt <= 10; attempt += 1) {
+            try {
+              const response = await fetch(url, {
+                headers: { 'cache-control': 'no-cache' },
+              });
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              body = await response.json();
+              break;
+            } catch (error) {
+              lastError = error;
+              if (attempt < 10) await sleep(3000);
+            }
+          }
+
+          if (!body) throw lastError || new Error('Staging health endpoint did not respond.');
+
+          const runtime = body.runtime || {};
+          const checks = {
+            staging_supabase_url_present: runtime.staging_supabase_url_present === true,
+            staging_supabase_url_matches: runtime.staging_supabase_url_matches === true,
+            anon_key_present: runtime.anon_key_present === true,
+            service_secret_present: runtime.service_secret_present === true,
+            payment_router_off: runtime.payment_router_off === true,
+            whatsapp_sender_off: runtime.whatsapp_sender_off === true,
+            razorpay_real_test_configured: runtime.razorpay_real_test_configured === true,
+            phonepe_sandbox_configured: runtime.phonepe_sandbox_configured === true,
+          };
+
+          const required = ['staging_supabase_url_present','staging_supabase_url_matches','anon_key_present','service_secret_present','payment_router_off','whatsapp_sender_off','razorpay_real_test_configured'];
+          const failed = required.filter((name) => checks[name] !== true);
+          console.log('Staging runtime checks:', checks);
+          if (failed.length) {
+            throw new Error(`Staging runtime verification failed: ${failed.join(', ')}`);
+          }
+          NODE
+
+
+      - name: Smoke test staging customer routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://zeshu-web-staging.asif-mohammed0127.workers.dev"
+          for route in "/" "/policies" "/partners" "/app" "/scanner"; do
+            code="$(curl -L -sS -o /tmp/zeshu-staging-body -w '%{http_code}' "$base$route" || true)"
+            if [ "$code" != "200" ]; then
+              echo "Expected 200 from staging $route, got $code"
+              exit 1
+            fi
+          done
+
+      - name: Verify staging support readiness and auth boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://zeshu-web-staging.asif-mohammed0127.workers.dev"
+
+          body="$(curl -L -sS "$base/api/support/assistant")"
+          echo "Assistant readiness: $body"
+          echo "$body" | grep -Eq '"mode":"(ai|guided)"' || { echo "Assistant readiness mode missing"; exit 1; }
+          echo "$body" | grep -q '"automatic_handoff":true' || { echo "Automatic support handoff is not configured"; exit 1; }
+
+          code="$(curl -L -sS -o /tmp/assistant -w '%{http_code}' \
+            -X POST "$base/api/support/assistant" \
+            -H 'Content-Type: application/json' \
+            --data '{"message":"hello"}' || true)"
+          test "$code" = "401" || { echo "Assistant expected 401, got $code"; exit 1; }
+
+          code="$(curl -L -sS -o /tmp/admin-support -w '%{http_code}' \
+            "$base/api/admin/support/conversations" || true)"
+          test "$code" = "401" || { echo "Admin support expected 401, got $code"; exit 1; }
+
+          code="$(curl -L -sS -o /tmp/whatsapp-readiness -w '%{http_code}' \
+            "$base/api/admin/support/whatsapp-readiness" || true)"
+          test "$code" = "401" || { echo "WhatsApp readiness expected 401, got $code"; exit 1; }
+
+          code="$(curl -L -sS -o /tmp/cron -w '%{http_code}' \
+            "$base/api/cron/support-whatsapp" || true)"
+          test "$code" = "401" || { echo "WhatsApp cron expected 401 without bearer token, got $code"; exit 1; }
+
+      - name: Verify Hindi and Urdu storefront localization
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+
+          const base = 'https://zeshu-web-staging.asif-mohammed0127.workers.dev';
+          const browser = await chromium.launch({ headless: true });
+          const assert = (value, message) => { if (!value) throw new Error(message); };
+
+          try {
+            const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+
+            await page.addInitScript(() => localStorage.setItem('zeshu.customer.language', 'hi'));
+            await page.goto(base, { waitUntil: 'networkidle', timeout: 60000 });
+            const hindi = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(hindi.includes('एक Zeshu। आपकी ज़रूरतों के लिए तीन आसान रास्ते।'), 'Hybrid Zeshu heading is not localized in Hindi');
+            assert(hindi.includes('पास में तेज़'), 'Zeshu Now copy is not localized in Hindi');
+            assert(hindi.includes('सब कुछ खरीदें'), 'Shop Everything is not localized in Hindi');
+            assert(hindi.includes('बुक और पे'), 'Book & Pay is not localized in Hindi');
+            assert(hindi.includes('सभी उत्पाद'), 'All Products heading is not localized in Hindi');
+            assert(hindi.includes('आइटम'), 'Product count is not localized in Hindi');
+            assert(hindi.includes('स्थानीय डिलीवरी') || hindi.includes('30 मिनट में ताज़ा'), 'Delivery badge is not localized in Hindi');
+            assert(hindi.includes('अभी कोई समीक्षा नहीं'), 'Review empty state is not localized in Hindi');
+            assert(hindi.includes('समीक्षाएँ देखें'), 'Review action is not localized in Hindi');
+            assert(hindi.includes('जोड़ें'), 'ADD action is not localized in Hindi');
+            assert(hindi.includes('रीचार्ज और बिल'), 'Footer recharge link is not localized in Hindi');
+
+            for (const english of ['All Items', 'No reviews yet', 'See reviews', 'Image unavailable']) {
+              assert(!hindi.includes(english), `English storefront label still visible in Hindi: ${english}`);
+            }
+
+            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'ur'));
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+            const urdu = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(await page.locator('html').getAttribute('dir') === 'rtl', 'Urdu page is not RTL');
+            assert(urdu.includes('ایک Zeshu۔ آپ کی ضرورت کے لیے تین آسان راستے۔'), 'Hybrid Zeshu heading is not localized in Urdu');
+            assert(urdu.includes('سب کچھ خریدیں'), 'Shop Everything is not localized in Urdu');
+            assert(urdu.includes('ریچارج اور بل'), 'Footer recharge link is not localized in Urdu');
+            console.log('LANGUAGE_HYBRID_BROWSER_QA=PASS');
+          } finally {
+            await browser.close();
+          }
+          NODE
+
+      - name: Staging deployment summary
+        run: echo "Cloudflare staging deploy, safety checks, Hindi/Urdu localization and hybrid homepage browser QA passed."
