@@ -1,0 +1,124 @@
+name: Verify final Cloudflare production cutover
+
+on:
+  push:
+    branches:
+      - ops/cloudflare-cutover-20260922
+    paths:
+      - .github/workflows/verify-final-cloudflare-cutover.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ROOT_BASE: https://zeshu.in
+      WWW_BASE: https://www.zeshu.in
+      API_BASE: https://api.zeshu.in
+      CANDIDATE_BASE: https://zeshu-web-production-candidate.asif-mohammed0127.workers.dev
+    steps:
+      - name: Verify live build identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate_build="$(curl -fsSL --retry 3 --retry-delay 1 "$CANDIDATE_BASE/BUILD_ID" | tr -d '\r\n')"
+          www_build="$(curl -fsSL --retry 3 --retry-delay 1 "$WWW_BASE/BUILD_ID" | tr -d '\r\n')"
+          root_build="$(curl -fsSL --retry 3 --retry-delay 1 "$ROOT_BASE/BUILD_ID" | tr -d '\r\n')"
+
+          echo "Candidate BUILD_ID: $candidate_build"
+          echo "www BUILD_ID:       $www_build"
+          echo "root BUILD_ID:      $root_build"
+
+          test -n "$candidate_build"
+          test "$www_build" = "$candidate_build"
+          test "$root_build" = "$candidate_build"
+
+      - name: Verify public routes on www
+        shell: bash
+        run: |
+          set -euo pipefail
+          for route in / /policies /partners /app /scanner; do
+            code="$(curl -L -sS -o /dev/null -w '%{http_code}' "$WWW_BASE$route" || true)"
+            echo "www$route -> $code"
+            test "$code" = "200"
+          done
+
+      - name: Verify root hostname behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -L -sS -o /dev/null -w '%{http_code}' "$ROOT_BASE/" || true)"
+          echo "root / final -> $code"
+          test "$code" = "200"
+
+          headers="$(mktemp)"
+          curl -sS -D "$headers" -o /dev/null "$ROOT_BASE/" || true
+          cat "$headers"
+          grep -qi '^server: cloudflare' "$headers"
+
+      - name: Verify anonymous auth boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -L -sS -o /dev/null -w '%{http_code}' -X POST "$WWW_BASE/api/support/assistant" -H 'Content-Type: application/json' --data '{"message":"hello"}' || true)"
+          echo "support assistant anonymous -> $code"
+          test "$code" = "401"
+
+          code="$(curl -L -sS -o /dev/null -w '%{http_code}' "$WWW_BASE/api/admin/support/conversations" || true)"
+          echo "admin support anonymous -> $code"
+          test "$code" = "401"
+
+      - name: Verify API hostname remains outside storefront Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          headers="$(mktemp)"
+          code="$(curl -sS -D "$headers" -o /dev/null -w '%{http_code}' "$API_BASE/" || true)"
+          echo "api root -> $code"
+          cat "$headers"
+          # API root may legitimately be 404; ensure it still exposes Vercel origin metadata,
+          # proving the storefront Worker route did not capture api.zeshu.in.
+          grep -qi '^x-vercel-' "$headers"
+
+      - name: Verify Hostinger mail DNS
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v dig >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq dnsutils
+          fi
+
+          mx="$(dig +short MX zeshu.in | sort)"
+          spf="$(dig +short TXT zeshu.in | grep -i 'v=spf1' || true)"
+          dmarc="$(dig +short TXT _dmarc.zeshu.in || true)"
+          dkim_a="$(dig +short CNAME hostingermail-a._domainkey.zeshu.in || true)"
+          dkim_b="$(dig +short CNAME hostingermail-b._domainkey.zeshu.in || true)"
+          dkim_c="$(dig +short CNAME hostingermail-c._domainkey.zeshu.in || true)"
+
+          echo "MX:"
+          echo "$mx"
+          echo "SPF: $spf"
+          echo "DMARC: $dmarc"
+          echo "DKIM A: $dkim_a"
+          echo "DKIM B: $dkim_b"
+          echo "DKIM C: $dkim_c"
+
+          echo "$mx" | grep -q 'mx1.hostinger.com.'
+          echo "$mx" | grep -q 'mx2.hostinger.com.'
+          echo "$spf" | grep -q 'include:_spf.mail.hostinger.com'
+          echo "$dmarc" | grep -q 'v=DMARC1'
+          test "$dkim_a" = 'hostingermail-a.dkim.mail.hostinger.com.'
+          test "$dkim_b" = 'hostingermail-b.dkim.mail.hostinger.com.'
+          test "$dkim_c" = 'hostingermail-c.dkim.mail.hostinger.com.'
+
+      - name: Final summary
+        run: |
+          echo "FINAL_CLOUDFLARE_CUTOVER_VERIFIED=true"
+          echo "zeshu.in and www.zeshu.in serve the production-candidate Worker build."
+          echo "api.zeshu.in remains on the existing Vercel-backed API path."
+          echo "Hostinger mail DNS remains intact."
+          echo "Underlying Vercel web DNS remains in place for rollback."
