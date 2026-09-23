@@ -6,6 +6,7 @@ const env = fs.readFileSync('.env.example', 'utf8');
 const help = fs.readFileSync('app/help/page.tsx', 'utf8');
 const adminSupport = fs.readFileSync('app/api/admin/support/conversations/route.ts', 'utf8');
 const adminDashboard = fs.readFileSync('app/admin/dashboard/page.tsx', 'utf8');
+const storefront = fs.readFileSync('app/page.tsx', 'utf8');
 
 const assert = (condition: boolean, message: string) => {
   if (!condition) throw new Error(message);
@@ -69,6 +70,8 @@ assert(adminSupport.includes('support_category: supportCategory'), 'Admin suppor
 assert(adminDashboard.includes('SUPPORT_CATEGORIES'), 'Admin support inbox must expose service-category filters');
 assert(adminDashboard.includes('All services'), 'Admin support inbox must provide an all-services category view');
 assert(adminDashboard.includes('Search issue, customer, order or message…'), 'Admin support inbox must support operational search');
+assert(storefront.includes('Need help with this service?'), 'Every digital service surface must link to contextual support');
+assert(storefront.includes('/help?service='), 'Digital-service support must deep-link into Help Center context');
 
 const moveFlagCount = (env.match(/^MOVE_EXECUTION_ENABLED=/gm) || []).length;
 assert(moveFlagCount === 1, 'MOVE_EXECUTION_ENABLED must be documented exactly once');
