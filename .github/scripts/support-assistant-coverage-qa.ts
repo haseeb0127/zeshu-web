@@ -4,6 +4,9 @@ const route = fs.readFileSync('app/api/support/assistant/route.ts', 'utf8');
 const knowledge = fs.readFileSync('app/lib/support-ai.ts', 'utf8');
 const env = fs.readFileSync('.env.example', 'utf8');
 const help = fs.readFileSync('app/help/page.tsx', 'utf8');
+const partnerApi = fs.readFileSync('app/api/partners/route.ts', 'utf8');
+const partnerForm = fs.readFileSync('app/components/PartnerLeadForm.tsx', 'utf8');
+const partnerMigration = fs.readFileSync('supabase/migrations/20260924004500_partner_lead_service_types.sql', 'utf8');
 
 const assert = (condition: boolean, message: string) => {
   if (!condition) throw new Error(message);
@@ -60,6 +63,11 @@ const move = fs.readFileSync('app/move/page.tsx', 'utf8');
 assert(home.includes('/help?service='), 'Digital service panel must expose service-specific support');
 assert(home.includes("t('Get help')"), 'Digital service panel must show a Get help action');
 assert(move.includes('/help?service='), 'Move & Travel cards must expose service-specific support');
+assert(partnerApi.includes("'MOBILITY'"), 'Partner API must accept mobility operators as a distinct category');
+assert(partnerApi.includes("'LOGISTICS_COURIER'"), 'Partner API must accept courier/logistics providers as a distinct category');
+assert(partnerForm.includes('Mobility / ride operator'), 'Partner form must offer a mobility category');
+assert(partnerForm.includes('Courier / logistics provider'), 'Partner form must offer a courier/logistics category');
+assert(partnerMigration.includes("'MOBILITY'") && partnerMigration.includes("'LOGISTICS_COURIER'"), 'Partner schema migration must preserve the new business categories');
 
 const moveFlagCount = (env.match(/^MOVE_EXECUTION_ENABLED=/gm) || []).length;
 assert(moveFlagCount === 1, 'MOVE_EXECUTION_ENABLED must be documented exactly once');
