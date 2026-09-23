@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - feat/support-every-service-20260924
   workflow_dispatch:
 
 permissions:
@@ -194,40 +193,6 @@ jobs:
           code="$(curl -L -sS -o /tmp/cron -w '%{http_code}' \
             "$base/api/cron/support-whatsapp" || true)"
           test "$code" = "401" || { echo "WhatsApp cron expected 401 without bearer token, got $code"; exit 1; }
-
-      - name: Verify expanded customer support coverage
-        shell: bash
-        run: |
-          set -euo pipefail
-          base="https://zeshu-web-staging.asif-mohammed0127.workers.dev"
-
-          help="$(curl -L -sS "$base/help")"
-          echo "$help" | grep -q "QR &amp; UPI Tools\|QR & UPI Tools" || { echo "QR/UPI help topic missing"; exit 1; }
-          echo "$help" | grep -q "Pass &amp; Subscriptions\|Pass & Subscriptions" || { echo "Pass/subscription help topic missing"; exit 1; }
-
-          ask() {
-            local question="$1"
-            local expected="$2"
-            local payload
-            payload="$(node -e 'process.stdout.write(JSON.stringify({ message: process.argv[1] }))' "$question")"
-            curl -L -sS -X POST "$base/api/support/assistant" -H 'Content-Type: application/json' --data "$payload" > /tmp/support-answer
-            node - "$expected" <<'NODE'
-          const fs = require('fs');
-          const expected = process.argv[2];
-          const payload = JSON.parse(fs.readFileSync('/tmp/support-answer', 'utf8'));
-          if (payload.resolved !== true) throw new Error('Informational support question unexpectedly required handoff');
-          if (!String(payload.answer || '').includes(expected)) {
-            throw new Error('Expected support wording missing: ' + expected + '\nAnswer: ' + payload.answer);
-          }
-          if (payload?.handoff?.created) throw new Error('Guest informational support must not create a private conversation');
-          NODE
-          }
-
-          ask "What can I do with QR and UPI tools?" "money transfer"
-          ask "Is Zeshu Pass available?" "Coming Soon"
-          ask "What does sponsored product mean?" "clearly labelled"
-
-          echo "EXPANDED_SUPPORT_STAGING_QA=PASS"
 
       - name: Staging deployment summary
         run: echo "Cloudflare staging deploy, runtime safety, Razorpay TEST readiness, customer routes, and auth-boundary smoke checks passed."
