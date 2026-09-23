@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
+import { classifySupportPriority } from '@/app/lib/support-priority';
 
 export async function GET(request: Request) {
   const { url, anonKey, serviceRoleKey } = await getRuntimeSupabaseEnv();
@@ -31,5 +32,19 @@ export async function GET(request: Request) {
       });
     }
   }
-  return NextResponse.json({ conversations: conversations.map((conversation) => ({ ...conversation, last_message: latestByConversation.get(conversation.id) || null })) });
+  const enriched = conversations.map((conversation) => {
+    const lastMessage = latestByConversation.get(conversation.id) || null;
+    const priority = classifySupportPriority(String(conversation.subject || ''), String(lastMessage?.body || ''));
+    return { ...conversation, last_message: lastMessage, support_priority: priority.label, support_priority_rank: priority.rank };
+  }).sort((a, b) => {
+    const resolvedDelta = Number(a.status === 'RESOLVED') - Number(b.status === 'RESOLVED');
+    if (resolvedDelta !== 0) return resolvedDelta;
+    const priorityDelta = Number(a.support_priority_rank) - Number(b.support_priority_rank);
+    if (priorityDelta !== 0) return priorityDelta;
+    const waitingDelta = Number(b.status === 'WAITING') - Number(a.status === 'WAITING');
+    if (waitingDelta !== 0) return waitingDelta;
+    return new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime();
+  });
+
+  return NextResponse.json({ conversations: enriched });
 }

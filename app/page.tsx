@@ -29,18 +29,19 @@ const SUPPORT_WHATSAPP_UI_ENABLED = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_
 const supportCategoryForIntent = (intent: string, message = '') => {
   const normalizedIntent = String(intent || '').trim().toUpperCase();
   const text = message.toLowerCase();
+  if (normalizedIntent === 'SAFETY' || /\b(accident|unsafe|danger|harass|harassment|threat|assault|emergency|safety)\b/.test(text)) return 'Safety issue';
+  if (normalizedIntent === 'REFUND' || normalizedIntent === 'REFUND_POLICY' || /\b(refund|return|cancel|cancellation)\b/.test(text)) return 'Refund issue';
+  if (normalizedIntent === 'PAYMENT' || /\b(payment|charged|debited|checkout|upi|card)\b/.test(text)) return 'Payment issue';
+  if (normalizedIntent === 'PHARMACY' || /\b(pharmacy|medicine|medicines|prescription|health)\b/.test(text)) return 'Pharmacy / Health issue';
   if (normalizedIntent === 'RIDES' || /\b(bike ride|bike taxi|auto|cab|taxi|driver|ride)\b/.test(text)) return 'Ride issue';
-  if (normalizedIntent === 'COURIER' || /\b(courier|cargo|parcel|package|mini truck|tempo)\b/.test(text)) return 'Courier / Cargo issue';
-  if (normalizedIntent === 'CAR_SHARE' || /\b(car share|carpool|car pool)\b/.test(text)) return 'Car Share issue';
-  if (normalizedIntent === 'TRAVEL' || /\b(train|rail|flight|hotel|bus ticket|travel|pnr)\b/.test(text)) return 'Travel issue';
-  if (normalizedIntent === 'MARKETPLACE' || /\b(marketplace|seller|vendor|electronics|fashion|beauty)\b/.test(text)) return 'Marketplace / seller issue';
+  if (normalizedIntent === 'COURIER' || /\b(courier|cargo|parcel|package|mini truck|tempo|porter)\b/.test(text)) return 'Courier / Cargo issue';
+  if (normalizedIntent === 'CAR_SHARE' || /\b(car share|carpool|car pool|car sharing)\b/.test(text)) return 'Car Share issue';
+  if (normalizedIntent === 'TRAVEL' || /\b(train|rail|flight|hotel|bus ticket|travel|pnr|experience)\b/.test(text)) return 'Travel issue';
+  if (normalizedIntent === 'MARKETPLACE' || /\b(marketplace|seller|vendor|electronics|fashion|beauty|warranty|invoice)\b/.test(text)) return 'Marketplace / seller issue';
   if (normalizedIntent === 'PROVIDER_DISPUTE' || normalizedIntent === 'DIGITAL' || /\b(recharge|bill|fastag|electricity|broadband|dth|water|gas)\b/.test(text)) return 'Recharge/Bill issue';
-  if (normalizedIntent === 'SAFETY') return 'Safety issue';
-  if (normalizedIntent === 'ACCOUNT_CHANGE' || normalizedIntent === 'ACCOUNT') return 'Account issue';
-  if (normalizedIntent === 'REFUND' || normalizedIntent === 'REFUND_POLICY') return 'Refund issue';
-  if (normalizedIntent === 'PAYMENT') return 'Payment issue';
-  if (normalizedIntent === 'DELIVERY') return 'Delivery issue';
-  if (normalizedIntent === 'ORDER') return 'Order issue';
+  if (normalizedIntent === 'ACCOUNT_CHANGE' || normalizedIntent === 'ACCOUNT' || /\b(account|login|otp|profile|phone)\b/.test(text)) return 'Account issue';
+  if (normalizedIntent === 'DELIVERY' || /\b(delivery|rider|address|location|serviceable|late)\b/.test(text)) return 'Delivery issue';
+  if (normalizedIntent === 'ORDER' || /\b(order|grocery|item|stock)\b/.test(text)) return 'Order issue';
   if (normalizedIntent === 'SERVICE_DISPUTE') {
     if (/\b(courier|cargo|parcel|package|mini truck|tempo)\b/.test(text)) return 'Courier / Cargo issue';
     if (/\b(car share|carpool|car pool)\b/.test(text)) return 'Car Share issue';
@@ -846,23 +847,11 @@ export default function ZeshuSuperApp() {
     if (!requestedSupport) return;
 
     const safeSubject = requestedSupport.slice(0, 160);
-    const normalized = safeSubject.toLowerCase();
-    const category = /bike ride|auto|cab|rental car|ride/.test(normalized)
-      ? 'Ride issue'
-      : /bike courier|courier|cargo|mini truck|shop delivery|parcel|package/.test(normalized)
-        ? 'Courier / Cargo issue'
-        : /car share|carpool/.test(normalized)
-          ? 'Car Share issue'
-          : /bus|train|flight|hotel|experience|travel/.test(normalized)
-            ? 'Travel issue'
-            : /marketplace|seller|electronics|fashion|beauty|home & kitchen/.test(normalized)
-              ? 'Marketplace / seller issue'
-              : 'Other';
-    setSupportSubject(category);
+    setSupportSubject(supportCategoryForIntent('GENERAL', safeSubject));
     setSupportAssistantQuestion(`I need help with ${safeSubject}`);
 
     if (!user) {
-      setIsAuthModalOpen(true);
+      window.location.replace(`/help?service=${encodeURIComponent(safeSubject)}`);
       return;
     }
 
@@ -3755,7 +3744,7 @@ export default function ZeshuSuperApp() {
                     {['Where is my latest order?','Can I book a bike ride now?','Can I send a parcel now?','Can I book trains on Zeshu?','What is my Zeshu Cash balance?','Do you have milk?','How do refunds work?'].map((question) => <button type="button" key={question} disabled={supportAssistantBusy} onClick={() => void askSupportAssistant(question)} className="whitespace-nowrap rounded-full border border-emerald-100 bg-white px-3 py-2 text-xs font-black text-[#075E45] shadow-sm disabled:opacity-50">{question}</button>)}
                   </div>}
                   {supportAssistantMessages.length > 0 && <div className="mt-3 max-h-72 space-y-2 overflow-y-auto rounded-xl bg-white/70 p-3" aria-live="polite">{supportAssistantMessages.map((message, index) => <div key={`${message.role}-${index}`} className={`rounded-xl p-3 text-sm leading-6 ${message.role === 'CUSTOMER' ? 'ml-6 bg-[#075E45] text-white' : 'mr-6 bg-white text-slate-700 shadow-sm'}`}><p className={`mb-1 text-[10px] font-black uppercase tracking-wider ${message.role === 'CUSTOMER' ? 'text-emerald-100' : 'text-[#075E45]'}`}>{message.role === 'CUSTOMER' ? 'You' : 'Zeshu Assistant'}</p><p className="whitespace-pre-wrap break-words">{message.body}</p></div>)}</div>}
-                  {supportAssistantContextUsed.length > 0 && <div className="mt-2 flex flex-wrap items-center gap-1.5"><span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{t('Checked live')}</span>{supportAssistantContextUsed.map((item) => <span key={item} className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-emerald-700">{item === 'orders' ? 'Orders' : item === 'rewards' ? 'Zeshu Cash' : item === 'catalog' ? 'Catalog' : item}</span>)}</div>}
+                  {supportAssistantContextUsed.length > 0 && <div className="mt-2 flex flex-wrap items-center gap-1.5"><span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{t('Checked live')}</span>{supportAssistantContextUsed.map((item) => <span key={item} className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-emerald-700">{item === 'orders' ? 'Orders' : item === 'rewards' ? 'Zeshu Cash' : item === 'catalog' ? 'Catalog' : item === 'move_services' ? 'Move & Travel status' : item}</span>)}</div>}
                   {supportAssistantSuggestions.length > 0 && !supportAssistantBusy && <div className="mt-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar" aria-label="Follow-up questions">{supportAssistantSuggestions.map((question) => <button type="button" key={question} onClick={() => void askSupportAssistant(question)} className="whitespace-nowrap rounded-full bg-white px-3 py-2 text-xs font-black text-[#075E45] shadow-sm">{question}</button>)}</div>}
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row"><input value={supportAssistantQuestion} maxLength={1200} onChange={(event) => { setSupportAssistantQuestion(event.target.value); setSupportAssistantAnswer(''); setSupportAssistantResolved(null); }} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void askSupportAssistant(); } }} placeholder={t('Ask anything about Zeshu…')} aria-label="Ask Zeshu Assistant" className="min-w-0 flex-1 rounded-xl border border-emerald-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-emerald-400" /><button type="button" disabled={supportAssistantBusy || !supportAssistantQuestion.trim()} onClick={() => void askSupportAssistant()} className="rounded-xl bg-[#075E45] px-4 py-2.5 text-sm font-black text-white disabled:opacity-50">{supportAssistantBusy ? 'Checking…' : 'Send'}</button></div>
                   <p className="mt-2 text-[10px] leading-4 text-slate-400">Do not send OTPs, passwords, card numbers, CVV or UPI PIN. Zeshu Assistant uses only the minimum account context needed for your question.</p>
