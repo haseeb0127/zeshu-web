@@ -567,6 +567,17 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
     };
   }
 
+  if (marketplaceIntent(message) && /invoice|gst invoice|warranty|manufacturer warranty|return.*electronics|return.*clothing|defective|serial|imei/.test(text)) {
+    return {
+      answer: 'For marketplace products, invoice and warranty details depend on the verified seller and product. Zeshu should show Invoice Available or Authorized Brand Partner only when the relevant evidence is verified. Wrong, damaged, defective, missing-component or materially different electronics/clothing issues should generally be reported within 7 working days, while manufacturer or seller warranty may also apply. A specific return/refund decision still needs order review.',
+      resolved: true,
+      subject: 'Marketplace invoice or warranty help',
+      handoff_reason: '',
+      suggested_questions: ['What does Verified Seller mean?', 'Can I buy electronics?', 'I need help with a specific marketplace order'],
+      intent: 'MARKETPLACE',
+    };
+  }
+
   if (marketplaceIntent(message)) {
     return {
       answer: 'Zeshu Market is designed for asset-light seller fulfilment across categories such as electronics, fashion, beauty and home products. Seller trust labels are separate: Verified Seller, GST Verified, Invoice Available and Authorized Brand Partner are shown only when the relevant evidence is available. Nationwide checkout remains gated by actual seller and delivery serviceability.',
@@ -575,6 +586,17 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
       handoff_reason: '',
       suggested_questions: suggestedForIntent('MARKETPLACE'),
       intent: 'MARKETPLACE',
+    };
+  }
+
+  if (/which.*(?:digital|recharge|bill)|what.*(?:recharge|bill).*service|mobile recharge|dth|electricity|fastag|lpg|piped gas|water bill|broadband/.test(text)) {
+    return {
+      answer: 'Zeshu currently has customer surfaces for mobile recharge, DTH, electricity, FASTag, LPG/gas, water and broadband discovery. These are intended for India-wide use, but a real payment/fulfilment is available only when the specific provider integration is visibly enabled and verified. Discovery alone does not mean a bill or recharge transaction is live.',
+      resolved: true,
+      subject: 'Digital services availability',
+      handoff_reason: '',
+      suggested_questions: ['Can I use Zeshu outside Jagtial?', 'How do secure payments work?', 'I have a recharge or bill problem'],
+      intent: 'DIGITAL',
     };
   }
 
@@ -630,6 +652,41 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
       handoff_reason: '',
       suggested_questions: suggestedForIntent('REWARDS'),
       intent: 'REFERRAL',
+    };
+  }
+
+  if (/install.*(?:app|zeshu)|download.*(?:app|zeshu)|get zeshu|add to home screen|android app|pwa/.test(text)) {
+    return {
+      answer: 'Open Get Zeshu from the website to install the current Zeshu app/PWA experience on a supported device. Use the official Zeshu install path shown there rather than downloading APK files from unknown sources.',
+      resolved: true,
+      subject: 'Install Zeshu help',
+      handoff_reason: '',
+      suggested_questions: ['How do I sign in?', 'What services are available?', 'How do I set my delivery address?'],
+      intent: 'ACCOUNT',
+    };
+  }
+
+  if (/language|telugu|hindi|urdu|english|change.*language/.test(text)) {
+    return {
+      answer: 'Use the language switcher on supported Zeshu pages to choose English, Telugu, Hindi or Urdu. Urdu uses right-to-left layout where supported. If any customer-facing text does not translate, report that page to Zeshu Support.',
+      resolved: true,
+      subject: 'Language help',
+      handoff_reason: '',
+      suggested_questions: ['How do I install Zeshu?', 'How do I sign in?', 'Contact Zeshu Support'],
+      intent: 'ACCOUNT',
+    };
+  }
+
+  if (/support hours|customer care|contact support|help center|how.*contact.*support|need support/.test(text)) {
+    return {
+      answer: signedIn
+        ? 'You can use Zeshu Help Center for instant guided/AI help and open a private human-support conversation for any Zeshu service when a person is needed. Safety, payment, refund, provider-dispute and protected account cases are prioritized for human review.'
+        : 'You can use Zeshu Help Center for general questions without signing in. Sign in to open a private human-support conversation for an order, payment, ride, courier, travel, marketplace, recharge/bill, account or safety issue.',
+      resolved: true,
+      subject: 'Customer support help',
+      handoff_reason: '',
+      suggested_questions: ['I want to talk to a person', 'What services are available?', 'How do refunds work?'],
+      intent: 'GENERAL',
     };
   }
 
