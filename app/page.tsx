@@ -883,17 +883,6 @@ export default function ZeshuSuperApp() {
   }, [cart]);
 
   useEffect(() => {
-    if (!isCartOpen || cart.length === 0) return;
-    const selected = addresses.find((address) => address.id === selectedAddressId) || addresses.find((address) => address.is_default);
-    const hasVerifiedCoordinates = Boolean(
-      selected
-      && isValidLocationCoordinate(selected.latitude, selected.longitude)
-      && deliveryServiceability === 'ELIGIBLE'
-    );
-    if (!hasVerifiedCoordinates) setExpandedCartSection('ADDRESS');
-  }, [isCartOpen, cart.length, addresses, selectedAddressId, deliveryServiceability]);
-
-  useEffect(() => {
     const address = currentAddress.trim();
     if (address && address !== 'Location not set') localStorage.setItem(DELIVERY_ADDRESS_STORAGE_KEY, address);
   }, [currentAddress]);
@@ -2240,6 +2229,16 @@ export default function ZeshuSuperApp() {
   }, [otpSent, isAuthModalOpen, phoneNumber]);
   const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); setRewardBalance(0); setRewardHistory([]); setReferralCode(''); setUseZeshuCash(false); setZeshuCashAmount(''); setIsAccountOpen(false); showToast("Logged out."); };
   const openAccountHome = () => { setAccountView('HOME'); setIsAccountOpen(true); };
+  const openCartAddressChooser = () => {
+    setIsCartOpen(false);
+    if (user) {
+      setAccountView('ADDRESSES');
+      setIsAccountOpen(true);
+      return;
+    }
+    resetNewAddressForm();
+    setAddressFormOpen(true);
+  };
   const openAiSupport = () => {
     if (!user) {
       setIsAuthModalOpen(true);
@@ -3446,26 +3445,20 @@ export default function ZeshuSuperApp() {
                   <div className="space-y-3 p-3 md:p-4">
                     {group.entries.map((c) => {
                       const seller = marketplaceSellers[String(c.item.vendor_id || '')];
-                      return <div key={String(c.item.id)} className="flex min-h-[108px] items-center gap-4 rounded-2xl bg-white p-4 shadow-sm md:min-h-[124px] md:gap-5 md:p-5">
-                        <img src={c.item.image_url} className="h-20 w-20 shrink-0 object-contain md:h-24 md:w-24" alt={c.item.name}/>
-                        <div className="min-w-0 flex-1"><h4 className="truncate text-base font-black text-slate-900 md:text-lg">{c.item.name}</h4><p className="mt-1 text-sm font-medium text-slate-500 md:text-base">₹{c.item.price} x {c.qty}</p>{seller?.business_name && <p className="mt-1 truncate text-[10px] font-semibold text-slate-400">{t('Sold by')} {seller.business_name}</p>}</div>
-                        <div className="flex h-12 items-center rounded-xl bg-[#075E45] px-2 text-white shadow-sm md:h-14 md:px-3"><button type="button" onClick={() => removeFromCart(c.item.id)} className="min-h-11 min-w-10 px-2 text-lg md:min-h-12 md:min-w-11">-</button><span className="min-w-8 px-2 text-center text-base font-black md:min-w-10 md:text-lg">{c.qty}</span><button type="button" disabled={c.item.quantity !== null && c.qty >= Number(c.item.quantity)} onClick={() => addToCart(c.item)} className="min-h-11 min-w-10 px-2 text-lg disabled:cursor-not-allowed disabled:opacity-40 md:min-h-12 md:min-w-11">+</button></div>
+                      return <div key={String(c.item.id)} className="flex min-h-[92px] items-center gap-3 rounded-2xl bg-white p-3.5 shadow-sm md:min-h-[100px] md:gap-4 md:p-4">
+                        <img src={c.item.image_url} className="h-16 w-16 shrink-0 object-contain md:h-20 md:w-20" alt={c.item.name}/>
+                        <div className="min-w-0 flex-1"><h4 className="truncate text-[15px] font-black text-slate-900 md:text-base">{c.item.name}</h4><p className="mt-1 text-sm font-medium text-slate-500">₹{c.item.price} x {c.qty}</p>{seller?.business_name && <p className="mt-1 truncate text-[10px] font-semibold text-slate-400">{t('Sold by')} {seller.business_name}</p>}</div>
+                        <div className="flex h-11 items-center rounded-xl bg-[#075E45] px-1.5 text-white shadow-sm md:h-12 md:px-2"><button type="button" onClick={() => removeFromCart(c.item.id)} className="min-h-10 min-w-9 px-2 text-base md:min-h-11 md:min-w-10">-</button><span className="min-w-7 px-1.5 text-center text-base font-black md:min-w-8">{c.qty}</span><button type="button" disabled={c.item.quantity !== null && c.qty >= Number(c.item.quantity)} onClick={() => addToCart(c.item)} className="min-h-10 min-w-9 px-2 text-base disabled:cursor-not-allowed disabled:opacity-40 md:min-h-11 md:min-w-10">+</button></div>
                       </div>;
                     })}
                   </div>
                 </section>
               ))}
-              {cart.length > 0 && <section className="overflow-hidden rounded-2xl border border-[#dce8df] bg-white">
-                <button type="button" aria-expanded={expandedCartSection === 'ADDRESS'} aria-controls="cart-address-details" onClick={() => setExpandedCartSection((current) => current === 'ADDRESS' ? null : 'ADDRESS')} className="flex w-full items-center justify-between gap-4 p-5 text-left md:p-6">
-                  <span className="flex min-w-0 items-center gap-3"><MapPin size={24} className="shrink-0 text-[#075E45] md:h-7 md:w-7" aria-hidden="true" /><span className="min-w-0"><span className="block text-base font-black text-slate-900 md:text-lg">{t('Delivery Address')}</span><span className="mt-1 block truncate text-sm font-medium text-slate-500 md:text-base">{deliveryAddressSummary || t('Add delivery address')}</span></span></span>
-                  <span className="flex shrink-0 items-center gap-1 text-sm font-black text-[#075E45] md:text-base">{t(deliveryAddressSummary ? 'Change' : 'Add')} <ChevronDown size={16} className={`transition-transform ${expandedCartSection === 'ADDRESS' ? 'rotate-180' : ''}`} aria-hidden="true" /></span>
-                </button>
-                {expandedCartSection === 'ADDRESS' && <div id="cart-address-details" className="border-t border-[#dce8df] p-4">
-                {addresses.length > 0 && <div className="mb-3"><p className="text-xs font-black uppercase tracking-wider text-[#52645a]">{t('Saved addresses')}</p><div className="mt-2 space-y-2">{addresses.map((address) => <div key={address.id} className={`rounded-xl border p-3 ${selectedAddressId === address.id ? 'border-[#075E45] bg-[#f1faf4]' : 'border-slate-200 bg-white'}`}><button type="button" onClick={() => void useSavedAddressForCheckout(address)} className="w-full text-left text-xs"><span className="block font-black">{address.label}{address.is_default ? ` · ${t('Default')}` : ''}</span><span className="mt-1 block line-clamp-2 text-slate-500">{formatAddress(address)}</span></button><div className="mt-2 flex flex-wrap gap-2"><button type="button" onClick={() => openAddressForm(address)} className="rounded-lg bg-slate-100 px-3 py-2 text-[11px] font-black">{t('Edit')}</button>{!address.is_default && <button type="button" onClick={() => void setDefaultAddress(address.id)} className="rounded-lg bg-emerald-50 px-3 py-2 text-[11px] font-black text-emerald-700">{t('Set default')}</button>}<button type="button" onClick={() => void useSavedAddressForCheckout(address)} className="rounded-lg bg-emerald-50 px-3 py-2 text-[11px] font-black text-[#075E45]">{t('Use for checkout')}</button></div></div>)}</div></div>}
-                <div className="mb-2 flex flex-wrap items-center gap-3"><button type="button" onClick={startNewAddressWithAutoDetect} disabled={isDetectingLoc} className="rounded-lg bg-[#075E45] px-3 py-2 text-xs font-black text-white disabled:opacity-60">{isDetectingLoc ? t('Detecting location…') : t('Use my current location')}</button><button type="button" onClick={() => { resetNewAddressForm(); setAddressFormOpen(true); }} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">{t('Enter address manually')}</button>{selectedAddressId && <button type="button" onClick={() => { const selected = addresses.find((address) => address.id === selectedAddressId); if (selected) requestDeleteAddress(selected); }} className="text-xs font-black text-red-600">{t('Remove selected address')}</button>}</div><label htmlFor="delivery-address" className="block text-xs font-black uppercase tracking-wider text-[#52645a]">{t('Delivery address')}</label>
-                <textarea id="delivery-address" value={currentAddress === 'Location not set' ? '' : currentAddress} onChange={(event) => setCurrentAddress(event.target.value)} rows={3} placeholder={t('House / flat, street, area and landmark')} className="mt-2 w-full resize-none rounded-xl border border-[#dce8df] bg-[#f8fbf8] p-3 text-sm font-medium outline-none focus:border-[#075E45]" />
-                <p className="mt-2 text-[11px] text-slate-500">{t('Your address is used only for this checkout and is validated again on the server.')}</p>
-                </div>}
+              {cart.length > 0 && <section className="rounded-2xl border border-[#dce8df] bg-white">
+                <div className="flex items-center justify-between gap-4 p-4 md:p-5">
+                  <span className="flex min-w-0 items-center gap-3"><MapPin size={22} className="shrink-0 text-[#075E45]" aria-hidden="true" /><span className="min-w-0"><span className="block text-sm font-black text-slate-900 md:text-base">{t('Delivery Address')}</span><span className="mt-1 block truncate text-xs font-medium text-slate-500 md:text-sm">{deliveryAddressSummary || t('Add delivery address')}</span></span></span>
+                  <button type="button" onClick={openCartAddressChooser} className="shrink-0 rounded-xl px-2 py-2 text-sm font-black text-[#075E45] transition hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#075E45]">{t(deliveryAddressSummary ? 'Change' : 'Add')}</button>
+                </div>
               </section>}
               {cart.length > 0 && smartAddOns.length > 0 && <div className="rounded-2xl border border-[#dce8df] bg-white p-4"><div className="flex items-center justify-between"><h3 className="text-sm font-black text-slate-900">{t('Complete your basket')}</h3><span className="text-[11px] font-bold text-slate-500">{t('Current stock only')}</span></div><div className="mt-3 grid grid-cols-2 gap-2">{smartAddOns.map((product) => <div key={product.id} className="rounded-xl border border-slate-100 p-2"><img src={product.image_url} alt={product.name} className="h-16 w-full object-contain" /><p className="mt-1 line-clamp-2 text-xs font-bold">{product.name}</p><div className="mt-2 flex items-center justify-between"><span className="text-xs font-black">₹{product.price}</span><button type="button" onClick={() => addToCart(product)} className="rounded-lg bg-[#F1F8DC] px-2 py-1 text-[10px] font-black text-[#064936]">{t('ADD')}</button></div></div>)}</div></div>}
               {cart.length > 0 && <section className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
