@@ -73,4 +73,6 @@ jobs:
       - run: npm ci
       - name: Verify support priority rules
         run: node --experimental-strip-types .github/scripts/support-priority-qa.ts
+      - name: Verify support assistant coverage
+        run: node --experimental-strip-types .github/scripts/support-assistant-coverage-qa.ts
       - run: npm run build
