@@ -3,7 +3,7 @@ name: Deploy marketplace foundation to Cloudflare staging
 on:
   push:
     branches:
-      - feat/marketplace-foundation-20260923
+      - feat/move-travel-foundation-20260923
     paths:
       - ".github/workflows/cloudflare-marketplace-staging.yml"
   workflow_dispatch:
@@ -236,5 +236,54 @@ jobs:
           }
           NODE
 
+      - name: Verify Move and Travel discovery safety and localization
+        shell: bash
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          const base = 'https://zeshu-web-staging.asif-mohammed0127.workers.dev';
+          const browser = await chromium.launch({ headless: true });
+          const assert = (value, message) => { if (!value) throw new Error(message); };
+
+          try {
+            const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+            await page.goto(base + '/move', { waitUntil: 'networkidle', timeout: 60000 });
+
+            const english = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            for (const label of ['Zeshu Move & Travel','Bike Ride','Auto','Cab','Car Share','Bike Courier','Auto / Mini Truck','Bus','Train','Flights','Hotels']) {
+              assert(english.includes(label), `Move & Travel label missing: ${label}`);
+            }
+            assert(english.includes('Booking and payment are not available yet.'), 'Move & Travel safety copy missing');
+            const actions = (await page.locator('button, a').allTextContents()).join(' ');
+            assert(!/\bBook(?:ing)?\b|\bPay\b/i.test(actions), 'Move & Travel exposes booking/payment before launch');
+
+            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'te'));
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+            let body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(body.includes('Zeshu మూవ్ & ట్రావెల్'), 'Telugu Move & Travel heading missing');
+            assert(body.includes('బైక్ రైడ్'), 'Telugu Bike Ride label missing');
+
+            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'hi'));
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+            body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(body.includes('Zeshu मूव और ट्रैवल'), 'Hindi Move & Travel heading missing');
+            assert(body.includes('बाइक कूरियर'), 'Hindi Bike Courier label missing');
+
+            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'ur'));
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+            await page.waitForFunction(() => document.documentElement.dir === 'rtl', null, { timeout: 10000 });
+            body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(body.includes('Zeshu موو اور ٹریول'), 'Urdu Move & Travel heading missing');
+            assert(body.includes('کار شیئر'), 'Urdu Car Share label missing');
+            assert(await page.locator('html').getAttribute('dir') === 'rtl', 'Urdu Move & Travel page is not RTL');
+
+            console.log('MOVE_TRAVEL_BROWSER_QA=PASS');
+          } finally {
+            await browser.close();
+          }
+          NODE
+
       - name: Staging deployment summary
-        run: echo "Cloudflare staging deploy, marketplace seller trust, recommendation/search stability, and grouped-cart browser QA passed on the marketplace branch."
+        run: echo "Cloudflare staging deploy, marketplace regression checks, and Move & Travel discovery/browser safety QA passed on the feature branch."
