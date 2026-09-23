@@ -175,14 +175,41 @@ jobs:
             curl -fsS -D "$headers" -o /dev/null "$base/"
             grep -qi '^server: cloudflare' "$headers" || { echo "$base is not fronted by Cloudflare"; exit 1; }
             grep -qi '^x-opennext: 1' "$headers" || { echo "$base is not serving the OpenNext Worker"; exit 1; }
-            for route in "/" "/policies" "/partners" "/app" "/scanner"; do
+            for route in "/" "/policies" "/partners" "/app" "/scanner" "/help" "/move"; do
               code="$(curl -L -sS -o /tmp/live-body -w '%{http_code}' "$base$route" || true)"
               test "$code" = "200" || { echo "Expected 200 from $base$route, got $code"; exit 1; }
             done
           done
 
-          code="$(curl -L -sS -o /tmp/assistant -w '%{http_code}' -X POST "https://zeshu.in/api/support/assistant" -H 'Content-Type: application/json' --data '{"message":"hello"}' || true)"
-          test "$code" = "401" || { echo "Assistant expected 401, got $code"; exit 1; }
+          readiness="$(curl -L -sS "https://zeshu.in/api/support/assistant")"
+          echo "$readiness" | grep -Eq '"mode":"(ai|guided)"' || { echo "Assistant readiness mode missing after release"; exit 1; }
+          echo "$readiness" | grep -q '"automatic_handoff":true' || { echo "Automatic support handoff is not configured after release"; exit 1; }
+
+          code="$(curl -L -sS -o /tmp/assistant -w '%{http_code}' -X POST "https://zeshu.in/api/support/assistant" -H 'Content-Type: application/json' --data '{"message":"Can I book a bike ride now?"}' || true)"
+          test "$code" = "200" || { echo "Public assistant expected 200 after release, got $code"; cat /tmp/assistant; exit 1; }
+          node <<'NODE'
+          const fs = require('fs');
+          const payload = JSON.parse(fs.readFileSync('/tmp/assistant', 'utf8'));
+          if (payload.signed_in !== false) throw new Error('Public assistant must report signed_in=false');
+          if (payload.resolved !== true) throw new Error('Public ride availability question should resolve safely');
+          const used = Array.isArray(payload.context_used) ? payload.context_used : [];
+          if (used.includes('orders') || used.includes('rewards')) throw new Error('Guest assistant leaked private account context');
+          if (payload?.handoff?.created) throw new Error('Guest assistant must not create a private support conversation');
+          NODE
+
+          code="$(curl -L -sS -o /tmp/move-readiness -w '%{http_code}' "https://zeshu.in/api/move/readiness" || true)"
+          test "$code" = "200" || { echo "Move readiness expected 200 after release, got $code"; cat /tmp/move-readiness; exit 1; }
+          node <<'NODE'
+          const fs = require('fs');
+          const payload = JSON.parse(fs.readFileSync('/tmp/move-readiness', 'utf8'));
+          if (payload.customer_booking_enabled !== false) throw new Error('Move & Travel customer booking must remain disabled');
+          for (const key of ['rides','courier','car_share','travel']) {
+            if (payload?.services?.[key]?.customerBookingAvailable !== false) throw new Error(`${key} unexpectedly became bookable`);
+          }
+          NODE
+
+          code="$(curl -L -sS -o /tmp/support-conversations -w '%{http_code}' "https://zeshu.in/api/support/conversations" || true)"
+          test "$code" = "401" || { echo "Customer support conversations expected 401 for guest, got $code"; exit 1; }
 
           code="$(curl -L -sS -o /tmp/admin-support -w '%{http_code}' "https://zeshu.in/api/admin/support/conversations" || true)"
           test "$code" = "401" || { echo "Admin support expected 401, got $code"; exit 1; }
@@ -249,6 +276,19 @@ jobs:
             assert(urdu.includes('ایک Zeshu۔ آپ کی ضرورت کے لیے تین آسان راستے۔'), 'Hybrid Zeshu heading is not localized in Urdu');
             assert(urdu.includes('سب کچھ خریدیں'), 'Shop Everything is not localized in Urdu');
             assert(urdu.includes('ریچارج اور بل'), 'Footer recharge link is not localized in Urdu');
+
+            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'en'));
+            await page.goto('https://zeshu.in/help', { waitUntil: 'networkidle', timeout: 60000 });
+            await page.getByRole('heading', { name: 'Zeshu Help Center' }).waitFor({ state: 'visible', timeout: 10000 });
+            const helpInput = page.locator('input[placeholder="Ask anything about Zeshu…"]');
+            await helpInput.fill('Can I book a bike ride now?');
+            await page.getByRole('button', { name: 'Send', exact: true }).click();
+            await page.waitForFunction(() => {
+              const text = document.body.innerText;
+              return text.includes('Coming Soon') && text.includes('booking') && text.includes('payment');
+            }, null, { timeout: 20000 });
+            const helpText = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(!helpText.includes('Order #'), 'Guest Help Center exposed private order context');
           } finally {
             await browser.close();
           }
