@@ -1,22 +1,26 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f9f5;
-  --foreground: #132019;
-  --zeshu-green: #087443;
-  --zeshu-green-dark: #065f38;
-  --zeshu-green-fresh: #16a663;
-  --zeshu-mint: #eef8f1;
-  --zeshu-ivory: #f7f9f5;
+  --background: #f7f8f4;
+  --foreground: #17201c;
+  --zeshu-green: #075e45;
+  --zeshu-green-dark: #064936;
+  --zeshu-green-fresh: #159a68;
+  --zeshu-mint: #eef7f1;
+  --zeshu-ivory: #f7f8f4;
   --zeshu-surface: #ffffff;
-  --zeshu-text: #132019;
-  --zeshu-muted: #66736b;
-  --zeshu-border: #dde7df;
-  --zeshu-gold: #f4b740;
+  --zeshu-text: #17201c;
+  --zeshu-muted: #66736c;
+  --zeshu-border: #dfe7e1;
+  --zeshu-gold: #ffb84d;
   --zeshu-blue: #2563eb;
   --zeshu-warning: #d97706;
   --zeshu-danger: #dc2626;
-  --zeshu-shadow: 0 10px 30px rgba(19, 32, 25, .08);
+  --zeshu-lime: #b7e34a;
+  --zeshu-lime-soft: #f1f8dc;
+  --zeshu-mango: #ffb84d;
+  --zeshu-mango-soft: #fff3df;
+  --zeshu-shadow: 0 10px 30px rgba(23, 32, 28, .08);
   --zeshu-shadow-soft: 0 4px 16px rgba(19, 32, 25, .06);
 }
 
@@ -33,14 +37,14 @@ html {
 
 body {
   background:
-    radial-gradient(circle at top right, rgba(22, 166, 99, .045), transparent 28rem),
+    radial-gradient(circle at top right, rgba(7, 94, 69, .055), transparent 28rem),
     var(--zeshu-ivory);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
 ::selection {
-  background: rgba(8, 116, 67, .16);
+  background: rgba(7, 94, 69, .16);
   color: var(--zeshu-text);
 }
 
@@ -53,7 +57,7 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid rgba(8, 116, 67, .34);
+  outline: 3px solid rgba(7, 94, 69, .34);
   outline-offset: 2px;
 }
 
@@ -78,9 +82,15 @@ textarea:focus-visible {
 }
 
 .zeshu-gold {
-  background: #fff8df;
-  color: #8a5a00;
-  border-color: #f4d889;
+  background: var(--zeshu-mango-soft);
+  color: #7a4700;
+  border-color: #ffd89e;
+}
+
+.zeshu-speed {
+  background: var(--zeshu-lime-soft);
+  color: var(--zeshu-green-dark);
+  border-color: #d7eb9d;
 }
 
 @media (prefers-reduced-motion: reduce) {
