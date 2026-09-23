@@ -337,6 +337,39 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
     };
   }
 
+  if (/qr scanner|scan qr|qr code|upi tools|upi id|vpa|contact payment|send money|money transfer/.test(text)) {
+    return {
+      answer: 'Zeshu QR and UPI Tools can be used for supported discovery/scanning utilities, but QR/contact money transfer, funded cashback and any real UPI payment action remain disabled until a verified payment and settlement integration is enabled. Never enter or share a UPI PIN in Zeshu chat or support.',
+      resolved: true,
+      subject: 'QR and UPI tools help',
+      handoff_reason: '',
+      suggested_questions: ['Can I scan a QR code?', 'How do secure payments work?', 'What services are available right now?'],
+      intent: 'DIGITAL',
+    };
+  }
+
+  if (/zeshu pass|subscribe & save|subscribe and save|subscription|subscriptions|membership|monthly pass/.test(text)) {
+    return {
+      answer: 'Zeshu Pass and Subscribe & Save are currently Coming Soon. No membership fee, recurring charge or subscription payment should be collected until the product UI explicitly enables a verified plan with its price, renewal, cancellation and refund terms.',
+      resolved: true,
+      subject: 'Pass and subscription availability',
+      handoff_reason: '',
+      suggested_questions: ['What services are available right now?', 'How do Zeshu Cash rewards work?', 'How do refunds work?'],
+      intent: 'GENERAL',
+    };
+  }
+
+  if (/sponsored|sponsor|advertis|paid placement|promoted product|promoted listing/.test(text)) {
+    return {
+      answer: 'Sponsored banners or products must be clearly labelled when placement is paid. Sponsorship does not override stock, seller verification, serviceability, customer filters or safety rules. The product page and checkout remain authoritative for the actual seller, availability, price and payable amount.',
+      resolved: true,
+      subject: 'Sponsored content help',
+      handoff_reason: '',
+      suggested_questions: ['How do offers and coupons work?', 'What does Verified Seller mean?', 'How do I advertise on Zeshu?'],
+      intent: 'MARKETPLACE',
+    };
+  }
+
   if (/zeshu now|zeshu market|zeshu digital|what is zeshu market|what is zeshu now|what is zeshu digital/.test(text)) {
     return {
       answer: 'Zeshu Now is the fast local-commerce layer for nearby essentials where sellers and delivery are serviceable. Zeshu Market is the wider asset-light marketplace for categories such as electronics, fashion, beauty and home, using seller fulfilment rather than Zeshu owning all stock. Zeshu Digital covers recharge, bills and other digital services where the relevant provider is actually enabled.',
@@ -769,7 +802,7 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
   }
 
   return {
-    answer: 'I can help with orders, products, marketplace sellers, Zeshu Cash, delivery, payments, refunds policy, recharge/bills, Bike/Auto/Cab, courier/cargo, Car Share, travel, referrals and account help. Tell me what you are trying to do, or choose one of the suggestions below.',
+    answer: 'I can help with orders, products, marketplace sellers, Zeshu Cash, delivery, payments, refunds, recharge/bills, QR/UPI tools, Bike/Auto/Cab, courier/cargo, Car Share, travel, pharmacy availability, app installation, languages, offers, sponsored products, Zeshu Pass/subscriptions, referrals and account safety. Tell me what you are trying to do, or choose one of the suggestions below.',
     resolved: true,
     subject: 'Zeshu Assistant help',
     handoff_reason: '',
@@ -856,7 +889,7 @@ export async function GET() {
   return NextResponse.json({
     mode: aiEnabled ? 'ai' : 'guided',
     automatic_handoff: handoffConfigured,
-    capabilities: ['public_general_help', 'live_order_status', 'reward_context', 'catalog_search', 'marketplace_help', 'pharmacy_help', 'rides_help', 'courier_help', 'car_share_help', 'travel_help', 'digital_services_help', 'delivery_address_help', 'referral_help', 'account_safety_help', 'move_service_readiness', 'policy_help', 'service_specific_handoff', 'automatic_handoff'],
+    capabilities: ['public_general_help', 'live_order_status', 'reward_context', 'catalog_search', 'marketplace_help', 'pharmacy_help', 'rides_help', 'courier_help', 'car_share_help', 'travel_help', 'digital_services_help', 'delivery_address_help', 'referral_help', 'account_safety_help', 'move_service_readiness', 'policy_help', 'qr_upi_help', 'app_language_help', 'promotions_help', 'subscription_help', 'service_specific_handoff', 'automatic_handoff'],
   });
 }
 
