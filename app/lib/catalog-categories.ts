@@ -14,6 +14,10 @@ export const CUSTOMER_CATEGORY_DEFINITIONS = [
   { id: 'Personal Care', label: 'Personal Care', icon: '🧴', aliases: ['personal care','body care','grooming','soap','shampoo','toothpaste','sanitary pads','feminine hygiene'] },
   { id: 'Home Care', label: 'Home & Cleaning', icon: '🧹', aliases: ['home care','household','household cleaning','cleaning','detergent','dishwash','floor cleaner','toilet cleaner','laundry'] },
   { id: 'Baby Care', label: 'Baby Care', icon: '🍼', aliases: ['baby care','baby products','diapers','diaper','nappies','baby food','infant food'] },
+  { id: 'Beauty & Wellness', label: 'Beauty & Wellness', icon: '💄', aliases: ['beauty','wellness','skin care','skincare','cosmetics','makeup','fragrance','perfume','hair care'] },
+  { id: 'Electronics & Accessories', label: 'Electronics & Accessories', icon: '🎧', aliases: ['electronics','electronic accessories','mobile accessories','mobiles','mobile phones','smartphones','phones','headphones','earbuds','chargers','power banks','smartwatches','laptops','computer accessories'] },
+  { id: 'Fashion & Clothing', label: 'Fashion & Clothing', icon: '👕', aliases: ['fashion','clothing','clothes','menswear','men clothing','womenswear','women clothing','kids wear','footwear','shoes','ethnic wear','western wear'] },
+  { id: 'Home & Kitchen', label: 'Home & Kitchen', icon: '🏠', aliases: ['home and kitchen','home & kitchen','kitchen','cookware','home appliances','small appliances','storage','home furnishing','home decor'] },
 ] as const;
 
 export const VENDOR_PRODUCT_CATEGORIES = CUSTOMER_CATEGORY_DEFINITIONS.filter((category) => category.id !== 'All');
