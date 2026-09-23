@@ -37,6 +37,14 @@ assert(route.includes('support_category: classifySupportCategory'), 'Assistant r
 assert(route.includes('buildCategorizedSupportSubject'), 'Automatic handoffs must carry a categorized subject');
 assert(route.includes('deliveryInfoIntent'), 'Assistant must distinguish delivery/address guidance from private order tracking');
 assert(route.includes('!deliveryInfoIntent(message)'), 'Delivery/address questions must not trigger private order lookup');
+assert(route.includes('Zeshu does not promise one universal delivery or shipping fee'), 'Assistant must explain live delivery-fee authority');
+assert(route.includes('Zeshu keeps seller trust labels separate'), 'Assistant must explain seller trust labels');
+assert(route.includes('Zeshu WhatsApp customer support is not treated as live'), 'Assistant must not present WhatsApp support as live before activation');
+assert(route.includes('Zeshu Now is the fast local-commerce layer'), 'Assistant must explain the Zeshu Now/Market/Digital model');
+assert(route.includes('Use Zeshu’s Privacy Policy for the full data-handling terms'), 'Assistant must answer privacy questions safely');
+assert(help.includes('Current service status'), 'Help Center must show customer-facing service status');
+assert(help.includes('Available where shown'), 'Help Center must avoid claiming universal marketplace availability');
+assert(help.includes('Discovery available'), 'Help Center must label discovery-only services clearly');
 
 const moveFlagCount = (env.match(/^MOVE_EXECUTION_ENABLED=/gm) || []).length;
 assert(moveFlagCount === 1, 'MOVE_EXECUTION_ENABLED must be documented exactly once');
