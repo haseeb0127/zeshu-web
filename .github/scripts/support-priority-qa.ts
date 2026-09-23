@@ -14,6 +14,15 @@ assert(payment.label === 'HIGH' && payment.rank === 1, 'Payment/refund disputes 
 const parcel = classifySupportPriority('Courier / Cargo issue', 'Parcel tracking question');
 assert(parcel.label === 'SERVICE' && parcel.rank === 2, 'Service questions must be SERVICE priority');
 
+const marketplace = classifySupportPriority('Marketplace / seller issue', 'Seller invoice question');
+assert(marketplace.label === 'SERVICE' && marketplace.rank === 2, 'Marketplace seller cases must be SERVICE priority');
+
+const pharmacy = classifySupportPriority('Pharmacy / Health issue', 'Pharmacy availability question');
+assert(pharmacy.label === 'SERVICE' && pharmacy.rank === 2, 'Pharmacy cases must be SERVICE priority');
+
+const delivery = classifySupportPriority('Delivery issue', 'Address serviceability question');
+assert(delivery.label === 'SERVICE' && delivery.rank === 2, 'Delivery cases must be SERVICE priority');
+
 const routine = classifySupportPriority('Account question', 'How do I change the language?');
 assert(routine.label === 'NORMAL' && routine.rank === 3, 'Routine questions must be NORMAL');
 
