@@ -14,6 +14,8 @@ concurrency:
   group: cloudflare-staging
   cancel-in-progress: false
 
+# Feature-branch QA rerun after the serialized staging queue drained.
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
