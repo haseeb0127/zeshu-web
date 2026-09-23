@@ -3,7 +3,7 @@ name: Deploy marketplace foundation to Cloudflare staging
 on:
   push:
     branches:
-      - feat/asset-light-marketplace-ondc-readiness-20260923
+      - feat/marketplace-foundation-20260923
     paths:
       - ".github/workflows/cloudflare-marketplace-staging.yml"
   workflow_dispatch:
