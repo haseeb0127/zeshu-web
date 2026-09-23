@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - feat/move-travel-foundation-20260923
   workflow_dispatch:
 
 permissions:
@@ -131,7 +130,7 @@ jobs:
         run: |
           set -euo pipefail
           base="https://zeshu-web-staging.asif-mohammed0127.workers.dev"
-          for route in "/" "/policies" "/partners" "/app" "/scanner" "/move"; do
+          for route in "/" "/policies" "/partners" "/app" "/scanner"; do
             code="$(curl -L -sS -o /tmp/zeshu-staging-body -w '%{http_code}' "$base$route" || true)"
             if [ "$code" != "200" ]; then
               echo "Expected 200 from staging $route, got $code"
