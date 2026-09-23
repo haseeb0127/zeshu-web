@@ -445,6 +445,50 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
     };
   }
 
+  if (moveServiceIntent && /\b(when.*launch|launch date|when.*available|available when|go live|live date)\b/.test(text)) {
+    return {
+      answer: 'There is no published launch date I can safely promise for that service. Zeshu will enable it only after the real provider, serviceability, support, cancellation/refund and applicable compliance checks pass. The service page will stop showing Coming Soon only when customer booking is genuinely ready.',
+      resolved: true,
+      subject: 'Move & Travel launch timing',
+      handoff_reason: '',
+      suggested_questions: ['What is available right now?', 'How will this service work?', 'How can a provider partner with Zeshu?'],
+      intent: rideIntent(message) ? 'RIDES' : courierIntent(message) ? 'COURIER' : carShareIntent(message) ? 'CAR_SHARE' : 'TRAVEL',
+    };
+  }
+
+  if (moveServiceIntent && /\b(how much|price|fare|cost|charge|charges|surge|eta|pickup time|arrival time)\b/.test(text)) {
+    return {
+      answer: 'Zeshu does not have a live customer quote for that service yet, so I will not invent a fare, charge or ETA. When the service launches, Zeshu will show a real provider quote and serviceability before the customer confirms anything.',
+      resolved: true,
+      subject: 'Move & Travel pricing or ETA',
+      handoff_reason: '',
+      suggested_questions: ['What is available right now?', 'How will quotes work?', 'How does Zeshu keep bookings safe?'],
+      intent: rideIntent(message) ? 'RIDES' : courierIntent(message) ? 'COURIER' : carShareIntent(message) ? 'CAR_SHARE' : 'TRAVEL',
+    };
+  }
+
+  if (courierIntent(message) && /\b(weight|kg|kilogram|size|dimension|prohibited|restricted|can i send|allowed item|insurance|liability)\b/.test(text)) {
+    return {
+      answer: 'Direct Zeshu Courier/Cargo booking is not live yet, so final weight/size limits, prohibited-goods rules, insurance and liability must come from the verified provider shown when the service launches. The planned flow is pickup → drop → real quote → confirmation → tracking → proof of delivery.',
+      resolved: true,
+      subject: 'Courier rules and limits',
+      handoff_reason: '',
+      suggested_questions: ['Can I send a parcel now?', 'How will parcel tracking work?', 'What courier services are planned?'],
+      intent: 'COURIER',
+    };
+  }
+
+  if (travelIntent(message) && /\b(baggage|luggage|room policy|check in|check-in|ticket rule|fare rule)\b/.test(text)) {
+    return {
+      answer: 'Zeshu Travel is currently Coming Soon, so there is no live supplier booking policy to apply yet. When travel launches, the authorized provider shown at booking will supply the authoritative fare, baggage, room and ticket rules.',
+      resolved: true,
+      subject: 'Travel supplier policy',
+      handoff_reason: '',
+      suggested_questions: ['Can I book trains on Zeshu?', 'Will Zeshu have flights and hotels?', 'What is available right now?'],
+      intent: 'TRAVEL',
+    };
+  }
+
   if (carShareIntent(message)) {
     return {
       answer: 'Zeshu Car Share is visible as Coming Soon, but intercity car-share booking and payment are not enabled yet. Zeshu will only launch it after the cost-sharing/legal model, driver and vehicle verification, service rules and safety controls are approved.',
