@@ -260,7 +260,7 @@ jobs:
             await page.goto(base + '/help?service=Bike%20Ride', { waitUntil: 'networkidle', timeout: 60000 });
             assert(await page.getByRole('heading', { name: 'Zeshu Help Center' }).isVisible(), 'Help Center heading missing');
 
-            const input = page.locator('input[aria-label="Ask Zeshu Assistant"]');
+            const input = page.locator('input[placeholder="Ask anything about Zeshu…"]');
             await input.fill('Can I book a bike ride now?');
             await input.press('Enter');
             await page.waitForFunction(() => {
