@@ -225,17 +225,19 @@ const suggestedForIntent = (intent: string) => {
   return ['Where is my latest order?', 'What is my Zeshu Cash balance?', 'What can Zeshu Assistant help with?'];
 };
 
-const fallbackAnswer = (message: string, context: LiveAssistantContext): AssistantResult => {
+const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn = true): AssistantResult => {
   const text = message.toLowerCase();
   const moveServiceIntent = rideIntent(message) || courierIntent(message) || carShareIntent(message) || travelIntent(message);
 
   if (/\b(human|person|agent|support executive|talk to support)\b/.test(text)) {
     return {
-      answer: 'I’ll transfer this to Zeshu Support so a person can help you. You will not need to repeat the question.',
+      answer: signedIn
+        ? 'I’ll transfer this to Zeshu Support so a person can help you. You will not need to repeat the question.'
+        : 'Please sign in to open a private Zeshu Support conversation. You can still ask general service and policy questions here without signing in.',
       resolved: false,
       subject: 'Customer requested human support',
       handoff_reason: 'The customer explicitly requested a human support agent.',
-      suggested_questions: [],
+      suggested_questions: signedIn ? [] : ['What services are available?', 'How do refunds work?', 'Is Zeshu Move & Travel live?'],
       intent: 'HUMAN',
     };
   }
@@ -274,6 +276,16 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext): Assista
   }
 
   if (orderIntent(message) && !moveServiceIntent) {
+    if (!signedIn) {
+      return {
+        answer: 'Please sign in to check a private order status, payment reference or delivery tracking. General delivery and order-policy questions can still be answered here without signing in.',
+        resolved: true,
+        subject: 'Order help',
+        handoff_reason: '',
+        suggested_questions: ['How does delivery tracking work?', 'How do refunds work?', 'What do order statuses mean?'],
+        intent: 'ORDER',
+      };
+    }
     const latest = context.recent_orders?.[0];
     if (latest) {
       const items = latest.item_names.length ? ` Items include ${latest.item_names.slice(0, 3).join(', ')}.` : '';
@@ -297,6 +309,16 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext): Assista
   }
 
   if (rewardIntent(message)) {
+    if (!signedIn && /\b(my|balance|history|recent|earned|used)\b/i.test(message)) {
+      return {
+        answer: 'Please sign in to check your private Zeshu Cash balance or reward history. Zeshu Cash is promotional reward value and is not withdrawable bank cash.',
+        resolved: true,
+        subject: 'Zeshu Cash help',
+        handoff_reason: '',
+        suggested_questions: ['How does Zeshu Cash work?', 'How can I earn rewards?', 'What are referral rewards?'],
+        intent: 'REWARDS',
+      };
+    }
     const balance = context.reward_balance;
     if (typeof balance === 'number') {
       return {
@@ -591,14 +613,22 @@ export async function POST(request: Request) {
   const startedAt = Date.now();
   const { url: supabaseUrl, anonKey, serviceRoleKey } = await getRuntimeSupabaseEnv();
   const token = getBearer(request);
-  if (!supabaseUrl || !anonKey || !token) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+  let userId: string | null = null;
 
-  const authClient = createClient(supabaseUrl, anonKey, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  });
-  const { data: authData } = await authClient.auth.getUser(token);
-  if (!authData.user) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
-  const limited = rateLimitResponse(authData.user.id, 'support-assistant');
+  if (token) {
+    if (!supabaseUrl || !anonKey) return NextResponse.json({ error: 'Account support is temporarily unavailable.' }, { status: 503 });
+    const authClient = createClient(supabaseUrl, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    });
+    const { data: authData } = await authClient.auth.getUser(token);
+    if (!authData.user) return NextResponse.json({ error: 'Your session is no longer valid. Please sign in again.' }, { status: 401 });
+    userId = authData.user.id;
+  }
+
+  const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || request.headers.get('cf-connecting-ip')?.trim()
+    || 'guest';
+  const limited = rateLimitResponse(userId || `guest:${forwarded}`, 'support-assistant');
   if (limited) return limited;
 
   const body = await request.json().catch(() => ({}));
@@ -621,14 +651,17 @@ export async function POST(request: Request) {
   }
 
   const message = redactSensitive(rawMessage);
-  const service = serviceRoleKey
+  const service = supabaseUrl && serviceRoleKey
     ? createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } })
     : null;
-  const liveContext = service
-    ? await loadLiveAssistantContext({ service, userId: authData.user.id, message }).catch(() => ({} as LiveAssistantContext))
-    : {};
+  const moveServiceIntent = rideIntent(message) || courierIntent(message) || carShareIntent(message) || travelIntent(message);
+  const liveContext: LiveAssistantContext = userId && service
+    ? await loadLiveAssistantContext({ service, userId, message }).catch(() => ({} as LiveAssistantContext))
+    : moveServiceIntent
+      ? { move_services: getMoveServiceReadiness() }
+      : {};
 
-  let result = fallbackAnswer(message, liveContext);
+  let result = fallbackAnswer(message, liveContext, Boolean(userId));
   let source: 'ai' | 'guided' = 'guided';
 
   const [apiKey, aiFlag] = await Promise.all([
@@ -713,6 +746,13 @@ STYLE:
 ZESHU KNOWLEDGE:
 ${ZESHU_SUPPORT_KNOWLEDGE}
 
+CUSTOMER AUTH:
+${userId ? 'SIGNED_IN' : 'GUEST'}
+
+- For a GUEST, answer public policy, availability, navigation and service questions normally.
+- For a GUEST asking for private order status, Zeshu Cash balance/history, payment references or protected account data, explain that sign-in is required. Do not invent private data.
+- A human support conversation can only be created for a signed-in customer.
+
 LIVE CONTEXT:
 ${liveContextText}`,
               }],
@@ -736,11 +776,11 @@ ${liveContextText}`,
   }
 
   let conversation = null;
-  if (!result.resolved && serviceRoleKey) {
+  if (!result.resolved && userId && supabaseUrl && serviceRoleKey) {
     conversation = await createAutomaticHandoff({
       supabaseUrl,
       serviceRoleKey,
-      userId: authData.user.id,
+      userId,
       question: message,
       answer: result.answer,
       subject: result.subject,
@@ -763,6 +803,7 @@ ${liveContextText}`,
     context_used: contextUsed,
     latency_ms: Date.now() - startedAt,
     handoff_reason: result.handoff_reason,
+    signed_in: Boolean(userId),
     handoff: {
       requested: !result.resolved,
       created: Boolean(conversation),
