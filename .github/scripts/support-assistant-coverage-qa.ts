@@ -29,6 +29,10 @@ for (const topic of [
   'Zeshu Cash & Referrals',
   'Payments & Refunds',
   'Account & Safety',
+  'QR & UPI Tools',
+  'App & Languages',
+  'Offers & Sponsored',
+  'Pass & Subscriptions',
 ]) {
   assert(help.includes(`key: "${topic}"`), `Help Center must expose ${topic}`);
 }
@@ -45,6 +49,17 @@ assert(route.includes('Use Zeshu’s Privacy Policy for the full data-handling t
 assert(help.includes('Current service status'), 'Help Center must show customer-facing service status');
 assert(help.includes('Available where shown'), 'Help Center must avoid claiming universal marketplace availability');
 assert(help.includes('Discovery available'), 'Help Center must label discovery-only services clearly');
+assert(route.includes('QR and UPI Tools can be used for supported discovery/scanning utilities'), 'Assistant must explain QR/UPI execution limits');
+assert(route.includes('Zeshu Pass and Subscribe & Save are currently Coming Soon'), 'Assistant must explain subscription launch status');
+assert(route.includes('Sponsored banners or products must be clearly labelled'), 'Assistant must explain sponsored placement');
+assert(knowledge.includes('No membership fee, recurring charge or subscription payment should be collected'), 'Knowledge base must prevent premature subscription billing');
+assert(knowledge.includes('QR/contact money transfer, funded cashback and real UPI payment actions remain disabled'), 'Knowledge base must keep QR/UPI money movement gated');
+
+const home = fs.readFileSync('app/page.tsx', 'utf8');
+const move = fs.readFileSync('app/move/page.tsx', 'utf8');
+assert(home.includes('/help?service='), 'Digital service panel must expose service-specific support');
+assert(home.includes("t('Get help')"), 'Digital service panel must show a Get help action');
+assert(move.includes('/help?service='), 'Move & Travel cards must expose service-specific support');
 
 const moveFlagCount = (env.match(/^MOVE_EXECUTION_ENABLED=/gm) || []).length;
 assert(moveFlagCount === 1, 'MOVE_EXECUTION_ENABLED must be documented exactly once');
