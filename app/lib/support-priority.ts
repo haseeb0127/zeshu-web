@@ -16,7 +16,7 @@ export function classifySupportPriority(subject = '', latestBody = ''): SupportP
     return { label: 'HIGH', rank: 1 };
   }
 
-  if (/ride|courier|cargo|car share|travel|recharge|bill/.test(text)) {
+  if (/ride|courier|cargo|car share|travel|recharge|bill|marketplace|seller|pharmacy|delivery/.test(text)) {
     return { label: 'SERVICE', rank: 2 };
   }
 
