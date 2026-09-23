@@ -7,6 +7,9 @@ export type MoveServiceReadiness = {
   providerConfigured: boolean;
   executionRequested: boolean;
   customerBookingAvailable: false;
+  supportAvailable: true;
+  supportPath: string;
+  nextGate: 'VERIFY_PROVIDER' | 'SANDBOX_QA' | 'COMPLIANCE_SIGN_OFF';
   status: 'COMING_SOON';
 };
 
@@ -15,15 +18,33 @@ const configured = (name: string) => Boolean(process.env[name]?.trim());
 
 export function getMoveServiceReadiness(): Record<MoveServiceKey, MoveServiceReadiness> {
   const master = enabled('MOVE_EXECUTION_ENABLED');
-  const make = (service: MoveServiceKey, flag: string, provider: string): MoveServiceReadiness => ({
-    service,
-    providerConfigured: configured(provider),
-    executionRequested: master && enabled(flag),
-    // Intentionally hard-false until each service has a verified booking adapter,
-    // transaction state machine, refunds/cancellation handling and compliance sign-off.
-    customerBookingAvailable: false,
-    status: 'COMING_SOON',
-  });
+  const make = (service: MoveServiceKey, flag: string, provider: string): MoveServiceReadiness => {
+    const providerConfigured = configured(provider);
+    const executionRequested = master && enabled(flag);
+    const supportLabel: Record<MoveServiceKey, string> = {
+      rides: 'Rides',
+      courier: 'Courier & Cargo',
+      car_share: 'Car Share',
+      travel: 'Travel',
+    };
+
+    return {
+      service,
+      providerConfigured,
+      executionRequested,
+      // Intentionally hard-false until each service has a verified booking adapter,
+      // transaction state machine, refunds/cancellation handling and compliance sign-off.
+      customerBookingAvailable: false,
+      supportAvailable: true,
+      supportPath: `/help?service=${encodeURIComponent(supportLabel[service])}`,
+      nextGate: !providerConfigured
+        ? 'VERIFY_PROVIDER'
+        : !executionRequested
+          ? 'SANDBOX_QA'
+          : 'COMPLIANCE_SIGN_OFF',
+      status: 'COMING_SOON',
+    };
+  };
 
   return {
     rides: make('rides', 'MOVE_RIDES_EXECUTION_ENABLED', 'ZESHU_RIDES_PROVIDER'),

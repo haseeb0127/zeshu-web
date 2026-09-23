@@ -115,10 +115,37 @@ Choose based on **net contribution and customer reliability**, not headline comm
 
 ## Recommended rollout order
 
-1. Discovery-only Move & Travel page.
-2. Partner intake for licensed mobility/logistics/travel providers.
-3. Courier/logistics sandbox first because it does not carry passengers.
-4. Authorized travel integrations.
-5. Auto/Cab through licensed partners/interoperable networks.
-6. Bike ride only after Telangana-specific legal/licensing readiness.
-7. Car Share only after the cost-sharing/commercial-transport model is legally cleared.
+1. ✅ Discovery-only Move & Travel page — implemented.
+2. ✅ Partner intake for licensed mobility/logistics/travel providers — implemented.
+3. 🟡 Courier/logistics sandbox first because it does not carry passengers — internal provider contract, quote/booking state machine and safety gates are implemented; a real provider sandbox/account is still required before external API testing.
+4. 🟡 Authorized travel integrations — customer/support foundation is implemented; an authorized provider contract, sandbox and credentials are still required.
+5. 🟡 Auto/Cab through licensed partners/interoperable networks — internal provider contract is implemented; licensed provider/commercial onboarding and Telangana-specific readiness remain external gates.
+6. 🔒 Bike ride — keep booking disabled until Telangana-specific legal/licensing readiness and provider onboarding are confirmed.
+7. 🔒 Car Share — keep booking disabled until the cost-sharing/commercial-transport model is legally cleared and driver/vehicle/safety responsibilities are verified.
+
+## Internal integration foundation completed
+
+Zeshu now has a provider-neutral Move contract covering:
+
+- serviceability;
+- quote;
+- booking;
+- tracking;
+- cancellation;
+- refund.
+
+A shared booking state machine prevents unsafe retries when provider status is uncertain and forces manual review when money may have moved. Environment flags still cannot make customer booking live by themselves; `customerBookingAvailable` remains hard-disabled until a verified adapter and go-live review explicitly change it.
+
+### External blockers before the remaining services can actually transact
+
+These items cannot be completed only in source code:
+
+- commercial agreement/onboarding with the selected provider;
+- provider sandbox/API credentials;
+- live serviceability and quote verification;
+- cancellation/refund and webhook reconciliation tests;
+- settlement/commercial terms;
+- applicable Telangana or India transport/travel compliance;
+- production secrets entered directly in the hosting/provider consoles.
+
+Do not mark a service live merely because a provider name or environment flag exists.
