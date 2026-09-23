@@ -3089,6 +3089,13 @@ export default function ZeshuSuperApp() {
                </div>
                
                <div className="p-5 md:p-8 space-y-5">
+                 <div className="flex items-center justify-between gap-3 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3">
+                   <div className="min-w-0">
+                     <p className="text-xs font-black text-blue-950">{t('Need help with this service?')}</p>
+                     <p className="mt-1 truncate text-[11px] font-semibold text-blue-700">{t(currentServiceObj.label)} · {t('Customer support')}</p>
+                   </div>
+                   <Link href={`/help?service=${encodeURIComponent(currentServiceObj.label)}`} className="shrink-0 rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white">{t('Ask Zeshu Assistant')}</Link>
+                 </div>
                  {unavailableService && ['pharmacy', 'upi'].includes(activeService) ? (
                    <div className="rounded-3xl border border-[#cfe7d8] bg-[#f4fbf6] p-6 text-center md:p-10">
                      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e1f3e7] text-[#075E45]"><Info size={24}/></div>
