@@ -52,7 +52,7 @@
 - [x] Manual support form remains as fallback if automatic handoff fails.
 - [x] AI support endpoint rate limiting.
 - [x] AI support privacy disclosure and no-secret guidance.
-- [x] Guided support covers marketplace, rides, courier/cargo, Car Share, travel, recharge/bills, pharmacy/health, payments, refunds and safety escalation.
+- [x] Guided support covers marketplace, rides, courier/cargo, Car Share, travel, recharge/bills, pharmacy/health, payments, refunds, seller trust, delivery fees, promotions, privacy, WhatsApp availability and safety escalation.
 - [x] Move & Travel service cards link directly into service-aware Help & Support.
 - [x] Move & Travel readiness endpoint fails closed with customer booking/payment disabled until provider-specific launch gates pass.
 - [x] Admin customer-support sound, vibration and browser notifications.
@@ -114,7 +114,7 @@
 ## Final QA
 - [x] Automated production public-route, AI-readiness, and auth-boundary smoke test.
 - [x] Latest production deployment is green.
-- [ ] Mobile-layout QA.
+- [x] Automated mobile-layout QA on a 390×844 Chromium viewport, including storefront search/filters, marketplace fulfilment, Help Center and multilingual/RTL regression.
 - [ ] Browser QA on real Chrome/Safari/Edge devices.
 - [ ] Customer login / logout smoke test.
 - [ ] Address and service-area smoke test.
