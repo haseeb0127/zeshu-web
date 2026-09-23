@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { classifySupportPriority } from "../lib/support-priority";
 
 type Props = { supabaseClient: any };
 
 async function showSupportNotification(subject = "") {
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
-  const urgent = /safety|unsafe|accident|emergency|harass|threat|assault|danger/i.test(subject);
+  const priority = classifySupportPriority(subject);
+  const urgent = priority.label === "URGENT";
   const title = urgent ? "URGENT Zeshu safety support" : "Zeshu customer needs support";
   const body = urgent ? "Open Support in ZESHU HQ now and review the safety escalation." : "Open Support in ZESHU HQ to reply.";
   try {
