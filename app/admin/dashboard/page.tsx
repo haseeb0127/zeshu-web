@@ -85,6 +85,7 @@ export default function AdminDashboard() {
   const [supportStatusFilter, setSupportStatusFilter] = useState<"ALL" | "WAITING" | "OPEN" | "RESOLVED">("ALL");
   const [supportPriorityFilter, setSupportPriorityFilter] = useState<"ALL" | "URGENT" | "HIGH" | "SERVICE" | "NORMAL">("ALL");
   const [supportCategoryFilter, setSupportCategoryFilter] = useState<SupportCategoryFilter>("ALL");
+  const [supportSearch, setSupportSearch] = useState("");
   const [selectedSupportConversation, setSelectedSupportConversation] = useState<Row | null>(null);
   const [supportMessages, setSupportMessages] = useState<Row[]>([]);
   const [supportLoading, setSupportLoading] = useState(false);
@@ -363,8 +364,16 @@ export default function AdminDashboard() {
     const statusMatches = supportStatusFilter === "ALL" || conversation.status === supportStatusFilter;
     const priorityMatches = supportPriorityFilter === "ALL" || conversation.support_priority === supportPriorityFilter;
     const categoryMatches = supportCategoryFilter === "ALL" || conversation.support_category === supportCategoryFilter;
-    return statusMatches && priorityMatches && categoryMatches;
-  }), [supportConversations, supportStatusFilter, supportPriorityFilter, supportCategoryFilter]);
+    const query = supportSearch.trim().toLowerCase();
+    const searchMatches = !query || [
+      conversation.subject,
+      conversation.user_id,
+      conversation.order_id,
+      conversation.last_message?.body,
+      conversation.support_category,
+    ].some((value) => String(value || "").toLowerCase().includes(query));
+    return statusMatches && priorityMatches && categoryMatches && searchMatches;
+  }), [supportConversations, supportStatusFilter, supportPriorityFilter, supportCategoryFilter, supportSearch]);
 
   if (loading) return <div className="min-h-screen grid place-items-center"><div className="animate-spin h-10 w-10 border-4 border-[#087443] border-t-transparent rounded-full" /></div>;
   if (accessError) return <div className="min-h-screen grid place-items-center p-6 text-center"><div><h1 className="text-2xl font-black">Admin access required</h1><p className="mt-2 text-slate-500">This account is not authorized for Zeshu HQ.</p></div></div>;
@@ -386,6 +395,7 @@ export default function AdminDashboard() {
       {tab === "support" && <section className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <div className="rounded-2xl bg-white p-5 shadow-[0_4px_16px_rgba(19,32,25,.06)]">
           <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-black">Support inbox</h2><p className="mt-1 text-xs text-slate-500">Safety first, then payment/refund/provider disputes, then routine questions.</p></div><button type="button" onClick={() => void loadSupportConversations()} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black">Refresh</button></div>
+          <label className="mt-4 block"><span className="sr-only">Search support inbox</span><input value={supportSearch} onChange={(event) => setSupportSearch(event.target.value)} placeholder="Search issue, customer, order or message…" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold outline-none focus:border-emerald-500" /></label>
           <div className="mt-4 flex flex-wrap gap-2">{(["ALL", "WAITING", "OPEN", "RESOLVED"] as const).map((status) => <button type="button" key={status} onClick={() => setSupportStatusFilter(status)} className={`rounded-full px-3 py-1.5 text-[11px] font-black ${supportStatusFilter === status ? "bg-[#087443] text-white" : "bg-slate-100 text-slate-600"}`}>{status === "WAITING" ? "Waiting for support" : status}</button>)}</div>
           <div className="mt-2 flex flex-wrap gap-2">{(["ALL", "URGENT", "HIGH", "SERVICE", "NORMAL"] as const).map((priority) => <button type="button" key={priority} onClick={() => setSupportPriorityFilter(priority)} className={`rounded-full px-3 py-1.5 text-[11px] font-black ${supportPriorityFilter === priority ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700"}`}>{priority === "ALL" ? "All priorities" : priority}</button>)}</div>
           <div className="mt-2 flex gap-2 overflow-x-auto pb-1 no-scrollbar">{SUPPORT_CATEGORIES.map((category) => <button type="button" key={category} onClick={() => setSupportCategoryFilter(category)} className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-black ${supportCategoryFilter === category ? "bg-violet-600 text-white" : "bg-violet-50 text-violet-700"}`}>{category === "ALL" ? "All services" : category.replace(" issue", "")}</button>)}</div>
