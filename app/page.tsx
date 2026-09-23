@@ -22,34 +22,12 @@ import { catalogSearchScore, getCatalogSearchRecommendations, isCatalogSearchMat
 import { CUSTOMER_CATEGORY_DEFINITIONS, campaignMatchesCustomerCategory, categoryDefinition, productMatchesCustomerCategory } from './lib/catalog-categories';
 import { isFreshThirtyMinuteCandidate, isIndiaReadyProduct } from './lib/fulfillment';
 import { groupCartByFulfillment, marketplaceRecommendedScore, type MarketplaceSeller } from './lib/marketplace';
+import { classifySupportCategory } from './lib/support-category';
 
 const supabase = customerSupabase();
 const SUPPORT_WHATSAPP_UI_ENABLED = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED === 'true';
 
-const supportCategoryForIntent = (intent: string, message = '') => {
-  const normalizedIntent = String(intent || '').trim().toUpperCase();
-  const text = message.toLowerCase();
-  if (normalizedIntent === 'SAFETY' || /\b(accident|unsafe|danger|harass|harassment|threat|assault|emergency|safety)\b/.test(text)) return 'Safety issue';
-  if (normalizedIntent === 'REFUND' || normalizedIntent === 'REFUND_POLICY' || /\b(refund|return|cancel|cancellation)\b/.test(text)) return 'Refund issue';
-  if (normalizedIntent === 'PAYMENT' || /\b(payment|charged|debited|checkout|upi|card)\b/.test(text)) return 'Payment issue';
-  if (normalizedIntent === 'PHARMACY' || /\b(pharmacy|medicine|medicines|prescription|health)\b/.test(text)) return 'Pharmacy / Health issue';
-  if (normalizedIntent === 'RIDES' || /\b(bike ride|bike taxi|auto|cab|taxi|driver|ride)\b/.test(text)) return 'Ride issue';
-  if (normalizedIntent === 'COURIER' || /\b(courier|cargo|parcel|package|mini truck|tempo|porter)\b/.test(text)) return 'Courier / Cargo issue';
-  if (normalizedIntent === 'CAR_SHARE' || /\b(car share|carpool|car pool|car sharing)\b/.test(text)) return 'Car Share issue';
-  if (normalizedIntent === 'TRAVEL' || /\b(train|rail|flight|hotel|bus ticket|travel|pnr|experience)\b/.test(text)) return 'Travel issue';
-  if (normalizedIntent === 'MARKETPLACE' || /\b(marketplace|seller|vendor|electronics|fashion|beauty|warranty|invoice)\b/.test(text)) return 'Marketplace / seller issue';
-  if (normalizedIntent === 'PROVIDER_DISPUTE' || normalizedIntent === 'DIGITAL' || /\b(recharge|bill|fastag|electricity|broadband|dth|water|gas)\b/.test(text)) return 'Recharge/Bill issue';
-  if (normalizedIntent === 'ACCOUNT_CHANGE' || normalizedIntent === 'ACCOUNT' || /\b(account|login|otp|profile|phone)\b/.test(text)) return 'Account issue';
-  if (normalizedIntent === 'DELIVERY' || /\b(delivery|rider|address|location|serviceable|late)\b/.test(text)) return 'Delivery issue';
-  if (normalizedIntent === 'ORDER' || /\b(order|grocery|item|stock)\b/.test(text)) return 'Order issue';
-  if (normalizedIntent === 'SERVICE_DISPUTE') {
-    if (/\b(courier|cargo|parcel|package|mini truck|tempo)\b/.test(text)) return 'Courier / Cargo issue';
-    if (/\b(car share|carpool|car pool)\b/.test(text)) return 'Car Share issue';
-    if (/\b(train|rail|flight|hotel|travel|pnr)\b/.test(text)) return 'Travel issue';
-    if (/\b(bike|auto|cab|taxi|driver|ride)\b/.test(text)) return 'Ride issue';
-  }
-  return 'Other';
-};
+const supportCategoryForIntent = classifySupportCategory;
 
 const SERVICES = [
   { id: 'mobile', label: 'Prepaid', icon: <Smartphone size={28} strokeWidth={1.5}/>, color: 'bg-[#EEF7F1] text-[#075E45] group-hover:bg-[#075E45] group-hover:text-white', inputLabel: 'Mobile Number' },
