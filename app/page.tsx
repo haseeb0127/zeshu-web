@@ -2300,8 +2300,7 @@ export default function ZeshuSuperApp() {
   };
   const openAiSupport = () => {
     if (!user) {
-      setIsAuthModalOpen(true);
-      showToast('Sign in to chat with Zeshu Assistant.');
+      window.location.assign('/help');
       return;
     }
     setAccountView('SUPPORT');
@@ -3399,7 +3398,8 @@ export default function ZeshuSuperApp() {
           <span className="font-bold">© Zeshu · {t('Everyday, simply')}</span>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Link href="/services" className="font-black text-[#075E45] underline-offset-4 hover:underline">{t('Recharge & Bills')}</Link>
-                        <Link href="/policies" className="font-black text-[#075E45] underline-offset-4 hover:underline">{t('Policies & Trust Center')}</Link>
+            <Link href="/help" className="font-black text-[#075E45] underline-offset-4 hover:underline">{t('Help & Support')}</Link>
+            <Link href="/policies" className="font-black text-[#075E45] underline-offset-4 hover:underline">{t('Policies & Trust Center')}</Link>
             <Link href="/partners" className="font-black text-[#075E45] underline-offset-4 hover:underline">{t('Brands & Suppliers')}</Link>
             <Link href="/app" className="font-black text-[#075E45] underline-offset-4 hover:underline">{t('Get Zeshu')}</Link>
             <span>{t('Real support is provided through verified order communication.')}</span>
