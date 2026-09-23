@@ -9,6 +9,8 @@ const opportunities = [
   { title: 'Local supplier onboarding', body: 'Jagtial grocery, fresh-food, electronics, clothing and other eligible suppliers can be reviewed for fulfilment partnerships.' },
   { title: 'Licensed pharmacy partners', body: 'Only appropriately licensed pharmacies will be considered for medicine fulfilment. Prescription workflows remain disabled until compliance and provider operations are verified.' },
   { title: 'Recharge & bill providers', body: 'BBPS/Bharat Connect, recharge and utility providers can propose compliant API or agent-institution integrations with settlement, commission and dispute-support terms.' },
+  { title: 'Mobility networks', body: 'Licensed ride aggregators, fleet operators and interoperable mobility networks can propose bike, auto, cab, rental or outstation integrations. No customer booking activates until licensing, serviceability, safety and support are verified.' },
+  { title: 'Courier & logistics', body: 'Bike courier, parcel, hyperlocal logistics and cargo providers can propose API or marketplace integrations with live serviceability, tracking, proof-of-delivery, pricing and support terms.' },
   { title: 'Travel distribution', body: 'Flight, hotel, bus and authorised rail partners can propose API, white-label or affiliate distribution for India-wide travel discovery and booking.' },
 ];
 
@@ -44,7 +46,7 @@ export default function PartnersPage() {
 
         <section className="mt-6 rounded-3xl bg-emerald-50 p-6 md:p-8">
           <h2 className="text-xl font-black">Become a Zeshu partner</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Apply directly below. Local physical-fulfilment partners should include their Jagtial capability. Recharge/bill and travel providers should include API/white-label, commission, settlement and support terms. Sponsors should include campaign budget and the products/services they want to promote. Pharmacy or medicine-distribution applicants must include valid licence details.</p>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Apply directly below. Local physical-fulfilment partners should include their Jagtial capability. Recharge/bill, mobility, logistics and travel providers should include API/white-label, commission, settlement, serviceability, tracking and support terms. Sponsors should include campaign budget and the products/services they want to promote. Pharmacy or medicine-distribution applicants must include valid licence details.</p>
           <PartnerLeadForm />
         </section>
       </div>
