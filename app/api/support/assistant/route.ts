@@ -314,6 +314,28 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
     };
   }
 
+  if (!moveServiceIntent && /order status meanings|what does.*(?:pending|confirmed|preparing|ready for pickup|picked up|out for delivery|delivered|cancelled)|status mean/.test(text)) {
+    return {
+      answer: 'Order statuses: PENDING = received but not yet confirmed; CONFIRMED = accepted; PREPARING = the store is preparing it; READY FOR PICKUP = waiting for rider pickup; PICKED UP = collected by the rider; OUT FOR DELIVERY = on the way; DELIVERED = completed; CANCELLED = cancelled.',
+      resolved: true,
+      subject: 'Order status meanings',
+      handoff_reason: '',
+      suggested_questions: ['What is my latest order status?', 'How does live tracking work?', 'I have an order problem'],
+      intent: 'ORDER',
+    };
+  }
+
+  if (!moveServiceIntent && /live tracking|track.*rider|rider location|delivery eta|where.*rider|when.*arrive/.test(text)) {
+    return {
+      answer: 'When a rider is assigned and fresh location data is available, Zeshu can show rider-location freshness and an estimated arrival time. ETA is an estimate, not a guarantee. Sign in and open My Account → Orders & payments to view the latest available tracking for your order.',
+      resolved: true,
+      subject: 'Delivery tracking help',
+      handoff_reason: '',
+      suggested_questions: ['What is my latest order status?', 'What do order statuses mean?', 'My delivery is late'],
+      intent: 'DELIVERY',
+    };
+  }
+
   if (orderIntent(message) && !moveServiceIntent) {
     if (!signedIn) {
       return {
@@ -344,6 +366,17 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
       handoff_reason: '',
       suggested_questions: suggestedForIntent('ORDER'),
       intent: 'ORDER',
+    };
+  }
+
+  if (rewardIntent(message) && /how.*(?:zeshu cash|reward)|earn.*(?:zeshu cash|reward)|redeem|use.*zeshu cash|reward rules|cashback rules/.test(text)) {
+    return {
+      answer: 'Zeshu Cash is promotional reward value, not withdrawable bank cash, and ₹1 Zeshu Cash has ₹1 redemption value. Grocery redemption is currently limited by your balance, the amount you request, ₹20, 10% of merchandise subtotal and the requirement that at least ₹1 remains payable. Reward campaigns can change, so My Account → Zeshu Cash and checkout show the current authoritative balance and usable amount.',
+      resolved: true,
+      subject: 'Zeshu Cash rules',
+      handoff_reason: '',
+      suggested_questions: ['What is my Zeshu Cash balance?', 'What are referral rewards?', 'Where do I see reward history?'],
+      intent: 'REWARDS',
     };
   }
 
