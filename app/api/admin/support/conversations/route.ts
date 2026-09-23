@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
+import { classifySupportPriority } from '@/app/lib/support-priority';
 
 export async function GET(request: Request) {
   const { url, anonKey, serviceRoleKey } = await getRuntimeSupabaseEnv();
@@ -31,17 +32,9 @@ export async function GET(request: Request) {
       });
     }
   }
-  const priorityFor = (subject: string, latestBody: string) => {
-    const text = `${subject} ${latestBody}`.toLowerCase();
-    if (/safety|unsafe|accident|emergency|harass|threat|assault|danger/.test(text)) return { label: 'URGENT', rank: 0 };
-    if (/payment|refund|charged|debited|duplicate|provider dispute|lost parcel|missing parcel|damaged parcel/.test(text)) return { label: 'HIGH', rank: 1 };
-    if (/ride|courier|cargo|car share|travel|recharge|bill/.test(text)) return { label: 'SERVICE', rank: 2 };
-    return { label: 'NORMAL', rank: 3 };
-  };
-
   const enriched = conversations.map((conversation) => {
     const lastMessage = latestByConversation.get(conversation.id) || null;
-    const priority = priorityFor(String(conversation.subject || ''), String(lastMessage?.body || ''));
+    const priority = classifySupportPriority(String(conversation.subject || ''), String(lastMessage?.body || ''));
     return { ...conversation, last_message: lastMessage, support_priority: priority.label, support_priority_rank: priority.rank };
   }).sort((a, b) => {
     const resolvedDelta = Number(a.status === 'RESOLVED') - Number(b.status === 'RESOLVED');
