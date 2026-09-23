@@ -208,7 +208,9 @@ jobs:
           ask() {
             local question="$1"
             local expected="$2"
-            curl -L -sS -X POST "$base/api/support/assistant"               -H 'Content-Type: application/json'               --data "{"message":"$question"}" > /tmp/support-answer
+            local payload
+            payload="$(node -e 'process.stdout.write(JSON.stringify({ message: process.argv[1] }))' "$question")"
+            curl -L -sS -X POST "$base/api/support/assistant" -H 'Content-Type: application/json' --data "$payload" > /tmp/support-answer
             node - "$expected" <<'NODE'
           const fs = require('fs');
           const expected = process.argv[2];
