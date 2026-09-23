@@ -233,6 +233,18 @@ jobs:
 
             const heading = page.getByRole('heading', { name: 'Zeshu Help Center' });
             await heading.waitFor({ state: 'visible', timeout: 10000 });
+            const initialHelpText = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            for (const topic of ['Delivery & Tracking', 'Pharmacy & Health', 'Rewards & Referrals', 'Rides', 'Courier & Cargo', 'Car Share', 'Travel']) {
+              assert(initialHelpText.includes(topic), `Help Center topic missing: ${topic}`);
+            }
+
+            const assistantReadinessResponse = await page.request.get(base + '/api/support/assistant');
+            assert(assistantReadinessResponse.ok(), 'Assistant readiness endpoint failed');
+            const assistantReadiness = await assistantReadinessResponse.json();
+            assert(typeof assistantReadiness?.ai_readiness?.flag_enabled === 'boolean', 'AI flag readiness boolean missing');
+            assert(typeof assistantReadiness?.ai_readiness?.key_configured === 'boolean', 'AI key readiness boolean missing');
+            assert(typeof assistantReadiness?.ai_readiness?.ready === 'boolean', 'AI ready boolean missing');
+            assert(assistantReadiness.ai_readiness.ready === (assistantReadiness.ai_readiness.flag_enabled && assistantReadiness.ai_readiness.key_configured), 'AI readiness booleans are inconsistent');
 
             const input = page.locator('input[placeholder="Ask anything about Zeshu…"]');
             await input.fill('Can I book a bike ride now?');
@@ -260,6 +272,9 @@ jobs:
             const hindi = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
             assert(hindi.includes('Zeshu हेल्प सेंटर'), 'Help Center heading is not localized in Hindi');
             assert(hindi.includes('राइड्स'), 'Help Center rides topic is not localized in Hindi');
+            assert(hindi.includes('डिलीवरी और ट्रैकिंग'), 'Help Center delivery topic is not localized in Hindi');
+            assert(hindi.includes('फार्मेसी और हेल्थ'), 'Help Center pharmacy topic is not localized in Hindi');
+            assert(hindi.includes('रिवॉर्ड्स और रेफरल्स'), 'Help Center rewards topic is not localized in Hindi');
 
             await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'ur'));
             await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
@@ -267,6 +282,9 @@ jobs:
             const urdu = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
             assert(urdu.includes('Zeshu ہیلپ سینٹر'), 'Help Center heading is not localized in Urdu');
             assert(urdu.includes('رائیڈز'), 'Help Center rides topic is not localized in Urdu');
+            assert(urdu.includes('ڈیلیوری اور ٹریکنگ'), 'Help Center delivery topic is not localized in Urdu');
+            assert(urdu.includes('فارمیسی اور ہیلتھ'), 'Help Center pharmacy topic is not localized in Urdu');
+            assert(urdu.includes('ریوارڈز اور ریفرلز'), 'Help Center rewards topic is not localized in Urdu');
             assert(await page.locator('html').getAttribute('dir') === 'rtl', 'Urdu Help Center is not RTL');
 
             await page.screenshot({ path: 'help-center-urdu.png', fullPage: true });
