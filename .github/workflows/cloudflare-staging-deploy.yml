@@ -270,18 +270,22 @@ jobs:
             const addButton = page.locator('#products').getByRole('button', { name: 'ADD', exact: true }).first();
             await addButton.waitFor({ state: 'visible', timeout: 10000 });
             await addButton.click();
-            await page.waitForFunction(() => {
-              try {
-                const cart = JSON.parse(localStorage.getItem('zeshu_customer_cart') || '[]');
-                return Array.isArray(cart) && cart.length > 0;
-              } catch {
-                return false;
-              }
-            }, null, { timeout: 5000 });
+            const locationDialog = page.getByRole('dialog', { name: 'Choose delivery location' });
+            await locationDialog.waitFor({ state: 'visible', timeout: 10000 });
+            const blockedCartState = await page.evaluate(() => JSON.parse(localStorage.getItem('zeshu_customer_cart') || '[]'));
+            assert(Array.isArray(blockedCartState) && blockedCartState.length === 0, 'Physical ADD bypassed the serviceable-location gate');
+            await page.getByRole('button', { name: 'Close location selector' }).click();
 
-            const cartState = await page.evaluate(() => JSON.parse(localStorage.getItem('zeshu_customer_cart') || '[]'));
-            assert(Array.isArray(cartState) && cartState.length > 0, 'ADD did not persist the customer cart');
+            const seeded = await page.evaluate(() => {
+              const products = JSON.parse(localStorage.getItem('zeshu_products') || '[]');
+              const product = products.find((entry) => entry?.vendor_id && entry?.in_stock !== false && Number(entry?.quantity) > 0 && entry?.delivery_mode !== 'INDIA_STANDARD');
+              if (!product) return false;
+              localStorage.setItem('zeshu_customer_cart', JSON.stringify([{ item: product, qty: 1 }]));
+              return true;
+            });
+            assert(seeded, 'Could not seed a safe local staging cart for non-payment checkout regression');
 
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
             const cartButton = page.locator('button[aria-label^="Open cart"]').first();
             await cartButton.click();
             const cart = page.getByRole('dialog');
