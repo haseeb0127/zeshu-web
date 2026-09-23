@@ -183,7 +183,14 @@ jobs:
             assert(hindi.includes('बुक और पे'), 'Book & Pay is not localized in Hindi');
             assert(hindi.includes('सभी प्रोडक्ट'), 'All Products heading is not localized in Hindi');
             assert(hindi.includes('आइटम'), 'Product count is not localized in Hindi');
-            assert(hindi.includes('स्थानीय डिलीवरी') || hindi.includes('30 मिनट में ताज़ा'), 'Delivery badge is not localized in Hindi');
+            assert(
+              hindi.includes('आज')
+              || hindi.includes('10–30 मिनट')
+              || hindi.includes('2–4 दिन')
+              || hindi.includes('भारत डिलीवरी जल्द')
+              || hindi.includes('स्थानीय डिलीवरी'),
+              'Delivery promise is not localized in Hindi',
+            );
             assert(hindi.includes('अभी कोई समीक्षा नहीं'), 'Review empty state is not localized in Hindi');
             assert(hindi.includes('समीक्षाएँ देखें'), 'Review action is not localized in Hindi');
             assert(hindi.includes('जोड़ें'), 'ADD action is not localized in Hindi');
