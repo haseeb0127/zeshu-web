@@ -108,7 +108,7 @@
 - [ ] Licensed pharmacy partner and prescription workflow before medicine transactions.
 - [ ] Electronics dealer SLA before advertising same-day / five-hour delivery.
 - [ ] Clothing supplier onboarding.
-- [ ] Rider operating SOP and support escalation SOP.
+- [x] Rider operating SOP and support escalation SOP documented in `docs/RIDER_OPERATIONS.md` and linked to the customer-support escalation matrix.
 - [ ] Brand advertising rate card and campaign agreement.
 
 ## Final QA
