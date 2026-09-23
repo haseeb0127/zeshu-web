@@ -3,6 +3,7 @@ import fs from 'node:fs';
 const route = fs.readFileSync('app/api/support/assistant/route.ts', 'utf8');
 const knowledge = fs.readFileSync('app/lib/support-ai.ts', 'utf8');
 const env = fs.readFileSync('.env.example', 'utf8');
+const help = fs.readFileSync('app/help/page.tsx', 'utf8');
 
 const assert = (condition: boolean, message: string) => {
   if (!condition) throw new Error(message);
@@ -14,6 +15,26 @@ assert(route.includes('final weight/size limits, prohibited-goods rules, insuran
 assert(route.includes('authorized provider shown at booking will supply the authoritative fare, baggage, room and ticket rules'), 'Travel supplier rules must remain provider-authoritative');
 assert(knowledge.includes('do not invent or estimate a launch date'), 'Knowledge base must forbid invented launch dates');
 assert(knowledge.includes('do not estimate it'), 'Knowledge base must forbid invented Move pricing/ETA');
+
+for (const topic of [
+  'Shopping & Orders',
+  'Marketplace',
+  'Delivery & Address',
+  'Rides',
+  'Courier & Cargo',
+  'Car Share',
+  'Travel',
+  'Pharmacy & Health',
+  'Recharge & Bills',
+  'Zeshu Cash & Referrals',
+  'Payments & Refunds',
+  'Account & Safety',
+]) {
+  assert(help.includes(`key: "${topic}"`), `Help Center must expose ${topic}`);
+}
+assert(help.includes('Human support is available for every Zeshu service.'), 'Help Center must offer human support across services');
+assert(route.includes('support_category: classifySupportCategory'), 'Assistant responses must include a normalized support category');
+assert(route.includes('buildCategorizedSupportSubject'), 'Automatic handoffs must carry a categorized subject');
 
 const moveFlagCount = (env.match(/^MOVE_EXECUTION_ENABLED=/gm) || []).length;
 assert(moveFlagCount === 1, 'MOVE_EXECUTION_ENABLED must be documented exactly once');
