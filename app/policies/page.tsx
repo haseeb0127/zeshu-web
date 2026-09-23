@@ -132,7 +132,7 @@ export default function PoliciesPage() {
   return (
     <main className="min-h-screen bg-[#f8fbf8] px-4 py-10 text-slate-900 md:px-8">
       <div className="mx-auto max-w-4xl">
-        <Link href="/" className="text-sm font-black text-[#087443]">← Back to Zeshu</Link>
+        <Link href="/" className="text-sm font-black text-[#075E45]">← Back to Zeshu</Link>
         <header className="mt-8 rounded-3xl bg-[#083b27] p-7 text-white md:p-10">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-[#a6dfba]">Zeshu Trust Center</p>
           <h1 className="mt-2 text-3xl font-black tracking-tight md:text-5xl">Policies &amp; customer information</h1>
@@ -141,7 +141,7 @@ export default function PoliciesPage() {
         </header>
         <nav aria-label="Policy sections" className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
           <p className="text-xs font-black uppercase tracking-wider text-slate-500">On this page</p>
-          <div className="mt-3 flex flex-wrap gap-2">{sections.map((section) => <a key={section.id} href={`#${section.id}`} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-black text-[#087443]">{section.title}</a>)}</div>
+          <div className="mt-3 flex flex-wrap gap-2">{sections.map((section) => <a key={section.id} href={`#${section.id}`} className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-black text-[#075E45]">{section.title}</a>)}</div>
         </nav>
         <div className="mt-6 space-y-4">
           {sections.map((section) => <section id={section.id} key={section.id} className="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-lg font-black">{section.title}</h2>{section.body.map((paragraph) => <p key={paragraph} className="mt-3 text-sm leading-6 text-slate-600">{paragraph}</p>)}</section>)}
