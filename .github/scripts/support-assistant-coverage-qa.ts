@@ -4,6 +4,9 @@ const route = fs.readFileSync('app/api/support/assistant/route.ts', 'utf8');
 const knowledge = fs.readFileSync('app/lib/support-ai.ts', 'utf8');
 const env = fs.readFileSync('.env.example', 'utf8');
 const help = fs.readFileSync('app/help/page.tsx', 'utf8');
+const adminSupport = fs.readFileSync('app/api/admin/support/conversations/route.ts', 'utf8');
+const adminDashboard = fs.readFileSync('app/admin/dashboard/page.tsx', 'utf8');
+const storefront = fs.readFileSync('app/page.tsx', 'utf8');
 
 const assert = (condition: boolean, message: string) => {
   if (!condition) throw new Error(message);
@@ -29,6 +32,7 @@ for (const topic of [
   'Zeshu Cash & Referrals',
   'Payments & Refunds',
   'Account & Safety',
+  'App, QR & Pass',
 ]) {
   assert(help.includes(`key: "${topic}"`), `Help Center must expose ${topic}`);
 }
@@ -45,6 +49,29 @@ assert(route.includes('Use Zeshu’s Privacy Policy for the full data-handling t
 assert(help.includes('Current service status'), 'Help Center must show customer-facing service status');
 assert(help.includes('Available where shown'), 'Help Center must avoid claiming universal marketplace availability');
 assert(help.includes('Discovery available'), 'Help Center must label discovery-only services clearly');
+for (const phrase of [
+  'Zeshu Prepaid is designed for India-wide mobile-plan discovery',
+  'Zeshu DTH can guide you through subscriber/customer ID entry',
+  'For Electricity, select the electricity provider first',
+  'For FASTag, choose a supported provider',
+  'Zeshu LPG currently supports the customer discovery surface only',
+  'For Piped Gas, choose a supported provider',
+  'For Water Bill discovery, select a supported provider',
+  'For Broadband, select the provider',
+  'Zeshu can provide QR/scanner tools',
+  'Use Get Zeshu for the currently supported install options',
+  'Zeshu Pass and Subscribe & Save are Coming Soon',
+]) {
+  assert(route.includes(phrase), `Assistant service coverage is missing: ${phrase}`);
+}
+assert(help.includes('const DIGITAL_HELP = ['), 'Help Center must expose digital-service support shortcuts');
+assert(help.includes('Popular digital help'), 'Help Center must label digital support shortcuts');
+assert(adminSupport.includes('support_category: supportCategory'), 'Admin support API must expose a service category');
+assert(adminDashboard.includes('SUPPORT_CATEGORIES'), 'Admin support inbox must expose service-category filters');
+assert(adminDashboard.includes('All services'), 'Admin support inbox must provide an all-services category view');
+assert(adminDashboard.includes('Search issue, customer, order or message…'), 'Admin support inbox must support operational search');
+assert(storefront.includes('Need help with this service?'), 'Every digital service surface must link to contextual support');
+assert(storefront.includes('/help?service='), 'Digital-service support must deep-link into Help Center context');
 
 const moveFlagCount = (env.match(/^MOVE_EXECUTION_ENABLED=/gm) || []).length;
 assert(moveFlagCount === 1, 'MOVE_EXECUTION_ENABLED must be documented exactly once');

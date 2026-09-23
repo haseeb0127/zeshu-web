@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
 import { classifySupportPriority } from '@/app/lib/support-priority';
+import { classifySupportCategory } from '@/app/lib/support-category';
 
 export async function GET(request: Request) {
   const { url, anonKey, serviceRoleKey } = await getRuntimeSupabaseEnv();
@@ -34,8 +35,11 @@ export async function GET(request: Request) {
   }
   const enriched = conversations.map((conversation) => {
     const lastMessage = latestByConversation.get(conversation.id) || null;
-    const priority = classifySupportPriority(String(conversation.subject || ''), String(lastMessage?.body || ''));
-    return { ...conversation, last_message: lastMessage, support_priority: priority.label, support_priority_rank: priority.rank };
+    const subject = String(conversation.subject || '');
+    const latestBody = String(lastMessage?.body || '');
+    const priority = classifySupportPriority(subject, latestBody);
+    const supportCategory = classifySupportCategory('', `${subject} ${latestBody}`);
+    return { ...conversation, last_message: lastMessage, support_priority: priority.label, support_priority_rank: priority.rank, support_category: supportCategory };
   }).sort((a, b) => {
     const resolvedDelta = Number(a.status === 'RESOLVED') - Number(b.status === 'RESOLVED');
     if (resolvedDelta !== 0) return resolvedDelta;

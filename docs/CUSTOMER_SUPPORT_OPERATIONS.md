@@ -74,6 +74,18 @@ The customer should not have to repeat the issue after automatic handoff.
 
 These are internal queue priorities, not a public response-time promise.
 
+## Rider-to-support escalation matrix
+
+Local delivery operations follow `docs/RIDER_OPERATIONS.md`.
+
+- **Safety / accident / threat / harassment:** rider stops unsafe work, seeks emergency help first where appropriate, then escalates as **URGENT**.
+- **Lost, damaged, tampered or disputed package:** rider preserves the package/evidence, does not promise a remedy, and escalates as **HIGH**.
+- **Payment or duplicate-debit complaint:** rider never attempts to resolve money movement directly; Support reconciles the server/payment records as **HIGH**.
+- **Address, access, customer-unreachable, seller/package mismatch or GPS/tracking problem:** rider keeps the order out of DELIVERED state and escalates as **SERVICE** when normal delivery cannot continue.
+- **Routine navigation/how-to question:** handle as **NORMAL** unless the facts reveal a higher-priority issue.
+
+The rider must never mark an unresolved/blocked delivery as delivered merely to clear an assignment or improve metrics.
+
 ## Service-specific support ownership
 
 ### Shopping / marketplace

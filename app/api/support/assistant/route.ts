@@ -326,6 +326,17 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
     };
   }
 
+  if (/\b(?:zeshu pass|membership pass|subscribe & save|subscribe and save|subscription|repeat order)\b/.test(text)) {
+    return {
+      answer: 'Zeshu Pass and Subscribe & Save are Coming Soon unless the customer UI explicitly shows an active plan. Zeshu should not charge a membership/subscription fee or promise subscription benefits before the product, billing rules, cancellation terms and customer support flow are enabled.',
+      resolved: true,
+      subject: 'Pass and subscription help',
+      handoff_reason: '',
+      suggested_questions: ['What services are available right now?', 'How does Zeshu Cash work?', 'How do promotions work?'],
+      intent: 'ACCOUNT',
+    };
+  }
+
   if (/whatsapp|whats app|support on whatsapp|whatsapp support/.test(text)) {
     return {
       answer: 'Zeshu WhatsApp customer support is not treated as live until the customer-facing WhatsApp toggle and verified Meta setup are enabled. Use Zeshu Help Center or the signed-in human-support conversation for current support; do not send OTPs, passwords, CVV or UPI PIN over WhatsApp.',
@@ -667,6 +678,116 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
     };
   }
 
+  if (/\b(?:prepaid|mobile recharge|phone recharge|recharge plan|data plan|talktime)\b/.test(text)) {
+    return {
+      answer: 'Zeshu Prepaid is designed for India-wide mobile-plan discovery. You can enter the mobile number, choose or detect the relevant operator/circle where supported, and compare available plans. Recharge payment/fulfilment must be treated as unavailable until the live provider integration and transaction button are explicitly enabled; plan discovery by itself does not mean a recharge was placed.',
+      resolved: true,
+      subject: 'Prepaid recharge help',
+      handoff_reason: '',
+      suggested_questions: ['How do I find a recharge plan?', 'Why is recharge payment disabled?', 'I have a recharge transaction problem'],
+      intent: 'DIGITAL',
+    };
+  }
+
+  if (/\b(?:dth|dish tv|tata play|airtel digital|sun direct|dth customer id|dth subscriber)\b/.test(text)) {
+    return {
+      answer: 'Zeshu DTH can guide you through subscriber/customer ID entry, provider detection, plan browsing and account-detail discovery where the provider supports it. DTH payment is not treated as live until the verified fulfilment integration is enabled. If you only browse plans or account details, no DTH payment should be created.',
+      resolved: true,
+      subject: 'DTH help',
+      handoff_reason: '',
+      suggested_questions: ['How do I find my DTH plans?', 'Why is DTH payment disabled?', 'I have a DTH transaction problem'],
+      intent: 'DIGITAL',
+    };
+  }
+
+  if (/\b(?:electricity|power bill|current bill|light bill|consumer number)\b/.test(text)) {
+    return {
+      answer: 'For Electricity, select the electricity provider first, load the required account fields, and then use bill lookup only when that provider exposes the needed details. Some providers may not support bill fetch through the current integration. Electricity payment remains disabled until Zeshu enables a verified fulfilment provider, so bill discovery must not be presented as a completed payment.',
+      resolved: true,
+      subject: 'Electricity bill help',
+      handoff_reason: '',
+      suggested_questions: ['Why can’t Zeshu fetch my electricity bill?', 'Why is electricity payment disabled?', 'I have an electricity transaction problem'],
+      intent: 'DIGITAL',
+    };
+  }
+
+  if (/\b(?:fastag|fast tag|vehicle registration|vehicle number)\b/.test(text)) {
+    return {
+      answer: 'For FASTag, choose a supported provider and enter the vehicle registration/details requested by that provider. Zeshu may show account or bill information when discovery is supported, but FASTag payment/fulfilment remains unavailable until the verified provider transaction flow is enabled.',
+      resolved: true,
+      subject: 'FASTag help',
+      handoff_reason: '',
+      suggested_questions: ['Why can’t I find my FASTag provider?', 'Why is FASTag payment disabled?', 'I have a FASTag transaction problem'],
+      intent: 'DIGITAL',
+    };
+  }
+
+  if (/\b(?:lpg|gas cylinder|gas booking|cylinder booking)\b/.test(text)) {
+    return {
+      answer: 'Zeshu LPG currently supports the customer discovery surface only. You may be able to select a provider, but LPG account lookup, booking and payment must remain disabled until the provider-specific verification and fulfilment flow is production-ready. Zeshu will not claim a cylinder booking is confirmed without a real provider confirmation.',
+      resolved: true,
+      subject: 'LPG help',
+      handoff_reason: '',
+      suggested_questions: ['Which gas services does Zeshu show?', 'Why is LPG booking disabled?', 'I have a gas provider problem'],
+      intent: 'DIGITAL',
+    };
+  }
+
+  if (/\b(?:piped gas|png bill|gas bill|gas consumer)\b/.test(text)) {
+    return {
+      answer: 'For Piped Gas, choose a supported provider and enter the consumer/connection number requested by that provider. Zeshu can show discovery details where available, but payment remains disabled until a verified provider fulfilment flow is enabled.',
+      resolved: true,
+      subject: 'Piped Gas bill help',
+      handoff_reason: '',
+      suggested_questions: ['Why can’t I fetch my gas bill?', 'Why is gas payment disabled?', 'I have a gas transaction problem'],
+      intent: 'DIGITAL',
+    };
+  }
+
+  if (/\b(?:water bill|water connection|water consumer|municipal water)\b/.test(text)) {
+    return {
+      answer: 'For Water Bill discovery, select a supported provider, load the provider-required fields, and enter the account/consumer number when the provider supports bill fetch. Some providers require extra fields that Zeshu does not support yet. Water-bill payment remains disabled until verified fulfilment is enabled.',
+      resolved: true,
+      subject: 'Water bill help',
+      handoff_reason: '',
+      suggested_questions: ['Why can’t Zeshu fetch my water bill?', 'Why is water payment disabled?', 'I have a water transaction problem'],
+      intent: 'DIGITAL',
+    };
+  }
+
+  if (/\b(?:broadband|wifi bill|internet bill|subscriber id|user id)\b/.test(text)) {
+    return {
+      answer: 'For Broadband, select the provider, load the required account fields, and enter the subscriber/user ID when the provider supports bill fetch. Providers can require different identifiers, and some are discovery-only. Broadband payment remains disabled until the verified transaction integration is enabled.',
+      resolved: true,
+      subject: 'Broadband bill help',
+      handoff_reason: '',
+      suggested_questions: ['Why can’t Zeshu fetch my broadband bill?', 'Why is broadband payment disabled?', 'I have a broadband transaction problem'],
+      intent: 'DIGITAL',
+    };
+  }
+
+  if (/\b(?:upi tools|scan qr|qr scan|qr scanner|upi qr|vpa)\b/.test(text)) {
+    return {
+      answer: 'Zeshu can provide QR/scanner tools and related discovery, but a QR scan is not itself a completed payment. Zeshu must not claim money moved, cashback was funded or a UPI transfer succeeded unless a verified payment/settlement integration confirms it. Never share your UPI PIN, OTP or card CVV in support chat.',
+      resolved: true,
+      subject: 'UPI and QR tools help',
+      handoff_reason: '',
+      suggested_questions: ['Can I pay after scanning a QR?', 'How does secure checkout work?', 'What should I never share with support?'],
+      intent: 'DIGITAL',
+    };
+  }
+
+  if (/\b(?:why.*(?:recharge|bill|fastag|dth|electricity|gas|water|broadband).*(?:disabled|not working|cannot pay|can.t pay)|(?:payment|pay).*(?:disabled|not available).*?(?:recharge|bill|fastag|dth|electricity|gas|water|broadband))\b/.test(text)) {
+    return {
+      answer: 'Zeshu intentionally keeps provider payment/fulfilment disabled until the provider contract, credentials, reconciliation, refund handling and compliance checks are production-ready. You can use supported discovery features, but Zeshu should not accept or claim a provider payment until the real transaction path is enabled.',
+      resolved: true,
+      subject: 'Digital payment availability',
+      handoff_reason: '',
+      suggested_questions: ['Which digital services are available?', 'How do secure payments work?', 'I have a provider transaction problem'],
+      intent: 'DIGITAL',
+    };
+  }
+
   if (/which.*(?:digital|recharge|bill)|what.*(?:recharge|bill).*service|mobile recharge|dth|electricity|fastag|lpg|piped gas|water bill|broadband/.test(text)) {
     return {
       answer: 'Zeshu currently has customer surfaces for mobile recharge, DTH, electricity, FASTag, LPG/gas, water and broadband discovery. These are intended for India-wide use, but a real payment/fulfilment is available only when the specific provider integration is visibly enabled and verified. Discovery alone does not mean a bill or recharge transaction is live.',
@@ -735,7 +856,7 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
 
   if (/install.*(?:app|zeshu)|download.*(?:app|zeshu)|get zeshu|add to home screen|android app|pwa/.test(text)) {
     return {
-      answer: 'Open Get Zeshu from the website to install the current Zeshu app/PWA experience on a supported device. Use the official Zeshu install path shown there rather than downloading APK files from unknown sources.',
+      answer: 'Use Get Zeshu for the currently supported install options. The Zeshu web app can be added to the home screen on compatible browsers/devices. Use only the official Zeshu install path shown there; a mobile build should only be presented as production-ready after signed-build, real-device and release checks pass.',
       resolved: true,
       subject: 'Install Zeshu help',
       handoff_reason: '',
