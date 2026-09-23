@@ -19,6 +19,9 @@ const supabase = customerSupabase();
 const SERVICES = [
   { key: "Shopping & Orders", question: "What can Zeshu help me buy and how do orders work?" },
   { key: "Marketplace", question: "How do verified sellers and marketplace delivery work?" },
+  { key: "Delivery & Tracking", question: "How do delivery, rider tracking and serviceability work?" },
+  { key: "Pharmacy & Health", question: "What Pharmacy & Health services are available?" },
+  { key: "Rewards & Referrals", question: "How do Zeshu Cash, rewards and referrals work?" },
   { key: "Rides", question: "Can I book a Bike, Auto or Cab ride now?" },
   { key: "Courier & Cargo", question: "Can I send a parcel or book a mini truck now?" },
   { key: "Car Share", question: "How will Zeshu Car Share work?" },

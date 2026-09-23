@@ -643,6 +643,11 @@ export async function GET() {
   return NextResponse.json({
     mode: aiEnabled ? 'ai' : 'guided',
     automatic_handoff: handoffConfigured,
+    ai_readiness: {
+      flag_enabled: aiFlag === 'true',
+      key_configured: Boolean(apiKey),
+      ready: aiEnabled,
+    },
     capabilities: ['public_general_help', 'live_order_status', 'reward_context', 'catalog_search', 'marketplace_help', 'pharmacy_help', 'rides_help', 'courier_help', 'car_share_help', 'travel_help', 'digital_services_help', 'move_service_readiness', 'policy_help', 'automatic_handoff'],
   });
 }

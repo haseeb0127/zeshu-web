@@ -55,6 +55,8 @@ jobs:
             PLANAPI_PASSWORD
             PLANAPI_TOKEN_ID
             SUPPORT_AI_ENABLED
+            OPENAI_API_KEY
+            SUPPORT_AI_MODEL
             ENFORCE_JAGTIAL_SERVICE_AREA
             SUPPORT_WHATSAPP_SENDER_ENABLED
             NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED
@@ -68,6 +70,13 @@ jobs:
 
           if grep -Eq '^(PLAN_API_USER_ID|PLAN_API_PASSWORD|PLAN_API_TOKEN_ID)=' .env.example; then
             echo "Legacy PLAN_API_* names must not be documented as canonical."
+            exit 1
+          fi
+
+          duplicates="$(awk -F= '/^[A-Z0-9_]+=/ { count[$1]++ } END { for (key in count) if (count[key] > 1) print key }' .env.example | sort)"
+          if [ -n "$duplicates" ]; then
+            echo "Duplicate environment keys found in .env.example:"
+            echo "$duplicates"
             exit 1
           fi
       - run: npm ci
