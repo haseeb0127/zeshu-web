@@ -93,8 +93,8 @@ const sections = [
     id: 'grievance',
     title: 'Grievance & Customer Support',
     body: [
-      'Haseeb, Proprietor / Grievance Officer, Zeshu, handles consumer complaints and grievance escalation. Email: grievance@zeshu.in. Phone: +91 79772 04533. Postal address: 1-2-210/A/1, Sai Ram Nagar, Jagtial, Telangana – 505327, India.',
-      'Consumer complaints will be acknowledged within 48 hours of receipt and Zeshu will endeavour to resolve or redress them within one month, subject to applicable law and the complexity of the matter. General support: support@zeshu.in and +91 79772 04533. Privacy requests: privacy@zeshu.in.',
+      'Haseeb, Proprietor / Grievance Officer, Zeshu, handles consumer complaints and grievance escalation. Email: grievance@zeshu.in. Postal address: 1-2-210/A/1, Sai Ram Nagar, Jagtial, Telangana – 505327, India. A dedicated Zeshu customer-care phone number will be published before real-money commercial launch.',
+      'Consumer complaints will be acknowledged within 48 hours of receipt and Zeshu will endeavour to resolve or redress them within one month, subject to applicable law and the complexity of the matter. General support: support@zeshu.in. Privacy requests: privacy@zeshu.in.',
     ],
   },
   {
@@ -123,7 +123,7 @@ const sections = [
     title: 'Contact Details',
     body: [
       'Trading / business name: Zeshu. Business form: Sole Proprietorship. Correspondence address: 1-2-210/A/1, Sai Ram Nagar, Jagtial, Telangana – 505327, India.',
-      'Customer support: support@zeshu.in and +91 79772 04533. Privacy: privacy@zeshu.in. Grievance: grievance@zeshu.in, Haseeb, Proprietor / Grievance Officer, +91 79772 04533.',
+      'Customer support: support@zeshu.in. Privacy: privacy@zeshu.in. Grievance: grievance@zeshu.in, Haseeb, Proprietor / Grievance Officer. A dedicated Zeshu customer-care phone number will be published before real-money commercial launch.',
     ],
   },
 ];
