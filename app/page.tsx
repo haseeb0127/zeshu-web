@@ -79,6 +79,37 @@ type CheckoutErrorState = { message: string; code?: string; requestId?: string }
 
 type AccountView = 'HOME' | 'CASH' | 'ORDERS' | 'ADDRESSES' | 'REFERRAL' | 'SUPPORT' | 'POLICIES' | 'PASS' | 'SUBSCRIBE' | 'SERVICES' | 'SETTINGS';
 
+const supportCategoryForText = (value: string) => {
+  const normalized = value.toLowerCase();
+  if (/accident|unsafe|danger|harass|threat|assault|emergency|safety/.test(normalized)) return 'Safety issue';
+  if (/refund|return|cancel/.test(normalized)) return 'Refund issue';
+  if (/payment|charged|debited|checkout|upi|card/.test(normalized)) return 'Payment issue';
+  if (/recharge|bill|electricity|fastag|piped gas|lpg|water|broadband|dth/.test(normalized)) return 'Recharge/Bill issue';
+  if (/pharmacy|medicine|prescription|health/.test(normalized)) return 'Pharmacy / Health issue';
+  if (/bike ride|bike taxi|auto|cab|taxi|rental car|ride/.test(normalized)) return 'Ride issue';
+  if (/bike courier|courier|cargo|mini truck|shop delivery|parcel|package|tempo|porter/.test(normalized)) return 'Courier / Cargo issue';
+  if (/car share|carpool|car sharing/.test(normalized)) return 'Car Share issue';
+  if (/bus|train|rail|flight|hotel|experience|travel|pnr/.test(normalized)) return 'Travel issue';
+  if (/marketplace|seller|vendor|electronics|fashion|clothing|beauty|home & kitchen|warranty|invoice/.test(normalized)) return 'Marketplace / seller issue';
+  if (/delivery|rider|address|location|serviceable|late/.test(normalized)) return 'Delivery issue';
+  if (/order|product|grocery|item|stock/.test(normalized)) return 'Order issue';
+  if (/account|phone|login|otp|profile|address book/.test(normalized)) return 'Account issue';
+  return 'Other';
+};
+
+const SUPPORT_SERVICE_PRESETS = [
+  { label: 'Shopping & Orders', question: 'I need help with a shopping order' },
+  { label: 'Marketplace', question: 'I need help with a marketplace seller or product' },
+  { label: 'Rides', question: 'I need help with Bike, Auto, Cab or Rental Car' },
+  { label: 'Courier & Cargo', question: 'I need help with Bike Courier, parcel or cargo' },
+  { label: 'Car Share', question: 'I need help with Car Share' },
+  { label: 'Travel', question: 'I need help with Bus, Train, Flights, Hotels or Experiences' },
+  { label: 'Recharge & Bills', question: 'I need help with recharge or bill services' },
+  { label: 'Payments & Refunds', question: 'I need help with a payment or refund' },
+  { label: 'Pharmacy & Health', question: 'I need help with Pharmacy & Health' },
+  { label: 'Account & Safety', question: 'I need help with my account or a safety issue' },
+] as const;
+
 const CHECKOUT_ERROR_MESSAGES: Record<string, string> = {
   AUTH_REQUIRED: 'Please sign in before checkout.',
   SESSION_EXPIRED: 'Your customer session has expired. Please sign in again.',
@@ -820,19 +851,7 @@ export default function ZeshuSuperApp() {
     if (!requestedSupport) return;
 
     const safeSubject = requestedSupport.slice(0, 160);
-    const normalized = safeSubject.toLowerCase();
-    const category = /bike ride|auto|cab|rental car|ride/.test(normalized)
-      ? 'Ride issue'
-      : /bike courier|courier|cargo|mini truck|shop delivery|parcel|package/.test(normalized)
-        ? 'Courier / Cargo issue'
-        : /car share|carpool/.test(normalized)
-          ? 'Car Share issue'
-          : /bus|train|flight|hotel|experience|travel/.test(normalized)
-            ? 'Travel issue'
-            : /marketplace|seller|electronics|fashion|beauty|home & kitchen/.test(normalized)
-              ? 'Marketplace / seller issue'
-              : 'Other';
-    setSupportSubject(category);
+    setSupportSubject(supportCategoryForText(safeSubject));
     setSupportAssistantQuestion(`I need help with ${safeSubject}`);
 
     if (!user) {
@@ -2340,7 +2359,7 @@ export default function ZeshuSuperApp() {
         setSupportNotice('Zeshu Assistant transferred this to Zeshu Support with the context attached. You do not need to repeat the issue.');
       } else if (payload.resolved !== true) {
         setSupportMessage(question);
-        setSupportSubject('Other');
+        setSupportSubject(supportCategoryForText(question));
         setSupportNotice('The automatic transfer could not be completed. Your question is ready below so you can send it to Zeshu Support without retyping it.');
       }
     } catch (assistantError) {
@@ -2351,7 +2370,7 @@ export default function ZeshuSuperApp() {
       setSupportAssistantSuggestions([]);
       setSupportAssistantContextUsed([]);
       setSupportMessage(question);
-      setSupportSubject('Other');
+      setSupportSubject(supportCategoryForText(question));
       setSupportNotice('Assistant help is temporarily unavailable. Your question is ready for Zeshu Support below.');
     } finally {
       setSupportAssistantBusy(false);
@@ -2371,7 +2390,7 @@ export default function ZeshuSuperApp() {
   const connectAssistantToHuman = () => {
     const latestCustomerMessage = [...supportAssistantMessages].reverse().find((message) => message.role === 'CUSTOMER')?.body || supportAssistantQuestion.trim();
     if (latestCustomerMessage) setSupportMessage(latestCustomerMessage);
-    setSupportSubject('Other');
+    setSupportSubject(supportCategoryForText(latestCustomerMessage));
     setSelectedSupportConversationId(null);
     setSupportNotice('Your question is ready below. Add any order details and send it to Zeshu Support.');
   };
@@ -3727,7 +3746,7 @@ export default function ZeshuSuperApp() {
                     {['Where is my latest order?','Can I book a bike ride now?','Can I send a parcel now?','Can I book trains on Zeshu?','What is my Zeshu Cash balance?','Do you have milk?','How do refunds work?'].map((question) => <button type="button" key={question} disabled={supportAssistantBusy} onClick={() => void askSupportAssistant(question)} className="whitespace-nowrap rounded-full border border-emerald-100 bg-white px-3 py-2 text-xs font-black text-[#075E45] shadow-sm disabled:opacity-50">{question}</button>)}
                   </div>}
                   {supportAssistantMessages.length > 0 && <div className="mt-3 max-h-72 space-y-2 overflow-y-auto rounded-xl bg-white/70 p-3" aria-live="polite">{supportAssistantMessages.map((message, index) => <div key={`${message.role}-${index}`} className={`rounded-xl p-3 text-sm leading-6 ${message.role === 'CUSTOMER' ? 'ml-6 bg-[#075E45] text-white' : 'mr-6 bg-white text-slate-700 shadow-sm'}`}><p className={`mb-1 text-[10px] font-black uppercase tracking-wider ${message.role === 'CUSTOMER' ? 'text-emerald-100' : 'text-[#075E45]'}`}>{message.role === 'CUSTOMER' ? 'You' : 'Zeshu Assistant'}</p><p className="whitespace-pre-wrap break-words">{message.body}</p></div>)}</div>}
-                  {supportAssistantContextUsed.length > 0 && <div className="mt-2 flex flex-wrap items-center gap-1.5"><span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{t('Checked live')}</span>{supportAssistantContextUsed.map((item) => <span key={item} className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-emerald-700">{item === 'orders' ? 'Orders' : item === 'rewards' ? 'Zeshu Cash' : item === 'catalog' ? 'Catalog' : item}</span>)}</div>}
+                  {supportAssistantContextUsed.length > 0 && <div className="mt-2 flex flex-wrap items-center gap-1.5"><span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{t('Checked live')}</span>{supportAssistantContextUsed.map((item) => <span key={item} className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-emerald-700">{item === 'orders' ? 'Orders' : item === 'rewards' ? 'Zeshu Cash' : item === 'catalog' ? 'Catalog' : item === 'move_services' ? 'Move & Travel status' : item}</span>)}</div>}
                   {supportAssistantSuggestions.length > 0 && !supportAssistantBusy && <div className="mt-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar" aria-label="Follow-up questions">{supportAssistantSuggestions.map((question) => <button type="button" key={question} onClick={() => void askSupportAssistant(question)} className="whitespace-nowrap rounded-full bg-white px-3 py-2 text-xs font-black text-[#075E45] shadow-sm">{question}</button>)}</div>}
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row"><input value={supportAssistantQuestion} maxLength={1200} onChange={(event) => { setSupportAssistantQuestion(event.target.value); setSupportAssistantAnswer(''); setSupportAssistantResolved(null); }} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void askSupportAssistant(); } }} placeholder={t('Ask anything about Zeshu…')} aria-label="Ask Zeshu Assistant" className="min-w-0 flex-1 rounded-xl border border-emerald-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-emerald-400" /><button type="button" disabled={supportAssistantBusy || !supportAssistantQuestion.trim()} onClick={() => void askSupportAssistant()} className="rounded-xl bg-[#075E45] px-4 py-2.5 text-sm font-black text-white disabled:opacity-50">{supportAssistantBusy ? 'Checking…' : 'Send'}</button></div>
                   <p className="mt-2 text-[10px] leading-4 text-slate-400">Do not send OTPs, passwords, card numbers, CVV or UPI PIN. Zeshu Assistant uses only the minimum account context needed for your question.</p>
@@ -3746,6 +3765,12 @@ export default function ZeshuSuperApp() {
                   {supportWhatsappPreferenceError && <p role="alert" className="mt-2 text-xs font-bold text-red-700">{supportWhatsappPreferenceError}</p>}
                 </div>}
                 {!selectedSupportConversationId ? <>
+                  <div className="mt-4">
+                    <p className="text-[11px] font-black uppercase tracking-wider text-slate-500">{t('Choose a service')}</p>
+                    <div className="mt-2 flex gap-2 overflow-x-auto pb-1 no-scrollbar" aria-label="Support services">
+                      {SUPPORT_SERVICE_PRESETS.map((preset) => <button type="button" key={preset.label} onClick={() => { setSupportSubject(supportCategoryForText(preset.question)); setSupportAssistantQuestion(preset.question); }} className="whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-[#075E45]">{t(preset.label)}</button>)}
+                    </div>
+                  </div>
                   <label htmlFor="support-category" className="sr-only">{t('Support category')}</label>
                   <select id="support-category" value={supportSubject} onChange={(event) => setSupportSubject(event.target.value)} className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700">
                     <option value="Order issue">{t('Order issue')}</option><option value="Marketplace / seller issue">{t('Marketplace / seller issue')}</option><option value="Delivery issue">{t('Delivery issue')}</option><option value="Ride issue">{t('Ride issue')}</option><option value="Courier / Cargo issue">{t('Courier / Cargo issue')}</option><option value="Car Share issue">{t('Car Share issue')}</option><option value="Travel issue">{t('Travel issue')}</option><option value="Payment issue">{t('Payment issue')}</option><option value="Refund issue">{t('Refund issue')}</option><option value="Recharge/Bill issue">{t('Recharge/Bill issue')}</option><option value="Pharmacy / Health issue">{t('Pharmacy / Health issue')}</option><option value="Safety issue">{t('Safety issue')}</option><option value="Account issue">{t('Account issue')}</option><option value="Other">{t('Other')}</option>
