@@ -1,4 +1,5 @@
 import { classifySupportPriority } from '../../app/lib/support-priority.ts';
+import { buildCategorizedSupportSubject, classifySupportCategory } from '../../app/lib/support-category.ts';
 
 const assert = (condition: boolean, message: string) => {
   if (!condition) throw new Error(message);
@@ -18,5 +19,26 @@ assert(routine.label === 'NORMAL' && routine.rank === 3, 'Routine questions must
 
 const safetyWins = classifySupportPriority('Payment issue', 'There was an accident during the ride');
 assert(safetyWins.label === 'URGENT', 'Safety must outrank payment priority');
+
+const categories = [
+  ['RIDES', 'Can I book an auto ride?', 'Ride issue'],
+  ['COURIER', 'My parcel is missing', 'Courier / Cargo issue'],
+  ['CAR_SHARE', 'How does carpool work?', 'Car Share issue'],
+  ['TRAVEL', 'My flight booking question', 'Travel issue'],
+  ['MARKETPLACE', 'Do I get an invoice from the seller?', 'Marketplace / seller issue'],
+  ['DIGITAL', 'My electricity bill payment', 'Recharge/Bill issue'],
+  ['PHARMACY', 'Can I order prescription medicine?', 'Pharmacy / Health issue'],
+  ['ACCOUNT', 'OTP login help', 'Account issue'],
+  ['DELIVERY', 'Is my address serviceable?', 'Delivery issue'],
+  ['REWARDS', 'Where is my Zeshu Cash?', 'Rewards / Referral issue'],
+  ['ORDER', 'Where is my grocery order?', 'Order issue'],
+] as const;
+
+for (const [intent, message, expected] of categories) {
+  assert(classifySupportCategory(intent, message) === expected, `${intent} must map to ${expected}`);
+}
+
+const categorized = buildCategorizedSupportSubject('RIDES', 'Driver complaint', 'Ride support');
+assert(categorized === '[Ride issue] Ride support', 'Handoff subject must include the service category');
 
 console.log('SUPPORT_PRIORITY_QA=PASS');
