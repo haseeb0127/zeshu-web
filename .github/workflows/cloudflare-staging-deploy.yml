@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - feat/asset-light-marketplace-ondc-readiness-20260923
   workflow_dispatch:
 
 permissions:
