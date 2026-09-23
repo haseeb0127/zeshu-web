@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - feat/finish-support-and-launch-readiness-20260923
   workflow_dispatch:
 
 permissions:
@@ -193,6 +194,63 @@ jobs:
           code="$(curl -L -sS -o /tmp/cron -w '%{http_code}' \
             "$base/api/cron/support-whatsapp" || true)"
           test "$code" = "401" || { echo "WhatsApp cron expected 401 without bearer token, got $code"; exit 1; }
+
+      - name: Verify customer-friendly Help Center on staging
+        shell: bash
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+
+          const base = 'https://zeshu-web-staging.asif-mohammed0127.workers.dev';
+          const browser = await chromium.launch({ headless: true });
+          const assert = (value, message) => { if (!value) throw new Error(message); };
+
+          try {
+            const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+            await page.goto(base + '/help', { waitUntil: 'networkidle', timeout: 60000 });
+
+            let body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(body.includes('Current service status'), 'Service-status panel missing');
+            assert(body.includes('Shopping & Orders') && body.includes('Available now'), 'Shopping availability status missing');
+            assert(body.includes('Recharge & Bills') && body.includes('Discovery available'), 'Digital discovery status missing');
+            assert(body.includes('Rides') && body.includes('Coming soon'), 'Rides Coming Soon status missing');
+
+            const input = page.locator('input[placeholder="Ask anything about Zeshu…"]');
+            const ask = async (question, expected) => {
+              await input.fill(question);
+              await page.getByRole('button', { name: 'Send', exact: true }).click();
+              await page.waitForFunction((needle) => document.body.innerText.toLowerCase().includes(String(needle).toLowerCase()), expected, { timeout: 20000 });
+            };
+
+            await ask('How much is the delivery fee?', 'does not promise one universal delivery or shipping fee');
+            await ask('What does GST Verified seller mean?', 'seller trust labels separate');
+            await ask('Is WhatsApp support available?', 'not treated as live');
+            await ask('What is Zeshu Market?', 'asset-light marketplace');
+            await ask('How does Zeshu protect my data?', 'Privacy Policy');
+
+            body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(!body.includes('Order #'), 'Guest Help Center exposed private order data');
+
+            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'hi'));
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+            body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(body.includes('मौजूदा सेवा स्थिति'), 'Service status not localized in Hindi');
+            assert(body.includes('अभी उपलब्ध'), 'Available now not localized in Hindi');
+
+            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'ur'));
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+            await page.waitForFunction(() => document.documentElement.dir === 'rtl', null, { timeout: 10000 });
+            body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(body.includes('موجودہ سروس کی حالت'), 'Service status not localized in Urdu');
+            assert(await page.locator('html').getAttribute('dir') === 'rtl', 'Urdu Help Center is not RTL');
+
+            console.log('CUSTOMER_FRIENDLY_SUPPORT_STAGING_QA=PASS');
+          } finally {
+            await browser.close();
+          }
+          NODE
 
       - name: Staging deployment summary
         run: echo "Cloudflare staging deploy, runtime safety, Razorpay TEST readiness, customer routes, and auth-boundary smoke checks passed."
