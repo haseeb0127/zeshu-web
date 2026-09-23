@@ -86,9 +86,19 @@ export default function FulfillmentAdminPage() {
   const saveVendor = async (vendor: Row) => {
     setSaving(`vendor:${vendor.id}`); setError(""); setNotice("");
     try {
-      const payload = await request("PATCH", { action: "vendor", vendor_id: vendor.id, local_30_min_enabled: vendor.local_30_min_enabled });
+      const payload = await request("PATCH", {
+        action: "vendor",
+        vendor_id: vendor.id,
+        local_30_min_enabled: vendor.local_30_min_enabled,
+        marketplace_status: vendor.marketplace_status || "PENDING",
+        kyc_verified: vendor.kyc_verified === true,
+        gst_verified: vendor.gst_verified === true,
+        authorized_brand_partner: vendor.authorized_brand_partner === true,
+        invoice_available: vendor.invoice_available === true,
+        seller_quality_score: Number(vendor.seller_quality_score || 0),
+      });
       setVendors((current) => current.map((row) => row.id === vendor.id ? { ...row, ...payload.vendor } : row));
-      setNotice("Vendor Fresh setting saved.");
+      setNotice("Vendor delivery and marketplace trust settings saved.");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Vendor setting could not be saved.");
     } finally { setSaving(""); }
@@ -168,8 +178,24 @@ export default function FulfillmentAdminPage() {
       </section>
 
       <section className="mt-5 rounded-3xl border border-[#dde7df] bg-white p-5">
-        <div className="flex items-center gap-2"><Truck size={20} className="text-[#087443]"/><h2 className="text-lg font-black">Vendor 30-minute Fresh availability</h2></div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{vendors.map((vendor) => <div key={vendor.id} className="rounded-2xl bg-[#f7f9f5] p-4"><div className="flex items-center justify-between gap-3"><div><p className="font-black">{vendor.business_name || "Vendor"}</p><p className="text-xs text-slate-500">{vendor.is_open ? "Store open" : "Store closed"} · {vendor.admin_suspended ? "Suspended" : "Active"}</p></div><input type="checkbox" checked={vendor.local_30_min_enabled === true} disabled={vendor.admin_suspended} onChange={(event) => setVendors((current) => current.map((row) => row.id === vendor.id ? { ...row, local_30_min_enabled: event.target.checked } : row))} className="h-5 w-5 accent-[#087443]" /></div><button onClick={() => void saveVendor(vendor)} disabled={saving === `vendor:${vendor.id}`} className="mt-3 w-full rounded-xl border border-[#cfe8d7] px-3 py-2 text-xs font-black text-[#087443] disabled:opacity-50">Save Fresh setting</button></div>)}</div>
+        <div className="flex items-center gap-2"><Truck size={20} className="text-[#087443]"/><h2 className="text-lg font-black">Vendor delivery & marketplace trust</h2></div>
+        <p className="mt-1 text-sm leading-6 text-slate-500">Verified Seller and Authorized Brand Partner badges are controlled here. Advertising spend never grants trust badges automatically.</p>
+        <div className="mt-4 grid gap-4 xl:grid-cols-2">{vendors.map((vendor) => <div key={vendor.id} className="rounded-2xl border border-slate-100 bg-[#f7f9f5] p-4">
+          <div className="flex items-start justify-between gap-3"><div><p className="font-black">{vendor.business_name || "Vendor"}</p><p className="text-xs text-slate-500">{vendor.is_open ? "Store open" : "Store closed"} · {vendor.admin_suspended ? "Admin suspended" : "Active"}</p></div><span className={`rounded-full px-2 py-1 text-[10px] font-black ${vendor.marketplace_status === "VERIFIED" ? "bg-emerald-100 text-emerald-800" : vendor.marketplace_status === "SUSPENDED" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800"}`}>{vendor.marketplace_status || "PENDING"}</span></div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="text-xs font-black text-slate-600">Marketplace status<select value={vendor.marketplace_status || "PENDING"} onChange={(event) => setVendors((current) => current.map((row) => row.id === vendor.id ? { ...row, marketplace_status: event.target.value } : row))} className="mt-1 block w-full rounded-xl border border-[#dde7df] bg-white px-3 py-2.5 text-sm"><option value="PENDING">Pending review</option><option value="VERIFIED">Verified</option><option value="SUSPENDED">Suspended</option></select></label>
+            <label className="text-xs font-black text-slate-600">Seller quality score<input type="number" min="0" max="100" step="1" value={vendor.seller_quality_score ?? 0} onChange={(event) => setVendors((current) => current.map((row) => row.id === vendor.id ? { ...row, seller_quality_score: event.target.value } : row))} className="mt-1 block w-full rounded-xl border border-[#dde7df] bg-white px-3 py-2.5 text-sm" /></label>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Toggle label="30-min Fresh" checked={vendor.local_30_min_enabled === true} disabled={vendor.admin_suspended === true} onChange={(checked) => setVendors((current) => current.map((row) => row.id === vendor.id ? { ...row, local_30_min_enabled: checked } : row))} />
+            <Toggle label="KYC verified" checked={vendor.kyc_verified === true} onChange={(checked) => setVendors((current) => current.map((row) => row.id === vendor.id ? { ...row, kyc_verified: checked } : row))} />
+            <Toggle label="GST verified" checked={vendor.gst_verified === true} onChange={(checked) => setVendors((current) => current.map((row) => row.id === vendor.id ? { ...row, gst_verified: checked } : row))} />
+            <Toggle label="Authorized brand partner" checked={vendor.authorized_brand_partner === true} onChange={(checked) => setVendors((current) => current.map((row) => row.id === vendor.id ? { ...row, authorized_brand_partner: checked } : row))} />
+            <Toggle label="Invoice available" checked={vendor.invoice_available === true} onChange={(checked) => setVendors((current) => current.map((row) => row.id === vendor.id ? { ...row, invoice_available: checked } : row))} />
+          </div>
+          <p className="mt-3 text-[11px] leading-5 text-slate-500">A seller can be marked Verified only after KYC is checked. Use Authorized Brand Partner only when supporting authorization evidence has been reviewed.</p>
+          <button onClick={() => void saveVendor(vendor)} disabled={saving === `vendor:${vendor.id}`} className="mt-3 w-full rounded-xl bg-[#087443] px-3 py-2.5 text-xs font-black text-white disabled:opacity-50">{saving === `vendor:${vendor.id}` ? "Saving…" : "Save vendor trust"}</button>
+        </div>)}</div>
       </section>
 
       <section className="mt-5">

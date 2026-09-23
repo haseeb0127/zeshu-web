@@ -21,6 +21,7 @@ import { isJagtialDeliveryCity } from './lib/service-scope';
 import { catalogSearchScore, getCatalogSearchRecommendations, isCatalogSearchMatch, smartTextMatchScore } from './lib/catalog-search';
 import { CUSTOMER_CATEGORY_DEFINITIONS, campaignMatchesCustomerCategory, categoryDefinition, productMatchesCustomerCategory } from './lib/catalog-categories';
 import { isFreshThirtyMinuteCandidate, isIndiaReadyProduct } from './lib/fulfillment';
+import { groupCartByFulfillment, marketplaceRecommendedScore, type MarketplaceSeller } from './lib/marketplace';
 
 const supabase = customerSupabase();
 const SUPPORT_WHATSAPP_UI_ENABLED = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED === 'true';
@@ -359,6 +360,7 @@ export default function ZeshuSuperApp() {
   const [productSort, setProductSort] = useState<'recommended' | 'top_rated' | 'price_asc' | 'price_desc' | 'name'>('recommended');
   const [fulfillmentFilter, setFulfillmentFilter] = useState<'ALL' | 'FRESH' | 'INDIA'>('ALL');
   const [fulfillmentStatus, setFulfillmentStatus] = useState<{ nationwide_checkout_enabled: boolean; vendor_30_min: Record<string, boolean> }>({ nationwide_checkout_enabled: false, vendor_30_min: {} });
+  const [marketplaceSellers, setMarketplaceSellers] = useState<Record<string, MarketplaceSeller>>({});
   const [isProductFiltersOpen, setIsProductFiltersOpen] = useState(false);
   
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -601,9 +603,29 @@ export default function ZeshuSuperApp() {
             const availabilityDelta = Number(isAvailableProduct(b.product)) - Number(isAvailableProduct(a.product));
             if (availabilityDelta) return availabilityDelta;
           }
-          const sponsoredDelta = Number(sponsoredProductIds.has(String(b.product.id))) - Number(sponsoredProductIds.has(String(a.product.id)));
-          if (sponsoredDelta) return sponsoredDelta;
-          return normalizedSearch ? b.searchScore - a.searchScore || a.index - b.index : a.index - b.index;
+          const scoreA = marketplaceRecommendedScore({
+            product: a.product,
+            searchScore: a.searchScore,
+            available: isAvailableProduct(a.product),
+            rating: Number(productAggregates[String(a.product.id)]?.average_rating || 0),
+            reviewCount: Number(productAggregates[String(a.product.id)]?.review_count || 0),
+            sponsored: sponsoredProductIds.has(String(a.product.id)),
+            seller: marketplaceSellers[String(a.product.vendor_id || '')],
+            localThirtyMinuteAvailable: Boolean(fulfillmentStatus.vendor_30_min[String(a.product.vendor_id || '')]),
+            nationwideCheckoutEnabled: fulfillmentStatus.nationwide_checkout_enabled,
+          });
+          const scoreB = marketplaceRecommendedScore({
+            product: b.product,
+            searchScore: b.searchScore,
+            available: isAvailableProduct(b.product),
+            rating: Number(productAggregates[String(b.product.id)]?.average_rating || 0),
+            reviewCount: Number(productAggregates[String(b.product.id)]?.review_count || 0),
+            sponsored: sponsoredProductIds.has(String(b.product.id)),
+            seller: marketplaceSellers[String(b.product.vendor_id || '')],
+            localThirtyMinuteAvailable: Boolean(fulfillmentStatus.vendor_30_min[String(b.product.vendor_id || '')]),
+            nationwideCheckoutEnabled: fulfillmentStatus.nationwide_checkout_enabled,
+          });
+          return scoreB - scoreA || a.index - b.index;
         })
         .map(({ product }) => product);
     }
@@ -626,7 +648,12 @@ export default function ZeshuSuperApp() {
         return productSort === 'price_asc' ? priceA - priceB : priceB - priceA;
       })
       .map(({ product }) => product);
-  }, [products, normalizedSearch, activeCategory, brandFilter, priceFilter, availabilityFilter, ratingFilter, productSort, focusedProductIds, sponsoredProductIds, productAggregates, fulfillmentFilter]);
+  }, [products, normalizedSearch, activeCategory, brandFilter, priceFilter, availabilityFilter, ratingFilter, productSort, focusedProductIds, sponsoredProductIds, productAggregates, fulfillmentFilter, marketplaceSellers, fulfillmentStatus]);
+
+  const cartFulfillmentGroups = useMemo(() => groupCartByFulfillment(cart, {
+    vendor30Min: fulfillmentStatus.vendor_30_min,
+    nationwideCheckoutEnabled: fulfillmentStatus.nationwide_checkout_enabled,
+  }), [cart, fulfillmentStatus]);
 
   const searchRecommendations = useMemo(() => {
     if (!normalizedSearch || filteredProducts.length > 0) return [];
@@ -878,9 +905,20 @@ export default function ZeshuSuperApp() {
       if (cachedProducts) {
         try { setProducts(JSON.parse(cachedProducts)); } catch { localStorage.removeItem('zeshu_products'); }
       }
-      const { data: pData, error: productsError } = await supabase.from('products').select('*');
+      const productsResult = await supabase.from('products').select('*');
+      const pData = productsResult.data;
+      const productsError = productsResult.error;
       if (pData) { setProducts(pData); localStorage.setItem('zeshu_products', JSON.stringify(pData)); }
       if (productsError) setContentError(true);
+
+      try {
+        const sellerResponse = await fetch('/api/marketplace/sellers', { cache: 'no-store' });
+        const sellerPayload = await sellerResponse.json().catch(() => ({}));
+        const sellerRows = Array.isArray(sellerPayload?.sellers) ? sellerPayload.sellers as MarketplaceSeller[] : [];
+        setMarketplaceSellers(Object.fromEntries(sellerRows.map((seller) => [String(seller.id), seller])));
+      } catch {
+        setMarketplaceSellers({});
+      }
       setProductsLoading(false);
     };
     
@@ -3274,7 +3312,7 @@ export default function ZeshuSuperApp() {
                     {filteredProducts.map((p) => {
                       const inCart = cart.find(c => c.item.id === p.id);
                       const aggregate = productAggregates[String(p.id)];
-                      return <ProductCard key={p.id} product={p} quantity={inCart?.qty} onAdd={() => addToCart(p)} onRemove={() => removeFromCart(p.id)} isFavorite={favoriteIds.has(String(p.id))} favoriteBusy={favoriteBusyId === String(p.id)} onFavoriteToggle={() => void toggleFavorite(p)} reviewAverage={aggregate?.average_rating} reviewCount={aggregate?.review_count} onReviews={() => void openPublicReviews(p)} sponsored={sponsoredProductIds.has(String(p.id))} localThirtyMinuteAvailable={Boolean(fulfillmentStatus.vendor_30_min[String(p.vendor_id || '')])} nationwideCheckoutEnabled={fulfillmentStatus.nationwide_checkout_enabled} />;
+                      return <ProductCard key={p.id} product={p} quantity={inCart?.qty} onAdd={() => addToCart(p)} onRemove={() => removeFromCart(p.id)} isFavorite={favoriteIds.has(String(p.id))} favoriteBusy={favoriteBusyId === String(p.id)} onFavoriteToggle={() => void toggleFavorite(p)} reviewAverage={aggregate?.average_rating} reviewCount={aggregate?.review_count} onReviews={() => void openPublicReviews(p)} sponsored={sponsoredProductIds.has(String(p.id))} localThirtyMinuteAvailable={Boolean(fulfillmentStatus.vendor_30_min[String(p.vendor_id || '')])} nationwideCheckoutEnabled={fulfillmentStatus.nationwide_checkout_enabled} seller={marketplaceSellers[String(p.vendor_id || '')] || null} />;
                     })}
                   </div>
                 )}
@@ -3396,12 +3434,26 @@ export default function ZeshuSuperApp() {
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
               {cart.length === 0 && <div className="rounded-3xl border border-dashed border-[#cbd8cf] bg-white p-10 text-center"><ShoppingBag size={32} className="mx-auto mb-3 text-[#087443]"/><h3 className="font-black">{t('Your cart is empty')}</h3><p className="mt-2 text-sm text-gray-500">{t('Add essentials when you are ready.')}</p><button onClick={() => setIsCartOpen(false)} className="mt-5 rounded-xl bg-[#087443] px-4 py-2.5 text-sm font-bold text-white">{t('Browse products')}</button></div>}
-              {cart.map((c, i) => (
-                <div key={i} className="bg-white p-4 rounded-2xl flex items-center gap-4 shadow-sm">
-                  <img src={c.item.image_url} className="w-16 h-16 object-contain" alt="cart item"/>
-                  <div className="flex-1"><h4 className="font-bold text-sm">{c.item.name}</h4><p className="text-xs text-gray-500">₹{c.item.price} x {c.qty}</p></div>
-                  <div className="flex items-center bg-[#059669] text-white rounded-lg px-2"><button type="button" onClick={() => removeFromCart(c.item.id)} className="min-h-9 min-w-8 px-2">-</button><span className="px-2">{c.qty}</span><button type="button" disabled={c.item.quantity !== null && c.qty >= Number(c.item.quantity)} onClick={() => addToCart(c.item)} className="min-h-9 min-w-8 px-2 disabled:cursor-not-allowed disabled:opacity-40">+</button></div>
-                </div>
+              {cartFulfillmentGroups.map((group) => (
+                <section key={group.key} className="overflow-hidden rounded-2xl border border-[#dce8df] bg-[#f8fbf8]">
+                  <div className="flex items-center justify-between gap-2 border-b border-[#e6eee8] px-4 py-3">
+                    <div>
+                      <p className="text-xs font-black text-[#087443]">{t(group.label)}</p>
+                      <p className="mt-0.5 text-[10px] font-semibold text-slate-500">{group.entries.reduce((total, entry) => total + entry.qty, 0)} {t('items')}</p>
+                    </div>
+                    {group.key === 'LOCKED' && <span className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-black text-slate-500">{t('Coming soon')}</span>}
+                  </div>
+                  <div className="space-y-2 p-2">
+                    {group.entries.map((c) => {
+                      const seller = marketplaceSellers[String(c.item.vendor_id || '')];
+                      return <div key={String(c.item.id)} className="bg-white p-3 rounded-xl flex items-center gap-3 shadow-sm">
+                        <img src={c.item.image_url} className="w-14 h-14 object-contain" alt={c.item.name}/>
+                        <div className="min-w-0 flex-1"><h4 className="truncate font-bold text-sm">{c.item.name}</h4><p className="text-xs text-gray-500">₹{c.item.price} x {c.qty}</p>{seller?.business_name && <p className="mt-1 truncate text-[10px] font-semibold text-slate-400">{t('Sold by')} {seller.business_name}</p>}</div>
+                        <div className="flex items-center bg-[#059669] text-white rounded-lg px-2"><button type="button" onClick={() => removeFromCart(c.item.id)} className="min-h-9 min-w-8 px-2">-</button><span className="px-2">{c.qty}</span><button type="button" disabled={c.item.quantity !== null && c.qty >= Number(c.item.quantity)} onClick={() => addToCart(c.item)} className="min-h-9 min-w-8 px-2 disabled:cursor-not-allowed disabled:opacity-40">+</button></div>
+                      </div>;
+                    })}
+                  </div>
+                </section>
               ))}
               {cart.length > 0 && <section className="overflow-hidden rounded-2xl border border-[#dce8df] bg-white">
                 <button type="button" aria-expanded={expandedCartSection === 'ADDRESS'} aria-controls="cart-address-details" onClick={() => setExpandedCartSection((current) => current === 'ADDRESS' ? null : 'ADDRESS')} className="flex w-full items-center justify-between gap-3 p-4 text-left">

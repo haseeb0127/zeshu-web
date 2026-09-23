@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     context.service.from('fulfillment_settings').select('*').eq('id', 'default').maybeSingle(),
     context.service.from('products').select('id,name,brand,category,price,vendor_id,in_stock,quantity,delivery_mode,fresh_eligible,nationwide_shipping_enabled,requires_cold_chain,packed_weight_grams,package_length_cm,package_width_cm,package_height_cm,shipping_class,min_nationwide_quantity,min_nationwide_order_value,handling_minutes').order('name'),
     context.service.from('product_fulfillment_profiles').select('*'),
-    context.service.from('vendors').select('id,business_name,is_open,admin_suspended,local_30_min_enabled').order('business_name'),
+    context.service.from('vendors').select('*').order('business_name'),
   ]);
 
   const firstError = settingsResult.error || productsResult.error || profilesResult.error || vendorsResult.error;
@@ -86,13 +86,34 @@ export async function PATCH(request: Request) {
   if (action === 'vendor') {
     const vendorId = String(body.vendor_id || '');
     if (!vendorId) return NextResponse.json({ error: 'Vendor is required.' }, { status: 400 });
+
+    const marketplaceStatus = String(body.marketplace_status || 'PENDING');
+    const sellerQualityScore = Math.max(0, Math.min(100, Number(body.seller_quality_score || 0)));
+    if (!['PENDING','VERIFIED','SUSPENDED'].includes(marketplaceStatus) || !Number.isFinite(sellerQualityScore)) {
+      return NextResponse.json({ error: 'Review the seller trust status and quality score.' }, { status: 400 });
+    }
+    if (marketplaceStatus === 'VERIFIED' && body.kyc_verified !== true) {
+      return NextResponse.json({ error: 'Complete KYC verification before marking a seller Verified.' }, { status: 400 });
+    }
+
+    const update = {
+      local_30_min_enabled: booleanValue(body.local_30_min_enabled),
+      marketplace_status: marketplaceStatus,
+      kyc_verified: booleanValue(body.kyc_verified),
+      gst_verified: booleanValue(body.gst_verified),
+      authorized_brand_partner: booleanValue(body.authorized_brand_partner),
+      invoice_available: booleanValue(body.invoice_available),
+      seller_quality_score: sellerQualityScore,
+      trust_updated_at: new Date().toISOString(),
+    };
+
     const { data, error } = await context.service
       .from('vendors')
-      .update({ local_30_min_enabled: booleanValue(body.local_30_min_enabled) })
+      .update(update)
       .eq('id', vendorId)
-      .select('id,business_name,is_open,admin_suspended,local_30_min_enabled')
+      .select('*')
       .single();
-    if (error) return NextResponse.json({ error: 'Vendor Fresh setting could not be saved.' }, { status: 503 });
+    if (error) return NextResponse.json({ error: 'Vendor marketplace trust settings could not be saved. Apply the seller-trust migration first.' }, { status: 503 });
     return NextResponse.json({ vendor: data });
   }
 
