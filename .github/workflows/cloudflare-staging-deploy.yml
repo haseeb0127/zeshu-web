@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - design/fresh-premium-brand-20260923
   workflow_dispatch:
 
 permissions:
