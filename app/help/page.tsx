@@ -29,6 +29,7 @@ const SERVICES = [
   { key: "Zeshu Cash & Referrals", question: "How do Zeshu Cash, rewards and referrals work?" },
   { key: "Payments & Refunds", question: "How do payments and refunds work?" },
   { key: "Account & Safety", question: "How does Zeshu protect my account and what should I never share?" },
+  { key: "App, QR & Pass", question: "How do the Zeshu app, QR tools, Zeshu Pass and Subscribe & Save work?" },
 ];
 
 const DIGITAL_HELP = [
