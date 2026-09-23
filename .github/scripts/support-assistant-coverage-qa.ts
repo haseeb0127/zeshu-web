@@ -45,6 +45,21 @@ assert(route.includes('Use Zeshu’s Privacy Policy for the full data-handling t
 assert(help.includes('Current service status'), 'Help Center must show customer-facing service status');
 assert(help.includes('Available where shown'), 'Help Center must avoid claiming universal marketplace availability');
 assert(help.includes('Discovery available'), 'Help Center must label discovery-only services clearly');
+for (const phrase of [
+  'Zeshu Prepaid is designed for India-wide mobile-plan discovery',
+  'Zeshu DTH can guide you through subscriber/customer ID entry',
+  'For Electricity, select the electricity provider first',
+  'For FASTag, choose a supported provider',
+  'Zeshu LPG currently supports the customer discovery surface only',
+  'For Piped Gas, choose a supported provider',
+  'For Water Bill discovery, select a supported provider',
+  'For Broadband, select the provider',
+  'Zeshu can provide QR/scanner tools',
+]) {
+  assert(route.includes(phrase), `Assistant service coverage is missing: ${phrase}`);
+}
+assert(help.includes('const DIGITAL_HELP = ['), 'Help Center must expose digital-service support shortcuts');
+assert(help.includes('Popular digital help'), 'Help Center must label digital support shortcuts');
 
 const moveFlagCount = (env.match(/^MOVE_EXECUTION_ENABLED=/gm) || []).length;
 assert(moveFlagCount === 1, 'MOVE_EXECUTION_ENABLED must be documented exactly once');
