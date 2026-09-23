@@ -148,10 +148,10 @@ const loadLiveAssistantContext = async ({
   userId: string;
   message: string;
 }): Promise<LiveAssistantContext> => {
-  const needsOrders = orderIntent(message);
+  const needsMoveServices = rideIntent(message) || courierIntent(message) || carShareIntent(message) || travelIntent(message);
+  const needsOrders = orderIntent(message) && !needsMoveServices;
   const needsRewards = rewardIntent(message);
   const needsCatalog = catalogIntent(message);
-  const needsMoveServices = rideIntent(message) || courierIntent(message) || carShareIntent(message) || travelIntent(message);
   const context: LiveAssistantContext = {};
   if (needsMoveServices) context.move_services = getMoveServiceReadiness();
 
@@ -227,6 +227,7 @@ const suggestedForIntent = (intent: string) => {
 
 const fallbackAnswer = (message: string, context: LiveAssistantContext): AssistantResult => {
   const text = message.toLowerCase();
+  const moveServiceIntent = rideIntent(message) || courierIntent(message) || carShareIntent(message) || travelIntent(message);
 
   if (/\b(human|person|agent|support executive|talk to support)\b/.test(text)) {
     return {
@@ -239,7 +240,7 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext): Assista
     };
   }
 
-  if (/damaged|spoiled|wrong item|missing item|refund my|refund.*order|want.*refund|need.*refund|return my|cancel.*order|order.*cancel/.test(text)) {
+  if (!moveServiceIntent && /damaged|spoiled|wrong item|missing item|refund my|refund.*order|want.*refund|need.*refund|return my|cancel.*order|order.*cancel/.test(text)) {
     return {
       answer: 'I can explain the policy, but a support person must review the actual order before any replacement, cancellation or refund decision. I’ll transfer this with your question attached.',
       resolved: false,
@@ -250,7 +251,7 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext): Assista
     };
   }
 
-  if (/refund|return policy|cancellation policy/.test(text)) {
+  if (!moveServiceIntent && /refund|return policy|cancellation policy/.test(text)) {
     return {
       answer: 'Approved monetary refunds are returned to the original payment method where supported and are normally processed within 5–7 business days after approval; final credit timing can depend on the bank or payment provider. Grocery quality or fulfilment issues should generally be reported within 24 hours where reasonably possible. A specific refund or replacement still needs order review.',
       resolved: true,
@@ -272,7 +273,7 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext): Assista
     };
   }
 
-  if (orderIntent(message)) {
+  if (orderIntent(message) && !moveServiceIntent) {
     const latest = context.recent_orders?.[0];
     if (latest) {
       const items = latest.item_names.length ? ` Items include ${latest.item_names.slice(0, 3).join(', ')}.` : '';
@@ -373,7 +374,7 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext): Assista
     };
   }
 
-  if (/\b(lost parcel|missing parcel|courier.*lost|parcel.*damaged|courier.*damaged|driver complaint|ride complaint|travel refund|flight refund|hotel refund|ticket refund|ride.*charged|courier.*charged|travel.*charged)\b/.test(text)) {
+  if (/\b(lost parcel|missing parcel|courier.*lost|parcel.*damaged|courier.*damaged|driver complaint|ride complaint|ride.*charged|courier.*charged|travel.*charged|my.*(?:travel|flight|hotel|ticket).*(?:refund|cancel)|refund.*my.*(?:travel|flight|hotel|ticket))\b/.test(text)) {
     return {
       answer: 'This needs a provider or transaction review, so I’ll transfer it to Zeshu Support with your question attached. If money was debited, do not pay again while the original status is being checked.',
       resolved: false,
