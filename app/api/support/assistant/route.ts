@@ -102,6 +102,7 @@ const sanitizeHistory = (value: unknown): AssistantTurn[] => {
 
 const catalogIntent = (message: string) => /\b(product|products|stock|available|availability|price|cost|sell|find|search|grocery|groceries|milk|atta|flour|bread|chicken|biscuit|biscuits|dairy|snack|snacks|oil|rice|egg|eggs|drink|drinks|cola|pepsi)\b/i.test(message);
 const orderIntent = (message: string) => /\b(order|orders|track|tracking|delivery|rider|eta|late|arrive|arriving|purchase|buy again)\b/i.test(message);
+const deliveryInfoIntent = (message: string) => /\b(delivery area|delivery areas|delivery zone|deliver to|where.*deliver|saved address|saved addresses|address|location pin|serviceable|serviceability|jagtial delivery)\b/i.test(message);
 const rewardIntent = (message: string) => /\b(zeshu cash|cashback|reward|rewards|bonus|bonuses|referral|coins?)\b/i.test(message);
 const rideIntent = (message: string) => /\b(bike ride|bike taxi|auto ride|auto-rickshaw|autorickshaw|cab|taxi|rental car|outstation cab|ride|rides|driver|fare)\b/i.test(message);
 const courierIntent = (message: string) => /\b(bike courier|courier|parcel|package|mini truck|tempo|cargo|porter|shop delivery|send.*parcel|send.*package)\b/i.test(message);
@@ -150,7 +151,7 @@ const loadLiveAssistantContext = async ({
   message: string;
 }): Promise<LiveAssistantContext> => {
   const needsMoveServices = rideIntent(message) || courierIntent(message) || carShareIntent(message) || travelIntent(message);
-  const needsOrders = Boolean(userId) && orderIntent(message) && !needsMoveServices;
+  const needsOrders = Boolean(userId) && orderIntent(message) && !needsMoveServices && !deliveryInfoIntent(message);
   const needsRewards = Boolean(userId) && rewardIntent(message);
   const needsCatalog = catalogIntent(message);
   const context: LiveAssistantContext = {};
@@ -311,6 +312,17 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
       handoff_reason: 'A specific payment must be reviewed by support.',
       suggested_questions: [],
       intent: 'PAYMENT',
+    };
+  }
+
+  if (!moveServiceIntent && deliveryInfoIntent(message)) {
+    return {
+      answer: 'Physical-product delivery is currently limited to the supported Jagtial delivery zone. You can browse without an address, but physical checkout needs a verified serviceable delivery pin. Zeshu can use device location or a map pin and then fill available area, city, state and PIN details. Digital services remain India-wide where the specific provider service is available.',
+      resolved: true,
+      subject: 'Delivery and address help',
+      handoff_reason: '',
+      suggested_questions: ['How do I set my address?', 'Can I use digital services outside Jagtial?', 'How does live tracking work?'],
+      intent: 'DELIVERY',
     };
   }
 
