@@ -68,6 +68,7 @@ assert(help.includes('Popular digital help'), 'Help Center must label digital su
 assert(adminSupport.includes('support_category: supportCategory'), 'Admin support API must expose a service category');
 assert(adminDashboard.includes('SUPPORT_CATEGORIES'), 'Admin support inbox must expose service-category filters');
 assert(adminDashboard.includes('All services'), 'Admin support inbox must provide an all-services category view');
+assert(adminDashboard.includes('Search issue, customer, order or message…'), 'Admin support inbox must support operational search');
 
 const moveFlagCount = (env.match(/^MOVE_EXECUTION_ENABLED=/gm) || []).length;
 assert(moveFlagCount === 1, 'MOVE_EXECUTION_ENABLED must be documented exactly once');
