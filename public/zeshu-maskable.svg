@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Zeshu">
   <defs>
     <linearGradient id="zeshuBrand" x1="56" y1="48" x2="456" y2="464" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#13A05F"/>
-      <stop offset="1" stop-color="#0B6F47"/>
+      <stop offset="0" stop-color="#0B7A59"/>
+      <stop offset="1" stop-color="#075E45"/>
     </linearGradient>
-  </defs>
+    <linearGradient id="zeshuAccent" x1="292" y1="104" x2="408" y2="224" gradientUnits="userSpaceOnUse">\n      <stop offset="0" stop-color="#C8F05B"/>\n      <stop offset="1" stop-color="#A9D93B"/>\n    </linearGradient>\n  </defs>
   <rect width="512" height="512" fill="url(#zeshuBrand)"/>
   <path d="M108 120h296v76L225 316h184v76H103v-76l180-120H108z" fill="#FFFFFF"/>
-</svg>
+  <path d="M350 104l-62 101h53l-34 80 98-121h-56l30-60z" fill="url(#zeshuAccent)"/>\n</svg>
