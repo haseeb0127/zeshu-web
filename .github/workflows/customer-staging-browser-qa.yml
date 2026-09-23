@@ -217,6 +217,72 @@ jobs:
           }
           NODE
 
+      - name: Verify public Help Center, AI boundaries and localization
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+
+          const base = process.env.BASE_URL;
+          const browser = await chromium.launch({ headless: true });
+          const assert = (value, message) => { if (!value) throw new Error(message); };
+
+          try {
+            const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+            await page.goto(base + '/help', { waitUntil: 'networkidle', timeout: 60000 });
+
+            const heading = page.getByRole('heading', { name: 'Zeshu Help Center' });
+            await heading.waitFor({ state: 'visible', timeout: 10000 });
+
+            const input = page.locator('input[placeholder="Ask anything about Zeshu…"]');
+            await input.fill('Can I book a bike ride now?');
+            await page.getByRole('button', { name: 'Send', exact: true }).click();
+
+            await page.waitForFunction(() => {
+              const text = document.body.innerText;
+              return text.includes('Coming Soon') && text.includes('booking') && text.includes('payment');
+            }, null, { timeout: 20000 });
+
+            const publicText = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(publicText.includes('Coming Soon'), 'Public Help Center did not return safe ride availability');
+            assert(!publicText.includes('Order #'), 'Guest Help Center exposed private order context');
+
+            const move = await page.request.get(base + '/api/move/readiness');
+            assert(move.ok(), 'Move readiness API failed');
+            const readiness = await move.json();
+            assert(readiness.customer_booking_enabled === false, 'Move & Travel unexpectedly became bookable');
+            for (const key of ['rides','courier','car_share','travel']) {
+              assert(readiness?.services?.[key]?.customerBookingAvailable === false, `${key} unexpectedly became bookable`);
+            }
+
+            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'hi'));
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+            const hindi = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(hindi.includes('Zeshu हेल्प सेंटर'), 'Help Center heading is not localized in Hindi');
+            assert(hindi.includes('राइड्स'), 'Help Center rides topic is not localized in Hindi');
+
+            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'ur'));
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+            await page.waitForFunction(() => document.documentElement.dir === 'rtl', null, { timeout: 10000 });
+            const urdu = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(urdu.includes('Zeshu ہیلپ سینٹر'), 'Help Center heading is not localized in Urdu');
+            assert(urdu.includes('رائیڈز'), 'Help Center rides topic is not localized in Urdu');
+            assert(await page.locator('html').getAttribute('dir') === 'rtl', 'Urdu Help Center is not RTL');
+
+            await page.screenshot({ path: 'help-center-urdu.png', fullPage: true });
+            console.log('HELP_CENTER_BROWSER_QA=PASS');
+          } finally {
+            await browser.close();
+          }
+          NODE
+
+      - name: Upload Help Center QA screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer-staging-help-center-qa
+          path: help-center-urdu.png
+          retention-days: 7
+
       - name: Upload mobile QA screenshot
         uses: actions/upload-artifact@v4
         with:
