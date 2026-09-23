@@ -1,6 +1,11 @@
 name: Customer staging browser QA
 
 on:
+  push:
+    branches:
+      - feat/unified-support-ai-help-20260923
+    paths:
+      - ".github/workflows/customer-staging-browser-qa.yml"
   workflow_run:
     workflows:
       - Deploy Cloudflare staging
@@ -15,7 +20,7 @@ permissions:
 
 jobs:
   mobile-browser:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
