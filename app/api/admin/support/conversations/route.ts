@@ -31,5 +31,27 @@ export async function GET(request: Request) {
       });
     }
   }
-  return NextResponse.json({ conversations: conversations.map((conversation) => ({ ...conversation, last_message: latestByConversation.get(conversation.id) || null })) });
+  const priorityFor = (subject: string, latestBody: string) => {
+    const text = `${subject} ${latestBody}`.toLowerCase();
+    if (/safety|unsafe|accident|emergency|harass|threat|assault|danger/.test(text)) return { label: 'URGENT', rank: 0 };
+    if (/payment|refund|charged|debited|duplicate|provider dispute|lost parcel|missing parcel|damaged parcel/.test(text)) return { label: 'HIGH', rank: 1 };
+    if (/ride|courier|cargo|car share|travel|recharge|bill/.test(text)) return { label: 'SERVICE', rank: 2 };
+    return { label: 'NORMAL', rank: 3 };
+  };
+
+  const enriched = conversations.map((conversation) => {
+    const lastMessage = latestByConversation.get(conversation.id) || null;
+    const priority = priorityFor(String(conversation.subject || ''), String(lastMessage?.body || ''));
+    return { ...conversation, last_message: lastMessage, support_priority: priority.label, support_priority_rank: priority.rank };
+  }).sort((a, b) => {
+    const resolvedDelta = Number(a.status === 'RESOLVED') - Number(b.status === 'RESOLVED');
+    if (resolvedDelta !== 0) return resolvedDelta;
+    const priorityDelta = Number(a.support_priority_rank) - Number(b.support_priority_rank);
+    if (priorityDelta !== 0) return priorityDelta;
+    const waitingDelta = Number(b.status === 'WAITING') - Number(a.status === 'WAITING');
+    if (waitingDelta !== 0) return waitingDelta;
+    return new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime();
+  });
+
+  return NextResponse.json({ conversations: enriched });
 }
