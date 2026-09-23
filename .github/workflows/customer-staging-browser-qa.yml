@@ -8,6 +8,7 @@ on:
       - completed
     branches:
       - main
+      - feat/move-travel-foundation-20260923
   workflow_dispatch:
 
 permissions:
@@ -212,6 +213,55 @@ jobs:
 
             await page.screenshot({ path: 'localized-storefront-urdu.png', fullPage: true });
             console.log('LANGUAGE_HYBRID_BROWSER_QA=PASS');
+          } finally {
+            await browser.close();
+          }
+          NODE
+
+      - name: Verify Move and Travel discovery safety and localization
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+
+          const base = process.env.BASE_URL;
+          const browser = await chromium.launch({ headless: true });
+          const assert = (value, message) => { if (!value) throw new Error(message); };
+
+          try {
+            const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+            await page.goto(base + '/move', { waitUntil: 'networkidle', timeout: 60000 });
+
+            const english = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            for (const label of ['Zeshu Move & Travel','Bike Ride','Auto','Cab','Car Share','Bike Courier','Auto / Mini Truck','Bus','Train','Flights','Hotels']) {
+              assert(english.includes(label), `Move & Travel label missing: ${label}`);
+            }
+            assert(english.includes('Booking and payment are not available yet.'), 'Move & Travel safety copy missing');
+            const actionable = (await page.locator('button, a').allTextContents()).join(' ');
+            assert(!/\bBook(?:ing)?\b|\bPay\b/i.test(actionable), 'Move & Travel exposes a booking/payment action before launch');
+
+            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'te'));
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+            const telugu = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(telugu.includes('Zeshu మూవ్ & ట్రావెల్'), 'Move & Travel heading is not localized in Telugu');
+            assert(telugu.includes('బైక్ రైడ్'), 'Bike Ride is not localized in Telugu');
+
+            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'hi'));
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+            const hindi = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(hindi.includes('Zeshu मूव और ट्रैवल'), 'Move & Travel heading is not localized in Hindi');
+            assert(hindi.includes('बाइक कूरियर'), 'Bike Courier is not localized in Hindi');
+
+            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'ur'));
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+            await page.waitForFunction(() => document.documentElement.dir === 'rtl', null, { timeout: 10000 });
+            const urdu = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(urdu.includes('Zeshu موو اور ٹریول'), 'Move & Travel heading is not localized in Urdu');
+            assert(urdu.includes('کار شیئر'), 'Car Share is not localized in Urdu');
+            assert(await page.locator('html').getAttribute('dir') === 'rtl', 'Move & Travel Urdu page is not RTL');
+
+            await page.screenshot({ path: 'move-travel-urdu.png', fullPage: true });
+            console.log('MOVE_TRAVEL_BROWSER_QA=PASS');
           } finally {
             await browser.close();
           }
