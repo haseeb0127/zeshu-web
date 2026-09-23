@@ -117,12 +117,12 @@
 - [x] Automated mobile-layout QA on a 390×844 Chromium viewport, including storefront search/filters, marketplace fulfilment, Help Center and multilingual/RTL regression.
 - [ ] Browser QA on real Chrome/Safari/Edge devices.
 - [ ] Customer login / logout smoke test.
-- [ ] Address and service-area smoke test.
-- [ ] Catalog filters and product actions smoke test.
+- [x] Automated address/service-area boundary smoke: Jagtial eligible, outside-city blocked, invalid coordinates fail closed.
+- [x] Automated catalog filters/product action smoke: price, availability, sort, clear filters and ADD-to-cart.
 - [ ] Customer support / admin notification smoke test.
 - [ ] Rider GPS / ETA / navigation field test.
-- [ ] Utility discovery smoke test without completing real payment.
-- [ ] Existing cart/payment regression smoke test only — no payment code changes.
+- [x] Automated utility discovery smoke covers visible service tabs and provider/payment safety gates without completing payment.
+- [x] Automated cart/payment regression smoke covers cart state, price breakdown and secure-checkout UI while asserting no payment API is called.
 - [x] Production security review completed; new AI handoff is service-role only. Legacy project-wide advisor warnings remain separately tracked.
 - [ ] Launch decision.
 
