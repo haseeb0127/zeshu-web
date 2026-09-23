@@ -71,4 +71,6 @@ jobs:
             exit 1
           fi
       - run: npm ci
+      - name: Verify support priority rules
+        run: node --experimental-strip-types .github/scripts/support-priority-qa.ts
       - run: npm run build
