@@ -49,6 +49,7 @@ function ServiceSection({ title, cards }: { title: string; cards: ServiceCard[] 
             </div>
             <h3 className="mt-4 font-black text-slate-900">{t(card.title)}</h3>
             <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{t(card.description)}</p>
+            <Link href={`/help?service=${encodeURIComponent(card.title)}`} className="mt-3 inline-flex rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-[#075E45]">{t("Ask Zeshu Assistant")}</Link>
             <Link href={`/?support=${encodeURIComponent(`${card.title} support`)}`} className="mt-3 inline-flex rounded-lg bg-emerald-50 px-3 py-2 text-[11px] font-black text-[#075E45]">{t("Get help")}</Link>
           </article>
         ))}
@@ -101,7 +102,10 @@ export default function MoveTravelPage() {
         <section className="mt-6 rounded-3xl border border-blue-100 bg-white p-5 md:p-7">
           <h2 className="text-lg font-black text-slate-950">{t("Want to provide rides, logistics or travel?")}</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">{t("Zeshu is reviewing licensed operators, logistics companies and authorized travel partners.")}</p>
-          <Link href="/partners" className="mt-4 inline-flex rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white">{t("Partner with Zeshu")}</Link>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link href="/help?service=Move%20%26%20Travel" className="inline-flex rounded-xl bg-[#075E45] px-4 py-3 text-sm font-black text-white">{t("Customer Help")}</Link>
+            <Link href="/partners" className="inline-flex rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white">{t("Partner with Zeshu")}</Link>
+          </div>
         </section>
       </div>
     </main>
