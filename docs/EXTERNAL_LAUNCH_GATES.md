@@ -88,10 +88,10 @@ Current safe production status can be checked at:
 - expected response contains mode=ai or mode=guided and automatic_handoff=true
 
 To enable real AI:
-- add OPENAI_API_KEY as a server-side Vercel Production secret
-- set SUPPORT_AI_ENABLED=true
+- add OPENAI_API_KEY only as a server-side secret in the active Cloudflare Worker deployment environment
+- set SUPPORT_AI_ENABLED=true only after the key, expected support volume, cost controls and privacy handling are approved
 - optional SUPPORT_AI_MODEL=gpt-5.6-luna
-- redeploy
+- redeploy the Cloudflare Worker
 - confirm readiness reports mode=ai
 - run a signed-in informational question
 - run one signed-in unresolved test and verify the same thread appears in ZESHU HQ
@@ -99,7 +99,7 @@ To enable real AI:
 
 ## Before launch decision
 Evidence required:
-- latest Vercel deployment green
+- latest Cloudflare production deployment green
 - production smoke workflow green
 - real-device customer login/address/catalog/support test
 - rider GPS/ETA/navigation field test

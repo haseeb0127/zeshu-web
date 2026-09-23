@@ -52,9 +52,12 @@
 - [x] Manual support form remains as fallback if automatic handoff fails.
 - [x] AI support endpoint rate limiting.
 - [x] AI support privacy disclosure and no-secret guidance.
+- [x] Guided support covers marketplace, rides, courier/cargo, Car Share, travel, recharge/bills, pharmacy/health, payments, refunds and safety escalation.
+- [x] Move & Travel service cards link directly into service-aware Help & Support.
+- [x] Move & Travel readiness endpoint fails closed with customer booking/payment disabled until provider-specific launch gates pass.
 - [x] Admin customer-support sound, vibration and browser notifications.
 - [x] Support tables enabled for Supabase Realtime.
-- [ ] Production readiness check currently reports `mode=guided`, `automatic_handoff=true`. Set OPENAI_API_KEY and SUPPORT_AI_ENABLED=true in Vercel Production to switch to real AI mode.
+- [ ] Production readiness check currently reports `mode=guided`, `automatic_handoff=true`. Add OPENAI_API_KEY only as a server-side Cloudflare Worker secret and set SUPPORT_AI_ENABLED=true after cost/privacy approval to switch to real AI mode.
 
 ## Vendor / product operations
 - [x] Vendor dashboard.

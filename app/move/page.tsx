@@ -49,6 +49,7 @@ function ServiceSection({ title, cards }: { title: string; cards: ServiceCard[] 
             </div>
             <h3 className="mt-4 font-black text-slate-900">{t(card.title)}</h3>
             <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{t(card.description)}</p>
+            <Link href={`/?support=${encodeURIComponent(`${card.title} support`)}`} className="mt-3 inline-flex rounded-lg bg-emerald-50 px-3 py-2 text-[11px] font-black text-[#075E45]">{t("Get help")}</Link>
           </article>
         ))}
       </div>

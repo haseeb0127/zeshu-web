@@ -814,6 +814,38 @@ export default function ZeshuSuperApp() {
     setIsInstalledSurface(Boolean(standalone || webView));
   }, []);
 
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const requestedSupport = url.searchParams.get('support')?.trim();
+    if (!requestedSupport) return;
+
+    const safeSubject = requestedSupport.slice(0, 160);
+    const normalized = safeSubject.toLowerCase();
+    const category = /bike ride|auto|cab|rental car|ride/.test(normalized)
+      ? 'Ride issue'
+      : /bike courier|courier|cargo|mini truck|shop delivery|parcel|package/.test(normalized)
+        ? 'Courier / Cargo issue'
+        : /car share|carpool/.test(normalized)
+          ? 'Car Share issue'
+          : /bus|train|flight|hotel|experience|travel/.test(normalized)
+            ? 'Travel issue'
+            : /marketplace|seller|electronics|fashion|beauty|home & kitchen/.test(normalized)
+              ? 'Marketplace / seller issue'
+              : 'Other';
+    setSupportSubject(category);
+    setSupportAssistantQuestion(`I need help with ${safeSubject}`);
+
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    setAccountView('SUPPORT');
+    setIsAccountOpen(true);
+    url.searchParams.delete('support');
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  }, [user]);
+
   const clearLocationWatcher = () => {
     if (locationWatchRef.current !== null && 'geolocation' in navigator) {
       navigator.geolocation.clearWatch(locationWatchRef.current);
@@ -3606,7 +3638,7 @@ export default function ZeshuSuperApp() {
                   { view: 'ORDERS', title: t('Your Orders & Buy Again'), summary: `${myOrders.length} orders`, icon: <Package size={20} aria-hidden="true" /> },
                   { view: 'ADDRESSES', title: t('Saved Addresses'), summary: `${addresses.length} saved`, icon: <MapPin size={20} aria-hidden="true" /> },
                   { view: 'REFERRAL', title: t('Invite & Earn'), summary: t('Share your Zeshu invite code'), icon: <HeartHandshake size={20} aria-hidden="true" /> },
-                  { view: 'SUPPORT', title: t('Help & Support'), summary: t('Orders, delivery, payments & more'), icon: <PhoneCall size={20} aria-hidden="true" /> },
+                  { view: 'SUPPORT', title: t('Help & Support'), summary: t('Shopping, rides, courier, travel, payments & more'), icon: <PhoneCall size={20} aria-hidden="true" /> },
                   { view: 'POLICIES', title: t('Policies & Trust'), summary: t('Customer policies and service information'), icon: <ShieldCheck size={20} aria-hidden="true" /> },
                   { view: 'PASS', title: t('Zeshu Pass'), summary: t('Coming soon'), icon: <Crown size={20} aria-hidden="true" /> },
                   { view: 'SUBSCRIBE', title: t('Subscribe & Save'), summary: t('Coming soon'), icon: <History size={20} aria-hidden="true" /> },
@@ -3687,12 +3719,12 @@ export default function ZeshuSuperApp() {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2"><p className="text-sm font-black text-slate-900">Zeshu Assistant</p><span className="rounded-full bg-emerald-100 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-emerald-800">{t('Smart help')}</span></div>
-                      <p className="mt-1 text-xs leading-5 text-slate-600">Ask naturally. When relevant, Zeshu can check your recent order status, Zeshu Cash and the current in-stock catalog before answering. Issues that need a refund, payment review or account change are transferred to a person with the context attached.</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">Ask naturally about shopping, marketplace sellers, delivery, payments, recharge/bills, rides, courier/cargo, Car Share or travel. When relevant, Zeshu can check your recent order status, Zeshu Cash and the current in-stock catalog before answering. Money disputes, safety issues, refunds or protected account changes are transferred to a person with the context attached.</p>
                     </div>
                     <div className="flex items-center gap-2">{supportAssistantSource && <span className="rounded-full bg-white px-2 py-1 text-[10px] font-black uppercase tracking-wider text-[#075E45]">{supportAssistantSource === 'ai' ? 'AI' : 'Guided help'}</span>}{supportAssistantMessages.length > 0 && <button type="button" onClick={clearSupportAssistantChat} className="rounded-lg bg-white px-2.5 py-1.5 text-[10px] font-black text-slate-500 shadow-sm">{t('Clear')}</button>}</div>
                   </div>
                   {supportAssistantMessages.length === 0 && <div className="mt-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar" aria-label="Suggested questions">
-                    {['Where is my latest order?','What is my Zeshu Cash balance?','Do you have milk?','Where does Zeshu deliver?','How do refunds work?'].map((question) => <button type="button" key={question} disabled={supportAssistantBusy} onClick={() => void askSupportAssistant(question)} className="whitespace-nowrap rounded-full border border-emerald-100 bg-white px-3 py-2 text-xs font-black text-[#075E45] shadow-sm disabled:opacity-50">{question}</button>)}
+                    {['Where is my latest order?','Can I book a bike ride now?','Can I send a parcel now?','Can I book trains on Zeshu?','What is my Zeshu Cash balance?','Do you have milk?','How do refunds work?'].map((question) => <button type="button" key={question} disabled={supportAssistantBusy} onClick={() => void askSupportAssistant(question)} className="whitespace-nowrap rounded-full border border-emerald-100 bg-white px-3 py-2 text-xs font-black text-[#075E45] shadow-sm disabled:opacity-50">{question}</button>)}
                   </div>}
                   {supportAssistantMessages.length > 0 && <div className="mt-3 max-h-72 space-y-2 overflow-y-auto rounded-xl bg-white/70 p-3" aria-live="polite">{supportAssistantMessages.map((message, index) => <div key={`${message.role}-${index}`} className={`rounded-xl p-3 text-sm leading-6 ${message.role === 'CUSTOMER' ? 'ml-6 bg-[#075E45] text-white' : 'mr-6 bg-white text-slate-700 shadow-sm'}`}><p className={`mb-1 text-[10px] font-black uppercase tracking-wider ${message.role === 'CUSTOMER' ? 'text-emerald-100' : 'text-[#075E45]'}`}>{message.role === 'CUSTOMER' ? 'You' : 'Zeshu Assistant'}</p><p className="whitespace-pre-wrap break-words">{message.body}</p></div>)}</div>}
                   {supportAssistantContextUsed.length > 0 && <div className="mt-2 flex flex-wrap items-center gap-1.5"><span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{t('Checked live')}</span>{supportAssistantContextUsed.map((item) => <span key={item} className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-emerald-700">{item === 'orders' ? 'Orders' : item === 'rewards' ? 'Zeshu Cash' : item === 'catalog' ? 'Catalog' : item}</span>)}</div>}
@@ -3716,7 +3748,7 @@ export default function ZeshuSuperApp() {
                 {!selectedSupportConversationId ? <>
                   <label htmlFor="support-category" className="sr-only">{t('Support category')}</label>
                   <select id="support-category" value={supportSubject} onChange={(event) => setSupportSubject(event.target.value)} className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700">
-                    <option value="Order issue">{t('Order issue')}</option><option value="Delivery issue">{t('Delivery issue')}</option><option value="Payment issue">{t('Payment issue')}</option><option value="Refund issue">{t('Refund issue')}</option><option value="Recharge/Bill issue">{t('Recharge/Bill issue')}</option><option value="Account issue">{t('Account issue')}</option><option value="Other">{t('Other')}</option>
+                    <option value="Order issue">{t('Order issue')}</option><option value="Marketplace / seller issue">{t('Marketplace / seller issue')}</option><option value="Delivery issue">{t('Delivery issue')}</option><option value="Ride issue">{t('Ride issue')}</option><option value="Courier / Cargo issue">{t('Courier / Cargo issue')}</option><option value="Car Share issue">{t('Car Share issue')}</option><option value="Travel issue">{t('Travel issue')}</option><option value="Payment issue">{t('Payment issue')}</option><option value="Refund issue">{t('Refund issue')}</option><option value="Recharge/Bill issue">{t('Recharge/Bill issue')}</option><option value="Pharmacy / Health issue">{t('Pharmacy / Health issue')}</option><option value="Safety issue">{t('Safety issue')}</option><option value="Account issue">{t('Account issue')}</option><option value="Other">{t('Other')}</option>
                   </select>
                   <label htmlFor="support-details" className="sr-only">{t('Support details')}</label>
                   <textarea id="support-details" rows={3} maxLength={4000} value={supportMessage} onChange={(event) => setSupportMessage(event.target.value)} placeholder={t('Describe what you need help with')} className="mt-2 w-full resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#075E45]" />

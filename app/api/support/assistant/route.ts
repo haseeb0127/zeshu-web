@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { rateLimitResponse } from '@/app/lib/provider-security';
 import { ZESHU_SUPPORT_KNOWLEDGE } from '@/app/lib/support-ai';
 import { getRuntimeEnvValue, getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
+import { getMoveServiceReadiness } from '@/app/lib/move-readiness';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -52,6 +53,7 @@ type LiveAssistantContext = {
   reward_activity?: RewardActivity[];
   catalog_matches?: CatalogProduct[];
   catalog_snapshot_partial?: boolean;
+  move_services?: ReturnType<typeof getMoveServiceReadiness>;
 };
 
 const getBearer = (request: Request) => {
@@ -100,6 +102,11 @@ const sanitizeHistory = (value: unknown): AssistantTurn[] => {
 const catalogIntent = (message: string) => /\b(product|products|stock|available|availability|price|cost|sell|find|search|grocery|groceries|milk|atta|flour|bread|chicken|biscuit|biscuits|dairy|snack|snacks|oil|rice|egg|eggs|drink|drinks|cola|pepsi)\b/i.test(message);
 const orderIntent = (message: string) => /\b(order|orders|track|tracking|delivery|rider|eta|late|arrive|arriving|purchase|buy again)\b/i.test(message);
 const rewardIntent = (message: string) => /\b(zeshu cash|cashback|reward|rewards|bonus|bonuses|referral|coins?)\b/i.test(message);
+const rideIntent = (message: string) => /\b(bike ride|bike taxi|auto ride|auto-rickshaw|autorickshaw|cab|taxi|rental car|outstation cab|ride|rides|driver|fare)\b/i.test(message);
+const courierIntent = (message: string) => /\b(bike courier|courier|parcel|package|mini truck|tempo|cargo|porter|shop delivery|send.*parcel|send.*package)\b/i.test(message);
+const carShareIntent = (message: string) => /\b(car share|car sharing|carpool|car pool|blablacar|share.*car|intercity.*share)\b/i.test(message);
+const travelIntent = (message: string) => /\b(travel|bus ticket|train ticket|rail ticket|flight|flights|hotel|hotels|experience|tour|booking|pnr)\b/i.test(message);
+const marketplaceIntent = (message: string) => /\b(marketplace|seller|vendor|electronics|fashion|clothing|beauty|home & kitchen|authorized seller|gst verified|invoice)\b/i.test(message);
 
 const queryTokens = (message: string) => {
   const stop = new Set(['what','when','where','which','with','have','your','does','zeshu','show','tell','find','price','cost','stock','available','availability','product','products','please','need','want','give','about','there','this','that','from','for','the','and','are','can','you','do','is','me','my']);
@@ -144,7 +151,9 @@ const loadLiveAssistantContext = async ({
   const needsOrders = orderIntent(message);
   const needsRewards = rewardIntent(message);
   const needsCatalog = catalogIntent(message);
+  const needsMoveServices = rideIntent(message) || courierIntent(message) || carShareIntent(message) || travelIntent(message);
   const context: LiveAssistantContext = {};
+  if (needsMoveServices) context.move_services = getMoveServiceReadiness();
 
   const [ordersResult, ledgerResult, allLedgerResult, reservedResult, catalogResult] = await Promise.all([
     needsOrders
@@ -208,6 +217,11 @@ const suggestedForIntent = (intent: string) => {
   if (intent === 'CATALOG') return ['Do you have milk?', 'What products are in stock?', 'How do I search products?'];
   if (intent === 'DELIVERY') return ['Where does Zeshu deliver?', 'How do I set my address?', 'Can I use digital services outside Jagtial?'];
   if (intent === 'PAYMENT') return ['How does secure checkout work?', 'Money was debited but no order', 'Where can I find my payment reference?'];
+  if (intent === 'RIDES') return ['Can I book a bike ride now?', 'When will Auto and Cab launch?', 'How will ride safety work?'];
+  if (intent === 'COURIER') return ['Can I send a parcel now?', 'What will Bike Courier carry?', 'How will parcel tracking work?'];
+  if (intent === 'CAR_SHARE') return ['Can I share an intercity car now?', 'How will drivers be verified?', 'How will car-share safety work?'];
+  if (intent === 'TRAVEL') return ['Can I book trains on Zeshu?', 'Will Zeshu have flights and hotels?', 'How will travel refunds work?'];
+  if (intent === 'MARKETPLACE') return ['What does Verified Seller mean?', 'Can I buy electronics?', 'How are nationwide products delivered?'];
   return ['Where is my latest order?', 'What is my Zeshu Cash balance?', 'What can Zeshu Assistant help with?'];
 };
 
@@ -348,6 +362,83 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext): Assista
     };
   }
 
+  if (/\b(accident|unsafe|danger|harass|harassment|threat|assault|emergency|driver.*unsafe|passenger.*unsafe)\b/.test(text)) {
+    return {
+      answer: 'If anyone is in immediate danger, contact local emergency services first. I’ll also transfer this to Zeshu Support so the platform/service record can be reviewed without making you repeat the issue.',
+      resolved: false,
+      subject: 'Urgent safety support',
+      handoff_reason: 'A ride, delivery or service safety issue requires urgent human review.',
+      suggested_questions: [],
+      intent: 'SAFETY',
+    };
+  }
+
+  if (/\b(lost parcel|missing parcel|courier.*lost|parcel.*damaged|courier.*damaged|driver complaint|ride complaint|travel refund|flight refund|hotel refund|ticket refund|ride.*charged|courier.*charged|travel.*charged)\b/.test(text)) {
+    return {
+      answer: 'This needs a provider or transaction review, so I’ll transfer it to Zeshu Support with your question attached. If money was debited, do not pay again while the original status is being checked.',
+      resolved: false,
+      subject: 'Move, courier or travel transaction help',
+      handoff_reason: 'A provider-specific service, safety or money issue requires protected review.',
+      suggested_questions: [],
+      intent: 'SERVICE_DISPUTE',
+    };
+  }
+
+  if (carShareIntent(message)) {
+    return {
+      answer: 'Zeshu Car Share is visible as Coming Soon, but intercity car-share booking and payment are not enabled yet. Zeshu will only launch it after the cost-sharing/legal model, driver and vehicle verification, service rules and safety controls are approved.',
+      resolved: true,
+      subject: 'Zeshu Car Share availability',
+      handoff_reason: '',
+      suggested_questions: suggestedForIntent('CAR_SHARE'),
+      intent: 'CAR_SHARE',
+    };
+  }
+
+  if (rideIntent(message)) {
+    return {
+      answer: 'Zeshu Bike Ride, Auto, Cab and Rental Car are currently Coming Soon. No live fare, driver, vehicle, ETA, booking or payment is available yet. Zeshu will only enable a ride type after the relevant licensed/authorized provider, serviceability, safety, support and compliance checks pass.',
+      resolved: true,
+      subject: 'Zeshu Rides availability',
+      handoff_reason: '',
+      suggested_questions: suggestedForIntent('RIDES'),
+      intent: 'RIDES',
+    };
+  }
+
+  if (courierIntent(message)) {
+    return {
+      answer: 'Zeshu Bike Courier, Auto / Mini Truck and Shop Delivery are currently Coming Soon for direct customer bookings. Product shipping through a marketplace courier is a separate flow and does not make on-demand parcel/cargo booking live. When launched, Zeshu will show real serviceability, quote, tracking and delivery proof before treating a job as available.',
+      resolved: true,
+      subject: 'Zeshu Courier availability',
+      handoff_reason: '',
+      suggested_questions: suggestedForIntent('COURIER'),
+      intent: 'COURIER',
+    };
+  }
+
+  if (travelIntent(message)) {
+    return {
+      answer: 'Zeshu Travel currently shows Bus, Train, Flights, Hotels and Experiences as Coming Soon. Booking and payment are not enabled yet. Zeshu will use authorized providers, and rail booking will only be offered through an authorized rail-booking partner.',
+      resolved: true,
+      subject: 'Zeshu Travel availability',
+      handoff_reason: '',
+      suggested_questions: suggestedForIntent('TRAVEL'),
+      intent: 'TRAVEL',
+    };
+  }
+
+  if (marketplaceIntent(message)) {
+    return {
+      answer: 'Zeshu Market is designed for asset-light seller fulfilment across categories such as electronics, fashion, beauty and home products. Seller trust labels are separate: Verified Seller, GST Verified, Invoice Available and Authorized Brand Partner are shown only when the relevant evidence is available. Nationwide checkout remains gated by actual seller and delivery serviceability.',
+      resolved: true,
+      subject: 'Marketplace help',
+      handoff_reason: '',
+      suggested_questions: suggestedForIntent('MARKETPLACE'),
+      intent: 'MARKETPLACE',
+    };
+  }
+
   if (/recharge|bill|electricity|fastag|gas|water|broadband|dth/.test(text)) {
     return {
       answer: 'Recharge and bill tools are designed for India-wide use. Some services are still discovery-only, so Zeshu only treats a provider transaction as completed where the relevant fulfilment integration is explicitly enabled and verified.',
@@ -404,7 +495,7 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext): Assista
   }
 
   return {
-    answer: 'I can help with live order status, current product availability and prices, Zeshu Cash, delivery areas, addresses, checkout, refunds policy, recharge/bill availability, referrals and account help. Tell me what you are trying to do, or choose one of the suggestions below.',
+    answer: 'I can help with orders, products, marketplace sellers, Zeshu Cash, delivery, payments, refunds policy, recharge/bills, Bike/Auto/Cab, courier/cargo, Car Share, travel, referrals and account help. Tell me what you are trying to do, or choose one of the suggestions below.',
     resolved: true,
     subject: 'Zeshu Assistant help',
     handoff_reason: '',
@@ -491,7 +582,7 @@ export async function GET() {
   return NextResponse.json({
     mode: aiEnabled ? 'ai' : 'guided',
     automatic_handoff: handoffConfigured,
-    capabilities: ['live_order_status', 'reward_context', 'catalog_search', 'policy_help', 'automatic_handoff'],
+    capabilities: ['live_order_status', 'reward_context', 'catalog_search', 'marketplace_help', 'rides_help', 'courier_help', 'car_share_help', 'travel_help', 'digital_services_help', 'move_service_readiness', 'policy_help', 'automatic_handoff'],
   });
 }
 
@@ -659,6 +750,7 @@ ${liveContextText}`,
     liveContext.recent_orders ? 'orders' : null,
     typeof liveContext.reward_balance === 'number' ? 'rewards' : null,
     liveContext.catalog_matches ? 'catalog' : null,
+    liveContext.move_services ? 'move_services' : null,
   ].filter(Boolean);
 
   return NextResponse.json({
