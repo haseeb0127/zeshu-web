@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { rateLimitResponse } from '@/app/lib/provider-security';
 import { ZESHU_SUPPORT_KNOWLEDGE } from '@/app/lib/support-ai';
 import { getRuntimeEnvValue, getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
+import { getMoveServiceReadiness } from '@/app/lib/move-readiness';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -52,6 +53,7 @@ type LiveAssistantContext = {
   reward_activity?: RewardActivity[];
   catalog_matches?: CatalogProduct[];
   catalog_snapshot_partial?: boolean;
+  move_services?: ReturnType<typeof getMoveServiceReadiness>;
 };
 
 const getBearer = (request: Request) => {
@@ -149,7 +151,9 @@ const loadLiveAssistantContext = async ({
   const needsOrders = orderIntent(message);
   const needsRewards = rewardIntent(message);
   const needsCatalog = catalogIntent(message);
+  const needsMoveServices = rideIntent(message) || courierIntent(message) || carShareIntent(message) || travelIntent(message);
   const context: LiveAssistantContext = {};
+  if (needsMoveServices) context.move_services = getMoveServiceReadiness();
 
   const [ordersResult, ledgerResult, allLedgerResult, reservedResult, catalogResult] = await Promise.all([
     needsOrders
@@ -578,7 +582,7 @@ export async function GET() {
   return NextResponse.json({
     mode: aiEnabled ? 'ai' : 'guided',
     automatic_handoff: handoffConfigured,
-    capabilities: ['live_order_status', 'reward_context', 'catalog_search', 'marketplace_help', 'rides_help', 'courier_help', 'car_share_help', 'travel_help', 'digital_services_help', 'policy_help', 'automatic_handoff'],
+    capabilities: ['live_order_status', 'reward_context', 'catalog_search', 'marketplace_help', 'rides_help', 'courier_help', 'car_share_help', 'travel_help', 'digital_services_help', 'move_service_readiness', 'policy_help', 'automatic_handoff'],
   });
 }
 
@@ -746,6 +750,7 @@ ${liveContextText}`,
     liveContext.recent_orders ? 'orders' : null,
     typeof liveContext.reward_balance === 'number' ? 'rewards' : null,
     liveContext.catalog_matches ? 'catalog' : null,
+    liveContext.move_services ? 'move_services' : null,
   ].filter(Boolean);
 
   return NextResponse.json({
