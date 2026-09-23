@@ -113,6 +113,10 @@ jobs:
             assert(sellerResponse.ok(), 'Marketplace seller API failed');
             const sellerPayload = await sellerResponse.json();
             assert(Array.isArray(sellerPayload.sellers), 'Marketplace seller payload is invalid');
+            const verifiedSeller = sellerPayload.sellers.find(
+              (seller) => seller.marketplace_status === 'VERIFIED' && seller.kyc_verified === true,
+            );
+            assert(verifiedSeller, 'No deliberately verified staging seller was returned');
             for (const seller of sellerPayload.sellers) {
               assert(!Object.prototype.hasOwnProperty.call(seller, 'owner_id'), 'Marketplace seller API leaked owner_id');
               assert(!Object.prototype.hasOwnProperty.call(seller, 'seller_quality_score'), 'Marketplace seller API leaked internal seller quality score');
@@ -120,6 +124,8 @@ jobs:
 
             await page.goto(base, { waitUntil: 'networkidle', timeout: 60000 });
             const body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(body.includes('Verified Seller'), 'Verified Seller badge is missing from staging storefront');
+            assert(body.includes(`Sold by ${verifiedSeller.business_name}`), 'Seller name is missing from staging storefront');
             assert(body.includes('Today') || body.includes('10–30 min') || body.includes('2–4 days'), 'Customer delivery promise is missing');
 
             const search = page.locator('input[aria-label="Search Zeshu"]');
@@ -159,6 +165,15 @@ jobs:
           }
           NODE
 
+      - name: Verify marketplace ranking and checkout safety guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes tsx@4.20.6 .github/scripts/marketplace-foundation-qa.ts
+          grep -q "MIXED_FULFILLMENT_UNSUPPORTED" app/api/create-razorpay-order/route.ts
+          grep -q "MULTI_VENDOR_CART" app/api/create-razorpay-order/route.ts
+          echo "MARKETPLACE_CHECKOUT_GUARDS=PASS"
+
       - name: Verify Hindi and Urdu storefront localization
         shell: bash
         run: |
@@ -173,6 +188,13 @@ jobs:
             const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 
             await page.goto(base, { waitUntil: 'networkidle', timeout: 60000 });
+            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'te'));
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+
+            const telugu = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(telugu.includes('ధృవీకరించిన విక్రేత'), 'Verified Seller is not localized in Telugu');
+            assert(telugu.includes('విక్రేత Zeshu Staging Store'), 'Sold by seller label is not localized in Telugu');
+
             await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'hi'));
             await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
 
@@ -195,6 +217,8 @@ jobs:
             assert(hindi.includes('समीक्षाएँ देखें'), 'Review action is not localized in Hindi');
             assert(hindi.includes('जोड़ें'), 'ADD action is not localized in Hindi');
             assert(hindi.includes('रीचार्ज और बिल'), 'Footer recharge link is not localized in Hindi');
+            assert(hindi.includes('सत्यापित विक्रेता'), 'Verified Seller is not localized in Hindi');
+            assert(hindi.includes('विक्रेता Zeshu Staging Store'), 'Sold by seller label is not localized in Hindi');
 
             for (const english of ['All Items', 'No reviews yet', 'See reviews', 'Image unavailable']) {
               assert(!hindi.includes(english), `English storefront label still visible in Hindi: ${english}`);
@@ -209,6 +233,8 @@ jobs:
             assert(urdu.includes('ایک Zeshu۔ آپ کی ضرورت کے لیے تین آسان راستے۔'), 'Hybrid Zeshu heading is not localized in Urdu');
             assert(urdu.includes('سب کچھ خریدیں'), 'Shop Everything is not localized in Urdu');
             assert(urdu.includes('ریچارج اور بل'), 'Footer recharge link is not localized in Urdu');
+            assert(urdu.includes('تصدیق شدہ فروخت کنندہ'), 'Verified Seller is not localized in Urdu');
+            assert(urdu.includes('فروخت کنندہ Zeshu Staging Store'), 'Sold by seller label is not localized in Urdu');
 
             await page.screenshot({ path: 'localized-storefront-urdu.png', fullPage: true });
             console.log('LANGUAGE_HYBRID_BROWSER_QA=PASS');
