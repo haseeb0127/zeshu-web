@@ -106,7 +106,10 @@ const rideIntent = (message: string) => /\b(bike ride|bike taxi|auto ride|auto-r
 const courierIntent = (message: string) => /\b(bike courier|courier|parcel|package|mini truck|tempo|cargo|porter|shop delivery|send.*parcel|send.*package)\b/i.test(message);
 const carShareIntent = (message: string) => /\b(car share|car sharing|carpool|car pool|blablacar|share.*car|intercity.*share)\b/i.test(message);
 const travelIntent = (message: string) => /\b(travel|bus ticket|train ticket|rail ticket|flight|flights|hotel|hotels|experience|tour|booking|pnr)\b/i.test(message);
-const marketplaceIntent = (message: string) => /\b(marketplace|seller|vendor|electronics|fashion|clothing|beauty|home & kitchen|authorized seller|gst verified|invoice)\b/i.test(message);
+const marketplaceIntent = (message: string) => /\b(marketplace|seller|vendor|electronics|fashion|clothing|beauty|home & kitchen|authorized seller|gst verified|invoice|warranty)\b/i.test(message);
+const pharmacyIntent = (message: string) => /\b(pharmacy|medicine|medicines|prescription|chemist|drug|health product|health products)\b/i.test(message);
+const supportIntent = (message: string) => /\b(customer support|help centre|help center|support email|contact support|support hours|complaint|grievance)\b/i.test(message);
+const futureFeatureIntent = (message: string) => /\b(zeshu pass|subscribe & save|subscription|membership)\b/i.test(message);
 
 const queryTokens = (message: string) => {
   const stop = new Set(['what','when','where','which','with','have','your','does','zeshu','show','tell','find','price','cost','stock','available','availability','product','products','please','need','want','give','about','there','this','that','from','for','the','and','are','can','you','do','is','me','my']);
@@ -222,7 +225,10 @@ const suggestedForIntent = (intent: string) => {
   if (intent === 'CAR_SHARE') return ['Can I share an intercity car now?', 'How will drivers be verified?', 'How will car-share safety work?'];
   if (intent === 'TRAVEL') return ['Can I book trains on Zeshu?', 'Will Zeshu have flights and hotels?', 'How will travel refunds work?'];
   if (intent === 'MARKETPLACE') return ['What does Verified Seller mean?', 'Can I buy electronics?', 'How are nationwide products delivered?'];
-  return ['Where is my latest order?', 'What is my Zeshu Cash balance?', 'What can Zeshu Assistant help with?'];
+  if (intent === 'PHARMACY') return ['Can I buy medicines on Zeshu?', 'Will prescriptions be supported?', 'What health services are available?'];
+  if (intent === 'SUPPORT') return ['How do I talk to a person?', 'What issues are transferred to support?', 'How do I keep my account secure?'];
+  if (intent === 'FUTURE') return ['What services are Coming Soon?', 'Can I book rides now?', 'Can I send a parcel now?'];
+  return ['Where is my latest order?', 'Can I send a parcel now?', 'What can Zeshu Assistant help with?'];
 };
 
 const fallbackAnswer = (message: string, context: LiveAssistantContext): AssistantResult => {
@@ -440,6 +446,39 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext): Assista
     };
   }
 
+  if (pharmacyIntent(message)) {
+    return {
+      answer: 'Zeshu Pharmacy & Health is currently informational/upcoming. Prescription-medicine fulfilment and payment are not enabled. Zeshu will only activate medicine ordering after the required licensed-pharmacy/provider, prescription, fulfilment and customer-support controls are verified.',
+      resolved: true,
+      subject: 'Pharmacy and Health availability',
+      handoff_reason: '',
+      suggested_questions: suggestedForIntent('PHARMACY'),
+      intent: 'PHARMACY',
+    };
+  }
+
+  if (futureFeatureIntent(message)) {
+    return {
+      answer: 'Zeshu Pass and Subscribe & Save are currently Coming Soon. Zeshu will show the real price, benefits, renewal/cancellation rules and service eligibility before either feature can accept payment.',
+      resolved: true,
+      subject: 'Coming Soon services',
+      handoff_reason: '',
+      suggested_questions: suggestedForIntent('FUTURE'),
+      intent: 'FUTURE',
+    };
+  }
+
+  if (supportIntent(message)) {
+    return {
+      answer: 'Use My Account → Help & Support for Zeshu Assistant and your support conversations. Routine questions can be answered here; money disputes, refunds/cancellations, safety issues, provider disputes and protected account changes are transferred to a person with the context attached. You can also use support@zeshu.in for urgent support.',
+      resolved: true,
+      subject: 'Customer support help',
+      handoff_reason: '',
+      suggested_questions: suggestedForIntent('SUPPORT'),
+      intent: 'SUPPORT',
+    };
+  }
+
   if (/recharge|bill|electricity|fastag|gas|water|broadband|dth/.test(text)) {
     return {
       answer: 'Recharge and bill tools are designed for India-wide use. Some services are still discovery-only, so Zeshu only treats a provider transaction as completed where the relevant fulfilment integration is explicitly enabled and verified.',
@@ -583,7 +622,7 @@ export async function GET() {
   return NextResponse.json({
     mode: aiEnabled ? 'ai' : 'guided',
     automatic_handoff: handoffConfigured,
-    capabilities: ['live_order_status', 'reward_context', 'catalog_search', 'marketplace_help', 'rides_help', 'courier_help', 'car_share_help', 'travel_help', 'digital_services_help', 'move_service_readiness', 'policy_help', 'automatic_handoff'],
+    capabilities: ['live_order_status', 'reward_context', 'catalog_search', 'marketplace_help', 'pharmacy_help', 'rides_help', 'courier_help', 'car_share_help', 'travel_help', 'digital_services_help', 'account_help', 'referral_help', 'future_services_help', 'move_service_readiness', 'policy_help', 'automatic_handoff'],
   });
 }
 
@@ -628,7 +667,8 @@ export async function POST(request: Request) {
     ? await loadLiveAssistantContext({ service, userId: authData.user.id, message }).catch(() => ({} as LiveAssistantContext))
     : {};
 
-  let result = fallbackAnswer(message, liveContext);
+  const guidedResult = fallbackAnswer(message, liveContext);
+  let result = guidedResult;
   let source: 'ai' | 'guided' = 'guided';
 
   const [apiKey, aiFlag] = await Promise.all([
@@ -636,7 +676,10 @@ export async function POST(request: Request) {
     getRuntimeEnvValue('SUPPORT_AI_ENABLED'),
   ]);
   const aiEnabled = aiFlag === 'true' && Boolean(apiKey);
-  if (aiEnabled) {
+  // Protected cases remain deterministic: an AI answer must never turn a payment,
+  // refund/cancellation, safety, provider-dispute or protected-account case into
+  // a self-service resolution.
+  if (aiEnabled && guidedResult.resolved) {
     try {
       const conversationInput = history.map((turn) => ({
         role: turn.role === 'CUSTOMER' ? 'user' : 'assistant',
