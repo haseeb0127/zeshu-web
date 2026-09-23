@@ -22,34 +22,12 @@ import { catalogSearchScore, getCatalogSearchRecommendations, isCatalogSearchMat
 import { CUSTOMER_CATEGORY_DEFINITIONS, campaignMatchesCustomerCategory, categoryDefinition, productMatchesCustomerCategory } from './lib/catalog-categories';
 import { isFreshThirtyMinuteCandidate, isIndiaReadyProduct } from './lib/fulfillment';
 import { groupCartByFulfillment, marketplaceRecommendedScore, type MarketplaceSeller } from './lib/marketplace';
+import { classifySupportCategory } from './lib/support-category';
 
 const supabase = customerSupabase();
 const SUPPORT_WHATSAPP_UI_ENABLED = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED === 'true';
 
-const supportCategoryForIntent = (intent: string, message = '') => {
-  const normalizedIntent = String(intent || '').trim().toUpperCase();
-  const text = message.toLowerCase();
-  if (normalizedIntent === 'SAFETY' || /\b(accident|unsafe|danger|harass|harassment|threat|assault|emergency|safety)\b/.test(text)) return 'Safety issue';
-  if (normalizedIntent === 'REFUND' || normalizedIntent === 'REFUND_POLICY' || /\b(refund|return|cancel|cancellation)\b/.test(text)) return 'Refund issue';
-  if (normalizedIntent === 'PAYMENT' || /\b(payment|charged|debited|checkout|upi|card)\b/.test(text)) return 'Payment issue';
-  if (normalizedIntent === 'PHARMACY' || /\b(pharmacy|medicine|medicines|prescription|health)\b/.test(text)) return 'Pharmacy / Health issue';
-  if (normalizedIntent === 'RIDES' || /\b(bike ride|bike taxi|auto|cab|taxi|driver|ride)\b/.test(text)) return 'Ride issue';
-  if (normalizedIntent === 'COURIER' || /\b(courier|cargo|parcel|package|mini truck|tempo|porter)\b/.test(text)) return 'Courier / Cargo issue';
-  if (normalizedIntent === 'CAR_SHARE' || /\b(car share|carpool|car pool|car sharing)\b/.test(text)) return 'Car Share issue';
-  if (normalizedIntent === 'TRAVEL' || /\b(train|rail|flight|hotel|bus ticket|travel|pnr|experience)\b/.test(text)) return 'Travel issue';
-  if (normalizedIntent === 'MARKETPLACE' || /\b(marketplace|seller|vendor|electronics|fashion|beauty|warranty|invoice)\b/.test(text)) return 'Marketplace / seller issue';
-  if (normalizedIntent === 'PROVIDER_DISPUTE' || normalizedIntent === 'DIGITAL' || /\b(recharge|bill|fastag|electricity|broadband|dth|water|gas)\b/.test(text)) return 'Recharge/Bill issue';
-  if (normalizedIntent === 'ACCOUNT_CHANGE' || normalizedIntent === 'ACCOUNT' || /\b(account|login|otp|profile|phone)\b/.test(text)) return 'Account issue';
-  if (normalizedIntent === 'DELIVERY' || /\b(delivery|rider|address|location|serviceable|late)\b/.test(text)) return 'Delivery issue';
-  if (normalizedIntent === 'ORDER' || /\b(order|grocery|item|stock)\b/.test(text)) return 'Order issue';
-  if (normalizedIntent === 'SERVICE_DISPUTE') {
-    if (/\b(courier|cargo|parcel|package|mini truck|tempo)\b/.test(text)) return 'Courier / Cargo issue';
-    if (/\b(car share|carpool|car pool)\b/.test(text)) return 'Car Share issue';
-    if (/\b(train|rail|flight|hotel|travel|pnr)\b/.test(text)) return 'Travel issue';
-    if (/\b(bike|auto|cab|taxi|driver|ride)\b/.test(text)) return 'Ride issue';
-  }
-  return 'Other';
-};
+const supportCategoryForIntent = classifySupportCategory;
 
 const SERVICES = [
   { id: 'mobile', label: 'Prepaid', icon: <Smartphone size={28} strokeWidth={1.5}/>, color: 'bg-[#EEF7F1] text-[#075E45] group-hover:bg-[#075E45] group-hover:text-white', inputLabel: 'Mobile Number' },
@@ -3765,7 +3743,7 @@ export default function ZeshuSuperApp() {
                 {!selectedSupportConversationId ? <>
                   <label htmlFor="support-category" className="sr-only">{t('Support category')}</label>
                   <select id="support-category" value={supportSubject} onChange={(event) => setSupportSubject(event.target.value)} className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700">
-                    <option value="Order issue">{t('Order issue')}</option><option value="Marketplace / seller issue">{t('Marketplace / seller issue')}</option><option value="Delivery issue">{t('Delivery issue')}</option><option value="Ride issue">{t('Ride issue')}</option><option value="Courier / Cargo issue">{t('Courier / Cargo issue')}</option><option value="Car Share issue">{t('Car Share issue')}</option><option value="Travel issue">{t('Travel issue')}</option><option value="Payment issue">{t('Payment issue')}</option><option value="Refund issue">{t('Refund issue')}</option><option value="Recharge/Bill issue">{t('Recharge/Bill issue')}</option><option value="Pharmacy / Health issue">{t('Pharmacy / Health issue')}</option><option value="Safety issue">{t('Safety issue')}</option><option value="Account issue">{t('Account issue')}</option><option value="Other">{t('Other')}</option>
+                    <option value="Order issue">{t('Order issue')}</option><option value="Marketplace / seller issue">{t('Marketplace / seller issue')}</option><option value="Delivery issue">{t('Delivery issue')}</option><option value="Ride issue">{t('Ride issue')}</option><option value="Courier / Cargo issue">{t('Courier / Cargo issue')}</option><option value="Car Share issue">{t('Car Share issue')}</option><option value="Travel issue">{t('Travel issue')}</option><option value="Payment issue">{t('Payment issue')}</option><option value="Refund issue">{t('Refund issue')}</option><option value="Recharge/Bill issue">{t('Recharge/Bill issue')}</option><option value="Pharmacy / Health issue">{t('Pharmacy / Health issue')}</option><option value="Safety issue">{t('Safety issue')}</option><option value="Account issue">{t('Account issue')}</option><option value="Rewards / Referral issue">{t('Rewards / Referral issue')}</option><option value="Other">{t('Other')}</option>
                   </select>
                   <label htmlFor="support-details" className="sr-only">{t('Support details')}</label>
                   <textarea id="support-details" rows={3} maxLength={4000} value={supportMessage} onChange={(event) => setSupportMessage(event.target.value)} placeholder={t('Describe what you need help with')} className="mt-2 w-full resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#075E45]" />

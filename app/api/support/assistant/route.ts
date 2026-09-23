@@ -4,6 +4,7 @@ import { rateLimitResponse } from '@/app/lib/provider-security';
 import { ZESHU_SUPPORT_KNOWLEDGE } from '@/app/lib/support-ai';
 import { getRuntimeEnvValue, getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
 import { getMoveServiceReadiness } from '@/app/lib/move-readiness';
+import { buildCategorizedSupportSubject, classifySupportCategory } from '@/app/lib/support-category';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -101,6 +102,7 @@ const sanitizeHistory = (value: unknown): AssistantTurn[] => {
 
 const catalogIntent = (message: string) => /\b(product|products|stock|available|availability|price|cost|sell|find|search|grocery|groceries|milk|atta|flour|bread|chicken|biscuit|biscuits|dairy|snack|snacks|oil|rice|egg|eggs|drink|drinks|cola|pepsi)\b/i.test(message);
 const orderIntent = (message: string) => /\b(order|orders|track|tracking|delivery|rider|eta|late|arrive|arriving|purchase|buy again)\b/i.test(message);
+const deliveryInfoIntent = (message: string) => /\b(delivery area|delivery areas|delivery zone|deliver to|where.*deliver|saved address|saved addresses|address|location pin|serviceable|serviceability|jagtial delivery)\b/i.test(message);
 const rewardIntent = (message: string) => /\b(zeshu cash|cashback|reward|rewards|bonus|bonuses|referral|coins?)\b/i.test(message);
 const rideIntent = (message: string) => /\b(bike ride|bike taxi|auto ride|auto-rickshaw|autorickshaw|cab|taxi|rental car|outstation cab|ride|rides|driver|fare)\b/i.test(message);
 const courierIntent = (message: string) => /\b(bike courier|courier|parcel|package|mini truck|tempo|cargo|porter|shop delivery|send.*parcel|send.*package)\b/i.test(message);
@@ -149,7 +151,7 @@ const loadLiveAssistantContext = async ({
   message: string;
 }): Promise<LiveAssistantContext> => {
   const needsMoveServices = rideIntent(message) || courierIntent(message) || carShareIntent(message) || travelIntent(message);
-  const needsOrders = Boolean(userId) && orderIntent(message) && !needsMoveServices;
+  const needsOrders = Boolean(userId) && orderIntent(message) && !needsMoveServices && !deliveryInfoIntent(message);
   const needsRewards = Boolean(userId) && rewardIntent(message);
   const needsCatalog = catalogIntent(message);
   const context: LiveAssistantContext = {};
@@ -313,6 +315,39 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
     };
   }
 
+  if (!moveServiceIntent && deliveryInfoIntent(message)) {
+    return {
+      answer: 'Physical-product delivery is currently limited to the supported Jagtial delivery zone. You can browse without an address, but physical checkout needs a verified serviceable delivery pin. Zeshu can use device location or a map pin and then fill available area, city, state and PIN details. Digital services remain India-wide where the specific provider service is available.',
+      resolved: true,
+      subject: 'Delivery and address help',
+      handoff_reason: '',
+      suggested_questions: ['How do I set my address?', 'Can I use digital services outside Jagtial?', 'How does live tracking work?'],
+      intent: 'DELIVERY',
+    };
+  }
+
+  if (!moveServiceIntent && /order status meanings|what does.*(?:pending|confirmed|preparing|ready for pickup|picked up|out for delivery|delivered|cancelled)|status mean/.test(text)) {
+    return {
+      answer: 'Order statuses: PENDING = received but not yet confirmed; CONFIRMED = accepted; PREPARING = the store is preparing it; READY FOR PICKUP = waiting for rider pickup; PICKED UP = collected by the rider; OUT FOR DELIVERY = on the way; DELIVERED = completed; CANCELLED = cancelled.',
+      resolved: true,
+      subject: 'Order status meanings',
+      handoff_reason: '',
+      suggested_questions: ['What is my latest order status?', 'How does live tracking work?', 'I have an order problem'],
+      intent: 'ORDER',
+    };
+  }
+
+  if (!moveServiceIntent && /live tracking|track.*rider|rider location|delivery eta|where.*rider|when.*arrive/.test(text)) {
+    return {
+      answer: 'When a rider is assigned and fresh location data is available, Zeshu can show rider-location freshness and an estimated arrival time. ETA is an estimate, not a guarantee. Sign in and open My Account → Orders & payments to view the latest available tracking for your order.',
+      resolved: true,
+      subject: 'Delivery tracking help',
+      handoff_reason: '',
+      suggested_questions: ['What is my latest order status?', 'What do order statuses mean?', 'My delivery is late'],
+      intent: 'DELIVERY',
+    };
+  }
+
   if (orderIntent(message) && !moveServiceIntent) {
     if (!signedIn) {
       return {
@@ -343,6 +378,17 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
       handoff_reason: '',
       suggested_questions: suggestedForIntent('ORDER'),
       intent: 'ORDER',
+    };
+  }
+
+  if (rewardIntent(message) && /how.*(?:zeshu cash|reward)|earn.*(?:zeshu cash|reward)|redeem|use.*zeshu cash|reward rules|cashback rules/.test(text)) {
+    return {
+      answer: 'Zeshu Cash is promotional reward value, not withdrawable bank cash, and ₹1 Zeshu Cash has ₹1 redemption value. Grocery redemption is currently limited by your balance, the amount you request, ₹20, 10% of merchandise subtotal and the requirement that at least ₹1 remains payable. Reward campaigns can change, so My Account → Zeshu Cash and checkout show the current authoritative balance and usable amount.',
+      resolved: true,
+      subject: 'Zeshu Cash rules',
+      handoff_reason: '',
+      suggested_questions: ['What is my Zeshu Cash balance?', 'What are referral rewards?', 'Where do I see reward history?'],
+      intent: 'REWARDS',
     };
   }
 
@@ -533,6 +579,17 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
     };
   }
 
+  if (marketplaceIntent(message) && /invoice|gst invoice|warranty|manufacturer warranty|return.*electronics|return.*clothing|defective|serial|imei/.test(text)) {
+    return {
+      answer: 'For marketplace products, invoice and warranty details depend on the verified seller and product. Zeshu should show Invoice Available or Authorized Brand Partner only when the relevant evidence is verified. Wrong, damaged, defective, missing-component or materially different electronics/clothing issues should generally be reported within 7 working days, while manufacturer or seller warranty may also apply. A specific return/refund decision still needs order review.',
+      resolved: true,
+      subject: 'Marketplace invoice or warranty help',
+      handoff_reason: '',
+      suggested_questions: ['What does Verified Seller mean?', 'Can I buy electronics?', 'I need help with a specific marketplace order'],
+      intent: 'MARKETPLACE',
+    };
+  }
+
   if (marketplaceIntent(message)) {
     return {
       answer: 'Zeshu Market is designed for asset-light seller fulfilment across categories such as electronics, fashion, beauty and home products. Seller trust labels are separate: Verified Seller, GST Verified, Invoice Available and Authorized Brand Partner are shown only when the relevant evidence is available. Nationwide checkout remains gated by actual seller and delivery serviceability.',
@@ -541,6 +598,17 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
       handoff_reason: '',
       suggested_questions: suggestedForIntent('MARKETPLACE'),
       intent: 'MARKETPLACE',
+    };
+  }
+
+  if (/which.*(?:digital|recharge|bill)|what.*(?:recharge|bill).*service|mobile recharge|dth|electricity|fastag|lpg|piped gas|water bill|broadband/.test(text)) {
+    return {
+      answer: 'Zeshu currently has customer surfaces for mobile recharge, DTH, electricity, FASTag, LPG/gas, water and broadband discovery. These are intended for India-wide use, but a real payment/fulfilment is available only when the specific provider integration is visibly enabled and verified. Discovery alone does not mean a bill or recharge transaction is live.',
+      resolved: true,
+      subject: 'Digital services availability',
+      handoff_reason: '',
+      suggested_questions: ['Can I use Zeshu outside Jagtial?', 'How do secure payments work?', 'I have a recharge or bill problem'],
+      intent: 'DIGITAL',
     };
   }
 
@@ -596,6 +664,41 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
       handoff_reason: '',
       suggested_questions: suggestedForIntent('REWARDS'),
       intent: 'REFERRAL',
+    };
+  }
+
+  if (/install.*(?:app|zeshu)|download.*(?:app|zeshu)|get zeshu|add to home screen|android app|pwa/.test(text)) {
+    return {
+      answer: 'Open Get Zeshu from the website to install the current Zeshu app/PWA experience on a supported device. Use the official Zeshu install path shown there rather than downloading APK files from unknown sources.',
+      resolved: true,
+      subject: 'Install Zeshu help',
+      handoff_reason: '',
+      suggested_questions: ['How do I sign in?', 'What services are available?', 'How do I set my delivery address?'],
+      intent: 'ACCOUNT',
+    };
+  }
+
+  if (/language|telugu|hindi|urdu|english|change.*language/.test(text)) {
+    return {
+      answer: 'Use the language switcher on supported Zeshu pages to choose English, Telugu, Hindi or Urdu. Urdu uses right-to-left layout where supported. If any customer-facing text does not translate, report that page to Zeshu Support.',
+      resolved: true,
+      subject: 'Language help',
+      handoff_reason: '',
+      suggested_questions: ['How do I install Zeshu?', 'How do I sign in?', 'Contact Zeshu Support'],
+      intent: 'ACCOUNT',
+    };
+  }
+
+  if (/support hours|customer care|contact support|help center|how.*contact.*support|need support/.test(text)) {
+    return {
+      answer: signedIn
+        ? 'You can use Zeshu Help Center for instant guided/AI help and open a private human-support conversation for any Zeshu service when a person is needed. Safety, payment, refund, provider-dispute and protected account cases are prioritized for human review.'
+        : 'You can use Zeshu Help Center for general questions without signing in. Sign in to open a private human-support conversation for an order, payment, ride, courier, travel, marketplace, recharge/bill, account or safety issue.',
+      resolved: true,
+      subject: 'Customer support help',
+      handoff_reason: '',
+      suggested_questions: ['I want to talk to a person', 'What services are available?', 'How do refunds work?'],
+      intent: 'GENERAL',
     };
   }
 
@@ -687,7 +790,7 @@ export async function GET() {
   return NextResponse.json({
     mode: aiEnabled ? 'ai' : 'guided',
     automatic_handoff: handoffConfigured,
-    capabilities: ['public_general_help', 'live_order_status', 'reward_context', 'catalog_search', 'marketplace_help', 'pharmacy_help', 'rides_help', 'courier_help', 'car_share_help', 'travel_help', 'digital_services_help', 'move_service_readiness', 'policy_help', 'automatic_handoff'],
+    capabilities: ['public_general_help', 'live_order_status', 'reward_context', 'catalog_search', 'marketplace_help', 'pharmacy_help', 'rides_help', 'courier_help', 'car_share_help', 'travel_help', 'digital_services_help', 'delivery_address_help', 'referral_help', 'account_safety_help', 'move_service_readiness', 'policy_help', 'service_specific_handoff', 'automatic_handoff'],
   });
 }
 
@@ -871,7 +974,7 @@ ${liveContextText}`,
       userId,
       question: message,
       answer: result.answer,
-      subject: result.subject,
+      subject: buildCategorizedSupportSubject(result.intent, message, result.subject),
     });
   }
 
@@ -887,6 +990,7 @@ ${liveContextText}`,
     resolved: result.resolved,
     source,
     intent: result.intent,
+    support_category: classifySupportCategory(result.intent, message),
     suggested_questions: result.suggested_questions,
     context_used: contextUsed,
     latency_ms: Date.now() - startedAt,

@@ -19,11 +19,14 @@ const supabase = customerSupabase();
 const SERVICES = [
   { key: "Shopping & Orders", question: "What can Zeshu help me buy and how do orders work?" },
   { key: "Marketplace", question: "How do verified sellers and marketplace delivery work?" },
+  { key: "Delivery & Address", question: "How do delivery areas, saved addresses and location pins work?" },
   { key: "Rides", question: "Can I book a Bike, Auto or Cab ride now?" },
   { key: "Courier & Cargo", question: "Can I send a parcel or book a mini truck now?" },
   { key: "Car Share", question: "How will Zeshu Car Share work?" },
   { key: "Travel", question: "Can I book bus, train, flight or hotel on Zeshu now?" },
+  { key: "Pharmacy & Health", question: "What Pharmacy & Health services are available on Zeshu?" },
   { key: "Recharge & Bills", question: "Which recharge and bill services are available?" },
+  { key: "Zeshu Cash & Referrals", question: "How do Zeshu Cash, rewards and referrals work?" },
   { key: "Payments & Refunds", question: "How do payments and refunds work?" },
   { key: "Account & Safety", question: "How does Zeshu protect my account and what should I never share?" },
 ];
@@ -43,6 +46,7 @@ export default function HelpPage() {
   const [question, setQuestion] = useState("");
   const [busy, setBusy] = useState(false);
   const [source, setSource] = useState("");
+  const [supportCategory, setSupportCategory] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>(DEFAULT_QUESTIONS.slice(0, 3));
   const [contextUsed, setContextUsed] = useState<string[]>([]);
   const [handoffCreated, setHandoffCreated] = useState(false);
@@ -93,6 +97,7 @@ export default function HelpPage() {
     setNeedsHuman(false);
     setHandoffCreated(false);
     setContextUsed([]);
+    setSupportCategory("");
     setMessages((current) => [...current, { role: "CUSTOMER", body: nextQuestion }]);
 
     try {
@@ -112,6 +117,7 @@ export default function HelpPage() {
       const answer = String(payload?.answer || "I could not answer that safely.");
       setMessages((current) => [...current, { role: "AI", body: answer }]);
       setSource(payload?.source === "ai" ? "AI" : "Guided help");
+      setSupportCategory(typeof payload?.support_category === "string" ? payload.support_category : "");
       setSuggestions(Array.isArray(payload?.suggested_questions) ? payload.suggested_questions.slice(0, 3).map(String) : []);
       setContextUsed(Array.isArray(payload?.context_used) ? payload.context_used.map(String) : []);
       setNeedsHuman(payload?.resolved !== true);
@@ -188,7 +194,10 @@ export default function HelpPage() {
                 </p>
               </div>
             </div>
-            {source && <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#075E45]">{source}</span>}
+<div className="flex flex-wrap items-center gap-2">
+              {supportCategory && <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black text-slate-600 shadow-sm">{t(supportCategory)}</span>}
+              {source && <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#075E45]">{source}</span>}
+            </div>
           </div>
 
           {messages.length === 0 ? (
@@ -245,6 +254,16 @@ export default function HelpPage() {
             <p className="text-sm font-black text-amber-900">{signedIn ? t("This needs Zeshu Support.") : t("Sign in to open a private support conversation.")}</p>
             <Link href={`/?support=${encodeURIComponent(serviceHint)}`} className="mt-3 inline-flex rounded-xl bg-white px-4 py-2.5 text-xs font-black text-amber-900 shadow-sm">{signedIn ? t("Contact Zeshu Support") : t("Sign in & contact support")}</Link>
           </div>}
+        </section>
+
+        <section className="mt-5 rounded-3xl border border-blue-100 bg-blue-50 p-5 md:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="max-w-3xl">
+              <h2 className="font-black text-blue-950">{t("Need a person?")}</h2>
+              <p className="mt-2 text-sm leading-6 text-blue-800">{t("Human support is available for every Zeshu service. Signed-in customers can open a private conversation for orders, payments, marketplace, rides, courier, car share, travel, recharge/bills, account or safety issues.")}</p>
+            </div>
+            <Link href="/?support=Customer%20support" className="inline-flex shrink-0 rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white">{signedIn ? t("Open human support") : t("Sign in & contact support")}</Link>
+          </div>
         </section>
 
         <section className="mt-5 grid gap-3 md:grid-cols-2">
