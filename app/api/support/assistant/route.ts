@@ -643,7 +643,7 @@ export async function GET() {
   return NextResponse.json({
     mode: aiEnabled ? 'ai' : 'guided',
     automatic_handoff: handoffConfigured,
-    capabilities: ['live_order_status', 'reward_context', 'catalog_search', 'marketplace_help', 'rides_help', 'courier_help', 'car_share_help', 'travel_help', 'digital_services_help', 'move_service_readiness', 'policy_help', 'automatic_handoff'],
+    capabilities: ['public_general_help', 'live_order_status', 'reward_context', 'catalog_search', 'marketplace_help', 'pharmacy_help', 'rides_help', 'courier_help', 'car_share_help', 'travel_help', 'digital_services_help', 'move_service_readiness', 'policy_help', 'automatic_handoff'],
   });
 }
 
@@ -701,7 +701,8 @@ export async function POST(request: Request) {
       ? { move_services: getMoveServiceReadiness() }
       : {};
 
-  let result = fallbackAnswer(message, liveContext, Boolean(userId));
+  const guidedResult = fallbackAnswer(message, liveContext, Boolean(userId));
+  let result = guidedResult;
   let source: 'ai' | 'guided' = 'guided';
 
   const [apiKey, aiFlag] = await Promise.all([
@@ -709,7 +710,10 @@ export async function POST(request: Request) {
     getRuntimeEnvValue('SUPPORT_AI_ENABLED'),
   ]);
   const aiEnabled = aiFlag === 'true' && Boolean(apiKey);
-  if (aiEnabled) {
+  // Deterministic Zeshu rules own protected cases. The language model may improve
+  // safe informational answers, but it cannot turn a payment/refund/safety/provider
+  // dispute, protected account change, or explicit human request into self-service.
+  if (aiEnabled && guidedResult.resolved) {
     try {
       const conversationInput = history.map((turn) => ({
         role: turn.role === 'CUSTOMER' ? 'user' : 'assistant',
