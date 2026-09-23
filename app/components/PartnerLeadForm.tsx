@@ -9,7 +9,7 @@ const TYPES = [
   ["RECHARGE_BILLS", "Recharge / bills provider"],
   ["TRAVEL", "Travel booking provider"],
   ["SPONSOR", "Sponsor / advertiser"],
-  ["OTHER", "Other partnership"],
+  ["OTHER", "Mobility / logistics / other partnership"],
 ] as const;
 
 const emptyForm = {
