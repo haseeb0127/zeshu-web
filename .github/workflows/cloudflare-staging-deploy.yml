@@ -138,6 +138,41 @@ jobs:
             fi
           done
 
+      - name: Verify Jagtial service-area API boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://zeshu-web-staging.asif-mohammed0127.workers.dev"
+
+          code="$(curl -sS -o /tmp/service-area-jagtial -w '%{http_code}' \
+            -X POST "$base/api/service-area/check" \
+            -H 'Content-Type: application/json' \
+            --data '{"latitude":18.80,"longitude":78.93}' || true)"
+          test "$code" = "200" || { echo "Jagtial service-area check expected 200, got $code"; cat /tmp/service-area-jagtial; exit 1; }
+
+          code="$(curl -sS -o /tmp/service-area-outside -w '%{http_code}' \
+            -X POST "$base/api/service-area/check" \
+            -H 'Content-Type: application/json' \
+            --data '{"latitude":17.385,"longitude":78.4867}' || true)"
+          test "$code" = "200" || { echo "Outside service-area check expected 200, got $code"; cat /tmp/service-area-outside; exit 1; }
+
+          code="$(curl -sS -o /tmp/service-area-invalid -w '%{http_code}' \
+            -X POST "$base/api/service-area/check" \
+            -H 'Content-Type: application/json' \
+            --data '{"latitude":91,"longitude":0}' || true)"
+          test "$code" = "400" || { echo "Invalid service-area check expected 400, got $code"; cat /tmp/service-area-invalid; exit 1; }
+
+          node <<'NODE'
+          const fs = require('fs');
+          const jagtial = JSON.parse(fs.readFileSync('/tmp/service-area-jagtial', 'utf8'));
+          const outside = JSON.parse(fs.readFileSync('/tmp/service-area-outside', 'utf8'));
+          const invalid = JSON.parse(fs.readFileSync('/tmp/service-area-invalid', 'utf8'));
+
+          if (jagtial.status !== 'ELIGIBLE' || jagtial.serviceable !== true) throw new Error('Jagtial center must be eligible');
+          if (outside.status !== 'OUTSIDE_SERVICE_AREA' || outside.serviceable !== false) throw new Error('Outside-city point must not be serviceable');
+          if (invalid.status !== 'SERVICE_AREA_UNAVAILABLE' || invalid.serviceable !== false) throw new Error('Invalid coordinates must fail closed');
+          NODE
+
       - name: Verify staging support readiness and auth boundaries
         shell: bash
         run: |
