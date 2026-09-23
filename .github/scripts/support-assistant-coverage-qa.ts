@@ -4,6 +4,8 @@ const route = fs.readFileSync('app/api/support/assistant/route.ts', 'utf8');
 const knowledge = fs.readFileSync('app/lib/support-ai.ts', 'utf8');
 const env = fs.readFileSync('.env.example', 'utf8');
 const help = fs.readFileSync('app/help/page.tsx', 'utf8');
+const adminSupport = fs.readFileSync('app/api/admin/support/conversations/route.ts', 'utf8');
+const adminDashboard = fs.readFileSync('app/admin/dashboard/page.tsx', 'utf8');
 
 const assert = (condition: boolean, message: string) => {
   if (!condition) throw new Error(message);
@@ -60,6 +62,9 @@ for (const phrase of [
 }
 assert(help.includes('const DIGITAL_HELP = ['), 'Help Center must expose digital-service support shortcuts');
 assert(help.includes('Popular digital help'), 'Help Center must label digital support shortcuts');
+assert(adminSupport.includes('support_category: supportCategory'), 'Admin support API must expose a service category');
+assert(adminDashboard.includes('SUPPORT_CATEGORIES'), 'Admin support inbox must expose service-category filters');
+assert(adminDashboard.includes('All services'), 'Admin support inbox must provide an all-services category view');
 
 const moveFlagCount = (env.match(/^MOVE_EXECUTION_ENABLED=/gm) || []).length;
 assert(moveFlagCount === 1, 'MOVE_EXECUTION_ENABLED must be documented exactly once');
