@@ -195,7 +195,7 @@ export default function HelpPage() {
               </div>
             </div>
 <div className="flex flex-wrap items-center gap-2">
-              {supportCategory && <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black text-slate-600 shadow-sm">{supportCategory}</span>}
+              {supportCategory && <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black text-slate-600 shadow-sm">{t(supportCategory)}</span>}
               {source && <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#075E45]">{source}</span>}
             </div>
           </div>
