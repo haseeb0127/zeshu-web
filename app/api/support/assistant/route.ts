@@ -244,7 +244,7 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
 
   if (/\b(what services|services available|available now|live now|what is live|coming soon|what can zeshu do)\b/.test(text)) {
     const moveReady = context.move_services
-      ? Object.values(context.move_services).some((entry) => entry.customerBookingAvailable === true)
+      ? Object.values(context.move_services).some((entry) => Boolean(entry.customerBookingAvailable))
       : false;
     return {
       answer: moveReady
