@@ -145,12 +145,12 @@ const loadLiveAssistantContext = async ({
   message,
 }: {
   service: any;
-  userId: string;
+  userId: string | null;
   message: string;
 }): Promise<LiveAssistantContext> => {
   const needsMoveServices = rideIntent(message) || courierIntent(message) || carShareIntent(message) || travelIntent(message);
-  const needsOrders = orderIntent(message) && !needsMoveServices;
-  const needsRewards = rewardIntent(message);
+  const needsOrders = Boolean(userId) && orderIntent(message) && !needsMoveServices;
+  const needsRewards = Boolean(userId) && rewardIntent(message);
   const needsCatalog = catalogIntent(message);
   const context: LiveAssistantContext = {};
   if (needsMoveServices) context.move_services = getMoveServiceReadiness();
@@ -242,7 +242,45 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
     };
   }
 
-  if (!moveServiceIntent && /damaged|spoiled|wrong item|missing item|refund my|refund.*order|want.*refund|need.*refund|return my|cancel.*order|order.*cancel/.test(text)) {
+  if (/\b(what services|services available|available now|live now|what is live|coming soon|what can zeshu do)\b/.test(text)) {
+    const moveReady = context.move_services
+      ? Object.values(context.move_services).some((entry) => entry.customerBookingAvailable === true)
+      : false;
+    return {
+      answer: moveReady
+        ? 'Zeshu shopping, account/order support and selected customer services are available where the app shows a live action. Some Move & Travel services may also be live where a verified provider is shown. Pharmacy transactions, nationwide checkout and provider-backed digital actions must still be treated as available only when their real transaction button and serviceability checks are enabled.'
+        : 'Zeshu shopping, product search, account/order support, Zeshu Cash, referrals, QR tools and supported digital-service discovery are available in the app. Move & Travel (Bike/Auto/Cab, Courier/Cargo, Car Share, Bus/Train/Flights/Hotels/Experiences) is currently discovery-only, pharmacy transactions are not live, and other provider-backed payments/fulfilment are available only where the app explicitly enables them.',
+      resolved: true,
+      subject: 'Zeshu service availability',
+      handoff_reason: '',
+      suggested_questions: ['Can I book a bike ride now?', 'Which recharge and bill services are available?', 'Can I buy electronics?'],
+      intent: 'GENERAL',
+    };
+  }
+
+  if (/\b(sell on zeshu|become a seller|seller signup|vendor signup|partner with zeshu|become a partner|advertise on zeshu|brand partnership|driver partner|fleet partner|logistics partner|travel partner)\b/.test(text)) {
+    return {
+      answer: 'Open Brands & Partners on Zeshu to submit a seller, brand, mobility, logistics, travel or advertising partnership request. Zeshu reviews identity/licensing, serviceability, commercial terms and support readiness before anything is activated; submitting the form does not guarantee approval.',
+      resolved: true,
+      subject: 'Partner with Zeshu',
+      handoff_reason: '',
+      suggested_questions: ['What seller verification does Zeshu use?', 'Can brands advertise on Zeshu?', 'How does marketplace fulfilment work?'],
+      intent: 'PARTNER',
+    };
+  }
+
+  if (/\b(pharmacy|medicine|medicines|prescription|tablet|health)\b/.test(text)) {
+    return {
+      answer: 'Pharmacy & Health is currently informational/upcoming. Prescription medicine fulfilment and medicine payment are not enabled. Zeshu should only show medicine ordering after a licensed pharmacy/provider and the required prescription/compliance flow are verified.',
+      resolved: true,
+      subject: 'Pharmacy availability',
+      handoff_reason: '',
+      suggested_questions: ['What services are available now?', 'How does delivery serviceability work?', 'How do I contact support?'],
+      intent: 'PHARMACY',
+    };
+  }
+
+    if (!moveServiceIntent && /damaged|spoiled|wrong item|missing item|refund my|refund.*order|want.*refund|need.*refund|return my|cancel.*order|order.*cancel/.test(text)) {
     return {
       answer: 'I can explain the policy, but a support person must review the actual order before any replacement, cancellation or refund decision. I’ll transfer this with your question attached.',
       resolved: false,
@@ -331,11 +369,11 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
       };
     }
     return {
-      answer: 'Open My Account → Zeshu Cash to see your current balance, earned rewards, bonuses, referrals and amounts used at checkout.',
+      answer: 'Zeshu Cash is promotional reward value, not withdrawable bank cash. ₹1 Zeshu Cash has ₹1 redemption value. Current grocery redemption is capped by your available balance, the requested amount, ₹20, 10% of merchandise subtotal and the rule that final payable stays at least ₹1. Sign in and open My Account → Zeshu Cash to see your personal balance and history.',
       resolved: true,
       subject: 'Zeshu Cash help',
       handoff_reason: '',
-      suggested_questions: suggestedForIntent('REWARDS'),
+      suggested_questions: ['How can I earn Zeshu Cash?', 'What are referral rewards?', 'Where do I see reward history?'],
       intent: 'REWARDS',
     };
   }
@@ -655,8 +693,10 @@ export async function POST(request: Request) {
     ? createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } })
     : null;
   const moveServiceIntent = rideIntent(message) || courierIntent(message) || carShareIntent(message) || travelIntent(message);
-  const liveContext: LiveAssistantContext = userId && service
-    ? await loadLiveAssistantContext({ service, userId, message }).catch(() => ({} as LiveAssistantContext))
+  const liveContext: LiveAssistantContext = service
+    ? await loadLiveAssistantContext({ service, userId, message }).catch(() => (
+        moveServiceIntent ? { move_services: getMoveServiceReadiness() } : {} as LiveAssistantContext
+      ))
     : moveServiceIntent
       ? { move_services: getMoveServiceReadiness() }
       : {};
