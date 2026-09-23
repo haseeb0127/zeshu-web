@@ -40,6 +40,18 @@ const DEFAULT_QUESTIONS = [
   "Can I use Zeshu outside Jagtial?",
 ];
 
+const SERVICE_STATUS = [
+  { name: "Shopping & Orders", status: "Available now" },
+  { name: "Marketplace", status: "Available where shown" },
+  { name: "Recharge & Bills", status: "Discovery available" },
+  { name: "Rides", status: "Coming soon" },
+  { name: "Courier & Cargo", status: "Coming soon" },
+  { name: "Car Share", status: "Coming soon" },
+  { name: "Travel", status: "Coming soon" },
+  { name: "Pharmacy & Health", status: "Coming soon" },
+  { name: "Human support", status: "Available now" },
+];
+
 export default function HelpPage() {
   const { t } = useCustomerLanguage();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -179,6 +191,24 @@ export default function HelpPage() {
               >
                 {t(service.key)}
               </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-4 md:p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-black text-slate-900">{t("Current service status")}</h2>
+              <p className="mt-1 text-xs font-medium text-slate-500">{t("See what is usable now before you start.")}</p>
+            </div>
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#075E45]">{t("Support available")}</span>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {SERVICE_STATUS.map((item) => (
+              <div key={item.name} className="flex items-center justify-between gap-3 rounded-2xl bg-[#f7f9f5] px-3 py-3">
+                <span className="text-xs font-black text-slate-700">{t(item.name)}</span>
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${item.status === "Available now" ? "bg-emerald-100 text-emerald-800" : item.status === "Available where shown" || item.status === "Discovery available" ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800"}`}>{t(item.status)}</span>
+              </div>
             ))}
           </div>
         </section>

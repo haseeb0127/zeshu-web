@@ -282,6 +282,72 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
     };
   }
 
+  if (/delivery fee|delivery charge|shipping fee|shipping charge|minimum order|min order/.test(text)) {
+    return {
+      answer: 'Zeshu does not promise one universal delivery or shipping fee. The customer should see the applicable delivery/shipping charge and final payable amount before confirming checkout. Fees can differ by seller, fulfilment type, distance, basket and provider; the live cart/checkout is the source of truth.',
+      resolved: true,
+      subject: 'Delivery fee help',
+      handoff_reason: '',
+      suggested_questions: ['Where does Zeshu deliver?', 'How do marketplace deliveries work?', 'How does secure checkout work?'],
+      intent: 'DELIVERY',
+    };
+  }
+
+  if (/coupon|promo code|promocode|discount|offer|offers|deal|cashback offer|promotion/.test(text)) {
+    return {
+      answer: 'Offers, sponsored promotions, coupons and Zeshu Cash benefits can change. Zeshu should show the actual eligible discount or reward before checkout; a banner or advertisement does not guarantee that every customer or product qualifies. The cart/checkout is the source of truth for the final payable amount.',
+      resolved: true,
+      subject: 'Offers and promotions help',
+      handoff_reason: '',
+      suggested_questions: ['How does Zeshu Cash work?', 'What does Sponsored mean?', 'How do secure payments work?'],
+      intent: 'REWARDS',
+    };
+  }
+
+  if (/verified seller|gst verified|authorized brand partner|authorised brand partner|seller verified|seller trust/.test(text)) {
+    return {
+      answer: 'Zeshu keeps seller trust labels separate. Verified Seller means Zeshu has completed the applicable seller verification; GST Verified means GST evidence is verified; Invoice Available means the seller supports an invoice; Authorized Brand Partner is shown only after documentary brand authorization is verified. One label does not automatically imply the others.',
+      resolved: true,
+      subject: 'Seller verification help',
+      handoff_reason: '',
+      suggested_questions: ['Do marketplace products include invoices?', 'Can I buy electronics?', 'How are nationwide products delivered?'],
+      intent: 'MARKETPLACE',
+    };
+  }
+
+  if (/privacy|personal data|my data|data privacy|sell.*data|share.*data/.test(text)) {
+    return {
+      answer: 'Use Zeshu’s Privacy Policy for the full data-handling terms. For support, never send OTPs, passwords, card numbers, CVV or UPI PIN. The assistant only uses the minimum read-only account/catalog context needed for the question, and protected account details require sign-in.',
+      resolved: true,
+      subject: 'Privacy and data help',
+      handoff_reason: '',
+      suggested_questions: ['How is my account protected?', 'What should I never share?', 'How do I contact support?'],
+      intent: 'ACCOUNT',
+    };
+  }
+
+  if (/whatsapp|whats app|support on whatsapp|whatsapp support/.test(text)) {
+    return {
+      answer: 'Zeshu WhatsApp customer support is not treated as live until the customer-facing WhatsApp toggle and verified Meta setup are enabled. Use Zeshu Help Center or the signed-in human-support conversation for current support; do not send OTPs, passwords, CVV or UPI PIN over WhatsApp.',
+      resolved: true,
+      subject: 'WhatsApp support availability',
+      handoff_reason: '',
+      suggested_questions: ['How do I contact human support?', 'What services are available?', 'How is my account protected?'],
+      intent: 'GENERAL',
+    };
+  }
+
+  if (/zeshu now|zeshu market|zeshu digital|what is zeshu market|what is zeshu now|what is zeshu digital/.test(text)) {
+    return {
+      answer: 'Zeshu Now is the fast local-commerce layer for nearby essentials where sellers and delivery are serviceable. Zeshu Market is the wider asset-light marketplace for categories such as electronics, fashion, beauty and home, using seller fulfilment rather than Zeshu owning all stock. Zeshu Digital covers recharge, bills and other digital services where the relevant provider is actually enabled.',
+      resolved: true,
+      subject: 'Zeshu service model',
+      handoff_reason: '',
+      suggested_questions: ['What services are available right now?', 'Can I buy electronics?', 'Which recharge and bill services are available?'],
+      intent: 'GENERAL',
+    };
+  }
+
     if (!moveServiceIntent && /damaged|spoiled|wrong item|missing item|refund my|refund.*order|want.*refund|need.*refund|return my|cancel.*order|order.*cancel/.test(text)) {
     return {
       answer: 'I can explain the policy, but a support person must review the actual order before any replacement, cancellation or refund decision. I’ll transfer this with your question attached.',

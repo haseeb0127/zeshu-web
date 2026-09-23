@@ -239,6 +239,10 @@ jobs:
               assert(helpText.includes(topic), `Help Center topic missing: ${topic}`);
             }
             assert(helpText.includes('Need a person?'), 'Human support CTA is missing from Help Center');
+            assert(helpText.includes('Current service status'), 'Help Center service-status panel is missing');
+            assert(helpText.includes('Shopping & Orders') && helpText.includes('Available now'), 'Live shopping status is missing');
+            assert(helpText.includes('Recharge & Bills') && helpText.includes('Discovery available'), 'Digital discovery status is missing');
+            assert(helpText.includes('Rides') && helpText.includes('Coming soon'), 'Move status is missing');
 
             const input = page.locator('input[placeholder="Ask anything about Zeshu…"]');
             await input.fill('Can I book a bike ride now?');
@@ -253,6 +257,20 @@ jobs:
             assert(publicText.includes('Coming Soon'), 'Public Help Center did not return safe ride availability');
             assert(publicText.includes('Ride issue'), 'Ride question did not receive the Ride issue support category');
             assert(!publicText.includes('Order #'), 'Guest Help Center exposed private order context');
+
+            const guidedCases = [
+              ['How much is the delivery fee?', 'does not promise one universal delivery or shipping fee'],
+              ['What does GST Verified seller mean?', 'seller trust labels separate'],
+              ['Is WhatsApp support available?', 'not treated as live'],
+              ['What is Zeshu Market?', 'asset-light marketplace'],
+              ['How does Zeshu protect my data?', 'Privacy Policy'],
+            ];
+
+            for (const [question, expected] of guidedCases) {
+              await input.fill(question);
+              await page.getByRole('button', { name: 'Send', exact: true }).click();
+              await page.waitForFunction((needle) => document.body.innerText.toLowerCase().includes(String(needle).toLowerCase()), expected, { timeout: 20000 });
+            }
 
             const move = await page.request.get(base + '/api/move/readiness');
             assert(move.ok(), 'Move readiness API failed');
