@@ -202,10 +202,17 @@ jobs:
             const addButton = page.locator('#products').getByRole('button', { name: 'ADD', exact: true }).first();
             await addButton.waitFor({ state: 'visible', timeout: 10000 });
             await addButton.click();
-            await page.waitForTimeout(300);
+            await page.waitForFunction(() => {
+              try {
+                const cart = JSON.parse(localStorage.getItem('zeshu_customer_cart') || '[]');
+                return Array.isArray(cart) && cart.length > 0;
+              } catch {
+                return false;
+              }
+            }, null, { timeout: 5000 });
 
             const cartState = await page.evaluate(() => JSON.parse(localStorage.getItem('zeshu_customer_cart') || '[]'));
-            assert(Array.isArray(cartState) && cartState.length > 0, 'ADD did not update the customer cart');
+            assert(Array.isArray(cartState) && cartState.length > 0, 'ADD did not persist the customer cart');
 
             const cartButton = page.locator('button[aria-label^="Open cart"]').first();
             await cartButton.click();
