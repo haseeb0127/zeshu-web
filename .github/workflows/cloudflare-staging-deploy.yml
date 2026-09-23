@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - feat/unified-support-ai-help-20260923
   workflow_dispatch:
 
 permissions:
