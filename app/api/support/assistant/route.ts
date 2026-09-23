@@ -326,17 +326,6 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
     };
   }
 
-  if (/\b(?:install zeshu|zeshu app|install app|add to home screen|pwa|get zeshu|android app|mobile app)\b/.test(text)) {
-    return {
-      answer: 'Use Get Zeshu for the currently supported install options. The Zeshu web app can be added to the home screen on compatible browsers/devices. A mobile build should only be presented as production-ready after the signed build, real-device QA and release checks pass; the website remains the authoritative fallback.',
-      resolved: true,
-      subject: 'Zeshu app install help',
-      handoff_reason: '',
-      suggested_questions: ['How do I use Zeshu on my phone?', 'Can I scan a QR on Zeshu?', 'How do I contact support?'],
-      intent: 'ACCOUNT',
-    };
-  }
-
   if (/\b(?:zeshu pass|membership pass|subscribe & save|subscribe and save|subscription|repeat order)\b/.test(text)) {
     return {
       answer: 'Zeshu Pass and Subscribe & Save are Coming Soon unless the customer UI explicitly shows an active plan. Zeshu should not charge a membership/subscription fee or promise subscription benefits before the product, billing rules, cancellation terms and customer support flow are enabled.',
@@ -867,7 +856,7 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
 
   if (/install.*(?:app|zeshu)|download.*(?:app|zeshu)|get zeshu|add to home screen|android app|pwa/.test(text)) {
     return {
-      answer: 'Open Get Zeshu from the website to install the current Zeshu app/PWA experience on a supported device. Use the official Zeshu install path shown there rather than downloading APK files from unknown sources.',
+      answer: 'Use Get Zeshu for the currently supported install options. The Zeshu web app can be added to the home screen on compatible browsers/devices. Use only the official Zeshu install path shown there; a mobile build should only be presented as production-ready after signed-build, real-device and release checks pass.',
       resolved: true,
       subject: 'Install Zeshu help',
       handoff_reason: '',
