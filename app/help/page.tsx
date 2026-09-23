@@ -31,6 +31,17 @@ const SERVICES = [
   { key: "Account & Safety", question: "How does Zeshu protect my account and what should I never share?" },
 ];
 
+const DIGITAL_HELP = [
+  { key: "Prepaid", question: "How does Zeshu Prepaid recharge help work?" },
+  { key: "Electricity", question: "How does electricity bill lookup work on Zeshu?" },
+  { key: "DTH", question: "How does DTH plan and account discovery work?" },
+  { key: "FASTag", question: "How does FASTag help work on Zeshu?" },
+  { key: "Gas", question: "How do LPG and Piped Gas services work?" },
+  { key: "Water", question: "How does water bill discovery work?" },
+  { key: "Broadband", question: "How does broadband bill discovery work?" },
+  { key: "UPI / QR", question: "What can Zeshu UPI and QR tools do?" },
+];
+
 const DEFAULT_QUESTIONS = [
   "What services are available right now?",
   "Can I book a bike ride now?",
@@ -186,8 +197,25 @@ export default function HelpPage() {
                 type="button"
                 key={service.key}
                 disabled={busy}
-                onClick={() => void ask(service.question)}
+                onClick={() => { setServiceHint(service.key); void ask(service.question); }}
                 className="shrink-0 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-700 shadow-sm disabled:opacity-50"
+              >
+                {t(service.key)}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-4">
+          <h2 className="text-sm font-black uppercase tracking-wider text-slate-500">{t("Popular digital help")}</h2>
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+            {DIGITAL_HELP.map((service) => (
+              <button
+                type="button"
+                key={service.key}
+                disabled={busy}
+                onClick={() => { setServiceHint(service.key); void ask(service.question); }}
+                className="shrink-0 rounded-full border border-blue-100 bg-blue-50 px-4 py-2.5 text-xs font-black text-blue-800 disabled:opacity-50"
               >
                 {t(service.key)}
               </button>
