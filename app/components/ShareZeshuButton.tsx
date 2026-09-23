@@ -29,7 +29,7 @@ export default function ShareZeshuButton() {
 
   return (
     <div>
-      <button type="button" onClick={() => void share()} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#087443] bg-white px-5 py-3.5 text-sm font-black text-[#087443] shadow-sm active:scale-[.98]">
+      <button type="button" onClick={() => void share()} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#075E45] bg-white px-5 py-3.5 text-sm font-black text-[#075E45] shadow-sm active:scale-[.98]">
         <Share2 size={18} aria-hidden="true" /> {t("Share Zeshu")}
       </button>
       {status && <p className="mt-2 text-center text-xs font-bold text-slate-500" role="status">{status}</p>}

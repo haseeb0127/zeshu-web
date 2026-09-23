@@ -49,7 +49,7 @@ export default function PwaInstallButton() {
 
   return (
     <div>
-      <button type="button" onClick={() => void install()} className="w-full rounded-xl bg-[#087443] px-5 py-3.5 text-sm font-black text-white shadow-sm active:scale-[.98]">
+      <button type="button" onClick={() => void install()} className="w-full rounded-xl bg-[#075E45] px-5 py-3.5 text-sm font-black text-white shadow-sm active:scale-[.98]">
         Install Zeshu
       </button>
       {showHelp && <p className="mt-3 rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-600">{t('If the install prompt does not appear, open your browser menu and choose Add to Home screen or Install app. On iPhone, use Share → Add to Home Screen.')}</p>}

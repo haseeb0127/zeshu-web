@@ -16,7 +16,7 @@ export default function PartnersPage() {
   return (
     <main className="min-h-screen bg-[#f8fbf8] px-4 py-10 text-slate-900 md:px-8">
       <div className="mx-auto max-w-5xl">
-        <Link href="/" className="text-sm font-black text-[#087443]">← Back to Zeshu</Link>
+        <Link href="/" className="text-sm font-black text-[#075E45]">← Back to Zeshu</Link>
         <header className="mt-8 rounded-3xl bg-[#083b27] p-7 text-white md:p-10">
           <p className="text-xs font-black uppercase tracking-[.18em] text-[#a6dfba]">Zeshu for brands & suppliers</p>
           <h1 className="mt-2 text-3xl font-black tracking-tight md:text-5xl">Grow with Zeshu</h1>

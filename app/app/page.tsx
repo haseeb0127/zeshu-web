@@ -11,7 +11,7 @@ export default function GetZeshuPage() {
   return (
     <main className="min-h-screen bg-[#f7f9f5] px-4 py-8 text-slate-900 md:px-8 md:py-14">
       <div className="mx-auto max-w-5xl">
-        <Link href="/" className="text-sm font-black text-[#087443]">← {t('Back to Zeshu')}</Link>
+        <Link href="/" className="text-sm font-black text-[#075E45]">← {t('Back to Zeshu')}</Link>
 
         <section className="mt-6 overflow-hidden rounded-[32px] bg-[#083b27] p-6 text-white md:p-10">
           <p className="text-xs font-black uppercase tracking-[.18em] text-[#a6dfba]">{t('Get Zeshu')}</p>
@@ -26,7 +26,7 @@ export default function GetZeshuPage() {
             <div className="mt-5 grid max-w-sm gap-3"><PwaInstallButton /><ShareZeshuButton /></div>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl bg-emerald-50 p-4"><p className="text-xs font-black uppercase tracking-wider text-emerald-700">Jagtial</p><p className="mt-1 font-black">{t('Fast physical delivery')}</p><p className="mt-1 text-xs leading-5 text-slate-600">{t('Groceries, fresh essentials and other eligible local products stay limited to the Jagtial delivery zone.')}</p></div>
-              <div className="rounded-2xl bg-emerald-50 p-4"><p className="text-xs font-black uppercase tracking-wider text-[#087443]">{t('All India')}</p><p className="mt-1 font-black">{t('Digital services')}</p><p className="mt-1 text-xs leading-5 text-slate-600">{t('Recharge, bills, QR tools, rewards and sponsored digital offers can serve users nationwide as each provider is enabled.')}</p></div>
+              <div className="rounded-2xl bg-emerald-50 p-4"><p className="text-xs font-black uppercase tracking-wider text-[#075E45]">{t('All India')}</p><p className="mt-1 font-black">{t('Digital services')}</p><p className="mt-1 text-xs leading-5 text-slate-600">{t('Recharge, bills, QR tools, rewards and sponsored digital offers can serve users nationwide as each provider is enabled.')}</p></div>
             </div>
           </div>
 

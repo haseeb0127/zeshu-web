@@ -44,13 +44,13 @@ export default function Header({
           
           <div className="flex items-center gap-4 md:gap-6">
             <button type="button" aria-label="Zeshu home" className="flex shrink-0 items-center gap-2 md:gap-3 md:border-r border-gray-200/60 md:pr-6 active:scale-[0.97] transition-transform" onClick={() => setActiveTab('home')}>
-              <span className="relative h-[50px] w-[50px] shrink-0 overflow-hidden rounded-[15px] shadow-[0_6px_18px_rgba(11,111,71,.20)] ring-1 ring-[#0B6F47]/10 md:h-[54px] md:w-[54px] md:rounded-[17px]">
+              <span className="relative h-[50px] w-[50px] shrink-0 overflow-hidden rounded-[15px] shadow-[0_6px_18px_rgba(7,94,69,.20)] ring-1 ring-[#075E45]/10 md:h-[54px] md:w-[54px] md:rounded-[17px]">
                 <Image src="/zeshu-icon.svg" alt="" fill priority sizes="54px" className="object-cover" />
               </span>
-              <span className="hidden md:flex flex-col text-left"><span className="text-[22px] font-black tracking-tighter leading-none text-[#132019]">ZESHU</span><span className="text-[10px] font-extrabold text-[#0B6F47] tracking-[0.2em] uppercase mt-0.5">Super App</span></span>
+              <span className="hidden md:flex flex-col text-left"><span className="text-[22px] font-black tracking-tighter leading-none text-[#17201C]">ZESHU</span><span className="text-[10px] font-extrabold text-[#075E45] tracking-[0.2em] uppercase mt-0.5">Super App</span></span>
             </button>
             <div className="flex flex-col cursor-pointer max-w-[160px] md:max-w-[220px] group active:scale-[0.97] transition-transform" onClick={handleAutoDetectLocation}>
-              <div className="font-black text-[13px] md:text-[15px] flex items-center gap-1.5">Delivery in 12 min <Zap size={14} className="text-[#F59E0B] fill-[#F59E0B]"/></div>
+              <div className="font-black text-[13px] md:text-[15px] flex items-center gap-1.5">Delivery in 12 min <Zap size={14} className="text-[#9BCB2F] fill-[#B7E34A]"/></div>
               <div className="flex items-center text-[10px] md:text-xs text-[#6B7280] mt-0.5 font-medium truncate">
                 {isDetectingLoc ? <div className="h-1.5 w-16 bg-gray-200 animate-pulse rounded-full"></div> : currentAddress}
                 <ChevronDown size={14} className="ml-1"/>
@@ -82,7 +82,7 @@ export default function Header({
           <div className="bg-[#F3F4F6] hover:bg-[#E5E7EB] transition-all rounded-[14px] md:rounded-[20px] flex items-center px-4 py-3 md:py-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#6366F1]/20 cursor-text">
             <Search className="text-[#9CA3AF] w-[18px] h-[18px] md:w-[22px] md:h-[22px]" />
             <input type="text" placeholder="Search 'protein powder', 'midnight snacks'..." className="bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-            {searchQuery ? <X size={16} className="cursor-pointer text-gray-500" onClick={() => setSearchQuery('')}/> : <Mic size={18} className="text-[#087443] cursor-pointer hover:scale-110 transition-transform"/>}
+            {searchQuery ? <X size={16} className="cursor-pointer text-gray-500" onClick={() => setSearchQuery('')}/> : <Mic size={18} className="text-[#075E45] cursor-pointer hover:scale-110 transition-transform"/>}
           </div>
         </div>
 

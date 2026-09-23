@@ -10,10 +10,10 @@ interface ServiceGridProps {
 
 export default function ServiceGrid({ services, setActiveTab, setActiveService }: ServiceGridProps) {
   return (
-    <div className="bg-white p-6 md:p-10 rounded-[24px] md:rounded-[32px] shadow-sm border border-[#dde7df] mx-4 md:mx-0">
+    <div className="bg-white p-6 md:p-10 rounded-[24px] md:rounded-[32px] shadow-sm border border-[#DFE7E1] mx-4 md:mx-0">
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-xl md:text-2xl font-black tracking-tight">Utility & Recharges</h2>
-        <span className="text-[#087443] font-extrabold text-xs md:text-sm cursor-pointer hover:bg-[#E4F3E9] bg-[#EEF8F1] px-3 py-1.5 md:px-4 md:py-2 rounded-xl transition-colors active:scale-95">
+        <span className="text-[#075E45] font-extrabold text-xs md:text-sm cursor-pointer hover:bg-[#E4F3E9] bg-[#EEF7F1] px-3 py-1.5 md:px-4 md:py-2 rounded-xl transition-colors active:scale-95">
           Explore All
         </span>
       </div>
