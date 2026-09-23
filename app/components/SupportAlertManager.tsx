@@ -4,18 +4,21 @@ import { useEffect, useRef, useState } from "react";
 
 type Props = { supabaseClient: any };
 
-async function showSupportNotification() {
+async function showSupportNotification(subject = "") {
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  const urgent = /safety|unsafe|accident|emergency|harass|threat|assault|danger/i.test(subject);
+  const title = urgent ? "URGENT Zeshu safety support" : "Zeshu customer needs support";
+  const body = urgent ? "Open Support in ZESHU HQ now and review the safety escalation." : "Open Support in ZESHU HQ to reply.";
   try {
     if ("serviceWorker" in navigator) {
       const registration = await navigator.serviceWorker.ready;
-      await registration.showNotification("Zeshu customer needs support", { body: "Open Support in ZESHU HQ to reply.", icon: "/zeshu-icon.svg", badge: "/zeshu-icon.svg" });
+      await registration.showNotification(title, { body, icon: "/zeshu-icon.svg", badge: "/zeshu-icon.svg" });
       return;
     }
   } catch {
     // Fall back to the page notification API where supported.
   }
-  try { new Notification("Zeshu customer needs support", { body: "Open Support in ZESHU HQ to reply." }); } catch {}
+  try { new Notification(title, { body }); } catch {}
 }
 
 export default function SupportAlertManager({ supabaseClient }: Props) {
@@ -60,7 +63,7 @@ export default function SupportAlertManager({ supabaseClient }: Props) {
           oscillator.start();
           oscillator.stop(context.currentTime + 0.18);
         } catch {}
-        void showSupportNotification();
+        void showSupportNotification(String(row.subject || ""));
       })
       .subscribe();
     return () => { void supabaseClient.removeChannel(channel); };
