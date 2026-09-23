@@ -326,6 +326,28 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
     };
   }
 
+  if (/\b(?:install zeshu|zeshu app|install app|add to home screen|pwa|get zeshu|android app|mobile app)\b/.test(text)) {
+    return {
+      answer: 'Use Get Zeshu for the currently supported install options. The Zeshu web app can be added to the home screen on compatible browsers/devices. A mobile build should only be presented as production-ready after the signed build, real-device QA and release checks pass; the website remains the authoritative fallback.',
+      resolved: true,
+      subject: 'Zeshu app install help',
+      handoff_reason: '',
+      suggested_questions: ['How do I use Zeshu on my phone?', 'Can I scan a QR on Zeshu?', 'How do I contact support?'],
+      intent: 'ACCOUNT',
+    };
+  }
+
+  if (/\b(?:zeshu pass|membership pass|subscribe & save|subscribe and save|subscription|repeat order)\b/.test(text)) {
+    return {
+      answer: 'Zeshu Pass and Subscribe & Save are Coming Soon unless the customer UI explicitly shows an active plan. Zeshu should not charge a membership/subscription fee or promise subscription benefits before the product, billing rules, cancellation terms and customer support flow are enabled.',
+      resolved: true,
+      subject: 'Pass and subscription help',
+      handoff_reason: '',
+      suggested_questions: ['What services are available right now?', 'How does Zeshu Cash work?', 'How do promotions work?'],
+      intent: 'ACCOUNT',
+    };
+  }
+
   if (/whatsapp|whats app|support on whatsapp|whatsapp support/.test(text)) {
     return {
       answer: 'Zeshu WhatsApp customer support is not treated as live until the customer-facing WhatsApp toggle and verified Meta setup are enabled. Use Zeshu Help Center or the signed-in human-support conversation for current support; do not send OTPs, passwords, CVV or UPI PIN over WhatsApp.',
