@@ -820,7 +820,19 @@ export default function ZeshuSuperApp() {
     if (!requestedSupport) return;
 
     const safeSubject = requestedSupport.slice(0, 160);
-    setSupportSubject(safeSubject);
+    const normalized = safeSubject.toLowerCase();
+    const category = /bike ride|auto|cab|rental car|ride/.test(normalized)
+      ? 'Ride issue'
+      : /bike courier|courier|cargo|mini truck|shop delivery|parcel|package/.test(normalized)
+        ? 'Courier / Cargo issue'
+        : /car share|carpool/.test(normalized)
+          ? 'Car Share issue'
+          : /bus|train|flight|hotel|experience|travel/.test(normalized)
+            ? 'Travel issue'
+            : /marketplace|seller|electronics|fashion|beauty|home & kitchen/.test(normalized)
+              ? 'Marketplace / seller issue'
+              : 'Other';
+    setSupportSubject(category);
     setSupportAssistantQuestion(`I need help with ${safeSubject}`);
 
     if (!user) {
