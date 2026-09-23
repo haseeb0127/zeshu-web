@@ -26,6 +26,30 @@ import { groupCartByFulfillment, marketplaceRecommendedScore, type MarketplaceSe
 const supabase = customerSupabase();
 const SUPPORT_WHATSAPP_UI_ENABLED = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP_UI_ENABLED === 'true';
 
+const supportCategoryForIntent = (intent: string, message = '') => {
+  const normalizedIntent = String(intent || '').trim().toUpperCase();
+  const text = message.toLowerCase();
+  if (normalizedIntent === 'RIDES' || /\b(bike ride|bike taxi|auto|cab|taxi|driver|ride)\b/.test(text)) return 'Ride issue';
+  if (normalizedIntent === 'COURIER' || /\b(courier|cargo|parcel|package|mini truck|tempo)\b/.test(text)) return 'Courier / Cargo issue';
+  if (normalizedIntent === 'CAR_SHARE' || /\b(car share|carpool|car pool)\b/.test(text)) return 'Car Share issue';
+  if (normalizedIntent === 'TRAVEL' || /\b(train|rail|flight|hotel|bus ticket|travel|pnr)\b/.test(text)) return 'Travel issue';
+  if (normalizedIntent === 'MARKETPLACE' || /\b(marketplace|seller|vendor|electronics|fashion|beauty)\b/.test(text)) return 'Marketplace / seller issue';
+  if (normalizedIntent === 'PROVIDER_DISPUTE' || normalizedIntent === 'DIGITAL' || /\b(recharge|bill|fastag|electricity|broadband|dth|water|gas)\b/.test(text)) return 'Recharge/Bill issue';
+  if (normalizedIntent === 'SAFETY') return 'Safety issue';
+  if (normalizedIntent === 'ACCOUNT_CHANGE' || normalizedIntent === 'ACCOUNT') return 'Account issue';
+  if (normalizedIntent === 'REFUND' || normalizedIntent === 'REFUND_POLICY') return 'Refund issue';
+  if (normalizedIntent === 'PAYMENT') return 'Payment issue';
+  if (normalizedIntent === 'DELIVERY') return 'Delivery issue';
+  if (normalizedIntent === 'ORDER') return 'Order issue';
+  if (normalizedIntent === 'SERVICE_DISPUTE') {
+    if (/\b(courier|cargo|parcel|package|mini truck|tempo)\b/.test(text)) return 'Courier / Cargo issue';
+    if (/\b(car share|carpool|car pool)\b/.test(text)) return 'Car Share issue';
+    if (/\b(train|rail|flight|hotel|travel|pnr)\b/.test(text)) return 'Travel issue';
+    if (/\b(bike|auto|cab|taxi|driver|ride)\b/.test(text)) return 'Ride issue';
+  }
+  return 'Other';
+};
+
 const SERVICES = [
   { id: 'mobile', label: 'Prepaid', icon: <Smartphone size={28} strokeWidth={1.5}/>, color: 'bg-[#EEF7F1] text-[#075E45] group-hover:bg-[#075E45] group-hover:text-white', inputLabel: 'Mobile Number' },
   { id: 'electricity', label: 'Electricity', icon: <Zap size={28} strokeWidth={1.5}/>, color: 'bg-[#FEF3C7] text-[#D97706] group-hover:bg-[#F59E0B] group-hover:text-white', inputLabel: 'Consumer Number' },
@@ -386,6 +410,7 @@ export default function ZeshuSuperApp() {
   const [supportAssistantBusy, setSupportAssistantBusy] = useState(false);
   const [supportAssistantResolved, setSupportAssistantResolved] = useState<boolean | null>(null);
   const [supportAssistantSource, setSupportAssistantSource] = useState<'ai' | 'guided' | ''>('');
+  const [supportAssistantIntent, setSupportAssistantIntent] = useState('GENERAL');
   const [supportAssistantSuggestions, setSupportAssistantSuggestions] = useState<string[]>([]);
   const [supportAssistantContextUsed, setSupportAssistantContextUsed] = useState<string[]>([]);
   const [supportThreadRefreshToken, setSupportThreadRefreshToken] = useState(0);
@@ -2304,6 +2329,7 @@ export default function ZeshuSuperApp() {
     setSupportAssistantAnswer('');
     setSupportAssistantResolved(null);
     setSupportAssistantSource('');
+    setSupportAssistantIntent('GENERAL');
     setSupportAssistantSuggestions([]);
     setSupportAssistantContextUsed([]);
     setSupportAssistantMessages((current) => [...current, { role: 'CUSTOMER', body: question }]);
@@ -2328,6 +2354,7 @@ export default function ZeshuSuperApp() {
       setSupportAssistantMessages((current) => [...current, { role: 'AI', body: answer }]);
       setSupportAssistantResolved(payload.resolved === true);
       setSupportAssistantSource(payload.source === 'ai' ? 'ai' : 'guided');
+      setSupportAssistantIntent(String(payload.intent || 'GENERAL'));
       setSupportAssistantSuggestions(Array.isArray(payload.suggested_questions) ? payload.suggested_questions.slice(0, 3).map(String) : []);
       setSupportAssistantContextUsed(Array.isArray(payload.context_used) ? payload.context_used.map(String) : []);
 
@@ -2340,7 +2367,7 @@ export default function ZeshuSuperApp() {
         setSupportNotice('Zeshu Assistant transferred this to Zeshu Support with the context attached. You do not need to repeat the issue.');
       } else if (payload.resolved !== true) {
         setSupportMessage(question);
-        setSupportSubject('Other');
+        setSupportSubject(supportCategoryForIntent(String(payload.intent || 'GENERAL'), question));
         setSupportNotice('The automatic transfer could not be completed. Your question is ready below so you can send it to Zeshu Support without retyping it.');
       }
     } catch (assistantError) {
@@ -2351,7 +2378,7 @@ export default function ZeshuSuperApp() {
       setSupportAssistantSuggestions([]);
       setSupportAssistantContextUsed([]);
       setSupportMessage(question);
-      setSupportSubject('Other');
+      setSupportSubject(supportCategoryForIntent('GENERAL', question));
       setSupportNotice('Assistant help is temporarily unavailable. Your question is ready for Zeshu Support below.');
     } finally {
       setSupportAssistantBusy(false);
@@ -2371,7 +2398,7 @@ export default function ZeshuSuperApp() {
   const connectAssistantToHuman = () => {
     const latestCustomerMessage = [...supportAssistantMessages].reverse().find((message) => message.role === 'CUSTOMER')?.body || supportAssistantQuestion.trim();
     if (latestCustomerMessage) setSupportMessage(latestCustomerMessage);
-    setSupportSubject('Other');
+    setSupportSubject(supportCategoryForIntent(supportAssistantIntent, latestCustomerMessage));
     setSelectedSupportConversationId(null);
     setSupportNotice('Your question is ready below. Add any order details and send it to Zeshu Support.');
   };
