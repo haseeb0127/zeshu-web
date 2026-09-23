@@ -31,6 +31,7 @@ for (const topic of [
   'Zeshu Cash & Referrals',
   'Payments & Refunds',
   'Account & Safety',
+  'App, QR & Pass',
 ]) {
   assert(help.includes(`key: "${topic}"`), `Help Center must expose ${topic}`);
 }
@@ -57,6 +58,8 @@ for (const phrase of [
   'For Water Bill discovery, select a supported provider',
   'For Broadband, select the provider',
   'Zeshu can provide QR/scanner tools',
+  'Use Get Zeshu for the currently supported install options',
+  'Zeshu Pass and Subscribe & Save are Coming Soon',
 ]) {
   assert(route.includes(phrase), `Assistant service coverage is missing: ${phrase}`);
 }
