@@ -4,6 +4,7 @@ import { rateLimitResponse } from '@/app/lib/provider-security';
 import { ZESHU_SUPPORT_KNOWLEDGE } from '@/app/lib/support-ai';
 import { getRuntimeEnvValue, getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
 import { getMoveServiceReadiness } from '@/app/lib/move-readiness';
+import { buildCategorizedSupportSubject, classifySupportCategory } from '@/app/lib/support-category';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -687,7 +688,7 @@ export async function GET() {
   return NextResponse.json({
     mode: aiEnabled ? 'ai' : 'guided',
     automatic_handoff: handoffConfigured,
-    capabilities: ['public_general_help', 'live_order_status', 'reward_context', 'catalog_search', 'marketplace_help', 'pharmacy_help', 'rides_help', 'courier_help', 'car_share_help', 'travel_help', 'digital_services_help', 'move_service_readiness', 'policy_help', 'automatic_handoff'],
+    capabilities: ['public_general_help', 'live_order_status', 'reward_context', 'catalog_search', 'marketplace_help', 'pharmacy_help', 'rides_help', 'courier_help', 'car_share_help', 'travel_help', 'digital_services_help', 'delivery_address_help', 'referral_help', 'account_safety_help', 'move_service_readiness', 'policy_help', 'service_specific_handoff', 'automatic_handoff'],
   });
 }
 
@@ -871,7 +872,7 @@ ${liveContextText}`,
       userId,
       question: message,
       answer: result.answer,
-      subject: result.subject,
+      subject: buildCategorizedSupportSubject(result.intent, message, result.subject),
     });
   }
 
@@ -887,6 +888,7 @@ ${liveContextText}`,
     resolved: result.resolved,
     source,
     intent: result.intent,
+    support_category: classifySupportCategory(result.intent, message),
     suggested_questions: result.suggested_questions,
     context_used: contextUsed,
     latency_ms: Date.now() - startedAt,
