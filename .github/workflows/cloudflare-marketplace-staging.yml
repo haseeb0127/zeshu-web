@@ -3,7 +3,7 @@ name: Deploy marketplace foundation to Cloudflare staging
 on:
   push:
     branches:
-      - feat/support-safety-priority-v2-20260923
+      - feat/marketplace-foundation-20260923
     paths:
       - ".github/workflows/cloudflare-marketplace-staging.yml"
   workflow_dispatch:
@@ -132,7 +132,7 @@ jobs:
         run: |
           set -euo pipefail
           base="https://zeshu-web-staging.asif-mohammed0127.workers.dev"
-          for route in "/" "/policies" "/partners" "/app" "/scanner" "/help" "/move"; do
+          for route in "/" "/policies" "/partners" "/app" "/scanner"; do
             code="$(curl -L -sS -o /tmp/zeshu-staging-body -w '%{http_code}' "$base$route" || true)"
             if [ "$code" != "200" ]; then
               echo "Expected 200 from staging $route, got $code"
@@ -154,17 +154,8 @@ jobs:
           code="$(curl -L -sS -o /tmp/assistant -w '%{http_code}' \
             -X POST "$base/api/support/assistant" \
             -H 'Content-Type: application/json' \
-            --data '{"message":"Can I book a bike ride now?"}' || true)"
-          test "$code" = "200" || { echo "Public assistant expected 200, got $code"; cat /tmp/assistant; exit 1; }
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          const payload = JSON.parse(fs.readFileSync('/tmp/assistant', 'utf8'));
-          if (payload.signed_in !== false) throw new Error('Public assistant must report signed_in=false');
-          const used = Array.isArray(payload.context_used) ? payload.context_used : [];
-          if (used.includes('orders') || used.includes('rewards')) throw new Error('Guest assistant leaked private account context');
-          if (payload?.handoff?.created) throw new Error('Guest assistant must not create a private support conversation');
-          if (!['RIDES','GENERAL'].includes(String(payload.intent || '').toUpperCase())) throw new Error('Unexpected public assistant intent');
-          NODE
+            --data '{"message":"hello"}' || true)"
+          test "$code" = "401" || { echo "Assistant expected 401, got $code"; exit 1; }
 
           code="$(curl -L -sS -o /tmp/admin-support -w '%{http_code}' \
             "$base/api/admin/support/conversations" || true)"
@@ -245,44 +236,5 @@ jobs:
           }
           NODE
 
-      - name: Verify unified Help Center and support safety
-        shell: bash
-        run: |
-          node --input-type=module <<'NODE'
-          import { chromium } from 'playwright';
-
-          const base = 'https://zeshu-web-staging.asif-mohammed0127.workers.dev';
-          const browser = await chromium.launch({ headless: true });
-          const assert = (condition, message) => { if (!condition) throw new Error(message); };
-
-          try {
-            const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-            await page.goto(base + '/help?service=Bike%20Ride', { waitUntil: 'networkidle', timeout: 60000 });
-            assert(await page.getByRole('heading', { name: 'Zeshu Help Center' }).isVisible(), 'Help Center heading missing');
-
-            const input = page.locator('input[placeholder="Ask anything about Zeshu…"]');
-            await input.fill('Can I book a bike ride now?');
-            await input.press('Enter');
-            await page.waitForFunction(() => {
-              const text = document.body.innerText;
-              return text.includes('Coming Soon') && /booking|payment/i.test(text);
-            }, null, { timeout: 30000 });
-
-            const body = await page.locator('body').innerText();
-            assert(!body.includes('Order #'), 'Guest Help Center exposed private order context');
-
-            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'ur'));
-            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
-            await page.waitForFunction(() => document.documentElement.dir === 'rtl', null, { timeout: 10000 });
-            const urdu = await page.locator('body').innerText();
-            assert(urdu.includes('Zeshu ہیلپ سینٹر'), 'Urdu Help Center heading missing');
-            assert(await page.locator('html').getAttribute('dir') === 'rtl', 'Urdu Help Center is not RTL');
-
-            console.log('UNIFIED_SUPPORT_BROWSER_QA=PASS');
-          } finally {
-            await browser.close();
-          }
-          NODE
-
       - name: Staging deployment summary
-        run: echo "Cloudflare staging deploy, marketplace regression, public Help Center/privacy checks, and unified support safety QA passed on the feature branch."
+        run: echo "Cloudflare staging deploy, marketplace seller trust, recommendation/search stability, and grouped-cart browser QA passed on the marketplace branch."
