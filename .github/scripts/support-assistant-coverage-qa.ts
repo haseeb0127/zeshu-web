@@ -35,6 +35,8 @@ for (const topic of [
 assert(help.includes('Human support is available for every Zeshu service.'), 'Help Center must offer human support across services');
 assert(route.includes('support_category: classifySupportCategory'), 'Assistant responses must include a normalized support category');
 assert(route.includes('buildCategorizedSupportSubject'), 'Automatic handoffs must carry a categorized subject');
+assert(route.includes('deliveryInfoIntent'), 'Assistant must distinguish delivery/address guidance from private order tracking');
+assert(route.includes('!deliveryInfoIntent(message)'), 'Delivery/address questions must not trigger private order lookup');
 
 const moveFlagCount = (env.match(/^MOVE_EXECUTION_ENABLED=/gm) || []).length;
 assert(moveFlagCount === 1, 'MOVE_EXECUTION_ENABLED must be documented exactly once');
