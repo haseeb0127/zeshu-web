@@ -7,9 +7,11 @@ const TYPES = [
   ["LICENSED_PHARMACY", "Licensed pharmacy"],
   ["MEDICINE_DISTRIBUTOR", "Medicine distributor"],
   ["RECHARGE_BILLS", "Recharge / bills provider"],
+  ["MOBILITY", "Mobility / ride operator"],
+  ["LOGISTICS_COURIER", "Courier / logistics provider"],
   ["TRAVEL", "Travel booking provider"],
   ["SPONSOR", "Sponsor / advertiser"],
-  ["OTHER", "Mobility / logistics / other partnership"],
+  ["OTHER", "Other partnership"],
 ] as const;
 
 const emptyForm = {
