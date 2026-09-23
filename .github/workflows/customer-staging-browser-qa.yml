@@ -159,6 +159,110 @@ jobs:
           }
           NODE
 
+      - name: Verify filters, cart safety and digital-service discovery
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+
+          const base = process.env.BASE_URL;
+          const browser = await chromium.launch({ headless: true });
+          const assert = (value, message) => { if (!value) throw new Error(message); };
+
+          try {
+            const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+            const paymentRequests = [];
+            page.on('request', (request) => {
+              if (/\/api\/(create-razorpay-order|verify-payment)/.test(request.url())) paymentRequests.push(request.url());
+            });
+
+            await page.goto(base, { waitUntil: 'networkidle', timeout: 60000 });
+            await page.evaluate(() => localStorage.removeItem('zeshu_customer_cart'));
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+
+            const filtersButton = page.getByRole('button', { name: 'Filters', exact: true }).first();
+            await filtersButton.click();
+            const filterPanel = page.locator('#product-filters');
+            await filterPanel.waitFor({ state: 'visible', timeout: 10000 });
+            const selects = filterPanel.locator('select');
+            assert(await selects.count() >= 6, 'Expected catalog filter controls are missing');
+
+            await selects.nth(2).selectOption('UNDER_100');
+            await selects.nth(3).selectOption('AVAILABLE');
+            await selects.nth(5).selectOption('price_asc');
+            assert(await selects.nth(2).inputValue() === 'UNDER_100', 'Price filter did not apply');
+            assert(await selects.nth(3).inputValue() === 'AVAILABLE', 'Availability filter did not apply');
+            assert(await selects.nth(5).inputValue() === 'price_asc', 'Product sort did not apply');
+
+            await page.getByRole('button', { name: 'Clear all', exact: true }).click();
+            await page.waitForTimeout(400);
+            assert(await selects.nth(2).inputValue() === 'ALL', 'Clear filters did not reset price');
+            assert(await selects.nth(3).inputValue() === 'ALL', 'Clear filters did not reset availability');
+
+            const addButton = page.locator('#products').getByRole('button', { name: 'ADD', exact: true }).first();
+            await addButton.waitFor({ state: 'visible', timeout: 10000 });
+            await addButton.click();
+            const locationDialog = page.getByRole('dialog', { name: 'Choose delivery location' });
+            await locationDialog.waitFor({ state: 'visible', timeout: 10000 });
+            const blockedCartState = await page.evaluate(() => JSON.parse(localStorage.getItem('zeshu_customer_cart') || '[]'));
+            assert(Array.isArray(blockedCartState) && blockedCartState.length === 0, 'Physical ADD bypassed the serviceable-location gate');
+            await page.getByRole('button', { name: 'Close location selector' }).click();
+
+            const seeded = await page.evaluate(() => {
+              const products = JSON.parse(localStorage.getItem('zeshu_products') || '[]');
+              const product = products.find((entry) => entry?.vendor_id && entry?.in_stock !== false && Number(entry?.quantity) > 0 && entry?.delivery_mode !== 'INDIA_STANDARD');
+              if (!product) return false;
+              localStorage.setItem('zeshu_customer_cart', JSON.stringify([{ item: product, qty: 1 }]));
+              return true;
+            });
+            assert(seeded, 'Could not seed a safe local staging cart for non-payment checkout regression');
+
+            await page.setViewportSize({ width: 1440, height: 900 });
+            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
+            const cartButton = page.locator('button[aria-label^="Open cart"]').first();
+            await cartButton.waitFor({ state: 'visible', timeout: 10000 });
+            await cartButton.click();
+            const cart = page.getByRole('dialog');
+            await cart.waitFor({ state: 'visible', timeout: 10000 });
+            const cartText = (await cart.innerText()).replace(/\s+/g, ' ');
+            assert(cartText.includes('Price Details'), 'Cart price breakdown is missing');
+            assert(cartText.includes('No hidden fees'), 'Cart transparent-pricing message is missing');
+            assert(cartText.includes('Proceed to secure payment'), 'Secure checkout CTA is missing');
+            assert(paymentRequests.length === 0, 'Payment API was called during non-payment cart smoke');
+
+            await page.getByRole('button', { name: 'Close cart' }).click();
+            await page.goto(base + '/?view=services', { waitUntil: 'networkidle', timeout: 60000 });
+
+            const servicesText = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            for (const label of ['Prepaid','Electricity','DTH','UPI Tools · Soon','Pharmacy','FASTag','Gas Booking','Piped Gas','Water Bill','Broadband']) {
+              assert(servicesText.includes(label), `Digital service tab missing: ${label}`);
+            }
+
+            await page.getByRole('button', { name: 'Electricity', exact: true }).click();
+            const fetchBill = page.getByRole('button', { name: 'Fetch Bill', exact: true });
+            await fetchBill.waitFor({ state: 'visible', timeout: 10000 });
+            assert(await fetchBill.isDisabled(), 'Electricity payment/discovery flow advanced without a provider');
+
+            await page.getByRole('button', { name: 'FASTag', exact: true }).click();
+            const fastagCheck = page.getByRole('button', { name: 'Check FASTag details', exact: true });
+            await fastagCheck.waitFor({ state: 'visible', timeout: 10000 });
+            assert(await fastagCheck.isDisabled(), 'FASTag flow advanced without a provider');
+
+            await page.getByRole('button', { name: 'Pharmacy', exact: true }).click();
+            const pharmacyText = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(pharmacyText.includes('No medicine payment or prescription transaction is available'), 'Pharmacy safety gate is missing');
+
+            await page.getByRole('button', { name: 'UPI Tools · Soon', exact: true }).click();
+            const upiText = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(upiText.includes('No payment can be started from this screen'), 'UPI safety gate is missing');
+            assert(paymentRequests.length === 0, 'Payment API was called during utility discovery smoke');
+
+            console.log('LAUNCH_READINESS_CUSTOMER_QA=PASS');
+          } finally {
+            await browser.close();
+          }
+          NODE
+
       - name: Verify Hindi and Urdu storefront localization
         shell: bash
         run: |
