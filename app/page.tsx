@@ -80,6 +80,7 @@ const SITE_SEARCH_SHORTCUTS = [
   { id: 'scanner', label: 'Scan QR', description: 'Open the Zeshu QR scanner', href: '/scanner', terms: 'qr scan scanner code merchant upi' },
   { id: 'app', label: 'Get Zeshu', description: 'Install Zeshu on your device', href: '/app', terms: 'app android install download mobile pwa home screen' },
   { id: 'policies', label: 'Policies & Trust', description: 'Refunds, privacy, terms and service information', href: '/policies', terms: 'policy policies refund cancellation privacy terms trust return' },
+  { id: 'help', label: 'Help & Support', description: 'Ask Zeshu Assistant or contact support', href: '/help', terms: 'help support assistant ai chatbot customer care contact order ride courier travel refund payment problem issue' },
   { id: 'partners', label: 'Brands & Partners', description: 'Sponsored campaigns and supplier partnerships', href: '/partners', terms: 'partner partners vendor supplier brand sponsor sponsored advertise advertising campaign' },
   { id: 'move', label: 'Move & Travel', description: 'Rides, courier, car share and travel', href: '/move', terms: 'move travel ride rides bike taxi auto cab car share carpool courier parcel delivery cargo porter bus train flight flights hotel hotels rental outstation' },
 ] as const;
