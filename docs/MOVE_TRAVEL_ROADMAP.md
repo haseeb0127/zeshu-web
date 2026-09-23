@@ -113,6 +113,20 @@ Choose based on **net contribution and customer reliability**, not headline comm
 - Keep safety and refunds clearer than promotional messaging.
 - Do not claim "authorized" or "licensed" status unless documentation has been verified.
 
+## Customer support foundation
+
+✅ Complete in code:
+
+- one Help Center for shopping, marketplace, delivery, rides, courier/cargo, car share, travel, pharmacy, recharge/bills, rewards, payments/refunds and account/safety;
+- guided answers that remain available even when the external AI model is disabled;
+- optional server-side AI enhancement behind SUPPORT_AI_ENABLED and OPENAI_API_KEY;
+- automatic signed-in human handoff for protected cases;
+- service-specific support categories and admin queue prioritisation;
+- Move & Travel contextual Help links;
+- no model or rules-based flow can mark a ride/courier/travel booking live by itself.
+
+Human staffing, provider escalation contacts and real transaction/provider evidence remain external operational gates.
+
 ## Recommended rollout order
 
 1. ✅ Discovery-only Move & Travel page — implemented.
