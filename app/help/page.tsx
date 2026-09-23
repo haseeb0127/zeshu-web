@@ -29,6 +29,10 @@ const SERVICES = [
   { key: "Zeshu Cash & Referrals", question: "How do Zeshu Cash, rewards and referrals work?" },
   { key: "Payments & Refunds", question: "How do payments and refunds work?" },
   { key: "Account & Safety", question: "How does Zeshu protect my account and what should I never share?" },
+  { key: "QR & UPI Tools", question: "What can I safely do with Zeshu QR and UPI tools right now?" },
+  { key: "App & Languages", question: "How do I install Zeshu or change the app language?" },
+  { key: "Offers & Sponsored", question: "How do offers, coupons and sponsored products work on Zeshu?" },
+  { key: "Pass & Subscriptions", question: "Are Zeshu Pass and Subscribe & Save available yet?" },
 ];
 
 const DEFAULT_QUESTIONS = [
@@ -49,6 +53,9 @@ const SERVICE_STATUS = [
   { name: "Car Share", status: "Coming soon" },
   { name: "Travel", status: "Coming soon" },
   { name: "Pharmacy & Health", status: "Coming soon" },
+  { name: "QR & UPI Tools", status: "Available where shown" },
+  { name: "App & Languages", status: "Available now" },
+  { name: "Pass & Subscriptions", status: "Coming soon" },
   { name: "Human support", status: "Available now" },
 ];
 

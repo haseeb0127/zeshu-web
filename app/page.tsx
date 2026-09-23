@@ -3089,6 +3089,11 @@ export default function ZeshuSuperApp() {
                </div>
                
                <div className="p-5 md:p-8 space-y-5">
+                 <div className="flex justify-end">
+                   <Link href={`/help?service=${encodeURIComponent(currentServiceObj.label)}`} className="inline-flex items-center gap-1 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-[#075E45]">
+                     <MessageCircle size={14} aria-hidden="true" /> {t('Get help')}
+                   </Link>
+                 </div>
                  {unavailableService && ['pharmacy', 'upi'].includes(activeService) ? (
                    <div className="rounded-3xl border border-[#cfe7d8] bg-[#f4fbf6] p-6 text-center md:p-10">
                      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e1f3e7] text-[#075E45]"><Info size={24}/></div>
