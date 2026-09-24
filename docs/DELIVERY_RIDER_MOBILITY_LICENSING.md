@@ -226,3 +226,20 @@ Only if customer demand and unit economics justify:
 
 ### Phase 6 — Bike Taxi / Car Share
 Launch only after Telangana-specific legal treatment is clear and written operating controls are approved.
+
+
+## Primary references to re-check before launch
+
+- Motor Vehicle Aggregator Guidelines, 2025 (Parivahan/MoRTH): https://parivahan.gov.in/sites/default/files/NOTIFICATION%26ADVISORY/MV-Aggregators-Guidelines-2025%20-%20English%20and%20Hindi.pdf
+- Telangana Motor Vehicles Rules — Rule 297 goods collecting/forwarding/distributing agents: https://www.transport.telangana.gov.in/html/acts-rules/middle-main-chap-5.htm
+- Telangana Auto-rickshaw Pucca Permit: https://transport.telangana.gov.in/html/permits-contractcarriage-autorickshaw-puccapermit.html
+- Telangana Motor Cab Pucca Permit: https://transport.telangana.gov.in/html/permits-contractcarriage-motorcab-puccapermit.html
+- Telangana Goods Carriage Pucca Permit: https://www.transport.telangana.gov.in/html/permits-goodscarriagepermit-puccapermit.html
+- Telangana Goods Carriage National Permit: https://www.transport.telangana.gov.in/html/permits-goodscarriagepermit-nationalpermit.html
+- Telangana transport-vehicle driving licence guidance: https://transport.telangana.gov.in/html/driving-licence-made-easy.html
+- Telangana Platform Based Gig Workers (Registration, Social Security and Welfare) Act, 2026: https://prsindia.org/files/bills_acts/acts_states/telangana/2026/Act21of2026TG.pdf
+
+### Current Telangana passenger-policy watch
+
+Public reporting on 8 September 2026 said Telangana was still studying its app-based aggregator policy and issues including white-plate vehicles. Re-check the Transport Department/Gazette before enabling passenger booking:
+https://www.newindianexpress.com/states/telangana/2026/Sep/08/telangana-mulls-ride-hailing-app-as-auto-unions-warn-of-agitation
