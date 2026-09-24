@@ -8,31 +8,32 @@ type ServiceCard = {
   title: string;
   description: string;
   icon: React.ReactNode;
+  actionLabel?: string;
 };
 
 const localRides: ServiceCard[] = [
-  { title: "Bike Ride", description: "Fast two-wheeler ride", icon: <Bike size={22} /> },
-  { title: "Auto", description: "Auto-rickshaw rides", icon: <Car size={22} /> },
-  { title: "Cab", description: "Local and outstation cabs", icon: <Car size={22} /> },
-  { title: "Rental Car", description: "Hourly and day rentals", icon: <Car size={22} /> },
+  { title: "Bike Ride", description: "Fast two-wheeler ride", icon: <Bike size={22} />, actionLabel: "Plan ride" },
+  { title: "Auto", description: "Auto-rickshaw rides", icon: <Car size={22} />, actionLabel: "Plan ride" },
+  { title: "Cab", description: "Local and outstation cabs", icon: <Car size={22} />, actionLabel: "Plan ride" },
+  { title: "Rental Car", description: "Hourly and day rentals", icon: <Car size={22} />, actionLabel: "Plan rental" },
 ];
 
 const courier: ServiceCard[] = [
-  { title: "Bike Courier", description: "Documents and small parcels", icon: <Package size={22} /> },
-  { title: "Auto / Mini Truck", description: "Larger local deliveries", icon: <Truck size={22} /> },
-  { title: "Shop Delivery", description: "Seller-to-customer delivery", icon: <Package size={22} /> },
+  { title: "Bike Courier", description: "Documents and small parcels", icon: <Package size={22} />, actionLabel: "Plan delivery" },
+  { title: "Auto / Mini Truck", description: "Larger local deliveries", icon: <Truck size={22} />, actionLabel: "Plan delivery" },
+  { title: "Shop Delivery", description: "Seller-to-customer delivery", icon: <Package size={22} />, actionLabel: "Plan delivery" },
 ];
 
 const sharing: ServiceCard[] = [
-  { title: "Car Share", description: "Split an intercity trip with verified co-travellers", icon: <Users size={22} /> },
+  { title: "Car Share", description: "Split an intercity trip with verified co-travellers", icon: <Users size={22} />, actionLabel: "Plan trip" },
 ];
 
 const travel: ServiceCard[] = [
-  { title: "Bus", description: "Bus discovery and booking", icon: <Bus size={22} /> },
-  { title: "Train", description: "Authorized rail booking partners only", icon: <TrainFront size={22} /> },
-  { title: "Flights", description: "Flight search and booking partners", icon: <Plane size={22} /> },
-  { title: "Hotels", description: "Hotel discovery and booking partners", icon: <Hotel size={22} /> },
-  { title: "Experiences", description: "Activities and local experiences", icon: <Luggage size={22} /> },
+  { title: "Bus", description: "Bus discovery and booking", icon: <Bus size={22} />, actionLabel: "Plan travel" },
+  { title: "Train", description: "Authorized rail booking partners only", icon: <TrainFront size={22} />, actionLabel: "Plan travel" },
+  { title: "Flights", description: "Flight search and booking partners", icon: <Plane size={22} />, actionLabel: "Plan travel" },
+  { title: "Hotels", description: "Hotel discovery and booking partners", icon: <Hotel size={22} />, actionLabel: "Plan stay" },
+  { title: "Experiences", description: "Activities and local experiences", icon: <Luggage size={22} />, actionLabel: "Explore" },
 ];
 
 function ServiceSection({ title, cards }: { title: string; cards: ServiceCard[] }) {
@@ -45,11 +46,14 @@ function ServiceSection({ title, cards }: { title: string; cards: ServiceCard[] 
           <article key={card.title} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_16px_rgba(15,23,42,.04)]">
             <div className="flex items-start justify-between gap-3">
               <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-[#075E45]" aria-hidden="true">{card.icon}</span>
-              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700">{t("Coming soon")}</span>
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#075E45]">{t("Plan with Zeshu")}</span>
             </div>
             <h3 className="mt-4 font-black text-slate-900">{t(card.title)}</h3>
             <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{t(card.description)}</p>
-            <Link href={`/help?service=${encodeURIComponent(card.title)}`} className="mt-3 inline-flex rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-[#075E45]">{t("Ask Zeshu Assistant")}</Link>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link href={`/move/request?service=${encodeURIComponent(card.title)}`} className="inline-flex rounded-xl bg-[#075E45] px-3 py-2 text-xs font-black text-white">{t(card.actionLabel || "Plan with Zeshu")}</Link>
+              <Link href={`/help?service=${encodeURIComponent(card.title)}`} className="inline-flex rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-[#075E45]">{t("Ask Zeshu Assistant")}</Link>
+            </div>
           </article>
         ))}
       </div>
@@ -74,7 +78,7 @@ export default function MoveTravelPage() {
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="max-w-3xl">
               <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.16em] text-[#c9f2d8]">
-                <Sparkles size={14} aria-hidden="true" /> {t("Coming soon")}
+                <Sparkles size={14} aria-hidden="true" /> {t("Plan rides, courier & travel")}
               </div>
               <h1 className="mt-4 text-3xl font-black tracking-tight md:text-5xl">{t("Zeshu Move & Travel")}</h1>
               <p className="mt-3 text-base font-bold text-[#d9f3e3] md:text-lg">{t("Rides, courier and travel — one trusted place.")}</p>
