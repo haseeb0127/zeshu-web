@@ -108,7 +108,7 @@ export default function MoveTravelPage() {
           <div className="mt-4 flex flex-wrap gap-2">
             <Link href="/help?service=Move%20%26%20Travel" className="inline-flex rounded-xl bg-[#075E45] px-4 py-3 text-sm font-black text-white">{t("Customer Help")}</Link>
             <Link href="/partners" className="inline-flex rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white">{t("Partner with Zeshu")}</Link>
-            <Link href="/earn" className="inline-flex rounded-xl border border-[#075E45] bg-white px-4 py-3 text-sm font-black text-[#075E45]">{t("Drive & Deliver")}</Link>
+            <Link href="/captain" className="inline-flex rounded-xl border border-[#075E45] bg-white px-4 py-3 text-sm font-black text-[#075E45]">{t("Become a Zeshu Captain")}</Link>
           </div>
         </section>
       </div>
