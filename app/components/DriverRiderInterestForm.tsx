@@ -59,27 +59,27 @@ export default function DriverRiderInterestForm() {
 
   return (
     <form onSubmit={submit} className="grid gap-4 rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm md:grid-cols-2">
-      <label className="text-sm font-black text-slate-700">I want to join as
+      <label className="text-sm font-black text-slate-700">{t("I want to join as")}
         <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 font-bold">
           {roles.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
         </select>
       </label>
-      <label className="text-sm font-black text-slate-700">Name
+      <label className="text-sm font-black text-slate-700">{t("Name")}
         <input required maxLength={120} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3" />
       </label>
-      <label className="text-sm font-black text-slate-700">Phone
+      <label className="text-sm font-black text-slate-700">{t("Phone")}
         <input required inputMode="tel" maxLength={40} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3" />
       </label>
-      <label className="text-sm font-black text-slate-700">Email (optional)
+      <label className="text-sm font-black text-slate-700">{t("Email (optional)")}
         <input type="email" maxLength={180} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3" />
       </label>
-      <label className="text-sm font-black text-slate-700">City / service area
+      <label className="text-sm font-black text-slate-700">{t("City / service area")}
         <input required maxLength={120} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3" placeholder={t("Jagtial / Karimnagar / Hyderabad")} />
       </label>
-      <label className="text-sm font-black text-slate-700">Vehicle
+      <label className="text-sm font-black text-slate-700">{t("Vehicle")}
         <input maxLength={80} value={form.vehicle_type} onChange={(e) => setForm({ ...form, vehicle_type: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3" placeholder={t("Bike / Auto / Car / Mini truck")} />
       </label>
-      <label className="text-sm font-black text-slate-700">Current registration
+      <label className="text-sm font-black text-slate-700">{t("Current registration")}
         <select value={form.registration_type} onChange={(e) => setForm({ ...form, registration_type: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3">
           <option value="NO_VEHICLE">{t("I do not have a vehicle yet")}</option>
           <option value="TRANSPORT">{t("Transport / commercial registration")}</option>
@@ -98,7 +98,7 @@ export default function DriverRiderInterestForm() {
         <input type="checkbox" checked={form.has_vehicle_documents} onChange={(e) => setForm({ ...form, has_vehicle_documents: e.target.checked })} className="mt-1 h-4 w-4 accent-[#087443]" />
         <span>{t("I can provide applicable RC, insurance, fitness, permit and PUC documents if required for my service.")}</span>
       </label>
-      <label className="md:col-span-2 text-sm font-black text-slate-700">Anything else Zeshu should know?
+      <label className="md:col-span-2 text-sm font-black text-slate-700">{t("Anything else Zeshu should know?")}
         <textarea rows={4} maxLength={1200} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="mt-2 w-full resize-none rounded-xl border border-slate-200 px-3 py-3" placeholder={t("Experience, preferred area, fleet size, EV, availability, etc.")} />
       </label>
       <input tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" value={form.company_fax} onChange={(e) => setForm({ ...form, company_fax: e.target.value })} />
