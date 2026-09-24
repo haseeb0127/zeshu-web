@@ -44,6 +44,12 @@ export default function PartnersPage() {
           </div>
         </section>
 
+        <section className="mt-6 rounded-3xl border border-blue-100 bg-blue-50 p-6 md:p-8">
+          <h2 className="text-xl font-black">Individual rider or driver?</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Delivery riders, bike couriers, auto drivers, cab drivers and goods drivers should use the privacy-safe Drive & Deliver form. Do not put Aadhaar, PAN, driving-licence numbers, RC numbers, bank details or OTPs in a public enquiry.</p>
+          <Link href="/earn" className="mt-4 inline-flex rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white">Open Drive & Deliver</Link>
+        </section>
+
         <section className="mt-6 rounded-3xl bg-emerald-50 p-6 md:p-8">
           <h2 className="text-xl font-black">Become a Zeshu partner</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Apply directly below. Local physical-fulfilment partners should include their Jagtial capability. Recharge/bill, mobility, logistics and travel providers should include API/white-label, commission, settlement, serviceability, tracking and support terms. Sponsors should include campaign budget and the products/services they want to promote. Pharmacy or medicine-distribution applicants must include valid licence details.</p>

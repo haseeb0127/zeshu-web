@@ -62,6 +62,7 @@ const SITE_SEARCH_SHORTCUTS = [
   { id: 'help', label: 'Help & Support', description: 'Ask Zeshu Assistant or contact support', href: '/help', terms: 'help support assistant ai chatbot customer care contact order ride courier travel refund payment problem issue' },
   { id: 'partners', label: 'Brands & Partners', description: 'Sponsored campaigns and supplier partnerships', href: '/partners', terms: 'partner partners vendor supplier brand sponsor sponsored advertise advertising campaign' },
   { id: 'move', label: 'Move & Travel', description: 'Rides, courier, car share and travel', href: '/move', terms: 'move travel ride rides bike taxi auto cab car share carpool courier parcel delivery cargo porter bus train flight flights hotel hotels rental outstation' },
+  { id: 'earn', label: 'Drive & Deliver', description: 'Join Zeshu as a rider, driver or fleet partner', href: '/earn', terms: 'earn rider delivery rider driver auto driver cab driver bike courier goods driver mini truck fleet partner join jobs work' },
 ] as const;
 
 const OPERATORS_DATA: any = {
