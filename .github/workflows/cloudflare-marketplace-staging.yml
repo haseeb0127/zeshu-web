@@ -3,7 +3,7 @@ name: Deploy marketplace foundation to Cloudflare staging
 on:
   push:
     branches:
-      - feat/delivery-rider-mobility-support-20260924
+      - feat/marketplace-foundation-20260923
     paths:
       - ".github/workflows/cloudflare-marketplace-staging.yml"
   workflow_dispatch:
@@ -154,35 +154,8 @@ jobs:
           code="$(curl -L -sS -o /tmp/assistant -w '%{http_code}' \
             -X POST "$base/api/support/assistant" \
             -H 'Content-Type: application/json' \
-            --data '{"message":"Can I book a bike ride now?"}' || true)"
-          test "$code" = "200" || { echo "Public assistant expected 200, got $code"; cat /tmp/assistant; exit 1; }
-          node <<'NODE'
-          const fs = require('fs');
-          const payload = JSON.parse(fs.readFileSync('/tmp/assistant', 'utf8'));
-          if (payload.signed_in !== false) throw new Error('Public assistant must report signed_in=false');
-          if (payload.resolved !== true) throw new Error('Public ride availability question should be resolved without human handoff');
-          if (!['RIDES','GENERAL'].includes(String(payload.intent || '').toUpperCase())) throw new Error('Unexpected public assistant intent');
-          const used = Array.isArray(payload.context_used) ? payload.context_used : [];
-          if (used.includes('orders') || used.includes('rewards')) throw new Error('Guest assistant leaked private account context');
-          if (payload?.handoff?.created) throw new Error('Guest assistant must not create a private support conversation');
-          NODE
-
-          code="$(curl -L -sS -o /tmp/move-readiness -w '%{http_code}' "$base/api/move/readiness" || true)"
-          test "$code" = "200" || { echo "Move readiness expected 200, got $code"; cat /tmp/move-readiness; exit 1; }
-          node <<'NODE'
-          const fs = require('fs');
-          const payload = JSON.parse(fs.readFileSync('/tmp/move-readiness', 'utf8'));
-          if (payload.customer_booking_enabled !== false) throw new Error('Move & Travel customer booking must remain disabled');
-          const services = payload.services || {};
-          for (const key of ['rides','courier','car_share','travel']) {
-            if (!services[key]) throw new Error(`Missing Move & Travel readiness for ${key}`);
-            if (services[key].customerBookingAvailable !== false) throw new Error(`${key} unexpectedly became bookable`);
-          }
-          NODE
-
-          code="$(curl -L -sS -o /tmp/support-conversations -w '%{http_code}' \
-            "$base/api/support/conversations" || true)"
-          test "$code" = "401" || { echo "Customer support conversations expected 401 for guest, got $code"; exit 1; }
+            --data '{"message":"hello"}' || true)"
+          test "$code" = "401" || { echo "Assistant expected 401, got $code"; exit 1; }
 
           code="$(curl -L -sS -o /tmp/admin-support -w '%{http_code}' \
             "$base/api/admin/support/conversations" || true)"
@@ -263,80 +236,5 @@ jobs:
           }
           NODE
 
-      - name: Verify Drive and Deliver onboarding safety
-        shell: bash
-        run: |
-          node --input-type=module <<'NODE'
-          import { chromium } from 'playwright';
-
-          const base = 'https://zeshu-web-staging.asif-mohammed0127.workers.dev';
-          const browser = await chromium.launch({ headless: true });
-          const assert = (value, message) => { if (!value) throw new Error(message); };
-
-          try {
-            const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-
-            const statusResponse = await page.request.get(base + '/api/partners/driver-interest/status');
-            assert(statusResponse.ok(), 'Driver/rider readiness endpoint failed');
-            const status = await statusResponse.json();
-            assert(status.interest_registration_available === true, 'Interest registration should be available');
-            assert(status.document_upload_available === false, 'Document upload must remain disabled');
-            assert(status.activation_available === false, 'Driver/rider activation must remain disabled');
-            for (const role of ['DELIVERY_RIDER','BIKE_COURIER','AUTO_DRIVER','CAB_DRIVER','GOODS_DRIVER','PASSENGER_FLEET_OPERATOR','LOGISTICS_FLEET_OPERATOR']) {
-              assert(status.roles?.[role]?.activationAvailable === false, `Role unexpectedly activatable: ${role}`);
-            }
-
-            const honeypot = await page.request.post(base + '/api/partners/driver-interest', {
-              data: { company_fax: 'bot-filled' },
-              headers: { 'Content-Type': 'application/json' },
-            });
-            assert(honeypot.ok(), 'Driver interest honeypot path failed');
-
-            await page.goto(base + '/earn', { waitUntil: 'networkidle', timeout: 60000 });
-            let body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
-            assert(body.includes('Drive & Deliver with Zeshu'), 'Drive & Deliver page heading missing');
-            assert(body.includes('Privacy first'), 'Applicant privacy guidance missing');
-            assert(body.includes('Register my interest'), 'Interest CTA missing');
-            assert(body.includes('Passenger Fleet Operator'), 'Passenger fleet option missing');
-            assert(body.includes('Courier / Cargo Fleet Operator'), 'Logistics fleet option missing');
-
-            const allInputs = await page.locator('input, textarea, select').evaluateAll((nodes) =>
-              nodes.map((node) => ({
-                name: node.getAttribute('name') || '',
-                placeholder: node.getAttribute('placeholder') || '',
-                type: node.getAttribute('type') || '',
-              }))
-            );
-            const serialized = JSON.stringify(allInputs).toLowerCase();
-            for (const forbidden of ['aadhaar','aadhar','pan number','driving licence number','driving license number','dl number','rc number','bank account','upi pin']) {
-              assert(!serialized.includes(forbidden), `Sensitive public field exposed: ${forbidden}`);
-            }
-
-            const actions = (await page.locator('button, a').allTextContents()).join(' ');
-            assert(!/\bGo online\b|\bStart ride\b|\bStart delivery\b|\bAccept trip\b|\bAccept delivery\b/i.test(actions), 'Execution action exposed before activation');
-
-            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'te'));
-            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
-            body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
-            assert(body.includes('Zeshuతో డ్రైవ్ & డెలివర్ చేయండి'), 'Telugu onboarding heading missing');
-
-            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'hi'));
-            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
-            body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
-            assert(body.includes('Zeshu के साथ ड्राइव और डिलीवर करें'), 'Hindi onboarding heading missing');
-
-            await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'ur'));
-            await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
-            await page.waitForFunction(() => document.documentElement.dir === 'rtl', null, { timeout: 10000 });
-            body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
-            assert(body.includes('Zeshu کے ساتھ ڈرائیو اور ڈیلیور کریں'), 'Urdu onboarding heading missing');
-            assert(await page.locator('html').getAttribute('dir') === 'rtl', 'Urdu onboarding page is not RTL');
-
-            console.log('DRIVER_RIDER_STAGING_BROWSER_QA=PASS');
-          } finally {
-            await browser.close();
-          }
-          NODE
-
       - name: Staging deployment summary
-        run: echo "Cloudflare staging deploy, marketplace regression, and Drive & Deliver privacy/readiness browser QA passed."
+        run: echo "Cloudflare staging deploy, marketplace seller trust, recommendation/search stability, and grouped-cart browser QA passed on the marketplace branch."
