@@ -9,7 +9,8 @@ const roles = [
   ["AUTO_DRIVER", "Auto Driver"],
   ["CAB_DRIVER", "Cab / Car Driver"],
   ["GOODS_DRIVER", "Goods / Mini Truck Driver"],
-  ["FLEET_OPERATOR", "Fleet / Transport Operator"],
+  ["PASSENGER_FLEET_OPERATOR", "Passenger Fleet Operator"],
+  ["LOGISTICS_FLEET_OPERATOR", "Courier / Cargo Fleet Operator"],
 ] as const;
 
 const emptyForm = {
