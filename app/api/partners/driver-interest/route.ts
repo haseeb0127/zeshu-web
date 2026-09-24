@@ -11,7 +11,8 @@ const ROLES = new Set([
   'AUTO_DRIVER',
   'CAB_DRIVER',
   'GOODS_DRIVER',
-  'FLEET_OPERATOR',
+  'PASSENGER_FLEET_OPERATOR',
+  'LOGISTICS_FLEET_OPERATOR',
 ]);
 
 const emailLooksValid = (value: string) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -51,7 +52,10 @@ export async function POST(request: Request) {
   }
   if (!consent) return NextResponse.json({ error: 'Please confirm that Zeshu may contact you about onboarding.' }, { status: 400 });
 
-  const partnerType = role === 'DELIVERY_RIDER' || role === 'BIKE_COURIER' || role === 'GOODS_DRIVER'
+  const partnerType = role === 'DELIVERY_RIDER'
+    || role === 'BIKE_COURIER'
+    || role === 'GOODS_DRIVER'
+    || role === 'LOGISTICS_FLEET_OPERATOR'
     ? 'LOGISTICS_COURIER'
     : 'MOBILITY';
 
@@ -66,7 +70,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await service.from('partner_leads').insert({
     partner_type: partnerType,
-    business_name: role === 'FLEET_OPERATOR' ? name : `Individual applicant — ${name}`,
+    business_name: role.endsWith('FLEET_OPERATOR') ? name : `Individual applicant — ${name}`,
     contact_person: name,
     contact_phone: phone,
     contact_email: email || null,
