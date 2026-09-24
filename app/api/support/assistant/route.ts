@@ -5,6 +5,7 @@ import { ZESHU_SUPPORT_KNOWLEDGE } from '@/app/lib/support-ai';
 import { getRuntimeEnvValue, getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
 import { getMoveServiceReadiness } from '@/app/lib/move-readiness';
 import { buildCategorizedSupportSubject, classifySupportCategory } from '@/app/lib/support-category';
+import { classifySupportCase } from '@/app/lib/support-taxonomy';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -853,6 +854,8 @@ const createAutomaticHandoff = async ({
   question: string;
   answer: string;
   subject: string;
+  intent: string;
+  handoffReason: string;
 }) => {
   try {
     const service = createClient(supabaseUrl, serviceRoleKey, {
@@ -867,6 +870,18 @@ const createAutomaticHandoff = async ({
     if (error) return null;
     const row = Array.isArray(data) ? data[0] : data;
     if (!row?.conversation_id) return null;
+    const taxonomy = classifySupportCase(intent, question);
+    await service.from('support_conversations').update({
+      support_service: taxonomy.service,
+      issue_type: taxonomy.issueType,
+      severity: taxonomy.severity,
+      priority: taxonomy.priority,
+      service_reference: null,
+      conversation_summary: question.slice(0, 1200),
+      ai_attempted: true,
+      ai_resolved: false,
+      escalation_reason: handoffReason || taxonomy.escalationReason || null,
+    }).eq('id', row.conversation_id);
     return {
       id: row.conversation_id,
       status: row.status,
@@ -1076,6 +1091,8 @@ ${liveContextText}`,
       question: message,
       answer: result.answer,
       subject: buildCategorizedSupportSubject(result.intent, message, result.subject),
+      intent: result.intent,
+      handoffReason: result.handoff_reason,
     });
   }
 
@@ -1086,12 +1103,18 @@ ${liveContextText}`,
     liveContext.move_services ? 'move_services' : null,
   ].filter(Boolean);
 
+  const supportCase = classifySupportCase(result.intent, message);
+
   return NextResponse.json({
     answer: result.answer,
     resolved: result.resolved,
     source,
     intent: result.intent,
     support_category: classifySupportCategory(result.intent, message),
+    support_service: supportCase.service,
+    issue_type: supportCase.issueType,
+    severity: supportCase.severity,
+    priority: supportCase.priority,
     suggested_questions: result.suggested_questions,
     context_used: contextUsed,
     latency_ms: Date.now() - startedAt,
