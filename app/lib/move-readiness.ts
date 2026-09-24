@@ -10,7 +10,7 @@ export type MoveServiceReadiness = {
   supportAvailable: true;
   supportPath: string;
   nextGate: 'VERIFY_PROVIDER' | 'SANDBOX_QA' | 'COMPLIANCE_SIGN_OFF';
-  status: 'COMING_SOON';
+  status: 'PLANNING_AVAILABLE';
 };
 
 const enabled = (name: string) => process.env[name]?.trim().toLowerCase() === 'true';
@@ -42,7 +42,7 @@ export function getMoveServiceReadiness(): Record<MoveServiceKey, MoveServiceRea
         : !executionRequested
           ? 'SANDBOX_QA'
           : 'COMPLIANCE_SIGN_OFF',
-      status: 'COMING_SOON',
+      status: 'PLANNING_AVAILABLE',
     };
   };
 
