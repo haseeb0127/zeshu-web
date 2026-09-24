@@ -154,8 +154,35 @@ jobs:
           code="$(curl -L -sS -o /tmp/assistant -w '%{http_code}' \
             -X POST "$base/api/support/assistant" \
             -H 'Content-Type: application/json' \
-            --data '{"message":"hello"}' || true)"
-          test "$code" = "401" || { echo "Assistant expected 401, got $code"; exit 1; }
+            --data '{"message":"Can I book a bike ride now?"}' || true)"
+          test "$code" = "200" || { echo "Public assistant expected 200, got $code"; cat /tmp/assistant; exit 1; }
+          node <<'NODE'
+          const fs = require('fs');
+          const payload = JSON.parse(fs.readFileSync('/tmp/assistant', 'utf8'));
+          if (payload.signed_in !== false) throw new Error('Public assistant must report signed_in=false');
+          if (payload.resolved !== true) throw new Error('Public ride availability question should be resolved without human handoff');
+          if (!['RIDES','GENERAL'].includes(String(payload.intent || '').toUpperCase())) throw new Error('Unexpected public assistant intent');
+          const used = Array.isArray(payload.context_used) ? payload.context_used : [];
+          if (used.includes('orders') || used.includes('rewards')) throw new Error('Guest assistant leaked private account context');
+          if (payload?.handoff?.created) throw new Error('Guest assistant must not create a private support conversation');
+          NODE
+
+          code="$(curl -L -sS -o /tmp/move-readiness -w '%{http_code}' "$base/api/move/readiness" || true)"
+          test "$code" = "200" || { echo "Move readiness expected 200, got $code"; cat /tmp/move-readiness; exit 1; }
+          node <<'NODE'
+          const fs = require('fs');
+          const payload = JSON.parse(fs.readFileSync('/tmp/move-readiness', 'utf8'));
+          if (payload.customer_booking_enabled !== false) throw new Error('Move & Travel customer booking must remain disabled');
+          const services = payload.services || {};
+          for (const key of ['rides','courier','car_share','travel']) {
+            if (!services[key]) throw new Error(`Missing Move & Travel readiness for ${key}`);
+            if (services[key].customerBookingAvailable !== false) throw new Error(`${key} unexpectedly became bookable`);
+          }
+          NODE
+
+          code="$(curl -L -sS -o /tmp/support-conversations -w '%{http_code}' \
+            "$base/api/support/conversations" || true)"
+          test "$code" = "401" || { echo "Customer support conversations expected 401 for guest, got $code"; exit 1; }
 
           code="$(curl -L -sS -o /tmp/admin-support -w '%{http_code}' \
             "$base/api/admin/support/conversations" || true)"
