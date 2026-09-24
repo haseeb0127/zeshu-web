@@ -847,6 +847,8 @@ const createAutomaticHandoff = async ({
   question,
   answer,
   subject,
+  intent,
+  handoffReason,
 }: {
   supabaseUrl: string;
   serviceRoleKey: string;
