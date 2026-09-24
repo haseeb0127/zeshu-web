@@ -260,9 +260,11 @@ const fallbackAnswer = (message: string, context: LiveAssistantContext, signedIn
     };
   }
 
-  if (/\b(sell on zeshu|become a seller|seller signup|vendor signup|partner with zeshu|become a partner|advertise on zeshu|brand partnership|driver partner|fleet partner|logistics partner|travel partner)\b/.test(text)) {
+  if (/\b(sell on zeshu|become a seller|seller signup|vendor signup|partner with zeshu|become a partner|advertise on zeshu|brand partnership|driver partner|fleet partner|logistics partner|travel partner|become a rider|join as rider|delivery rider|join as driver|auto driver|cab driver|bike courier|goods driver|drive and deliver|drive & deliver)\b/.test(text)) {
     return {
-      answer: 'Open Brands & Partners on Zeshu to submit a seller, brand, mobility, logistics, travel or advertising partnership request. Zeshu reviews identity/licensing, serviceability, commercial terms and support readiness before anything is activated; submitting the form does not guarantee approval.',
+      answer: /rider|driver|bike courier|drive and deliver|drive & deliver/.test(text)
+        ? 'Open Drive & Deliver on Zeshu to register interest as a Delivery Rider, Bike Courier, Auto Driver, Cab Driver, Goods Driver or Fleet Operator. Do not enter Aadhaar, PAN, driving-licence numbers, RC numbers, bank details or OTPs in the public form. Registration of interest is not approval; Zeshu will activate only roles that pass document, safety, provider and legal checks.'
+        : 'Open Brands & Partners on Zeshu to submit a seller, brand, mobility, logistics, travel or advertising partnership request. Zeshu reviews identity/licensing, serviceability, commercial terms and support readiness before anything is activated; submitting the form does not guarantee approval.',
       resolved: true,
       subject: 'Partner with Zeshu',
       handoff_reason: '',
