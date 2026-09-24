@@ -54,6 +54,8 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Subscribe & Save": "సబ్‌స్క్రైబ్ & సేవ్",
     "More from Zeshu": "Zeshu నుంచి మరిన్ని",
     "Move & Travel": "మూవ్ & ట్రావెల్",
+    "Courier / Cargo Fleet Operator": "కొరియర్ / కార్గో ఫ్లీట్ ఆపరేటర్",
+    "Passenger Fleet Operator": "ప్యాసింజర్ ఫ్లీట్ ఆపరేటర్",
     "Safety, support and grievance process before activation": "యాక్టివేషన్‌కు ముందు భద్రత, సపోర్ట్ మరియు ఫిర్యాదు ప్రక్రియ",
     "Bank and payout verification only through a secured onboarding flow": "సురక్షిత ఆన్‌బోర్డింగ్ ఫ్లో ద్వారానే బ్యాంక్ మరియు పేఔట్ వెరిఫికేషన్",
     "Passenger or goods permit required for the service and route": "సేవ మరియు రూట్‌కు అవసరమైన ప్రయాణికుల లేదా గూడ్స్ పర్మిట్",
