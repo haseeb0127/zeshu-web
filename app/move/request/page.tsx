@@ -89,7 +89,7 @@ function RequestForm() {
       <button type="submit" className="mt-6 w-full rounded-2xl bg-[#075E45] px-5 py-3.5 text-sm font-black text-white md:w-auto">{t("Continue")}</button>
       <div className="mt-5 flex items-start gap-2 rounded-2xl bg-amber-50 p-4 text-xs font-semibold leading-5 text-amber-900">
         <ShieldCheck size={18} className="mt-0.5 shrink-0" />
-        <span>{t("Zeshu will not invent a fare, ETA, ticket, vehicle or provider. Payment and final booking remain disabled until a verified integration confirms availability.")}</span>
+        <span>{t("Zeshu shows a fare, ETA, ticket, vehicle or provider only when a verified live partner confirms it. Until then, you can submit a service request, but no payment or final booking is created.")}</span>
       </div>
     </form>
   );
