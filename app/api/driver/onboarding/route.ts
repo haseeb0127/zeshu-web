@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { cleanText } from '@/app/lib/marketing-server';
 import {
   DRIVER_SERVICES,
@@ -12,7 +13,7 @@ export const dynamic = 'force-dynamic';
 
 const allowedServices = new Set<string>(DRIVER_SERVICES);
 
-async function loadState(service: any, userId: string) {
+async function loadState(service: SupabaseClient, userId: string) {
   const { data: application, error } = await service
     .from('driver_applications')
     .select('*')
@@ -133,13 +134,16 @@ export async function POST(request: Request) {
     }
   }
 
-  const { error: deleteError } = await service
+  const { data: currentEligibility } = await service
     .from('driver_service_eligibility')
-    .delete()
-    .eq('application_id', application.id)
-    .not('service_code', 'in', '(' + requestedServices.join(',') + ')')
-    .eq('status', 'PENDING_VERIFICATION');
-  if (deleteError) console.warn('Driver unused eligibility cleanup failed:', deleteError.message);
+    .select('id,service_code,status')
+    .eq('application_id', application.id);
+  for (const item of currentEligibility || []) {
+    if (item.status === 'PENDING_VERIFICATION' && !requestedServices.includes(item.service_code as DriverService)) {
+      const { error: deleteError } = await service.from('driver_service_eligibility').delete().eq('id', item.id);
+      if (deleteError) console.warn('Driver unused eligibility cleanup failed:', deleteError.message);
+    }
+  }
 
   return NextResponse.json({ success: true, ...(await loadState(service, user.id)) }, { status: existing ? 200 : 201 });
 }
