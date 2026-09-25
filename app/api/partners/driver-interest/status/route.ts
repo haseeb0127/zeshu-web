@@ -8,9 +8,10 @@ export async function GET() {
     {
       roles: getDriverRiderReadiness(),
       interest_registration_available: true,
-      document_upload_available: false,
-      activation_available: false,
-      note: 'Zeshu currently accepts interest only. No applicant is authorized to carry passengers, parcels or goods until the applicable secure KYC, vehicle, permit, provider, safety and legal gates pass.',
+      secure_document_verification_available: true,
+      self_activation_available: false,
+      passenger_bike_taxi_available: false,
+      note: 'Individual delivery, courier, auto, cab and goods applicants can use the secure verification flow. Activation is service-specific and requires Zeshu approval. Auto/Cab live passenger dispatch remains provider/compliance gated, and passenger Bike Taxi remains unavailable pending Telangana regulatory clarity.',
     },
     { headers: { 'Cache-Control': 'no-store, max-age=0' } },
   );
