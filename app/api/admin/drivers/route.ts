@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { cleanText, requireMarketingAdmin } from '@/app/lib/marketing-server';
 import { passengerChecksRequired, requiredDocuments } from '@/app/lib/driver-onboarding-server';
 
@@ -14,7 +15,7 @@ const CHECK_FIELDS = new Set([
 ]);
 const ACTIVATABLE = new Set(['DELIVERY_RIDER','BIKE_COURIER','GOODS_DRIVER']);
 
-async function getApplication(service: any, applicationId: string) {
+async function getApplication(service: SupabaseClient, applicationId: string) {
   const { data, error } = await service.from('driver_applications').select('*').eq('id', applicationId).maybeSingle();
   if (error) throw error;
   return data;
