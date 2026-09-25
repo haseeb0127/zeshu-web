@@ -89,6 +89,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Choose the current vehicle registration type.' }, { status: 400 });
   }
 
+  const needsMotorVehicle = requestedServices.some((serviceCode) =>
+    ['BIKE_COURIER','AUTO_DRIVER','CAB_DRIVER','GOODS_DRIVER'].includes(serviceCode),
+  );
+  if (needsMotorVehicle && registrationType === 'NO_VEHICLE') {
+    return NextResponse.json({ error: 'Add the vehicle you intend to use before starting verification for courier, auto, cab or goods services.' }, { status: 400 });
+  }
+
   const phone = cleanText(user.phone, 40);
   if (!phone) return NextResponse.json({ error: 'A verified mobile number is required.' }, { status: 400 });
 
