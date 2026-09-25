@@ -89,11 +89,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Choose the current vehicle registration type.' }, { status: 400 });
   }
 
-  const needsMotorVehicle = requestedServices.some((serviceCode) =>
-    ['BIKE_COURIER','AUTO_DRIVER','CAB_DRIVER','GOODS_DRIVER'].includes(serviceCode),
-  );
-  if (needsMotorVehicle && registrationType === 'NO_VEHICLE') {
-    return NextResponse.json({ error: 'Add the vehicle you intend to use before starting verification for courier, auto, cab or goods services.' }, { status: 400 });
+  if (registrationType === 'NO_VEHICLE') {
+    return NextResponse.json({ error: 'A vehicle is required for secure driver verification. If you do not have one yet, use the interest form and return when your vehicle documents are ready.' }, { status: 400 });
   }
 
   const phone = cleanText(user.phone, 40);
