@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Driver verification details are unavailable.' }, { status: 503 });
   }
 
-  const signedDocuments = await Promise.all((documents || []).map(async (document: { storage_path: string } & Record<string, unknown>) => {
+  const signedDocuments = await Promise.all((documents || []).map(async (document: { application_id: string; storage_path: string } & Record<string, unknown>) => {
     const { data } = await service.storage.from('driver-verification').createSignedUrl(document.storage_path, 300);
     return { ...document, signed_url: data?.signedUrl || null };
   }));
