@@ -67,7 +67,7 @@ for (const service of ['DELIVERY_RIDER', 'BIKE_COURIER', 'AUTO_DRIVER', 'CAB_DRI
 assert(!onboardingPage.includes('"BIKE_TAXI"'), 'passenger bike taxi must not be selectable');
 assert(onboardingPage.includes('driver-verification'), 'documents must upload to private verification bucket');
 assert(onboardingApi.includes('requireDriverUser'), 'driver onboarding API must authenticate applicants');
-assert(onboardingApi.includes('needsMotorVehicle'), 'motorized services must require a vehicle before verification');
+assert(onboardingApi.includes("registrationType === 'NO_VEHICLE'"), 'individual secure verification must require a vehicle');
 assert(documentApi.includes('storagePath.startsWith'), 'document metadata API must enforce user-owned storage path');
 assert(adminApi.includes("const ACTIVATABLE = new Set(['DELIVERY_RIDER','BIKE_COURIER','GOODS_DRIVER'])"), 'only non-passenger services may activate in this phase');
 assert(adminApi.includes('createSignedUrl'), 'admin document review must use short-lived signed URLs');
