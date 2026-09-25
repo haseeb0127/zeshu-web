@@ -246,6 +246,9 @@ jobs:
             await search.waitFor({ state: 'visible', timeout: 20000 });
             const categories = page.locator('[aria-label="Shop by Category"]');
             await categories.waitFor({ state: 'visible', timeout: 10000 });
+            const moveEntry = page.locator('a[href="/move"]').filter({ hasText: 'Move' }).first();
+            await moveEntry.waitFor({ state: 'visible', timeout: 10000 });
+            assert(await moveEntry.isVisible(), 'Homepage Zeshu Move entry is missing');
             const categoryText = await categories.innerText();
             assert(categoryText.includes('All Products'), 'All Products category missing on live mobile UI');
             assert(categoryText.includes('Drinks & Beverages'), 'Drinks & Beverages category missing on live mobile UI');
@@ -265,7 +268,7 @@ jobs:
             await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'hi'));
             await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
             const hindi = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
-            assert(hindi.includes('एक Zeshu। आपकी ज़रूरतों के लिए तीन आसान रास्ते।'), 'Hybrid Zeshu heading is not localized in Hindi');
+            assert(hindi.includes('एक Zeshu। आपकी ज़रूरतों के लिए चार आसान रास्ते।'), 'Hybrid Zeshu heading is not localized in Hindi');
             assert(hindi.includes('सभी प्रोडक्ट'), 'All Products heading is not localized in Hindi');
             assert(hindi.includes('आइटम'), 'Product count is not localized in Hindi');
             assert(hindi.includes('अभी कोई समीक्षा नहीं'), 'Review empty state is not localized in Hindi');
@@ -281,7 +284,7 @@ jobs:
             await page.waitForFunction(() => document.documentElement.dir === 'rtl', null, { timeout: 10000 });
             const urdu = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
             assert(await page.locator('html').getAttribute('dir') === 'rtl', 'Urdu page is not RTL');
-            assert(urdu.includes('ایک Zeshu۔ آپ کی ضرورت کے لیے تین آسان راستے۔'), 'Hybrid Zeshu heading is not localized in Urdu');
+            assert(urdu.includes('ایک Zeshu۔ آپ کی ضرورت کے لیے چار آسان راستے۔'), 'Hybrid Zeshu heading is not localized in Urdu');
             assert(urdu.includes('سب کچھ خریدیں'), 'Shop Everything is not localized in Urdu');
             assert(urdu.includes('ریچارج اور بل'), 'Footer recharge link is not localized in Urdu');
 
