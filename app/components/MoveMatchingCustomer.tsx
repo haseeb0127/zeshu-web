@@ -308,9 +308,11 @@ export default function MoveMatchingCustomer({ serviceLabel, serviceCode }: Prop
         pickup_address: display(pickup, "Selected pickup"),
         pickup_latitude: pickup.latitude,
         pickup_longitude: pickup.longitude,
+        pickup_state: pickup.addressDetails?.state,
         dropoff_address: display(dropoff, "Selected destination"),
         dropoff_latitude: dropoff.latitude,
         dropoff_longitude: dropoff.longitude,
+        dropoff_state: dropoff.addressDetails?.state,
         details,
       }),
     });
