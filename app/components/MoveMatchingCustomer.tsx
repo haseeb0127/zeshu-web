@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
-  CheckCircle2,
   ChevronRight,
   Clock3,
   LocateFixed,
@@ -470,9 +469,9 @@ export default function MoveMatchingCustomer({ serviceLabel, serviceCode }: Prop
                 </div>}
 
                 <div className="mt-4 grid grid-cols-3 gap-2">
-                  <div className="rounded-2xl bg-emerald-50 p-3 text-center"><p className="text-lg">🛺</p><p className="mt-1 text-[10px] font-black">Auto</p></div>
-                  <div className="rounded-2xl bg-blue-50 p-3 text-center"><p className="text-lg">🚕</p><p className="mt-1 text-[10px] font-black">Cab</p></div>
-                  <div className="rounded-2xl bg-amber-50 p-3 text-center"><p className="text-lg">📦</p><p className="mt-1 text-[10px] font-black">Courier</p></div>
+                  <Link href="/move/request?service=Auto" className="rounded-2xl bg-emerald-50 p-3 text-center"><p className="text-lg">🛺</p><p className="mt-1 text-[10px] font-black">Auto</p></Link>
+                  <Link href="/move/request?service=Cab" className="rounded-2xl bg-blue-50 p-3 text-center"><p className="text-lg">🚕</p><p className="mt-1 text-[10px] font-black">Cab</p></Link>
+                  <Link href="/move/request?service=Bike%20Courier" className="rounded-2xl bg-amber-50 p-3 text-center"><p className="text-lg">📦</p><p className="mt-1 text-[10px] font-black">Courier</p></Link>
                 </div>
               </>
             ) : (
