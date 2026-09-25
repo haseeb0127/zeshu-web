@@ -31,6 +31,7 @@ type Props = {
 };
 
 const JAGTIAL_VIEWPORT = { lat: 18.7989, lng: 78.9117 };
+const TELANGANA_VIEWPORT = { lat: 17.80, lng: 79.20 };
 const LOCATION_PROMPT = 'Move the map to your delivery location';
 const SELECTED_LOCATION_PROMPT = 'Selected location';
 const BUILD_CHECK_MAP_KEY = 'build-check-google-browser-key';
@@ -149,7 +150,8 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
   const [fallbackBusy, setFallbackBusy] = useState(false);
   const [fallbackQuery, setFallbackQuery] = useState('');
   const [fallbackMessage, setFallbackMessage] = useState('');
-  const [center, setCenter] = useState(initial ? { lat: initial.latitude, lng: initial.longitude } : JAGTIAL_VIEWPORT);
+  const defaultViewport = mode === 'move' ? TELANGANA_VIEWPORT : JAGTIAL_VIEWPORT;
+  const [center, setCenter] = useState(initial ? { lat: initial.latitude, lng: initial.longitude } : defaultViewport);
   const [address, setAddress] = useState(LOCATION_PROMPT);
   const [addressDetails, setAddressDetails] = useState<LocationAddressDetails | null>(initial?.addressDetails || null);
   const [serviceAreaStatus, setServiceAreaStatus] = useState<'ELIGIBLE' | 'OUTSIDE_SERVICE_AREA' | 'SERVICE_AREA_UNAVAILABLE' | 'OUTSIDE_TELANGANA' | 'UNAVAILABLE' | null>(null);
@@ -201,7 +203,7 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
     setFallbackBusy(false);
     setFallbackQuery('');
     setFallbackMessage('');
-    setCenter(initial ? { lat: initial.latitude, lng: initial.longitude } : JAGTIAL_VIEWPORT);
+    setCenter(initial ? { lat: initial.latitude, lng: initial.longitude } : defaultViewport);
     movedRef.current = false;
     detectedAccuracyRef.current = initial?.source === 'DEVICE' ? initial.accuracy : null;
     const initialAddress = initial?.displayAddress?.trim();
@@ -222,7 +224,7 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
     void loadGoogleMaps(key, language).then((maps) => {
       if (cancelled || !mapElement.current) return;
       const map = new maps.Map(mapElement.current, {
-        center: initial ? { lat: initial.latitude, lng: initial.longitude } : JAGTIAL_VIEWPORT,
+        center: initial ? { lat: initial.latitude, lng: initial.longitude } : defaultViewport,
         zoom: initial ? 17 : 13,
         disableDefaultUI: true,
         clickableIcons: false,
