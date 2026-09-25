@@ -5,10 +5,18 @@ import { useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
 import { ArrowLeft, CheckCircle2, MapPin, ShieldCheck } from "lucide-react";
 import { LanguageSwitcher, useCustomerLanguage } from "../../components/CustomerLanguageProvider";
+import MoveMatchingCustomer from "../../components/MoveMatchingCustomer";
 
 const rideServices = new Set(["Bike Ride", "Auto", "Cab", "Rental Car"]);
 const courierServices = new Set(["Bike Courier", "Auto / Mini Truck", "Shop Delivery"]);
 const travelServices = new Set(["Bus", "Train", "Flights", "Hotels", "Experiences"]);
+const matchingServices = {
+  "Bike Courier": "BIKE_COURIER",
+  "Shop Delivery": "BIKE_COURIER",
+  "Auto / Mini Truck": "GOODS_DRIVER",
+  "Auto": "AUTO_DRIVER",
+  "Cab": "CAB_DRIVER",
+} as const;
 
 function RequestForm() {
   const params = useSearchParams();
@@ -49,6 +57,12 @@ function RequestForm() {
         </div>
       </section>
     );
+  }
+
+  const matchingServiceCode = matchingServices[service as keyof typeof matchingServices];
+
+  if (matchingServiceCode) {
+    return <MoveMatchingCustomer serviceLabel={service} serviceCode={matchingServiceCode} />;
   }
 
   if (bikeTaxiOnHold) {

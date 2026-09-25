@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { riderSupabase } from "../lib/browser-supabase";
 import OrderAlertManager from "../components/OrderAlertManager";
+import MoveMatchingRiderPanel from "../components/MoveMatchingRiderPanel";
 
 const supabase = riderSupabase();
 
@@ -235,7 +236,7 @@ export default function RiderDashboard() {
   }, [fetchMyOrders, riderId]);
 
   useEffect(() => {
-    if (!stagingQaAvailable || !isOnline || !riderId || !navigator.geolocation) {
+    if (!isOnline || !riderId || !navigator.geolocation) {
       if (!isOnline) setLocationStatus("idle");
       return;
     }
@@ -262,7 +263,7 @@ export default function RiderDashboard() {
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [isOnline, riderId, stagingQaAvailable]);
+  }, [isOnline, riderId]);
 
   const toggleOnline = async () => {
     if (availabilityUpdating || !sessionUserId || !riderId) return;
@@ -440,8 +441,8 @@ export default function RiderDashboard() {
           {availabilityUpdating ? "Updating..." : isOnline ? "Go Offline" : "Go Online"}
         </button>
 
-        {stagingQaAvailable && isOnline && <p className="mt-3 text-center text-xs font-bold text-slate-300">
-          {locationStatus === "sharing" ? "Live GPS sharing active for staging delivery tracking." : locationStatus === "blocked" ? "Location permission is blocked. Allow location to test live tracking." : "Trying to share rider GPS…"}
+        {isOnline && <p className="mt-3 text-center text-xs font-bold text-slate-300">
+          {locationStatus === "sharing" ? "Live GPS sharing is active while you are online." : locationStatus === "blocked" ? "Location permission is blocked. Allow location to receive nearby Zeshu jobs." : "Trying to share your live location…"}
         </p>}
         {isAdminSuspended && <p role="alert" className="mt-3 text-center text-sm font-bold text-amber-200">Your rider account has been suspended by admin.</p>}
 
@@ -455,6 +456,7 @@ export default function RiderDashboard() {
       </div>
 
       <div className="p-6">
+        <MoveMatchingRiderPanel online={isOnline} />
         {ordersError && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{ordersError}</p>}
         <h2 className="text-slate-500 font-black uppercase tracking-widest text-sm mb-4">
           {isOnline ? "Active Deliveries" : "You are Offline"}
