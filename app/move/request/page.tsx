@@ -21,8 +21,11 @@ function RequestForm() {
   const [details, setDetails] = useState("");
 
   const kind = rideServices.has(service) ? "ride" : courierServices.has(service) ? "courier" : travelServices.has(service) ? "travel" : service === "Car Share" ? "car share" : "service";
+  const bikeTaxiOnHold = service === "Bike Ride";
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    if (bikeTaxiOnHold) return;
     setSubmitted(true);
   };
 
@@ -43,6 +46,20 @@ function RequestForm() {
         <div className="mt-5 flex flex-wrap gap-2">
           <Link href={`/help?service=${encodeURIComponent(service)}`} className="rounded-xl bg-[#075E45] px-4 py-3 text-sm font-black text-white">{t("Check with Zeshu Assistant")}</Link>
           <button onClick={() => setSubmitted(false)} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700">{t("Edit plan")}</button>
+        </div>
+      </section>
+    );
+  }
+
+  if (bikeTaxiOnHold) {
+    return (
+      <section className="rounded-[28px] border border-amber-200 bg-white p-6 shadow-sm md:p-8">
+        <ShieldCheck className="text-amber-700" size={36} />
+        <h1 className="mt-4 text-2xl font-black text-slate-950">{t("Zeshu Bike Taxi is visible, but passenger requests are on hold")}</h1>
+        <p className="mt-2 text-sm leading-6 text-slate-600">{t("Telangana is finalising rules affecting passenger bike taxis, including the proposed yellow-plate requirement. Zeshu will keep this service disabled until the applicable state requirements are clear and our provider setup is compliant.")}</p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <Link href="/move" className="rounded-xl bg-[#075E45] px-4 py-3 text-sm font-black text-white">{t("View other services")}</Link>
+          <Link href="/help?service=Bike%20Ride" className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700">{t("Ask Zeshu Assistant")}</Link>
         </div>
       </section>
     );
