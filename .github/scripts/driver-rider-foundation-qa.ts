@@ -66,8 +66,14 @@ for (const service of ['DELIVERY_RIDER', 'BIKE_COURIER', 'AUTO_DRIVER', 'CAB_DRI
 }
 assert(!onboardingPage.includes('"BIKE_TAXI"'), 'passenger bike taxi must not be selectable');
 assert(onboardingPage.includes('driver-verification'), 'documents must upload to private verification bucket');
+assert(onboardingPage.includes('Join in 4 simple steps'), 'driver onboarding must expose a guided step-by-step flow');
+assert(onboardingPage.includes('Continue to documents'), 'driver onboarding must make the next action obvious');
+assert(onboardingPage.includes('Commercial vehicle documents required'), 'commercial driver choices must explain extra document requirements');
+assert(onboardingPage.includes('Upload only what your service needs'), 'document step must be service-specific and easy to follow');
 assert(onboardingApi.includes('requireDriverUser'), 'driver onboarding API must authenticate applicants');
 assert(onboardingApi.includes("registrationType === 'NO_VEHICLE'"), 'individual secure verification must require a vehicle');
+assert(onboardingApi.includes('commercialServiceRequested'), 'Auto Cab and Goods onboarding must enforce commercial registration');
+assert(onboardingApi.includes("registrationType !== 'TRANSPORT'"), 'commercial Move services must reject non-transport registration');
 assert(documentApi.includes('storagePath.startsWith'), 'document metadata API must enforce user-owned storage path');
 assert(adminApi.includes("const ACTIVATABLE = new Set(['DELIVERY_RIDER','BIKE_COURIER','GOODS_DRIVER'])"), 'only non-passenger services may activate in this phase');
 assert(adminApi.includes('createSignedUrl'), 'admin document review must use short-lived signed URLs');
