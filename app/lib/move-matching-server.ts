@@ -144,7 +144,7 @@ export async function dispatchNextWave(service: SupabaseClient, requestId: strin
   while (wave < radii.length && candidates.length === 0) {
     const radius = radii[wave];
     candidates = riders
-      .filter((r: { id: string; user_id?: string | null }) => r.user_id && eligibleUsers.has(r.user_id) && !busy.has(r.id) && !prior.has(r.id))
+      .filter((r: { id: string; user_id?: string | null }) => r.user_id && r.user_id !== request.customer_user_id && eligibleUsers.has(r.user_id) && !busy.has(r.id) && !prior.has(r.id))
       .map((r: { id: string; current_latitude: number; current_longitude: number }) => ({
         id: r.id,
         distance: haversineKm(Number(request.pickup_latitude), Number(request.pickup_longitude), Number(r.current_latitude), Number(r.current_longitude)),
