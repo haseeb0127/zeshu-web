@@ -54,6 +54,9 @@ assert(customerUi.includes('mode="move"'), 'Move customer UI must use the Move-s
 assert(customerUi.includes('Finding nearby verified partners'), 'Customer UI must explain active matching');
 assert(customerUi.includes('Start OTP'), 'Customer UI must display trip OTP only after assignment');
 assert(customerUi.includes('Confirm ${serviceLabel}'), 'Customer UI must confirm the selected service and estimate before matching');
+assert(!customerUi.includes('Uber'), 'Customer-facing Zeshu Move UI must not mention competitor brands');
+assert(!customerUi.includes('compliance-gated'), 'Customer-facing Zeshu Move UI must not expose technical compliance wording');
+assert(customerUi.includes('${serviceLabel} booking is opening soon'), 'Passenger-gated services must use customer-friendly Zeshu launch copy');
 assert(riderUi.includes('New nearby request'), 'Rider UI must surface nearby offers');
 assert(riderUi.includes('Earn ₹'), 'Rider UI must show payout before acceptance');
 assert(moveRequest.includes('"Bike Courier": "BIKE_COURIER"'), 'Bike Courier must route into matching');
