@@ -162,6 +162,16 @@ export default function DriverOnboardingPage() {
   };
 
   const locked = Boolean(application && ["UNDER_REVIEW", "VERIFIED", "SUSPENDED"].includes(application.status));
+  const visibleDocuments = application ? DOCUMENTS.filter(([type]) => {
+    const services = application.requested_services || [];
+    if (type === "FITNESS" || type === "PERMIT") {
+      return services.some((service) => ["AUTO_DRIVER", "CAB_DRIVER", "GOODS_DRIVER"].includes(service));
+    }
+    if (["DRIVING_LICENCE", "RC", "INSURANCE", "PUC"].includes(type)) {
+      return application.registration_type !== "NO_VEHICLE";
+    }
+    return true;
+  }) : DOCUMENTS;
 
   if (phase === "checking") return <main className="grid min-h-screen place-items-center bg-[#f6faf7]"><div className="h-10 w-10 animate-spin rounded-full border-4 border-[#075E45] border-t-transparent" /></main>;
 
@@ -205,7 +215,7 @@ export default function DriverOnboardingPage() {
         {application && <section className="mt-5 rounded-3xl bg-white p-6">
           <h2 className="text-xl font-black">2. Required documents</h2>
           <p className="mt-2 text-sm text-slate-600">Do not type document numbers into the website. Upload only through this secure area.</p>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">{DOCUMENTS.map(([type,label,requiresExpiry]) => {
+          <div className="mt-4 grid gap-3 md:grid-cols-2">{visibleDocuments.map(([type,label,requiresExpiry]) => {
             const record = documents.find((item) => item.document_type === type);
             return <div key={type} className="rounded-2xl border p-4">
               <div className="flex justify-between gap-3"><span className="font-black">{label}</span><span className="text-xs font-black text-slate-500">{record?.status || "NOT UPLOADED"}</span></div>
