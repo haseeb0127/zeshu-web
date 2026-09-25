@@ -1,6 +1,13 @@
 name: Promote tested main to Cloudflare production
 
 on:
+  workflow_run:
+    workflows:
+      - Customer staging browser QA
+    types:
+      - completed
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -13,6 +20,7 @@ concurrency:
 
 jobs:
   promote:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
@@ -289,6 +297,13 @@ jobs:
             }, null, { timeout: 20000 });
             const helpText = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
             assert(!helpText.includes('Order #'), 'Guest Help Center exposed private order context');
+
+            await page.goto('https://zeshu.in/move/request?service=Auto', { waitUntil: 'networkidle', timeout: 60000 });
+            await page.getByText('Where are you going?', { exact: true }).waitFor({ state: 'visible', timeout: 15000 });
+            const moveText = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(moveText.includes('ZESHU MOVE') || moveText.includes('Zeshu Move'), 'Live Move screen is missing Zeshu branding');
+            assert(!moveText.includes('Uber'), 'Competitor brand name is visible on live Zeshu Move UI');
+            assert(!moveText.includes('compliance-gated'), 'Technical compliance wording is visible on live Zeshu Move UI');
           } finally {
             await browser.close();
           }
