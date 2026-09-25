@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
+import { evaluateTelanganaMoveArea } from '@/app/lib/move-service-area';
 import {
   dispatchNextWave,
   hashMoveOtp,
@@ -45,6 +46,12 @@ export async function POST(request: Request) {
 
   if (pickupLatitude === null || pickupLongitude === null || dropoffLatitude === null || dropoffLongitude === null || !pickupAddress || !dropoffAddress) {
     return NextResponse.json({ error: 'Confirm pickup and drop locations on the map.' }, { status: 400 });
+  }
+
+  const pickupArea = evaluateTelanganaMoveArea(pickupLatitude, pickupLongitude, body.pickup_state);
+  const dropoffArea = evaluateTelanganaMoveArea(dropoffLatitude, dropoffLongitude, body.dropoff_state);
+  if (pickupArea !== 'ELIGIBLE' || dropoffArea !== 'ELIGIBLE') {
+    return NextResponse.json({ error: 'Pickup and drop must currently be inside Telangana.' }, { status: 400 });
   }
 
   const { data: settings, error: settingsError } = await service
