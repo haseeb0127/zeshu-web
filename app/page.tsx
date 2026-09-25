@@ -3038,7 +3038,7 @@ export default function ZeshuSuperApp() {
                  </button>
                  <Link href="/move" className="rounded-3xl border border-teal-100 bg-gradient-to-br from-teal-50 to-white p-3.5 text-left shadow-[0_4px_16px_rgba(19,32,25,.04)] transition hover:-translate-y-0.5 hover:shadow-md md:p-4">
                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-600 text-white"><Car size={20} /></span>
-                   <div className="mt-3 flex items-center gap-2"><p className="text-[10px] font-black uppercase tracking-[.16em] text-teal-700">Zeshu Move</p><span className="rounded-full bg-teal-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-teal-700">{t('New')}</span></div>
+                   <p className="mt-3 text-[10px] font-black uppercase tracking-[.16em] text-teal-700">Zeshu Move</p>
                    <h2 className="mt-1 text-base font-black text-slate-950 md:text-lg">{t('Move & Travel')}</h2>
                    <p className="mt-1 hidden text-xs font-medium leading-5 text-slate-500 sm:block">{t('Rides, courier and travel — one trusted place.')}</p>
                    <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-black text-teal-700 md:text-xs">{t('Open Move & Travel')} <ChevronRight size={14} /></span>
