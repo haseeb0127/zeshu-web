@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { createHash, randomInt } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
@@ -75,9 +75,10 @@ export async function quoteMove(serviceCode: MoveServiceCode, pickup: { latitude
   return { distanceKm: roundMoney(distanceKm), durationMinutes, quotedFare, driverPayout, platformFee, source: route?.source || 'distance_estimate' };
 }
 
-export function createStartOtp() {
-  const code = String(randomInt(1000, 10000));
-  return { code, hash: createHash('sha256').update(code).digest('hex') };
+export function moveOtpForRequest(requestId: string, secret: string) {
+  const digest = createHmac('sha256', secret).update(`zeshu-move:${requestId}`).digest();
+  const value = digest.readUInt32BE(0) % 1_000_000;
+  return String(value).padStart(6, '0');
 }
 
 export function hashMoveOtp(code: string) {
