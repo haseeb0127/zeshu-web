@@ -12,11 +12,11 @@ export type DriverRiderRole =
 export type DriverRiderReadiness = {
   role: DriverRiderRole;
   interestRegistrationAvailable: true;
-  documentUploadAvailable: false;
+  documentUploadAvailable: boolean;
   activationAvailable: false;
-  status: 'INTEREST_ONLY';
+  status: 'VERIFICATION_AVAILABLE' | 'INTEREST_ONLY';
   nextGate:
-    | 'SECURE_KYC_AND_DELIVERY_OPS'
+    | 'DOCUMENT_AND_SAFETY_VERIFICATION'
     | 'GOODS_AGENT_AND_PROVIDER_REVIEW'
     | 'TELANGANA_PASSENGER_AGGREGATOR_REVIEW'
     | 'GOODS_PERMIT_AND_AGENT_REVIEW'
@@ -24,22 +24,26 @@ export type DriverRiderReadiness = {
 };
 
 export function getDriverRiderReadiness(): Record<DriverRiderRole, DriverRiderReadiness> {
-  const make = (role: DriverRiderRole, nextGate: DriverRiderReadiness['nextGate']): DriverRiderReadiness => ({
+  const make = (
+    role: DriverRiderRole,
+    nextGate: DriverRiderReadiness['nextGate'],
+    documentUploadAvailable = true,
+  ): DriverRiderReadiness => ({
     role,
     interestRegistrationAvailable: true,
-    documentUploadAvailable: false,
+    documentUploadAvailable,
     activationAvailable: false,
-    status: 'INTEREST_ONLY',
+    status: documentUploadAvailable ? 'VERIFICATION_AVAILABLE' : 'INTEREST_ONLY',
     nextGate,
   });
 
   return {
-    DELIVERY_RIDER: make('DELIVERY_RIDER', 'SECURE_KYC_AND_DELIVERY_OPS'),
+    DELIVERY_RIDER: make('DELIVERY_RIDER', 'DOCUMENT_AND_SAFETY_VERIFICATION'),
     BIKE_COURIER: make('BIKE_COURIER', 'GOODS_AGENT_AND_PROVIDER_REVIEW'),
     AUTO_DRIVER: make('AUTO_DRIVER', 'TELANGANA_PASSENGER_AGGREGATOR_REVIEW'),
     CAB_DRIVER: make('CAB_DRIVER', 'TELANGANA_PASSENGER_AGGREGATOR_REVIEW'),
     GOODS_DRIVER: make('GOODS_DRIVER', 'GOODS_PERMIT_AND_AGENT_REVIEW'),
-    PASSENGER_FLEET_OPERATOR: make('PASSENGER_FLEET_OPERATOR', 'VERIFY_OPERATOR_LICENCE_AND_CONTRACT'),
-    LOGISTICS_FLEET_OPERATOR: make('LOGISTICS_FLEET_OPERATOR', 'VERIFY_OPERATOR_LICENCE_AND_CONTRACT'),
+    PASSENGER_FLEET_OPERATOR: make('PASSENGER_FLEET_OPERATOR', 'VERIFY_OPERATOR_LICENCE_AND_CONTRACT', false),
+    LOGISTICS_FLEET_OPERATOR: make('LOGISTICS_FLEET_OPERATOR', 'VERIFY_OPERATOR_LICENCE_AND_CONTRACT', false),
   };
 }
