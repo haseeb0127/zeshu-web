@@ -3025,10 +3025,10 @@ export default function ZeshuSuperApp() {
            {activeTab === 'home' && normalizedSearch === '' && (
              <section className="mb-5 px-4 md:px-0" aria-labelledby="zeshu-entry-title">
                <div className="mb-3">
-                 <h1 id="zeshu-entry-title" className="text-xl font-black tracking-tight text-[#17261d] md:text-2xl">{t('One Zeshu. Three simple ways to get what you need.')}</h1>
+                 <h1 id="zeshu-entry-title" className="text-xl font-black tracking-tight text-[#17261d] md:text-2xl">{t('One Zeshu. Four simple ways to get what you need.')}</h1>
                  <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 md:text-sm">{t('Fast nearby. Everything else delivered or fulfilled by verified partners.')}</p>
                </div>
-               <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar lg:grid lg:grid-cols-3 lg:overflow-visible">
+               <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar lg:grid lg:grid-cols-4 lg:overflow-visible">
                  <button type="button" onClick={() => { setFulfillmentFilter('ALL'); setActiveCategory('All'); requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="min-w-[240px] flex-1 rounded-3xl border border-emerald-100 bg-gradient-to-br from-[#effaf3] to-white p-4 text-left shadow-[0_4px_16px_rgba(19,32,25,.04)] transition hover:-translate-y-0.5 hover:shadow-md">
                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[#075E45] text-white"><Zap size={20} /></span>
                    <p className="mt-3 text-[10px] font-black uppercase tracking-[.16em] text-[#075E45]">Zeshu Now</p>
@@ -3050,6 +3050,49 @@ export default function ZeshuSuperApp() {
                    <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{t('Recharge, bills and digital services in one place.')}</p>
                    <span className="mt-3 inline-flex items-center gap-1 text-xs font-black text-amber-700">{t('Open services')} <ChevronRight size={14} /></span>
                  </button>
+                 <Link href="/move" className="min-w-[240px] flex-1 rounded-3xl border border-violet-100 bg-gradient-to-br from-violet-50 to-white p-4 text-left shadow-[0_4px_16px_rgba(19,32,25,.04)] transition hover:-translate-y-0.5 hover:shadow-md">
+                   <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-600 text-white"><Car size={20} /></span>
+                   <p className="mt-3 text-[10px] font-black uppercase tracking-[.16em] text-violet-700">{t('Move & Travel')}</p>
+                   <h2 className="mt-1 text-lg font-black text-slate-950">{t('Rides, Courier & Travel')}</h2>
+                   <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{t('Rides, courier and travel — one trusted place.')}</p>
+                   <span className="mt-3 inline-flex items-center gap-1 text-xs font-black text-violet-700">{t('Open services')} <ChevronRight size={14} /></span>
+                 </Link>
+               </div>
+             </section>
+           )}
+           {activeTab === 'home' && normalizedSearch === '' && (
+             <section className="mb-5 px-4 md:px-0" aria-labelledby="move-home-title">
+               <div className="mb-3 flex items-end justify-between gap-3">
+                 <div>
+                   <h2 id="move-home-title" className="text-lg font-black text-slate-950">{t('Move & Travel')}</h2>
+                   <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">{t('Rides, courier and travel — one trusted place.')}</p>
+                 </div>
+                 <Link href="/move" className="shrink-0 text-xs font-black text-[#075E45]">{t('View all')} →</Link>
+               </div>
+               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                 {[
+                   { label: 'Bike Ride', href: '/move', hold: true },
+                   { label: 'Auto', href: '/move/request?service=Auto' },
+                   { label: 'Cab', href: '/move/request?service=Cab' },
+                   { label: 'Rental Car', href: '/move/request?service=Rental%20Car' },
+                   { label: 'Bike Courier', href: '/move/request?service=Bike%20Courier' },
+                   { label: 'Auto / Mini Truck', href: '/move/request?service=Auto%20%2F%20Mini%20Truck' },
+                   { label: 'Shop Delivery', href: '/move/request?service=Shop%20Delivery' },
+                   { label: 'Car Share', href: '/move/request?service=Car%20Share' },
+                   { label: 'Bus', href: '/move/request?service=Bus' },
+                   { label: 'Train', href: '/move/request?service=Train' },
+                   { label: 'Flights', href: '/move/request?service=Flights' },
+                   { label: 'Hotels', href: '/move/request?service=Hotels' },
+                   { label: 'Experiences', href: '/move/request?service=Experiences' },
+                 ].map((service) => (
+                   <Link key={service.label} href={service.href} className={`rounded-2xl border p-3 shadow-[0_3px_12px_rgba(15,23,42,.04)] transition active:scale-[0.98] ${service.hold ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white hover:border-emerald-200 hover:bg-emerald-50'}`}>
+                     <div className="flex items-center justify-between gap-2">
+                       <span className="text-sm font-black text-slate-900">{t(service.label)}</span>
+                       <ChevronRight size={14} className={service.hold ? 'text-amber-700' : 'text-[#075E45]'} />
+                     </div>
+                     <p className={`mt-1 text-[10px] font-bold leading-4 ${service.hold ? 'text-amber-800' : 'text-slate-500'}`}>{service.hold ? t('Awaiting Telangana rules') : t('Request with Zeshu')}</p>
+                   </Link>
+                 ))}
                </div>
              </section>
            )}
