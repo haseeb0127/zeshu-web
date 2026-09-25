@@ -9,19 +9,20 @@ type ServiceCard = {
   description: string;
   icon: React.ReactNode;
   actionLabel?: string;
+  regulatoryHold?: boolean;
 };
 
 const localRides: ServiceCard[] = [
-  { title: "Bike Ride", description: "Fast two-wheeler ride", icon: <Bike size={22} />, actionLabel: "Plan ride" },
-  { title: "Auto", description: "Auto-rickshaw rides", icon: <Car size={22} />, actionLabel: "Plan ride" },
-  { title: "Cab", description: "Local and outstation cabs", icon: <Car size={22} />, actionLabel: "Plan ride" },
-  { title: "Rental Car", description: "Hourly and day rentals", icon: <Car size={22} />, actionLabel: "Plan rental" },
+  { title: "Bike Ride", description: "Passenger bike taxi — waiting for final Telangana rules", icon: <Bike size={22} />, actionLabel: "View status", regulatoryHold: true },
+  { title: "Auto", description: "Auto-rickshaw rides", icon: <Car size={22} />, actionLabel: "Request auto" },
+  { title: "Cab", description: "Local and outstation cabs", icon: <Car size={22} />, actionLabel: "Request cab" },
+  { title: "Rental Car", description: "Hourly and day rentals", icon: <Car size={22} />, actionLabel: "Request rental" },
 ];
 
 const courier: ServiceCard[] = [
-  { title: "Bike Courier", description: "Documents and small parcels", icon: <Package size={22} />, actionLabel: "Plan delivery" },
-  { title: "Auto / Mini Truck", description: "Larger local deliveries", icon: <Truck size={22} />, actionLabel: "Plan delivery" },
-  { title: "Shop Delivery", description: "Seller-to-customer delivery", icon: <Package size={22} />, actionLabel: "Plan delivery" },
+  { title: "Bike Courier", description: "Documents and small parcels", icon: <Package size={22} />, actionLabel: "Request delivery" },
+  { title: "Auto / Mini Truck", description: "Larger local deliveries", icon: <Truck size={22} />, actionLabel: "Request delivery" },
+  { title: "Shop Delivery", description: "Seller-to-customer delivery", icon: <Package size={22} />, actionLabel: "Request delivery" },
 ];
 
 const sharing: ServiceCard[] = [
@@ -46,12 +47,16 @@ function ServiceSection({ title, cards }: { title: string; cards: ServiceCard[] 
           <article key={card.title} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_16px_rgba(15,23,42,.04)]">
             <div className="flex items-start justify-between gap-3">
               <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-[#075E45]" aria-hidden="true">{card.icon}</span>
-              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#075E45]">{t("Plan with Zeshu")}</span>
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#075E45]">{t(card.regulatoryHold ? "Awaiting Telangana rules" : "Request with Zeshu")}</span>
             </div>
             <h3 className="mt-4 font-black text-slate-900">{t(card.title)}</h3>
             <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{t(card.description)}</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Link href={`/move/request?service=${encodeURIComponent(card.title)}`} className="inline-flex rounded-xl bg-[#075E45] px-3 py-2 text-xs font-black text-white">{t(card.actionLabel || "Plan with Zeshu")}</Link>
+              {card.regulatoryHold ? (
+                <span className="inline-flex cursor-not-allowed rounded-xl bg-slate-200 px-3 py-2 text-xs font-black text-slate-600">{t(card.actionLabel || "View status")}</span>
+              ) : (
+                <Link href={`/move/request?service=${encodeURIComponent(card.title)}`} className="inline-flex rounded-xl bg-[#075E45] px-3 py-2 text-xs font-black text-white">{t(card.actionLabel || "Request with Zeshu")}</Link>
+              )}
               <Link href={`/help?service=${encodeURIComponent(card.title)}`} className="inline-flex rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-[#075E45]">{t("Ask Zeshu Assistant")}</Link>
             </div>
           </article>
@@ -78,11 +83,11 @@ export default function MoveTravelPage() {
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="max-w-3xl">
               <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.16em] text-[#c9f2d8]">
-                <Sparkles size={14} aria-hidden="true" /> {t("Plan rides, courier & travel")}
+                <Sparkles size={14} aria-hidden="true" /> {t("Rides, courier & travel requests")}
               </div>
               <h1 className="mt-4 text-3xl font-black tracking-tight md:text-5xl">{t("Zeshu Move & Travel")}</h1>
               <p className="mt-3 text-base font-bold text-[#d9f3e3] md:text-lg">{t("Rides, courier and travel — one trusted place.")}</p>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[#bfe2cd]">{t("We're building these services with verified, licensed or authorized partners. Booking and payment are not available yet.")}</p>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-[#bfe2cd]">{t("Auto, cab, courier, rentals and travel requests are open. Final booking, fare and payment are confirmed only through an eligible verified provider. Passenger Bike Taxi remains on hold while Telangana finalises the applicable rules.")}</p>
             </div>
           </div>
         </header>
@@ -97,7 +102,7 @@ export default function MoveTravelPage() {
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-[#075E45]"><ShieldCheck size={24} /></span>
             <div>
               <h2 className="text-lg font-black text-slate-950">{t("Safety before speed")}</h2>
-              <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">{t("No ride, courier or travel payment will be enabled until provider identity, serviceability, support, refunds, and applicable compliance are verified.")}</p>
+              <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">{t("Service requests can be submitted now. Zeshu only confirms a booking, fare or payment after an eligible verified provider confirms serviceability and applicable compliance. Passenger Bike Taxi stays disabled until Telangana rules are clear.")}</p>
             </div>
           </div>
         </section>
