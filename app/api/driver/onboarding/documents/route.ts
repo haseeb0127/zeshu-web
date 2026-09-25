@@ -45,6 +45,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Documents cannot be changed while this application is under review.' }, { status: 409 });
   }
 
+  const { data: previous } = await service
+    .from('driver_documents')
+    .select('storage_path')
+    .eq('application_id', applicationId)
+    .eq('document_type', documentType)
+    .maybeSingle();
+
   const { data, error } = await service.from('driver_documents').upsert({
     application_id: applicationId,
     user_id: user.id,
@@ -60,7 +67,13 @@ export async function POST(request: Request) {
 
   if (error) {
     console.error('Driver document metadata save failed:', error.message);
-    return NextResponse.json({ error: 'The file uploaded, but its verification record could not be saved. Please contact support.' }, { status: 500 });
+    await service.storage.from('driver-verification').remove([storagePath]);
+    return NextResponse.json({ error: 'The secure upload could not be attached to your verification profile. Please try again.' }, { status: 500 });
+  }
+
+  if (previous?.storage_path && previous.storage_path !== storagePath) {
+    const { error: cleanupError } = await service.storage.from('driver-verification').remove([previous.storage_path]);
+    if (cleanupError) console.warn('Old driver verification file cleanup failed:', cleanupError.message);
   }
 
   return NextResponse.json({ success: true, document: data }, { status: 201 });
