@@ -14,6 +14,10 @@ const customerUi = read('app/components/MoveMatchingCustomer.tsx');
 const riderUi = read('app/components/MoveMatchingRiderPanel.tsx');
 const moveRequest = read('app/move/request/page.tsx');
 const riderPage = read('app/rider/page.tsx');
+const locationSelector = read('app/components/LocationSelector.tsx');
+const moveArea = read('app/lib/move-service-area.ts');
+const moveAreaApi = read('app/api/move/service-area/check/route.ts');
+const quoteApi = read('app/api/move/quote/route.ts');
 
 for (const table of ['move_dispatch_settings','move_dispatch_requests','move_dispatch_offers','move_dispatch_events']) {
   assert(migration.includes(`public.${table}`), `Move matching migration missing ${table}`);
@@ -32,6 +36,7 @@ assert(engine.includes('const radii = [2.5, 5, 10'), 'Move matching must expand 
 assert(engine.includes('candidates_per_wave'), 'Move matching must cap rider offer fanout');
 
 assert(customerApi.includes('passengerExecutionAllowed'), 'Passenger requests must remain provider/compliance gated');
+assert(customerApi.includes('evaluateTelanganaMoveArea'), 'Move dispatch must enforce the Telangana footprint server-side');
 assert(customerApi.includes('quoteMove'), 'Customer request must use route-aware quote');
 assert(customerApi.includes('moveOtpForRequest'), 'Customer trip must use a stable server-derived OTP');
 assert(!customerApi.includes('RAZORPAY'), 'Move matching must not silently capture payment');
@@ -42,13 +47,24 @@ assert(riderApi.includes("action === 'CANCEL'"), 'Rider must be able to release 
 
 assert(readiness.includes('compliance_gate'), 'Move readiness must expose passenger compliance gate');
 assert(customerUi.includes('LocationSelector'), 'Customer matching must use map-selected locations');
+assert(customerUi.includes('Where are you going?'), 'Move customer UI must be destination-first');
+assert(customerUi.includes('Pickup now'), 'Move customer UI must default to pickup-now flow');
+assert(customerUi.includes('Zeshu Move'), 'Move customer UI must preserve Zeshu branding');
+assert(customerUi.includes('mode="move"'), 'Move customer UI must use the Move-specific location mode');
 assert(customerUi.includes('Finding nearby verified partners'), 'Customer UI must explain active matching');
-assert(customerUi.includes('Trip start OTP'), 'Customer UI must display trip OTP only after assignment');
+assert(customerUi.includes('Start OTP'), 'Customer UI must display trip OTP only after assignment');
+assert(customerUi.includes('Confirm ${serviceLabel}'), 'Customer UI must confirm the selected service and estimate before matching');
 assert(riderUi.includes('New nearby request'), 'Rider UI must surface nearby offers');
 assert(riderUi.includes('Earn ₹'), 'Rider UI must show payout before acceptance');
 assert(moveRequest.includes('"Bike Courier": "BIKE_COURIER"'), 'Bike Courier must route into matching');
 assert(moveRequest.includes('"Auto": "AUTO_DRIVER"'), 'Auto must route into matching architecture');
 assert(!moveRequest.includes('"Bike Ride": "BIKE_TAXI"'), 'Passenger Bike Taxi must remain outside live matching');
 assert(!riderPage.includes('!stagingQaAvailable || !isOnline || !riderId'), 'Rider GPS sharing must not be staging-only');
+assert(locationSelector.includes("mode?: 'delivery' | 'move'"), 'Shared location selector must separate Move from delivery rules');
+assert(locationSelector.includes("mode === 'move' ? '/api/move/service-area/check' : '/api/service-area/check'"), 'Move must not use the Jagtial grocery service-area endpoint');
+assert(moveArea.includes('TELANGANA_BOUNDS'), 'Move service area must expose Telangana bounds');
+assert(moveAreaApi.includes('evaluateTelanganaMoveArea'), 'Move service-area API must validate Telangana locations');
+assert(quoteApi.includes('quoteMove'), 'Move quote API must provide a preview before matching');
+assert(quoteApi.includes('evaluateTelanganaMoveArea'), 'Move quote must validate pickup and drop within Telangana');
 
 console.log('MOVE_MATCHING_QA=PASS');
