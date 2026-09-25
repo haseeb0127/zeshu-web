@@ -89,6 +89,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Choose the current vehicle registration type.' }, { status: 400 });
   }
 
+  const commercialServiceRequested = requestedServices.some((service) => ['AUTO_DRIVER','CAB_DRIVER','GOODS_DRIVER'].includes(service));
+  if (commercialServiceRequested && registrationType !== 'TRANSPORT') {
+    return NextResponse.json({ error: 'Auto, Cab and Goods services require a transport/commercially registered vehicle with the applicable permit and fitness documents.' }, { status: 400 });
+  }
+
   if (registrationType === 'NO_VEHICLE') {
     return NextResponse.json({ error: 'A vehicle is required for secure driver verification. If you do not have one yet, use the interest form and return when your vehicle documents are ready.' }, { status: 400 });
   }
