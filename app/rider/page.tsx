@@ -283,7 +283,9 @@ export default function RiderDashboard() {
       alert(
         error.message?.includes("rider is administratively suspended")
           ? "Your rider account has been suspended by admin."
-          : "Could not update rider status."
+          : error.message?.includes("driver verification is incomplete or expired")
+            ? "Your driver verification is incomplete or a required document has expired. Update verification before going online."
+            : "Could not update rider status."
       );
       setAvailabilityUpdating(false);
       return;
