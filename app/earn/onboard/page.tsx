@@ -51,7 +51,7 @@ export default function DriverOnboardingPage() {
   const [otpSent, setOtpSent] = useState(false);
   const [application, setApplication] = useState<DriverApplication | null>(null);
   const [documents, setDocuments] = useState<DriverDocument[]>([]);
-  const [form, setForm] = useState({ full_name: "", city: "Jagtial", requested_services: [] as string[], vehicle_type: "", registration_type: "NO_VEHICLE" });
+  const [form, setForm] = useState({ full_name: "", city: "Jagtial", requested_services: [] as string[], vehicle_type: "", registration_type: "NON_TRANSPORT" });
   const [files, setFiles] = useState<Record<string, File | null>>({});
   const [expiry, setExpiry] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState("");
@@ -74,7 +74,7 @@ export default function DriverOnboardingPage() {
         city: payload.application.city || "",
         requested_services: payload.application.requested_services || [],
         vehicle_type: payload.application.vehicle_type || "",
-        registration_type: payload.application.registration_type || "NO_VEHICLE",
+        registration_type: payload.application.registration_type || "NON_TRANSPORT",
       });
     }
     setPhase("ready");
@@ -207,7 +207,7 @@ export default function DriverOnboardingPage() {
           <input required disabled={locked} value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Full name" className="rounded-xl border p-3 disabled:bg-slate-50" />
           <input required disabled={locked} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="City / service area" className="rounded-xl border p-3 disabled:bg-slate-50" />
           <input disabled={locked} value={form.vehicle_type} onChange={(e) => setForm({ ...form, vehicle_type: e.target.value })} placeholder="Bike / Auto / Car / Mini truck" className="rounded-xl border p-3 disabled:bg-slate-50" />
-          <select disabled={locked} value={form.registration_type} onChange={(e) => setForm({ ...form, registration_type: e.target.value })} className="rounded-xl border bg-white p-3 disabled:bg-slate-50"><option value="NO_VEHICLE">No vehicle yet</option><option value="TRANSPORT">Transport / commercial</option><option value="NON_TRANSPORT">Private / non-transport</option></select>
+          <select disabled={locked} value={form.registration_type} onChange={(e) => setForm({ ...form, registration_type: e.target.value })} className="rounded-xl border bg-white p-3 disabled:bg-slate-50"><option value="NON_TRANSPORT">Private / non-transport</option><option value="TRANSPORT">Transport / commercial</option></select>
           <div className="md:col-span-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{SERVICES.map(([value,label]) => <label key={value} className="flex items-center gap-2 rounded-xl border p-3 text-sm font-bold"><input type="checkbox" disabled={locked} checked={form.requested_services.includes(value)} onChange={() => setForm((current) => ({ ...current, requested_services: current.requested_services.includes(value) ? current.requested_services.filter((item) => item !== value) : [...current.requested_services, value] }))} />{label}</label>)}</div>
           {!locked && <button disabled={busy === "save"} className="md:col-span-2 rounded-xl bg-[#075E45] py-3 font-black text-white disabled:opacity-50">{busy === "save" ? "Saving…" : "Save verification profile"}</button>}
         </form>
