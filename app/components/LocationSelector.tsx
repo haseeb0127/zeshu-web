@@ -26,6 +26,8 @@ type Props = {
   onClose: () => void;
   onConfirm: (coordinates: LocationSelection, address: string) => void;
   onExploreDigital?: () => void;
+  mode?: 'delivery' | 'move';
+  heading?: string;
 };
 
 const JAGTIAL_VIEWPORT = { lat: 18.7989, lng: 78.9117 };
@@ -129,7 +131,7 @@ const loadGoogleMaps = (key: string, language: string) => new Promise<any>((reso
   document.head.appendChild(script);
 });
 
-export default function LocationSelector({ open, initial, onClose, onConfirm, onExploreDigital }: Props) {
+export default function LocationSelector({ open, initial, onClose, onConfirm, onExploreDigital, mode = 'delivery', heading }: Props) {
   const { language, t } = useCustomerLanguage();
   const addressLanguageHeader = language === 'te' ? 'te-IN,te;q=0.9,en-IN;q=0.7' : language === 'hi' ? 'hi-IN,hi;q=0.9,en-IN;q=0.7' : language === 'ur' ? 'ur-IN,ur;q=0.9,en-IN;q=0.7' : 'en-IN,en;q=0.9';
   const mapElement = useRef<HTMLDivElement>(null);
@@ -150,7 +152,7 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
   const [center, setCenter] = useState(initial ? { lat: initial.latitude, lng: initial.longitude } : JAGTIAL_VIEWPORT);
   const [address, setAddress] = useState(LOCATION_PROMPT);
   const [addressDetails, setAddressDetails] = useState<LocationAddressDetails | null>(initial?.addressDetails || null);
-  const [serviceAreaStatus, setServiceAreaStatus] = useState<'ELIGIBLE' | 'OUTSIDE_SERVICE_AREA' | 'SERVICE_AREA_UNAVAILABLE' | null>(null);
+  const [serviceAreaStatus, setServiceAreaStatus] = useState<'ELIGIBLE' | 'OUTSIDE_SERVICE_AREA' | 'SERVICE_AREA_UNAVAILABLE' | 'OUTSIDE_TELANGANA' | 'UNAVAILABLE' | null>(null);
   const [serviceAreaMessage, setServiceAreaMessage] = useState('');
   const [checkingServiceArea, setCheckingServiceArea] = useState(false);
 
@@ -377,17 +379,24 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
     setServiceAreaStatus(null);
     setServiceAreaMessage('');
     try {
-      const response = await fetch('/api/service-area/check', {
+      const response = await fetch(mode === 'move' ? '/api/move/service-area/check' : '/api/service-area/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ latitude: center.lat, longitude: center.lng }),
+        body: JSON.stringify({
+          latitude: center.lat,
+          longitude: center.lng,
+          ...(mode === 'move' && addressDetails?.state ? { state: addressDetails.state } : {}),
+        }),
       });
       const payload = await response.json().catch(() => ({}));
-      const status = payload?.status === 'ELIGIBLE' || payload?.status === 'OUTSIDE_SERVICE_AREA'
-        ? payload.status
-        : 'SERVICE_AREA_UNAVAILABLE';
+      const allowedStatuses = mode === 'move'
+        ? new Set(['ELIGIBLE', 'OUTSIDE_TELANGANA', 'UNAVAILABLE'])
+        : new Set(['ELIGIBLE', 'OUTSIDE_SERVICE_AREA', 'SERVICE_AREA_UNAVAILABLE']);
+      const status = allowedStatuses.has(String(payload?.status))
+        ? String(payload.status) as 'ELIGIBLE' | 'OUTSIDE_SERVICE_AREA' | 'SERVICE_AREA_UNAVAILABLE' | 'OUTSIDE_TELANGANA' | 'UNAVAILABLE'
+        : mode === 'move' ? 'UNAVAILABLE' : 'SERVICE_AREA_UNAVAILABLE';
       setServiceAreaStatus(status);
-      setServiceAreaMessage(String(payload?.message || t('We could not verify this delivery location.')));
+      setServiceAreaMessage(String(payload?.message || (mode === 'move' ? t('We could not verify this Move location.') : t('We could not verify this delivery location.'))));
 
       if (!response.ok || status !== 'ELIGIBLE') return;
 
@@ -412,7 +421,7 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
     <div className="flex items-center gap-3 border-b bg-white px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
       <button type="button" aria-label={t('Close location selector')} onClick={onClose} className="min-h-11 min-w-11 rounded-full bg-slate-100 text-xl">×</button>
       <div>
-        <h2 id="location-selector-title" className="font-black text-slate-900">{t('Choose delivery location')}</h2>
+        <h2 id="location-selector-title" className="font-black text-slate-900">{t(heading || (mode === 'move' ? 'Choose location' : 'Choose delivery location'))}</h2>
         {fallbackMap && <p className="text-[10px] font-bold text-emerald-700">{t('GPS map fallback active')}</p>}
       </div>
     </div>
@@ -437,7 +446,7 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
           {fallbackMessage && <p className="text-[11px] font-bold leading-4 text-slate-600">{fallbackMessage}</p>}
         </div>
       </> : mapsError ? <div className="flex h-full items-center justify-center p-6 text-center"><div><p className="font-bold text-slate-800">{t('Maps are unavailable right now.')}</p><p className="mt-2 text-sm text-slate-600">{t('You can still enter your address manually.')}</p><button type="button" onClick={onClose} className="mt-4 rounded-xl bg-[#087443] px-5 py-3 font-black text-white">{t('Enter address manually')}</button></div></div> : <>
-        <div ref={mapElement} className="h-full w-full" aria-label={t('Delivery location map')} />
+        <div ref={mapElement} className="h-full w-full" aria-label={t(mode === 'move' ? 'Move location map' : 'Delivery location map')} />
         {mapsReady && <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full text-4xl drop-shadow-md" aria-hidden="true">📍</div>}
         <div ref={searchElement} className="absolute left-3 right-3 top-3 rounded-2xl bg-white shadow-lg" aria-label={t('Search delivery location')} />
       </>}
@@ -450,12 +459,15 @@ export default function LocationSelector({ open, initial, onClose, onConfirm, on
         {addressDetails?.state && <span className="rounded-full bg-slate-100 px-2.5 py-1">{addressDetails.state}</span>}
         {addressDetails?.postalCode && <span className="rounded-full bg-slate-100 px-2.5 py-1">PIN {addressDetails.postalCode}</span>}
       </div>
-      <p className="mt-2 text-sm font-black text-slate-800">{fallbackMap ? t('Confirm the detected/search result') : t('Place the pin at your delivery entrance')}</p>
-      <p className="mt-1 text-xs leading-5 text-slate-500">{t("We'll verify this location against the Jagtial delivery area before saving it. Street/area, city, state and PIN are filled automatically when available.")}</p>
+      <p className="mt-2 text-sm font-black text-slate-800">{fallbackMap ? t('Confirm the detected/search result') : t(mode === 'move' ? 'Place the pin at the exact pickup or drop point' : 'Place the pin at your delivery entrance')}</p>
+      <p className="mt-1 text-xs leading-5 text-slate-500">{t(mode === 'move'
+        ? 'Zeshu Move & Courier uses Telangana-wide location selection. Live service depends on verified partner availability in the selected zone.'
+        : "We'll verify this location against the Jagtial delivery area before saving it. Street/area, city, state and PIN are filled automatically when available.")}</p>
       {serviceAreaStatus === 'ELIGIBLE' && <div role="status" className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3"><p className="text-sm font-black text-emerald-800">{t('Delivery available here')}</p><p className="mt-1 text-xs leading-5 text-emerald-700">{serviceAreaMessage}</p></div>}
       {serviceAreaStatus === 'OUTSIDE_SERVICE_AREA' && <div role="alert" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3"><p className="text-sm font-black text-amber-900">{t("We're not delivering physical products here yet")}</p><p className="mt-1 text-xs leading-5 text-amber-800">{serviceAreaMessage} {t('Digital services remain available across India.')}</p>{onExploreDigital && <button type="button" onClick={onExploreDigital} className="mt-2 rounded-lg bg-white px-3 py-2 text-xs font-black text-indigo-700 shadow-sm">{t('Explore digital services')}</button>}</div>}
-      {serviceAreaStatus === 'SERVICE_AREA_UNAVAILABLE' && <div role="alert" className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3"><p className="text-sm font-black text-slate-800">{t('Location could not be verified')}</p><p className="mt-1 text-xs leading-5 text-slate-600">{serviceAreaMessage}</p></div>}
-      <button type="button" disabled={!mapsReady || checkingServiceArea} onClick={() => void confirm()} className="mt-3 min-h-12 w-full rounded-2xl bg-[#087443] px-4 py-3 font-black text-white disabled:opacity-50">{checkingServiceArea ? t('Checking delivery area…') : serviceAreaStatus === 'OUTSIDE_SERVICE_AREA' ? t('Check another location') : t('Use this location')}</button>
+      {serviceAreaStatus === 'OUTSIDE_TELANGANA' && <div role="alert" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3"><p className="text-sm font-black text-amber-900">{t('Outside the current Move footprint')}</p><p className="mt-1 text-xs leading-5 text-amber-800">{serviceAreaMessage}</p></div>}
+      {(serviceAreaStatus === 'SERVICE_AREA_UNAVAILABLE' || serviceAreaStatus === 'UNAVAILABLE') && <div role="alert" className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3"><p className="text-sm font-black text-slate-800">{t('Location could not be verified')}</p><p className="mt-1 text-xs leading-5 text-slate-600">{serviceAreaMessage}</p></div>}
+      <button type="button" disabled={!mapsReady || checkingServiceArea} onClick={() => void confirm()} className="mt-3 min-h-12 w-full rounded-2xl bg-[#087443] px-4 py-3 font-black text-white disabled:opacity-50">{checkingServiceArea ? t(mode === 'move' ? 'Checking location…' : 'Checking delivery area…') : (serviceAreaStatus === 'OUTSIDE_SERVICE_AREA' || serviceAreaStatus === 'OUTSIDE_TELANGANA') ? t('Check another location') : t('Use this location')}</button>
     </div>
   </div>;
 }
