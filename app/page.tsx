@@ -8,6 +8,7 @@ import OrderStatusTimeline from './components/OrderStatusTimeline';
 import ProductCard from './components/ProductCard';
 import ReviewForm, { ReviewProduct } from './components/ReviewForm';
 import LocationSelector, { type LocationSelection } from './components/LocationSelector';
+import HomeMoveQuickPanel from './components/HomeMoveQuickPanel';
 import { LanguageSwitcher, useCustomerLanguage } from './components/CustomerLanguageProvider';
 import { 
   Mic, MapPin, Search, User, ChevronRight, Zap, Smartphone, 
@@ -3059,6 +3060,8 @@ export default function ZeshuSuperApp() {
                  </button>
                </div>
              </section>
+
+           {activeTab === 'home' && normalizedSearch === '' && <HomeMoveQuickPanel />}
            )}
            {activeTab === 'home' && <div className="mb-5 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar md:px-0 lg:hidden" aria-label={t('Shop by Category')}>{mobileProductCategories.map((category) => { const definition = categoryDefinition(category); return <button type="button" key={category} onClick={() => setActiveCategory(category)} aria-pressed={activeCategory === category} className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-black transition ${activeCategory === category ? 'border-[#075E45] bg-[#075E45] text-white' : 'border-[#dce8df] bg-white text-[#52645a]'}`}><span aria-hidden="true">{definition.icon}</span><span>{t(definition.label)}</span></button>; })}</div>}
            {activeTab === 'home' && <section className="mb-5 px-4 md:px-0" aria-label="Delivery choices"><div className="rounded-3xl border border-[#dce8df] bg-white p-3 shadow-[0_4px_18px_rgba(19,32,25,.04)]"><div className="flex gap-2 overflow-x-auto no-scrollbar"><button type="button" onClick={() => setFulfillmentFilter('ALL')} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${fulfillmentFilter === 'ALL' ? 'bg-[#075E45] text-white' : 'bg-[#f1f5f2] text-[#52645a]'}`}>{t('All delivery')}</button><button type="button" onClick={() => setFulfillmentFilter('FRESH')} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${fulfillmentFilter === 'FRESH' ? 'bg-[#075E45] text-white' : 'bg-emerald-50 text-emerald-700'}`}>⚡ {t('30-min Fresh')}</button><button type="button" onClick={() => setFulfillmentFilter('INDIA')} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${fulfillmentFilter === 'INDIA' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700'}`}>🇮🇳 {t('India Delivery')}{fulfillmentStatus.nationwide_checkout_enabled ? '' : ` · ${t('soon')}`}</button></div><p className="mt-2 text-[11px] font-semibold leading-5 text-slate-500">{fulfillmentFilter === 'FRESH' ? t('Fresh items show ~30 min only when your location, store and active rider availability qualify.') : fulfillmentFilter === 'INDIA' ? t('Only profitable, shelf-stable products approved for nationwide shipping appear here. Shipping prices will come from a real courier quote before payment.') : t('Fresh locally. India-wide only where delivery remains sensible for both the customer and Zeshu.')}</p></div></section>}
