@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://zeshu.in"),
   title: "Zeshu",
   applicationName: "Zeshu",
-  description: "Jagtial fast delivery and India-wide digital services with Zeshu.",
+  description: "Zeshu brings Jagtial shopping, Telangana Move & Courier, India-wide digital services, marketplace discovery and support into one simple platform.",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/zeshu-icon.svg",
