@@ -88,7 +88,7 @@ for (const scope of ['Jagtial','Telangana','India']) {
 for (const path of ['/earn','/partners','/help']) {
   assert(homeBusiness.includes(`href="${path}"`), `Homepage business hub missing business/support route: ${path}`);
 }
-assert(homeBusiness.includes('One Zeshu. Four simple ways to get what you need.'), 'Homepage business hub must explain Zeshu at first glance');
+assert(homeBusiness.includes('Shop. Move. Send. Recharge. One Zeshu.'), 'Homepage business hub must explain Zeshu at first glance');
 assert(!homeBusiness.includes('navigator.geolocation'), 'Homepage business hub must not request GPS before customer intent');
 assert(!homeBusiness.includes('Uber'), 'Homepage business hub must not mention competitor brands');
 assert(!homeBusiness.includes('compliance-gated'), 'Homepage business hub must not expose internal compliance wording');

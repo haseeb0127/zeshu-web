@@ -75,6 +75,8 @@ jobs:
         run: node --experimental-strip-types .github/scripts/support-priority-qa.ts
       - name: Verify support assistant coverage
         run: node --experimental-strip-types .github/scripts/support-assistant-coverage-qa.ts
+      - name: Verify homepage business hub
+        run: node --experimental-strip-types .github/scripts/homepage-business-hub-qa.ts
       - name: Verify Move provider foundation
         run: node --experimental-strip-types .github/scripts/move-provider-foundation-qa.ts
       - name: Verify Move matching
