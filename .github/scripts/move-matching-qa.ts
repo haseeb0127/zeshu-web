@@ -18,6 +18,8 @@ const locationSelector = read('app/components/LocationSelector.tsx');
 const moveArea = read('app/lib/move-service-area.ts');
 const moveAreaApi = read('app/api/move/service-area/check/route.ts');
 const quoteApi = read('app/api/move/quote/route.ts');
+const homepage = read('app/page.tsx');
+const customerLanguages = read('app/components/CustomerLanguageProvider.tsx');
 
 for (const table of ['move_dispatch_settings','move_dispatch_requests','move_dispatch_offers','move_dispatch_events']) {
   assert(migration.includes(`public.${table}`), `Move matching migration missing ${table}`);
@@ -69,5 +71,15 @@ assert(moveArea.includes('TELANGANA_BOUNDS'), 'Move service area must expose Tel
 assert(moveAreaApi.includes('evaluateTelanganaMoveArea'), 'Move service-area API must validate Telangana locations');
 assert(quoteApi.includes('quoteMove'), 'Move quote API must provide a preview before matching');
 assert(quoteApi.includes('evaluateTelanganaMoveArea'), 'Move quote must validate pickup and drop within Telangana');
+assert(homepage.includes('zeshu-move-quick-title'), 'Homepage must expose a prominent Zeshu Move quick-launch section');
+assert(homepage.includes('/move/request?service=Auto'), 'Homepage must offer one-tap Auto entry');
+assert(homepage.includes('/move/request?service=Cab'), 'Homepage must offer one-tap Cab entry');
+assert(homepage.includes('/move/request?service=Bike%20Courier'), 'Homepage must offer one-tap Courier entry');
+assert(homepage.includes('/move/request?service=Auto%20%2F%20Mini%20Truck'), 'Homepage must offer one-tap Mini Truck entry');
+assert(homepage.includes('Where are you going?'), 'Homepage Move entry must be destination-first');
+assert(!homepage.includes('Uber-style'), 'Homepage must not mention competitor brands');
+for (const phrase of ['Ride, send or travel with Zeshu','Choose what you need and check availability near you.','Pickup now','Where are you going?','Courier','Mini Truck','Availability depends on verified Zeshu partners near your pickup.','See all']) {
+  assert(customerLanguages.includes(`"${phrase}"`), `Homepage Move language key missing: ${phrase}`);
+}
 
 console.log('MOVE_MATCHING_QA=PASS');
