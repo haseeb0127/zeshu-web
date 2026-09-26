@@ -19,7 +19,7 @@ const moveArea = read('app/lib/move-service-area.ts');
 const moveAreaApi = read('app/api/move/service-area/check/route.ts');
 const quoteApi = read('app/api/move/quote/route.ts');
 const homePage = read('app/page.tsx');
-const homeMove = read('app/components/HomeMoveQuickPanel.tsx');
+const homeBusiness = read('app/components/HomeBusinessHub.tsx');
 
 for (const table of ['move_dispatch_settings','move_dispatch_requests','move_dispatch_offers','move_dispatch_events']) {
   assert(migration.includes(`public.${table}`), `Move matching migration missing ${table}`);
@@ -71,19 +71,26 @@ assert(moveArea.includes('TELANGANA_BOUNDS'), 'Move service area must expose Tel
 assert(moveAreaApi.includes('evaluateTelanganaMoveArea'), 'Move service-area API must validate Telangana locations');
 assert(quoteApi.includes('quoteMove'), 'Move quote API must provide a preview before matching');
 assert(quoteApi.includes('evaluateTelanganaMoveArea'), 'Move quote must validate pickup and drop within Telangana');
-assert(homePage.includes('HomeMoveQuickPanel'), 'Zeshu homepage must surface the dedicated Move quick panel');
-assert(homeMove.includes('Where are you going?'), 'Homepage Move panel must use a destination-first action');
+assert(homePage.includes('HomeBusinessHub'), 'Zeshu homepage must surface the unified business hub');
+assert(!homePage.includes('<HomeMoveQuickPanel />'), 'Homepage must not duplicate the old Move quick panel');
+assert(homeBusiness.includes('Where are you going?'), 'Homepage business hub must keep destination-first Move access');
 for (const shortcut of ['Auto', 'Cab', 'Send parcel', 'Mini Truck']) {
-  assert(homeMove.includes(shortcut), `Homepage Move panel missing ${shortcut} shortcut`);
+  assert(homeBusiness.includes(shortcut), `Homepage business hub missing ${shortcut} shortcut`);
 }
 for (const href of ['/move/request?service=Auto','/move/request?service=Cab','/move/request?service=Bike%20Courier','/move/request?service=Auto%20%2F%20Mini%20Truck']) {
-  assert(homeMove.includes(href), `Homepage Move panel missing shortcut route: ${href}`);
+  assert(homeBusiness.includes(href), `Homepage business hub missing shortcut route: ${href}`);
 }
-assert(homeMove.includes('/api/move/matching/readiness'), 'Homepage Move panel must use live readiness instead of inventing availability');
-assert(homeMove.includes('useCustomerLanguage'), 'Homepage Move panel must use customer language translations');
-assert(homePage.indexOf('<HomeMoveQuickPanel />') < homePage.indexOf('aria-labelledby="zeshu-entry-title"'), 'Homepage Move panel must appear before the general super-app cards');
-assert(!homeMove.includes('navigator.geolocation'), 'Homepage Move panel must not request GPS before customer intent');
-assert(!homeMove.includes('Uber'), 'Homepage Move panel must not mention competitor brands');
-assert(!homeMove.includes('compliance-gated'), 'Homepage Move panel must not expose internal compliance wording');
+assert(homeBusiness.includes('/api/move/matching/readiness'), 'Homepage business hub must use live Move readiness instead of inventing availability');
+assert(homeBusiness.includes('useCustomerLanguage'), 'Homepage business hub must use customer language translations');
+for (const scope of ['Jagtial','Telangana','India']) {
+  assert(homeBusiness.includes(scope), `Homepage business hub must explain ${scope} service scope`);
+}
+for (const path of ['/earn','/partners','/help']) {
+  assert(homeBusiness.includes(`href="${path}"`), `Homepage business hub missing business/support route: ${path}`);
+}
+assert(homeBusiness.includes('One Zeshu. Four simple ways to get what you need.'), 'Homepage business hub must explain Zeshu at first glance');
+assert(!homeBusiness.includes('navigator.geolocation'), 'Homepage business hub must not request GPS before customer intent');
+assert(!homeBusiness.includes('Uber'), 'Homepage business hub must not mention competitor brands');
+assert(!homeBusiness.includes('compliance-gated'), 'Homepage business hub must not expose internal compliance wording');
 
 console.log('MOVE_MATCHING_QA=PASS');
