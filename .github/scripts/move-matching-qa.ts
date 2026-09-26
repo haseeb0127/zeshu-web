@@ -73,10 +73,15 @@ assert(quoteApi.includes('quoteMove'), 'Move quote API must provide a preview be
 assert(quoteApi.includes('evaluateTelanganaMoveArea'), 'Move quote must validate pickup and drop within Telangana');
 assert(homePage.includes('HomeMoveQuickPanel'), 'Zeshu homepage must surface the dedicated Move quick panel');
 assert(homeMove.includes('Where are you going?'), 'Homepage Move panel must use a destination-first action');
-for (const shortcut of ['Auto', 'Cab', 'Send parcel', 'Travel']) {
+for (const shortcut of ['Auto', 'Cab', 'Send parcel', 'Mini Truck']) {
   assert(homeMove.includes(shortcut), `Homepage Move panel missing ${shortcut} shortcut`);
 }
+for (const href of ['/move/request?service=Auto','/move/request?service=Cab','/move/request?service=Bike%20Courier','/move/request?service=Auto%20%2F%20Mini%20Truck']) {
+  assert(homeMove.includes(href), `Homepage Move panel missing shortcut route: ${href}`);
+}
 assert(homeMove.includes('/api/move/matching/readiness'), 'Homepage Move panel must use live readiness instead of inventing availability');
+assert(homeMove.includes('useCustomerLanguage'), 'Homepage Move panel must use customer language translations');
+assert(homePage.indexOf('<HomeMoveQuickPanel />') < homePage.indexOf('aria-labelledby="zeshu-entry-title"'), 'Homepage Move panel must appear before the general super-app cards');
 assert(!homeMove.includes('navigator.geolocation'), 'Homepage Move panel must not request GPS before customer intent');
 assert(!homeMove.includes('Uber'), 'Homepage Move panel must not mention competitor brands');
 assert(!homeMove.includes('compliance-gated'), 'Homepage Move panel must not expose internal compliance wording');
