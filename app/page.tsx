@@ -3060,6 +3060,55 @@ export default function ZeshuSuperApp() {
                </div>
              </section>
            )}
+           {activeTab === 'home' && normalizedSearch === '' && (
+             <section className="mb-5 px-4 md:px-0" aria-labelledby="zeshu-move-quick-title">
+               <div className="overflow-hidden rounded-[28px] border border-emerald-100 bg-gradient-to-br from-[#075E45] via-[#0a7c58] to-[#0f8b67] text-white shadow-[0_12px_32px_rgba(7,94,69,.16)]">
+                 <div className="p-4 md:p-5">
+                   <div className="flex items-start justify-between gap-4">
+                     <div className="min-w-0">
+                       <p className="text-[10px] font-black uppercase tracking-[.18em] text-emerald-100">Zeshu Move</p>
+                       <h2 id="zeshu-move-quick-title" className="mt-1 text-xl font-black tracking-tight md:text-2xl">{t('Ride, send or travel with Zeshu')}</h2>
+                       <p className="mt-1 text-xs font-semibold leading-5 text-emerald-50/90 md:text-sm">{t('Choose what you need and check availability near you.')}</p>
+                     </div>
+                     <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/14 text-white backdrop-blur"><Car size={22} /></span>
+                   </div>
+
+                   <Link href="/move/request?service=Auto" className="mt-4 flex min-h-14 items-center gap-3 rounded-2xl bg-white px-4 text-slate-950 shadow-sm transition active:scale-[.99]">
+                     <Search size={20} className="shrink-0 text-[#075E45]" />
+                     <span className="min-w-0 flex-1 text-left">
+                       <span className="block text-[10px] font-black uppercase tracking-wide text-slate-400">{t('Pickup now')}</span>
+                       <span className="block truncate text-base font-black">{t('Where are you going?')}</span>
+                     </span>
+                     <ChevronRight size={19} className="shrink-0 text-slate-400" />
+                   </Link>
+
+                   <div className="mt-3 grid grid-cols-4 gap-2">
+                     <Link href="/move/request?service=Auto" className="rounded-2xl bg-white/12 p-3 text-center backdrop-blur transition hover:bg-white/18 active:scale-[.98]">
+                       <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-white text-lg text-slate-950">🛺</span>
+                       <span className="mt-2 block text-[11px] font-black">{t('Auto')}</span>
+                     </Link>
+                     <Link href="/move/request?service=Cab" className="rounded-2xl bg-white/12 p-3 text-center backdrop-blur transition hover:bg-white/18 active:scale-[.98]">
+                       <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-white text-lg text-slate-950">🚕</span>
+                       <span className="mt-2 block text-[11px] font-black">{t('Cab')}</span>
+                     </Link>
+                     <Link href="/move/request?service=Bike%20Courier" className="rounded-2xl bg-white/12 p-3 text-center backdrop-blur transition hover:bg-white/18 active:scale-[.98]">
+                       <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-white text-lg text-slate-950">📦</span>
+                       <span className="mt-2 block text-[11px] font-black">{t('Courier')}</span>
+                     </Link>
+                     <Link href="/move/request?service=Auto%20%2F%20Mini%20Truck" className="rounded-2xl bg-white/12 p-3 text-center backdrop-blur transition hover:bg-white/18 active:scale-[.98]">
+                       <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-white text-lg text-slate-950">🚚</span>
+                       <span className="mt-2 block text-[11px] font-black">{t('Mini Truck')}</span>
+                     </Link>
+                   </div>
+
+                   <div className="mt-3 flex items-center justify-between gap-3">
+                     <p className="text-[10px] font-semibold leading-4 text-emerald-50/85 md:text-xs">{t('Availability depends on verified Zeshu partners near your pickup.')}</p>
+                     <Link href="/move" className="shrink-0 rounded-full bg-white/14 px-3 py-2 text-[10px] font-black text-white backdrop-blur md:text-xs">{t('See all')} <ChevronRight size={12} className="ml-0.5 inline" /></Link>
+                   </div>
+                 </div>
+               </div>
+             </section>
+           )}
            {activeTab === 'home' && <div className="mb-5 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar md:px-0 lg:hidden" aria-label={t('Shop by Category')}>{mobileProductCategories.map((category) => { const definition = categoryDefinition(category); return <button type="button" key={category} onClick={() => setActiveCategory(category)} aria-pressed={activeCategory === category} className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-black transition ${activeCategory === category ? 'border-[#075E45] bg-[#075E45] text-white' : 'border-[#dce8df] bg-white text-[#52645a]'}`}><span aria-hidden="true">{definition.icon}</span><span>{t(definition.label)}</span></button>; })}</div>}
            {activeTab === 'home' && <section className="mb-5 px-4 md:px-0" aria-label="Delivery choices"><div className="rounded-3xl border border-[#dce8df] bg-white p-3 shadow-[0_4px_18px_rgba(19,32,25,.04)]"><div className="flex gap-2 overflow-x-auto no-scrollbar"><button type="button" onClick={() => setFulfillmentFilter('ALL')} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${fulfillmentFilter === 'ALL' ? 'bg-[#075E45] text-white' : 'bg-[#f1f5f2] text-[#52645a]'}`}>{t('All delivery')}</button><button type="button" onClick={() => setFulfillmentFilter('FRESH')} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${fulfillmentFilter === 'FRESH' ? 'bg-[#075E45] text-white' : 'bg-emerald-50 text-emerald-700'}`}>⚡ {t('30-min Fresh')}</button><button type="button" onClick={() => setFulfillmentFilter('INDIA')} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${fulfillmentFilter === 'INDIA' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700'}`}>🇮🇳 {t('India Delivery')}{fulfillmentStatus.nationwide_checkout_enabled ? '' : ` · ${t('soon')}`}</button></div><p className="mt-2 text-[11px] font-semibold leading-5 text-slate-500">{fulfillmentFilter === 'FRESH' ? t('Fresh items show ~30 min only when your location, store and active rider availability qualify.') : fulfillmentFilter === 'INDIA' ? t('Only profitable, shelf-stable products approved for nationwide shipping appear here. Shipping prices will come from a real courier quote before payment.') : t('Fresh locally. India-wide only where delivery remains sensible for both the customer and Zeshu.')}</p></div></section>}
            {activeTab === 'home' && <>
