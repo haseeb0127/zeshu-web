@@ -18,6 +18,8 @@ const locationSelector = read('app/components/LocationSelector.tsx');
 const moveArea = read('app/lib/move-service-area.ts');
 const moveAreaApi = read('app/api/move/service-area/check/route.ts');
 const quoteApi = read('app/api/move/quote/route.ts');
+const homePage = read('app/page.tsx');
+const homeMove = read('app/components/HomeMoveQuickPanel.tsx');
 
 for (const table of ['move_dispatch_settings','move_dispatch_requests','move_dispatch_offers','move_dispatch_events']) {
   assert(migration.includes(`public.${table}`), `Move matching migration missing ${table}`);
@@ -69,5 +71,14 @@ assert(moveArea.includes('TELANGANA_BOUNDS'), 'Move service area must expose Tel
 assert(moveAreaApi.includes('evaluateTelanganaMoveArea'), 'Move service-area API must validate Telangana locations');
 assert(quoteApi.includes('quoteMove'), 'Move quote API must provide a preview before matching');
 assert(quoteApi.includes('evaluateTelanganaMoveArea'), 'Move quote must validate pickup and drop within Telangana');
+assert(homePage.includes('HomeMoveQuickPanel'), 'Zeshu homepage must surface the dedicated Move quick panel');
+assert(homeMove.includes('Where are you going?'), 'Homepage Move panel must use a destination-first action');
+for (const shortcut of ['Auto', 'Cab', 'Send parcel', 'Travel']) {
+  assert(homeMove.includes(shortcut), `Homepage Move panel missing ${shortcut} shortcut`);
+}
+assert(homeMove.includes('/api/move/matching/readiness'), 'Homepage Move panel must use live readiness instead of inventing availability');
+assert(!homeMove.includes('navigator.geolocation'), 'Homepage Move panel must not request GPS before customer intent');
+assert(!homeMove.includes('Uber'), 'Homepage Move panel must not mention competitor brands');
+assert(!homeMove.includes('compliance-gated'), 'Homepage Move panel must not expose internal compliance wording');
 
 console.log('MOVE_MATCHING_QA=PASS');
