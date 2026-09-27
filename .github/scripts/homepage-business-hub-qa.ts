@@ -34,12 +34,13 @@ for (const href of ['/move', '/earn', '/partners', '/help', '/policies', '/app']
 
 assert(homeHub.includes('/api/move/matching/readiness'), 'Homepage Move status must come from live readiness');
 assert(homeHub.includes('Check availability'), 'Move card must use customer-friendly availability wording');
-assert(homeHub.includes('Available now'), 'Move card must support live availability wording');
+assert(homeHub.includes('matching_enabled'), 'Move card must consider matching readiness before presenting live availability');
+assert(!homeHub.includes('Available now'), 'Homepage must not claim live Move availability from readiness settings alone');
 assert(homeHub.includes('Auto') && homeHub.includes('Cab') && homeHub.includes('Send parcel') && homeHub.includes('Mini Truck'), 'Move card must explain the supported service types');
 assert(!homeHub.includes('moveShortcuts'), 'Homepage must not duplicate Move with a second shortcut panel');
 assert(!homeHub.includes('Pick a Move service'), 'Homepage must not duplicate the Move decision section');
 assert(!homeHub.includes('About Zeshu'), 'Homepage must avoid a second long business explanation section');
-assert(!homeHub.includes('Opening soon'), 'Homepage overview must not be dominated by opening-soon labels');
+assert(homeHub.includes('Opening soon'), 'Homepage Move launcher must clearly label services that are not ready');
 assert(!homeHub.includes('Uber'), 'Homepage must not mention competitor brands');
 assert(!homeHub.includes('compliance-gated'), 'Homepage must not expose internal compliance terminology');
 
