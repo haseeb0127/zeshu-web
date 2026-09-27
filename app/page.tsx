@@ -2960,8 +2960,8 @@ export default function ZeshuSuperApp() {
                 <div className="hidden lg:flex flex-col text-left"><span className="text-[22px] font-black tracking-tighter leading-none">ZESHU</span><span className="text-[10px] font-extrabold text-[#075E45] tracking-[0.2em] uppercase mt-0.5">{t('Everyday, simply')}</span></div>
               </button>
               <button type="button" aria-label="Detect or change delivery location" className="flex min-w-0 flex-1 max-w-[240px] flex-col cursor-pointer text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#075E45] sm:max-w-[360px] lg:flex-none lg:max-w-[220px]" onClick={handleAutoDetectLocation}>
-                <div className="flex min-w-0 items-center gap-1.5 text-[12px] font-black md:text-[15px]"><span className="truncate">{currentAddress !== 'Location not set' ? t('Deliver to') : t('Set delivery location')}</span><MapPin size={14} className="shrink-0 text-[#075E45]"/></div>
-                <div className="mt-0.5 flex min-w-0 items-center text-[10px] font-medium text-[#6B7280] md:text-xs"><span className="truncate">{currentAddress === 'Location not set' ? t('Location not set') : currentAddress}</span><ChevronDown size={14} className="ml-1 shrink-0"/></div>
+                <div className="flex min-w-0 items-center gap-1.5 text-[12px] font-black md:text-[15px]"><span className="truncate">{currentAddress !== 'Location not set' ? t('Deliver to') : t('Set your address')}</span><MapPin size={14} className="shrink-0 text-[#075E45]"/></div>
+                <div className="mt-0.5 flex min-w-0 items-center text-[10px] font-medium text-[#6B7280] md:text-xs"><span className="truncate">{currentAddress === 'Location not set' ? t("See what's available near you") : currentAddress}</span><ChevronDown size={14} className="ml-1 shrink-0"/></div>
               </button>
             </div>
             <LanguageSwitcher className="shrink-0 lg:hidden" compact />
@@ -3038,6 +3038,21 @@ export default function ZeshuSuperApp() {
                }}
                onOpenServices={() => openServices()}
              />
+           )}
+
+           {activeTab === 'home' && normalizedSearch === '' && (
+             <section className="mb-4 px-4 md:px-0" aria-labelledby="shop-jagtial-title">
+               <div className="flex flex-wrap items-end justify-between gap-3 border-t border-[#dce8df] pt-6">
+                 <div>
+                   <p className="text-[10px] font-black uppercase tracking-[.14em] text-[#075E45]">{t('Local shopping')}</p>
+                   <h2 id="shop-jagtial-title" className="mt-1 text-xl font-black tracking-tight text-slate-950 md:text-2xl">{t('Shop in Jagtial')}</h2>
+                   <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{t('Browse available groceries and everyday essentials from nearby sellers.')}</p>
+                 </div>
+                 <button type="button" onClick={handleAutoDetectLocation} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-[#075E45]">
+                   <MapPin size={15} aria-hidden="true" /> {currentAddress === 'Location not set' ? t('Set your address') : t('Change address')}
+                 </button>
+               </div>
+             </section>
            )}
 
            {activeTab === 'home' && <div className="mb-5 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar md:px-0 lg:hidden" aria-label={t('Shop by Category')}>{mobileProductCategories.map((category) => { const definition = categoryDefinition(category); return <button type="button" key={category} onClick={() => setActiveCategory(category)} aria-pressed={activeCategory === category} className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-black transition ${activeCategory === category ? 'border-[#075E45] bg-[#075E45] text-white' : 'border-[#dce8df] bg-white text-[#52645a]'}`}><span aria-hidden="true">{definition.icon}</span><span>{t(definition.label)}</span></button>; })}</div>}
@@ -3353,17 +3368,39 @@ export default function ZeshuSuperApp() {
 
       {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && cart.length === 0 && <button type="button" onClick={openAiSupport} aria-label="Chat with Zeshu Assistant" className="fixed bottom-[5.75rem] right-4 z-30 inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#075E45] text-sm font-black text-white shadow-xl transition hover:bg-[#065F38] active:scale-95 lg:bottom-8 lg:right-8 lg:h-auto lg:w-auto lg:min-h-12 lg:gap-2 lg:px-4 lg:py-3"><MessageCircle size={20} aria-hidden="true" /><span className="hidden lg:inline">{t('Ask Zeshu')}</span></button>}
 
-      <footer className="border-t border-[#dce8df] bg-white px-4 pb-28 pt-8 text-sm text-slate-600 lg:px-8 lg:py-8">
-        <div className="mx-auto flex max-w-[1400px] flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <span className="font-bold">© Zeshu · {t('Everyday, simply')}</span>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <Link href="/services" className="font-black text-[#075E45] underline-offset-4 hover:underline">{t('Recharge & Bills')}</Link>
-            <Link href="/help" className="font-black text-[#075E45] underline-offset-4 hover:underline">{t('Help & Support')}</Link>
-            <Link href="/policies" className="font-black text-[#075E45] underline-offset-4 hover:underline">{t('Policies & Trust Center')}</Link>
-            <Link href="/partners" className="font-black text-[#075E45] underline-offset-4 hover:underline">{t('Brands & Suppliers')}</Link>
-            <Link href="/app" className="font-black text-[#075E45] underline-offset-4 hover:underline">{t('Get Zeshu')}</Link>
-            <span>{t('Real support is provided through verified order communication.')}</span>
+      <footer className="border-t border-[#dce8df] bg-white px-4 pb-28 pt-8 text-sm text-slate-600 lg:px-8 lg:py-10">
+        <div className="mx-auto grid max-w-[1400px] gap-7 md:grid-cols-[1.3fr_1fr_1fr]">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#075E45] text-base font-black text-white">Z</span>
+              <div><p className="font-black text-slate-950">ZESHU</p><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#075E45]">{t('Everyday, simply')}</p></div>
+            </div>
+            <p className="mt-3 max-w-md text-xs leading-5 text-slate-500">{t('Local shopping in Jagtial, Move & Courier across supported Telangana zones, and digital services across India where providers are available.')}</p>
+            <p className="mt-3 text-xs font-bold text-slate-600">{t('Based in Jagtial, Telangana')}</p>
           </div>
+
+          <div>
+            <p className="text-xs font-black uppercase tracking-[.14em] text-slate-400">{t('Customer support')}</p>
+            <div className="mt-3 space-y-2">
+              <a href="mailto:support@zeshu.in" className="block font-black text-[#075E45] hover:underline">support@zeshu.in</a>
+              <a href="tel:+917977204533" className="block font-black text-[#075E45] hover:underline">+91 79772 04533</a>
+              <Link href="/help" className="inline-flex items-center gap-1 font-black text-[#075E45] hover:underline">{t('Help & Support')} <ChevronRight size={14} /></Link>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-black uppercase tracking-[.14em] text-slate-400">{t('Explore Zeshu')}</p>
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+              <Link href="/move" className="font-black text-[#075E45] hover:underline">{t('Move & Courier')}</Link>
+              <Link href="/services" className="font-black text-[#075E45] hover:underline">{t('Recharge & Bills')}</Link>
+              <Link href="/partners" className="font-black text-[#075E45] hover:underline">{t('Sell or partner')}</Link>
+              <Link href="/policies" className="font-black text-[#075E45] hover:underline">{t('Policies & Trust Center')}</Link>
+              <Link href="/app" className="font-black text-[#075E45] hover:underline">{t('Get Zeshu')}</Link>
+            </div>
+          </div>
+        </div>
+        <div className="mx-auto mt-7 max-w-[1400px] border-t border-slate-100 pt-4 text-[11px] font-semibold leading-5 text-slate-500">
+          © Zeshu · {t('Service availability varies by location and verified provider or seller coverage.')}
         </div>
       </footer>
 
