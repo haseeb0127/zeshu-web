@@ -256,6 +256,9 @@ jobs:
             assert(moveQuickText.includes('What would you like to do?'), 'Homepage customer decision section is missing');
             assert(moveQuickText.includes('Clear availability'), 'Homepage trust explanation is missing');
             assert(moveQuickText.includes('Rides & courier'), 'Homepage Move & Courier entry is missing');
+            for (const service of ['Auto', 'Cab', 'Courier', 'Mini Truck', 'Rental', 'Travel']) {
+              assert(moveQuickText.includes(service), `Homepage Move launcher is missing ${service}`);
+            }
             assert(!moveQuickText.includes('Pick a Move service'), 'Homepage still duplicates the Move decision section');
             assert(moveQuickText.includes('Jagtial'), 'Homepage business hub must explain Jagtial local coverage');
             assert(moveQuickText.includes('Telangana'), 'Homepage business hub must explain Telangana Move coverage');
@@ -299,7 +302,7 @@ jobs:
             assert(hindi.includes('अभी कोई समीक्षा नहीं'), 'Review empty state is not localized in Hindi');
             assert(hindi.includes('समीक्षाएँ देखें'), 'Review action is not localized in Hindi');
             assert(hindi.includes('जोड़ें'), 'ADD action is not localized in Hindi');
-            assert(hindi.includes('उपलब्धता देखें') || hindi.includes('अभी उपलब्ध'), 'Homepage Move availability action is not localized in Hindi');
+            assert(hindi.includes('उपलब्धता देखें') || hindi.includes('अभी उपलब्ध') || hindi.includes('जल्द शुरू होगा'), 'Homepage Move availability action is not localized in Hindi');
             assert(hindi.includes('Zeshu पर बेचें'), 'Seller path is not localized in Hindi');
             assert(hindi.includes('Zeshu के साथ प्रचार करें'), 'Brand promotion path is not localized in Hindi');
             for (const english of ['All Items', 'No reviews yet', 'See reviews', 'Image unavailable']) {
@@ -322,7 +325,7 @@ jobs:
             assert(urdu.includes('رائیڈز اور کورئیر'), 'Rides & courier is not localized in Urdu');
             assert(urdu.includes('ریچارج اور بلز'), 'Recharge & bills is not localized in Urdu');
             assert(urdu.includes('مارکیٹ پلیس'), 'Marketplace is not localized in Urdu');
-            assert(urdu.includes('دستیابی دیکھیں') || urdu.includes('ابھی دستیاب'), 'Homepage Move availability action is not localized in Urdu');
+            assert(urdu.includes('دستیابی دیکھیں') || urdu.includes('ابھی دستیاب') || urdu.includes('جلد شروع ہوگا'), 'Homepage Move availability action is not localized in Urdu');
             assert(urdu.includes('Zeshu پر فروخت کریں'), 'Seller path is not localized in Urdu');
             assert(urdu.includes('Zeshu کے ساتھ تشہیر کریں'), 'Brand promotion path is not localized in Urdu');
 
