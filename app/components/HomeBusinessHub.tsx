@@ -221,7 +221,7 @@ export default function HomeBusinessHub({
             <div className="flex gap-3">
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-[#075E45] shadow-sm"><ShieldCheck size={18} /></span>
               <div>
-                <p className="text-sm font-black text-slate-900">{t("Clear availability, before you commit")}</p>
+                <p className="text-sm font-black text-slate-900">{t("Clear availability")}</p>
                 <p className="mt-1 text-xs leading-5 text-slate-600">
                   {t("Zeshu connects customers with eligible sellers and service partners. Availability is shown by service and location so you can see what is ready before you order or request it.")}
                 </p>
