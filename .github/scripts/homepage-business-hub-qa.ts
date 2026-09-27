@@ -17,9 +17,6 @@ for (const phrase of [
   'Rides & courier',
   'Recharge & bills',
   'Marketplace',
-  'About Zeshu',
-  'One platform, different services for different places',
-  'Verified where applicable',
   'Clear availability',
   'Customer support',
   'For customers, drivers, sellers and brands',
@@ -35,20 +32,22 @@ for (const href of ['/move', '/earn', '/partners', '/help', '/policies', '/app']
   assert(homeHub.includes(`href="${href}"`) || homeHub.includes(`href={${JSON.stringify(href)}`), `Homepage business hub missing key destination: ${href}`);
 }
 
-assert(homeHub.includes('/move/request?service=Auto'), 'Homepage must provide direct Auto Move entry');
-assert(homeHub.includes('/move/request?service=Bike%20Courier'), 'Homepage must provide direct courier entry');
-assert(homeHub.includes('request_enabled'), 'Homepage Move status must come from live readiness');
+assert(homeHub.includes('/api/move/matching/readiness'), 'Homepage Move status must come from live readiness');
 assert(homeHub.includes('Check availability'), 'Move card must use customer-friendly availability wording');
+assert(homeHub.includes('Available now'), 'Move card must support live availability wording');
+assert(homeHub.includes('Auto') && homeHub.includes('Cab') && homeHub.includes('Send parcel') && homeHub.includes('Mini Truck'), 'Move card must explain the supported service types');
+assert(!homeHub.includes('moveShortcuts'), 'Homepage must not duplicate Move with a second shortcut panel');
+assert(!homeHub.includes('Pick a Move service'), 'Homepage must not duplicate the Move decision section');
+assert(!homeHub.includes('About Zeshu'), 'Homepage must avoid a second long business explanation section');
+assert(!homeHub.includes('Opening soon'), 'Homepage overview must not be dominated by opening-soon labels');
 assert(!homeHub.includes('Uber'), 'Homepage must not mention competitor brands');
 assert(!homeHub.includes('compliance-gated'), 'Homepage must not expose internal compliance terminology');
-assert(!homeHub.includes('Opening soon'), 'Homepage service overview must not be dominated by opening-soon labels');
 
 assert(page.includes("t('Set your address')"), 'Homepage header must use a clear address action');
 assert(page.includes('Shop in Jagtial'), 'Homepage must clearly separate local shopping from service discovery');
 assert(page.includes('support@zeshu.in'), 'Homepage footer must expose customer support email');
 assert(page.includes('+91 79772 04533'), 'Homepage footer must expose customer support phone');
 assert(page.includes('Based in Jagtial, Telangana'), 'Homepage footer must state business location');
-assert(!page.includes("t('Real support is provided through verified order communication.')"), 'Homepage footer must not use vague support copy');
 
 assert(layout.includes('Telangana Move & Courier'), 'Site metadata must describe broader Zeshu service scope');
 assert(layout.includes('India-wide digital services'), 'Site metadata must describe digital-service scope');
@@ -59,7 +58,7 @@ for (const languageSection of ['te:', 'hi:', 'ur:']) {
 for (const phrase of [
   '"Shop, move, send and manage everyday services with Zeshu."',
   '"What would you like to do?"',
-  '"About Zeshu"',
+  '"Clear availability"',
   '"Set your address"',
   '"Shop in Jagtial"',
   '"Customer support"',
