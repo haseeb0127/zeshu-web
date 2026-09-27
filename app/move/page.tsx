@@ -13,7 +13,7 @@ type ServiceCard = {
 };
 
 const localRides: ServiceCard[] = [
-  { title: "Bike Ride", description: "Passenger bike taxi — waiting for final Telangana rules", icon: <Bike size={22} />, actionLabel: "View status", regulatoryHold: true },
+  { title: "Bike Ride", description: "Passenger bike ride — coming soon", icon: <Bike size={22} />, actionLabel: "Coming soon", regulatoryHold: true },
   { title: "Auto", description: "Auto-rickshaw rides", icon: <Car size={22} />, actionLabel: "Request auto" },
   { title: "Cab", description: "Local and outstation cabs", icon: <Car size={22} />, actionLabel: "Request cab" },
   { title: "Rental Car", description: "Hourly and day rentals", icon: <Car size={22} />, actionLabel: "Request rental" },
@@ -47,7 +47,7 @@ function ServiceSection({ title, cards }: { title: string; cards: ServiceCard[] 
           <article key={card.title} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_16px_rgba(15,23,42,.04)]">
             <div className="flex items-start justify-between gap-3">
               <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-[#075E45]" aria-hidden="true">{card.icon}</span>
-              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#075E45]">{t(card.regulatoryHold ? "Awaiting Telangana rules" : "Request with Zeshu")}</span>
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#075E45]">{t(card.regulatoryHold ? "Coming soon" : "Check availability")}</span>
             </div>
             <h3 className="mt-4 font-black text-slate-900">{t(card.title)}</h3>
             <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{t(card.description)}</p>
@@ -87,7 +87,7 @@ export default function MoveTravelPage() {
               </div>
               <h1 className="mt-4 text-3xl font-black tracking-tight md:text-5xl">{t("Zeshu Move & Travel")}</h1>
               <p className="mt-3 text-base font-bold text-[#d9f3e3] md:text-lg">{t("Rides, courier and travel — one trusted place.")}</p>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[#bfe2cd]">{t("Auto, cab, courier, rentals and travel requests are open. Final booking, fare and payment are confirmed only through an eligible verified provider. Passenger Bike Taxi remains on hold while Telangana finalises the applicable rules.")}</p>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-[#bfe2cd]">{t("Auto, cab, courier, rentals and travel can be explored here. Final booking, fare and payment are confirmed only through an eligible verified provider. Bike Ride is coming soon.")}</p>
             </div>
           </div>
         </header>
@@ -102,7 +102,7 @@ export default function MoveTravelPage() {
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-[#075E45]"><ShieldCheck size={24} /></span>
             <div>
               <h2 className="text-lg font-black text-slate-950">{t("Safety before speed")}</h2>
-              <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">{t("Service requests can be submitted now. Zeshu only confirms a booking, fare or payment after an eligible verified provider confirms serviceability and applicable compliance. Passenger Bike Taxi stays disabled until Telangana rules are clear.")}</p>
+              <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">{t("Choose a service to check what is available in your area. Zeshu confirms a booking, fare or payment only after an eligible verified provider confirms serviceability. Bike Ride is coming soon.")}</p>
             </div>
           </div>
         </section>

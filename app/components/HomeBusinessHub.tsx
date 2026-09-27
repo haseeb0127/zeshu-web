@@ -9,6 +9,7 @@ import {
   Headphones,
   MapPin,
   Package,
+  Plane,
   Receipt,
   Search,
   ShieldCheck,
@@ -22,6 +23,7 @@ import { useCustomerLanguage } from "@/app/components/CustomerLanguageProvider";
 
 type Readiness = {
   request_enabled?: boolean;
+  matching_enabled?: boolean;
   compliance_gate?: boolean;
 };
 
@@ -32,8 +34,8 @@ type Props = {
   nationwideCheckoutEnabled: boolean;
 };
 
-const isAvailable = (state: Readiness | undefined) =>
-  Boolean(state?.request_enabled && !state?.compliance_gate);
+const isMatchingReady = (state: Readiness | undefined) =>
+  Boolean(state?.request_enabled && state?.matching_enabled && !state?.compliance_gate);
 
 export default function HomeBusinessHub({
   onShopNearby,
@@ -65,12 +67,15 @@ export default function HomeBusinessHub({
     };
   }, []);
 
-  const anyMoveAvailable = [
+  const anyMoveReady = [
     moveServices.AUTO_DRIVER,
     moveServices.CAB_DRIVER,
     moveServices.BIKE_COURIER,
     moveServices.GOODS_DRIVER,
-  ].some(isAvailable);
+  ].some(isMatchingReady);
+
+  const moveStatus = (state: Readiness | undefined) =>
+    isMatchingReady(state) ? t("Check availability") : t("Opening soon");
 
   return (
     <section className="mb-6 px-4 md:px-0" aria-labelledby="zeshu-home-hub-title">
@@ -152,28 +157,42 @@ export default function HomeBusinessHub({
               <ChevronRight size={20} className="shrink-0 text-slate-400" />
             </Link>
 
-            <div className="mt-3 grid grid-cols-4 gap-2">
+            <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
               <Link href="/move/request?service=Auto" className="rounded-2xl bg-white px-2 py-3 text-center shadow-sm transition active:scale-[.98]">
                 <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-emerald-50 text-lg" aria-hidden="true">🛺</span>
                 <span className="mt-1.5 block text-[10px] font-black text-slate-800">{t("Auto")}</span>
+                <span className="mt-1 block text-[8px] font-bold leading-3 text-slate-400">{moveStatus(moveServices.AUTO_DRIVER)}</span>
               </Link>
               <Link href="/move/request?service=Cab" className="rounded-2xl bg-white px-2 py-3 text-center shadow-sm transition active:scale-[.98]">
                 <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-blue-50 text-lg" aria-hidden="true">🚕</span>
                 <span className="mt-1.5 block text-[10px] font-black text-slate-800">{t("Cab")}</span>
+                <span className="mt-1 block text-[8px] font-bold leading-3 text-slate-400">{moveStatus(moveServices.CAB_DRIVER)}</span>
               </Link>
               <Link href="/move/request?service=Bike%20Courier" className="rounded-2xl bg-white px-2 py-3 text-center shadow-sm transition active:scale-[.98]">
                 <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-amber-50 text-[#9a6700]" aria-hidden="true"><Package size={18} /></span>
                 <span className="mt-1.5 block text-[10px] font-black text-slate-800">{t("Courier")}</span>
+                <span className="mt-1 block text-[8px] font-bold leading-3 text-slate-400">{moveStatus(moveServices.BIKE_COURIER)}</span>
               </Link>
               <Link href="/move/request?service=Auto%20%2F%20Mini%20Truck" className="rounded-2xl bg-white px-2 py-3 text-center shadow-sm transition active:scale-[.98]">
                 <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-orange-50 text-orange-700" aria-hidden="true"><Truck size={18} /></span>
                 <span className="mt-1.5 block text-[10px] font-black text-slate-800">{t("Mini Truck")}</span>
+                <span className="mt-1 block text-[8px] font-bold leading-3 text-slate-400">{moveStatus(moveServices.GOODS_DRIVER)}</span>
+              </Link>
+              <Link href="/move/request?service=Rental%20Car" className="rounded-2xl bg-white px-2 py-3 text-center shadow-sm transition active:scale-[.98]">
+                <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-violet-50 text-violet-700" aria-hidden="true"><Car size={18} /></span>
+                <span className="mt-1.5 block text-[10px] font-black text-slate-800">{t("Rental")}</span>
+                <span className="mt-1 block text-[8px] font-bold leading-3 text-slate-400">{t("Opening soon")}</span>
+              </Link>
+              <Link href="/move" className="rounded-2xl bg-white px-2 py-3 text-center shadow-sm transition active:scale-[.98]">
+                <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-sky-50 text-sky-700" aria-hidden="true"><Plane size={18} /></span>
+                <span className="mt-1.5 block text-[10px] font-black text-slate-800">{t("Travel")}</span>
+                <span className="mt-1 block text-[8px] font-bold leading-3 text-slate-400">{t("Opening soon")}</span>
               </Link>
             </div>
 
             <div className="mt-3 flex items-start gap-2 text-[11px] font-semibold leading-5 text-slate-500">
               <MapPin size={14} className="mt-0.5 shrink-0 text-[#075E45]" />
-              <p>{anyMoveAvailable ? t("Nearby Zeshu partners may be available now. Choose a service to check your pickup and destination.") : t("Choose your pickup and destination first. Zeshu will clearly show whether this service is available near you.")}</p>
+              <p>{anyMoveReady ? t("Availability depends on verified Zeshu partners near your pickup.") : t("Choose a service to see the latest availability for your area.")}</p>
             </div>
           </section>
 
@@ -226,7 +245,7 @@ export default function HomeBusinessHub({
                 ))}
               </div>
               <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-black text-[#075E45]">
-                {anyMoveAvailable ? t("Available now") : t("Check availability")} <ChevronRight size={14} />
+                {anyMoveReady ? t("Check availability") : t("Opening soon")} <ChevronRight size={14} />
               </span>
             </Link>
 
