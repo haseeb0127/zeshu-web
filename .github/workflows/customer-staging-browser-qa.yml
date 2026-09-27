@@ -69,17 +69,21 @@ jobs:
             await moveEntry.waitFor({ state: 'visible', timeout: 10000 });
             assert(await moveEntry.isVisible(), 'Homepage Zeshu Move entry is missing');
             const moveQuickText = (await moveQuick.innerText()).replace(/\s+/g, ' ');
-            assert(moveQuickText.includes('Shop. Move. Send. Recharge. One Zeshu.'), 'Homepage business proposition is missing');
-            assert(moveQuickText.includes('What do you need today?'), 'Homepage customer decision section is missing');
-            assert(moveQuickText.includes('How Zeshu works'), 'Homepage business model explanation is missing');
-            assert(moveQuickText.includes('Ride, send or move goods'), 'Homepage Move summary is missing');
-            assert(moveQuickText.includes('Where are you going?'), 'Homepage business hub destination action is missing');
+            assert(moveQuickText.includes('Shop, move, send and manage everyday services with Zeshu.'), 'Homepage business proposition is missing');
+            assert(moveQuickText.includes('What would you like to do?'), 'Homepage customer decision section is missing');
+            assert(moveQuickText.includes('About Zeshu'), 'Homepage business explanation is missing');
+            assert(moveQuickText.includes('Pick a Move service'), 'Homepage Move summary is missing');
+            assert(moveQuickText.includes('Check availability'), 'Homepage Move availability action is missing');
             assert(moveQuickText.includes('Jagtial'), 'Homepage business hub must explain Jagtial local coverage');
             assert(moveQuickText.includes('Telangana'), 'Homepage business hub must explain Telangana Move coverage');
             assert(moveQuickText.includes('India'), 'Homepage business hub must explain India digital coverage');
             assert(moveQuickText.includes('Earn with Zeshu'), 'Homepage business hub must expose driver/delivery earning path');
             assert(moveQuickText.includes('Sell on Zeshu'), 'Homepage business hub must expose seller path');
             assert(moveQuickText.includes('Promote with Zeshu'), 'Homepage business hub must expose brand promotion path');
+            const homepageText = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+            assert(homepageText.includes('support@zeshu.in'), 'Homepage customer support email is missing');
+            assert(homepageText.includes('+91 79772 04533'), 'Homepage customer support phone is missing');
+            assert(homepageText.includes('Based in Jagtial, Telangana'), 'Homepage business location is missing');
             for (const href of ['/move/request?service=Auto','/move/request?service=Cab','/move/request?service=Bike%20Courier','/move/request?service=Auto%20%2F%20Mini%20Truck']) {
               assert(await moveQuick.locator(`a[href="${href}"]`).count() > 0, `Homepage business hub Move shortcut missing: ${href}`);
             }
@@ -196,15 +200,15 @@ jobs:
             await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'hi'));
             await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
             await page.waitForFunction(
-              () => document.querySelector('[data-home-coverage="true"] h3')?.textContent?.includes('Zeshu कहाँ उपलब्ध है'),
+              () => document.body.innerText.includes('Zeshu के साथ खरीदें, सफ़र करें, भेजें और रोज़मर्रा की सेवाएँ संभालें।'),
               null,
               { timeout: 15000 },
             );
 
             const hindi = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
-            assert(hindi.includes('खरीदें। चलें। भेजें। रीचार्ज करें। एक Zeshu।'), 'New Zeshu homepage heading is not localized in Hindi');
-            assert(hindi.includes('Zeshu कहाँ उपलब्ध है'), 'Homepage coverage heading is not localized in Hindi');
-            assert(hindi.includes('Zeshu कैसे काम करता है'), 'How Zeshu works is not localized in Hindi');
+            assert(hindi.includes('Zeshu के साथ खरीदें, सफ़र करें, भेजें और रोज़मर्रा की सेवाएँ संभालें।'), 'New Zeshu homepage heading is not localized in Hindi');
+            assert(hindi.includes('Zeshu के बारे में'), 'About Zeshu is not localized in Hindi');
+            assert(hindi.includes('एक प्लेटफ़ॉर्म, अलग-अलग जगहों के लिए अलग सेवाएँ'), 'Homepage business explanation is not localized in Hindi');
             assert(hindi.includes('किराना और रोज़मर्रा की चीज़ें'), 'Groceries & essentials is not localized in Hindi');
             assert(hindi.includes('राइड्स और कूरियर'), 'Rides & courier is not localized in Hindi');
             assert(hindi.includes('रीचार्ज और बिल'), 'Recharge & bills is not localized in Hindi');
@@ -223,7 +227,7 @@ jobs:
             assert(hindi.includes('समीक्षाएँ देखें'), 'Review action is not localized in Hindi');
             assert(hindi.includes('जोड़ें'), 'ADD action is not localized in Hindi');
             assert(hindi.includes('रीचार्ज और बिल'), 'Footer recharge link is not localized in Hindi');
-            assert(hindi.includes('आप कहाँ जा रहे हैं?'), 'Homepage Move destination action is not localized in Hindi');
+            assert(hindi.includes('उपलब्धता देखें'), 'Homepage Move availability action is not localized in Hindi');
             assert(hindi.includes('Zeshu पर बेचें'), 'Seller path is not localized in Hindi');
             assert(hindi.includes('Zeshu के साथ प्रचार करें'), 'Brand promotion path is not localized in Hindi');
 
@@ -235,21 +239,21 @@ jobs:
             await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
             await page.waitForFunction(() => document.documentElement.dir === 'rtl', null, { timeout: 10000 });
             await page.waitForFunction(
-              () => document.querySelector('[data-home-coverage="true"] h3')?.textContent?.includes('Zeshu کہاں دستیاب ہے'),
+              () => document.body.innerText.includes('Zeshu کے ساتھ خریدیں، سفر کریں، بھیجیں اور روزمرہ خدمات سنبھالیں۔'),
               null,
               { timeout: 15000 },
             );
 
             const urdu = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
             assert(await page.locator('html').getAttribute('dir') === 'rtl', 'Urdu page is not RTL');
-            assert(urdu.includes('خریدیں۔ سفر کریں۔ بھیجیں۔ ریچارج کریں۔ ایک Zeshu۔'), 'New Zeshu homepage heading is not localized in Urdu');
-            assert(urdu.includes('Zeshu کہاں دستیاب ہے'), 'Homepage coverage heading is not localized in Urdu');
-            assert(urdu.includes('Zeshu کیسے کام کرتا ہے'), 'How Zeshu works is not localized in Urdu');
+            assert(urdu.includes('Zeshu کے ساتھ خریدیں، سفر کریں، بھیجیں اور روزمرہ خدمات سنبھالیں۔'), 'New Zeshu homepage heading is not localized in Urdu');
+            assert(urdu.includes('Zeshu کے بارے میں'), 'About Zeshu is not localized in Urdu');
+            assert(urdu.includes('ایک پلیٹ فارم، مختلف جگہوں کے لیے مختلف خدمات'), 'Homepage business explanation is not localized in Urdu');
             assert(urdu.includes('گروسری اور روزمرہ ضروریات'), 'Groceries & essentials is not localized in Urdu');
             assert(urdu.includes('رائیڈز اور کورئیر'), 'Rides & courier is not localized in Urdu');
             assert(urdu.includes('ریچارج اور بلز'), 'Recharge & bills is not localized in Urdu');
             assert(urdu.includes('مارکیٹ پلیس'), 'Marketplace is not localized in Urdu');
-            assert(urdu.includes('آپ کہاں جا رہے ہیں؟'), 'Homepage Move destination action is not localized in Urdu');
+            assert(urdu.includes('دستیابی دیکھیں'), 'Homepage Move availability action is not localized in Urdu');
             assert(urdu.includes('Zeshu پر فروخت کریں'), 'Seller path is not localized in Urdu');
             assert(urdu.includes('Zeshu کے ساتھ تشہیر کریں'), 'Brand promotion path is not localized in Urdu');
 
