@@ -18,6 +18,7 @@ const locationSelector = read('app/components/LocationSelector.tsx');
 const moveArea = read('app/lib/move-service-area.ts');
 const moveAreaApi = read('app/api/move/service-area/check/route.ts');
 const quoteApi = read('app/api/move/quote/route.ts');
+const homeHub = read('app/components/HomeBusinessHub.tsx');
 const homePage = read('app/page.tsx');
 const homeBusiness = read('app/components/HomeBusinessHub.tsx');
 
@@ -71,6 +72,13 @@ assert(moveArea.includes('TELANGANA_BOUNDS'), 'Move service area must expose Tel
 assert(moveAreaApi.includes('evaluateTelanganaMoveArea'), 'Move service-area API must validate Telangana locations');
 assert(quoteApi.includes('quoteMove'), 'Move quote API must provide a preview before matching');
 assert(quoteApi.includes('evaluateTelanganaMoveArea'), 'Move quote must validate pickup and drop within Telangana');
+assert(homeHub.includes('Move with Zeshu'), 'Homepage must prominently surface Zeshu Move');
+assert(homeHub.includes('Where are you going?'), 'Homepage Move launcher must be destination-first');
+assert(homeHub.includes('/move/request?service=Auto'), 'Homepage must deep-link to Auto Move flow');
+assert(homeHub.includes('/move/request?service=Cab'), 'Homepage must deep-link to Cab Move flow');
+assert(homeHub.includes('/move/request?service=Bike%20Courier'), 'Homepage must deep-link to Bike Courier flow');
+assert(homeHub.includes('/move/request?service=Auto%20%2F%20Mini%20Truck'), 'Homepage must deep-link to Mini Truck flow');
+assert(!homeHub.includes('Uber'), 'Homepage Zeshu Move launcher must not mention competitor brands');
 assert(homePage.includes('HomeBusinessHub'), 'Zeshu homepage must surface the unified business hub');
 assert(!homePage.includes('<HomeMoveQuickPanel />'), 'Homepage must not duplicate the old Move quick panel');
 assert(homeBusiness.includes('Rides & courier'), 'Homepage business hub must keep a clear Move & Courier entry');
