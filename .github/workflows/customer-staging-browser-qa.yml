@@ -63,11 +63,11 @@ jobs:
 
             const categories = page.locator('[aria-label="Shop by Category"]');
             await categories.waitFor({ state: 'visible', timeout: 10000 });
-            const moveEntry = page.locator('a[href="/move"]').filter({ hasText: 'Move' }).first();
-            await moveEntry.waitFor({ state: 'visible', timeout: 10000 });
-            assert(await moveEntry.isVisible(), 'Homepage Zeshu Move entry is missing');
             const moveQuick = page.locator('section[aria-labelledby="zeshu-home-hub-title"]');
             await moveQuick.waitFor({ state: 'visible', timeout: 10000 });
+            const moveEntry = moveQuick.locator('a[href="/move"]').first();
+            await moveEntry.waitFor({ state: 'visible', timeout: 10000 });
+            assert(await moveEntry.isVisible(), 'Homepage Zeshu Move entry is missing');
             const moveQuickText = (await moveQuick.innerText()).replace(/\s+/g, ' ');
             assert(moveQuickText.includes('Shop. Move. Send. Recharge. One Zeshu.'), 'Homepage business proposition is missing');
             assert(moveQuickText.includes('What do you need today?'), 'Homepage customer decision section is missing');
