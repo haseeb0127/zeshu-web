@@ -7,10 +7,14 @@ import {
   Car,
   ChevronRight,
   Headphones,
+  MapPin,
+  Package,
   Receipt,
+  Search,
   ShieldCheck,
   ShoppingBag,
   Store,
+  Truck,
   Users,
   Zap,
 } from "lucide-react";
@@ -125,6 +129,54 @@ export default function HomeBusinessHub({
         </div>
 
         <div className="p-4 md:p-6">
+          <section className="mb-6 rounded-[26px] border border-emerald-100 bg-[linear-gradient(135deg,#f0fbf5_0%,#ffffff_55%,#eef7f2_100%)] p-4 shadow-[0_8px_24px_rgba(7,94,69,.06)] md:p-5" aria-labelledby="home-move-launcher-title">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[.14em] text-[#075E45]">{t("Move with Zeshu")}</p>
+                <h2 id="home-move-launcher-title" className="mt-1 text-xl font-black tracking-tight text-slate-950">{t("Need a ride or want to send something?")}</h2>
+              </div>
+              <span className="shrink-0 rounded-full bg-white px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wide text-[#075E45] shadow-sm">Telangana</span>
+            </div>
+
+            <Link
+              href="/move/request?service=Auto"
+              className="mt-4 flex min-h-16 items-center gap-3 rounded-[22px] border border-white bg-white px-4 text-left shadow-[0_8px_24px_rgba(15,23,42,.07)] transition active:scale-[.99]"
+            >
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-emerald-50 text-[#075E45]">
+                <Search size={22} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[10px] font-black uppercase tracking-wide text-slate-400">{t("Pickup now")}</span>
+                <span className="mt-0.5 block truncate text-lg font-black text-slate-950">{t("Where are you going?")}</span>
+              </span>
+              <ChevronRight size={20} className="shrink-0 text-slate-400" />
+            </Link>
+
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              <Link href="/move/request?service=Auto" className="rounded-2xl bg-white px-2 py-3 text-center shadow-sm transition active:scale-[.98]">
+                <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-emerald-50 text-lg" aria-hidden="true">🛺</span>
+                <span className="mt-1.5 block text-[10px] font-black text-slate-800">{t("Auto")}</span>
+              </Link>
+              <Link href="/move/request?service=Cab" className="rounded-2xl bg-white px-2 py-3 text-center shadow-sm transition active:scale-[.98]">
+                <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-blue-50 text-lg" aria-hidden="true">🚕</span>
+                <span className="mt-1.5 block text-[10px] font-black text-slate-800">{t("Cab")}</span>
+              </Link>
+              <Link href="/move/request?service=Bike%20Courier" className="rounded-2xl bg-white px-2 py-3 text-center shadow-sm transition active:scale-[.98]">
+                <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-amber-50 text-[#9a6700]" aria-hidden="true"><Package size={18} /></span>
+                <span className="mt-1.5 block text-[10px] font-black text-slate-800">{t("Courier")}</span>
+              </Link>
+              <Link href="/move/request?service=Auto%20%2F%20Mini%20Truck" className="rounded-2xl bg-white px-2 py-3 text-center shadow-sm transition active:scale-[.98]">
+                <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-orange-50 text-orange-700" aria-hidden="true"><Truck size={18} /></span>
+                <span className="mt-1.5 block text-[10px] font-black text-slate-800">{t("Mini Truck")}</span>
+              </Link>
+            </div>
+
+            <div className="mt-3 flex items-start gap-2 text-[11px] font-semibold leading-5 text-slate-500">
+              <MapPin size={14} className="mt-0.5 shrink-0 text-[#075E45]" />
+              <p>{anyMoveAvailable ? t("Nearby Zeshu partners may be available now. Choose a service to check your pickup and destination.") : t("Choose your pickup and destination first. Zeshu will clearly show whether this service is available near you.")}</p>
+            </div>
+          </section>
+
           <div className="flex items-end justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[.14em] text-[#075E45]">{t("Choose a service")}</p>
