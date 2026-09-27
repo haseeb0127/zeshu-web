@@ -73,7 +73,8 @@ assert(quoteApi.includes('quoteMove'), 'Move quote API must provide a preview be
 assert(quoteApi.includes('evaluateTelanganaMoveArea'), 'Move quote must validate pickup and drop within Telangana');
 assert(homePage.includes('HomeBusinessHub'), 'Zeshu homepage must surface the unified business hub');
 assert(!homePage.includes('<HomeMoveQuickPanel />'), 'Homepage must not duplicate the old Move quick panel');
-assert(homeBusiness.includes('Where are you going?'), 'Homepage business hub must keep destination-first Move access');
+assert(homeBusiness.includes('Pick a Move service'), 'Homepage business hub must keep a clear Move entry');
+assert(homeBusiness.includes('/move/request?service=Auto'), 'Homepage business hub must keep a direct Auto entry');
 for (const shortcut of ['Auto', 'Cab', 'Send parcel', 'Mini Truck']) {
   assert(homeBusiness.includes(shortcut), `Homepage business hub missing ${shortcut} shortcut`);
 }
