@@ -3310,7 +3310,7 @@ export default function ZeshuSuperApp() {
               <div id="products" className="px-4 md:px-0">
                 <div className="flex flex-wrap items-end justify-between gap-3 mb-6 md:mb-8 border-b pb-4 md:pb-5">
                   <div><h2 className="text-2xl md:text-3xl font-black tracking-tighter">{focusedCampaignId ? t('Sponsored selection') : normalizedSearch ? `${t('Results for')} “${searchQuery.trim()}”` : t(categoryDefinition(activeCategory).label)}</h2>{focusedCampaignId ? <button type="button" onClick={() => setFocusedCampaignId(null)} className="mt-2 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-black text-amber-800">{t('Clear sponsored selection')}</button> : normalizedSearch && <p className="mt-1 text-xs font-medium text-slate-500">{t('Matches names, brands, categories, related words and spelling mistakes.')}</p>}</div>
-                  <div className="flex items-center gap-2"><span className="text-[#6B7280] font-bold text-xs md:text-sm bg-gray-100 px-3 py-1 rounded-xl">{filteredProducts.length} {t('items')}</span></div>
+                  <div className="flex items-center gap-2"><span className="text-[#6B7280] font-bold text-xs md:text-sm bg-gray-100 px-3 py-1 rounded-xl">{filteredProducts.length > 0 || normalizedSearch ? `${filteredProducts.length} ${t('items')}` : t('Growing')}</span></div>
                 </div>
                 
                 {productsLoading ? (

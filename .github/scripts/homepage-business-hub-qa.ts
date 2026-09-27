@@ -16,6 +16,7 @@ for (const phrase of [
   'Rides & courier',
   'Recharge & bills',
   'Marketplace',
+  'How Zeshu works',
   'Where Zeshu works',
   'Customers, drivers, sellers and brands — one platform',
 ]) {
@@ -46,6 +47,7 @@ for (const languageSection of ['te:', 'hi:', 'ur:']) {
 for (const phrase of [
   '"Shop. Move. Send. Recharge. One Zeshu."',
   '"Where Zeshu works"',
+  '"How Zeshu works"',
   '"Sell on Zeshu"',
   '"Promote with Zeshu"',
 ]) {
