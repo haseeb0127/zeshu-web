@@ -10,7 +10,7 @@ import {
   MapPin,
   Package,
   Receipt,
-  Search,
+  ShieldCheck,
   ShoppingBag,
   Store,
   Truck,
@@ -94,29 +94,29 @@ export default function HomeBusinessHub({
   const anyMoveAvailable = moveShortcuts.some((item) => item.available);
 
   return (
-    <section className="mb-6 px-4 md:px-0" aria-labelledby="zeshu-home-hub-title">
-      <div className="overflow-hidden rounded-[30px] border border-[#dce8df] bg-white shadow-[0_14px_44px_rgba(15,36,24,.06)]">
-        <div className="bg-[linear-gradient(135deg,#064e3b_0%,#075E45_55%,#0a7251_100%)] px-5 py-6 text-white md:px-8 md:py-8">
+    <section className="mb-7 px-4 md:px-0" aria-labelledby="zeshu-home-hub-title">
+      <div className="overflow-hidden rounded-[28px] border border-[#dce8df] bg-white shadow-[0_14px_44px_rgba(15,36,24,.06)]">
+        <div className="bg-[linear-gradient(135deg,#063f31_0%,#075E45_58%,#0a7654_100%)] px-5 py-6 text-white md:px-8 md:py-9">
           <div className="max-w-4xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.14em] text-emerald-50">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.14em] text-emerald-50 ring-1 ring-white/15">
               <BadgeCheck size={14} />
-              {t("Everyday, simply")}
+              {t("One place for everyday needs")}
             </div>
 
             <h1
               id="zeshu-home-hub-title"
               className="mt-3 max-w-3xl text-[2rem] font-black leading-[1.04] tracking-[-.035em] md:text-5xl"
             >
-              {t("Shop. Move. Send. Recharge. One Zeshu.")}
+              {t("Shop, move, send and manage everyday services with Zeshu.")}
             </h1>
 
             <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-emerald-50/90 md:text-base">
-              {t("Daily essentials, local movement, parcel delivery, digital services and a growing marketplace — organised in one simple place.")}
+              {t("Local shopping in Jagtial, Move & Courier across supported Telangana zones, and digital services across India where providers are available.")}
             </p>
 
             <div className="mt-5 flex flex-wrap gap-2" aria-label={t("Where Zeshu works")}>
               <span className="rounded-full bg-white/10 px-3 py-2 text-[11px] font-black ring-1 ring-white/10">
-                Jagtial · {t("Fast nearby")}
+                Jagtial · {t("Shopping & delivery")}
               </span>
               <span className="rounded-full bg-white/10 px-3 py-2 text-[11px] font-black ring-1 ring-white/10">
                 Telangana · {t("Move & Courier")}
@@ -133,14 +133,14 @@ export default function HomeBusinessHub({
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-[#075E45] shadow-sm transition active:scale-[.98]"
               >
                 <ShoppingBag size={18} />
-                {t("Shop nearby")}
+                {t("Shop essentials")}
               </button>
               <Link
-                href="/move/request?service=Auto"
+                href="/move"
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-3 text-sm font-black text-white ring-1 ring-white/20 transition active:scale-[.98]"
               >
-                <MapPin size={18} />
-                {t("Where are you going?")}
+                <Car size={18} />
+                {t("Move & Courier")}
               </Link>
             </div>
           </div>
@@ -149,9 +149,9 @@ export default function HomeBusinessHub({
         <div className="p-4 md:p-6">
           <div className="flex items-end justify-between gap-3">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[.14em] text-[#075E45]">{t("Start here")}</p>
+              <p className="text-[10px] font-black uppercase tracking-[.14em] text-[#075E45]">{t("Choose a service")}</p>
               <h2 className="mt-1 text-xl font-black tracking-tight text-slate-950 md:text-2xl">
-                {t("What do you need today?")}
+                {t("What would you like to do?")}
               </h2>
             </div>
             <Link href="/help" className="shrink-0 text-xs font-black text-[#075E45]">
@@ -188,10 +188,10 @@ export default function HomeBusinessHub({
               </div>
               <h3 className="mt-3 text-base font-black text-slate-950 md:text-lg">{t("Rides & courier")}</h3>
               <p className="mt-1 hidden text-xs font-medium leading-5 text-slate-500 sm:block">
-                {t("Choose pickup and destination. Live booking opens zone by zone as verified partners are ready.")}
+                {t("Choose pickup and destination, then see what is available in your area.")}
               </p>
               <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-black text-[#075E45]">
-                {anyMoveAvailable ? t("Available") : t("Opening soon")} <ChevronRight size={14} />
+                {t("Check availability")} <ChevronRight size={14} />
               </span>
             </Link>
 
@@ -206,10 +206,10 @@ export default function HomeBusinessHub({
               </div>
               <h3 className="mt-3 text-base font-black text-slate-950 md:text-lg">{t("Recharge & bills")}</h3>
               <p className="mt-1 hidden text-xs font-medium leading-5 text-slate-500 sm:block">
-                {t("Mobile, DTH and bill services where the relevant provider is available.")}
+                {t("Explore mobile, DTH and bill services supported by available providers.")}
               </p>
               <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-black text-[#075E45]">
-                {t("Open services")} <ChevronRight size={14} />
+                {t("Explore services")} <ChevronRight size={14} />
               </span>
             </button>
 
@@ -221,39 +221,29 @@ export default function HomeBusinessHub({
               <div className="flex items-center justify-between gap-2">
                 <span className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-50 text-[#075E45]"><Store size={20} /></span>
                 <span className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-slate-600">
-                  {nationwideCheckoutEnabled ? "India" : t("Growing")}
+                  {nationwideCheckoutEnabled ? "India" : t("Marketplace")}
                 </span>
               </div>
               <h3 className="mt-3 text-base font-black text-slate-950 md:text-lg">{t("Marketplace")}</h3>
               <p className="mt-1 hidden text-xs font-medium leading-5 text-slate-500 sm:block">
-                {t("A growing catalog from verified sellers and brands.")}
+                {t("Browse products from verified sellers as the Zeshu catalog expands.")}
               </p>
               <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-black text-[#075E45]">
-                {nationwideCheckoutEnabled ? t("Shop India delivery") : t("Browse catalog")} <ChevronRight size={14} />
+                {t("Browse catalog")} <ChevronRight size={14} />
               </span>
             </button>
           </div>
 
-          <div className="mt-5 rounded-[22px] bg-[#f5f8f6] p-3.5 md:p-4">
+          <section className="mt-5 rounded-[22px] bg-[#f5f8f6] p-4" aria-labelledby="move-home-title">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[.14em] text-[#075E45]">Zeshu Move</p>
-                <h3 className="mt-0.5 text-sm font-black text-slate-950">{t("Ride, send or move goods")}</h3>
+                <h3 id="move-home-title" className="mt-0.5 text-sm font-black text-slate-950">{t("Pick a Move service")}</h3>
               </div>
               <Link href="/move" className="inline-flex items-center gap-1 text-[11px] font-black text-[#075E45]">
                 {t("See all")} <ChevronRight size={14} />
               </Link>
             </div>
-
-            <Link
-              href="/move/request?service=Auto"
-              className="mt-3 flex min-h-14 items-center gap-3 rounded-[18px] bg-white px-4 shadow-sm ring-1 ring-slate-100 transition active:scale-[.99]"
-            >
-              <Search size={19} className="shrink-0 text-slate-700" />
-              <span className="min-w-0 flex-1 text-base font-black text-slate-950">{t("Where are you going?")}</span>
-              <MapPin size={18} className="shrink-0 text-[#075E45]" />
-            </Link>
-
             <div className="mt-3 grid grid-cols-4 gap-2">
               {moveShortcuts.map((item) => (
                 <Link
@@ -263,62 +253,71 @@ export default function HomeBusinessHub({
                 >
                   <span className="mx-auto grid h-8 w-8 place-items-center rounded-xl bg-emerald-50 text-[#075E45]">{item.icon}</span>
                   <p className="mt-1.5 truncate text-[10px] font-black text-slate-900">{item.label}</p>
-                  <p className={`mt-0.5 text-[8px] font-black ${item.available ? "text-emerald-700" : "text-slate-400"}`}>
-                    {item.available ? t("Available") : t("Opening soon")}
+                  <p className="mt-0.5 text-[8px] font-black text-slate-400">
+                    {item.available ? t("Available now") : t("Check area")}
                   </p>
                 </Link>
               ))}
             </div>
-          </div>
+            <p className="mt-3 text-[10px] font-semibold leading-4 text-slate-500">
+              {anyMoveAvailable
+                ? t("Live availability depends on verified partners near your pickup.")
+                : t("Choose a service to see the latest availability for your area.")}
+            </p>
+          </section>
 
-          <section className="mt-5 border-t border-slate-100 pt-5" aria-labelledby="how-zeshu-works-title">
-            <p className="text-[10px] font-black uppercase tracking-[.14em] text-[#075E45]">{t("Simple by design")}</p>
-            <h3 id="how-zeshu-works-title" className="mt-1 text-base font-black text-slate-950 md:text-lg">
-              {t("How Zeshu works")}
+          <section className="mt-5 border-t border-slate-100 pt-5" aria-labelledby="about-zeshu-title">
+            <p className="text-[10px] font-black uppercase tracking-[.14em] text-[#075E45]">{t("About Zeshu")}</p>
+            <h3 id="about-zeshu-title" className="mt-1 text-base font-black text-slate-950 md:text-lg">
+              {t("One platform, different services for different places")}
             </h3>
-            <div className="mt-3 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl bg-slate-50 p-3.5">
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-[#075E45] text-xs font-black text-white">1</span>
-                <p className="mt-2 text-sm font-black text-slate-900">{t("Choose what you need")}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{t("Shop, ride, send or use a digital service.")}</p>
+            <p className="mt-2 max-w-3xl text-xs leading-5 text-slate-600 md:text-sm md:leading-6">
+              {t("Zeshu connects customers with eligible sellers and service partners. Availability is shown by service and location so you can see what is ready before you order or request it.")}
+            </p>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-slate-100 p-3.5">
+                <p className="text-sm font-black text-slate-900">Jagtial</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">{t("Local groceries, fresh food and eligible everyday delivery.")}</p>
               </div>
-              <div className="rounded-2xl bg-slate-50 p-3.5">
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-[#075E45] text-xs font-black text-white">2</span>
-                <p className="mt-2 text-sm font-black text-slate-900">{t("Zeshu connects the right partner")}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{t("Eligible orders and requests are fulfilled by verified sellers or service partners.")}</p>
+              <div className="rounded-2xl border border-slate-100 p-3.5">
+                <p className="text-sm font-black text-slate-900">Telangana</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">{t("Move and courier services expand zone by zone with verified partners.")}</p>
               </div>
-              <div className="rounded-2xl bg-slate-50 p-3.5">
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-[#075E45] text-xs font-black text-white">3</span>
-                <p className="mt-2 text-sm font-black text-slate-900">{t("Track and get help")}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{t("Orders, trips and support stay connected to your Zeshu account.")}</p>
+              <div className="rounded-2xl border border-slate-100 p-3.5">
+                <p className="text-sm font-black text-slate-900">India</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">{t("Digital services and marketplace options depend on provider and seller coverage.")}</p>
               </div>
             </div>
           </section>
 
-          <section className="mt-5 border-t border-slate-100 pt-5" aria-labelledby="zeshu-coverage-title" data-home-coverage="true">
-            <p className="text-[10px] font-black uppercase tracking-[.14em] text-[#075E45]">{t("Coverage")}</p>
-            <h3 id="zeshu-coverage-title" className="mt-1 text-base font-black text-slate-950 md:text-lg">{t("Where Zeshu works")}</h3>
-            <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              <div className="rounded-2xl border border-slate-100 p-3.5">
-                <p className="text-sm font-black text-slate-900">Jagtial</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{t("Fast local shopping and delivery for eligible nearby orders.")}</p>
+          <section className="mt-5 border-t border-slate-100 pt-5" aria-labelledby="trust-zeshu-title">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="flex gap-3 rounded-2xl bg-slate-50 p-3.5">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-[#075E45]"><ShieldCheck size={18} /></span>
+                <div><p id="trust-zeshu-title" className="text-sm font-black text-slate-900">{t("Verified where applicable")}</p><p className="mt-1 text-xs leading-5 text-slate-500">{t("Seller and service-partner checks are shown where they apply.")}</p></div>
               </div>
-              <div className="rounded-2xl border border-slate-100 p-3.5">
-                <p className="text-sm font-black text-slate-900">Telangana</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{t("Move and courier expand zone by zone as verified partners become available.")}</p>
+              <div className="flex gap-3 rounded-2xl bg-slate-50 p-3.5">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-[#075E45]"><MapPin size={18} /></span>
+                <div><p className="text-sm font-black text-slate-900">{t("Clear availability")}</p><p className="mt-1 text-xs leading-5 text-slate-500">{t("Zeshu does not promise a service where an eligible partner is not ready.")}</p></div>
               </div>
-              <div className="rounded-2xl border border-slate-100 p-3.5">
-                <p className="text-sm font-black text-slate-900">India</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{t("Digital services and marketplace availability vary by provider, seller and delivery coverage.")}</p>
+              <div className="flex gap-3 rounded-2xl bg-slate-50 p-3.5">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-[#075E45]"><Headphones size={18} /></span>
+                <div><p className="text-sm font-black text-slate-900">{t("Customer support")}</p><p className="mt-1 text-xs leading-5 text-slate-500">{t("Get help before or after an order, trip or service request.")}</p></div>
               </div>
             </div>
           </section>
 
           <section className="mt-5 border-t border-slate-100 pt-5" aria-labelledby="zeshu-ecosystem-title">
-            <p className="text-[10px] font-black uppercase tracking-[.14em] text-slate-400">{t("More from Zeshu")}</p>
-            <h3 id="zeshu-ecosystem-title" className="mt-1 text-base font-black text-slate-950">
-              {t("Customers, drivers, sellers and brands — one platform")}
-            </h3>
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[.14em] text-slate-400">{t("Work with Zeshu")}</p>
+                <h3 id="zeshu-ecosystem-title" className="mt-1 text-base font-black text-slate-950">
+                  {t("For customers, drivers, sellers and brands")}
+                </h3>
+              </div>
+              <Link href="/policies" className="text-[11px] font-black text-[#075E45]">{t("Trust Center")}</Link>
+            </div>
 
             <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
               <Link href="/earn" className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-100 px-3 py-3 transition hover:bg-slate-50">
@@ -342,8 +341,8 @@ export default function HomeBusinessHub({
 
           <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-100 pt-4 text-[10px] font-bold text-slate-500">
             <span className="inline-flex items-center gap-1.5"><BadgeCheck size={14} className="text-[#075E45]" />{t("Verified partners where applicable")}</span>
-            <span>{t("Clear service availability")}</span>
             <Link href="/policies" className="font-black text-[#075E45]">{t("Policies & Trust")}</Link>
+            <Link href="/help" className="font-black text-[#075E45]">{t("Help & Support")}</Link>
             <Link href="/app" className="font-black text-[#075E45]">{t("Get Zeshu")}</Link>
           </div>
         </div>

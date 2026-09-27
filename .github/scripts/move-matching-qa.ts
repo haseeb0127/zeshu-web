@@ -73,7 +73,8 @@ assert(quoteApi.includes('quoteMove'), 'Move quote API must provide a preview be
 assert(quoteApi.includes('evaluateTelanganaMoveArea'), 'Move quote must validate pickup and drop within Telangana');
 assert(homePage.includes('HomeBusinessHub'), 'Zeshu homepage must surface the unified business hub');
 assert(!homePage.includes('<HomeMoveQuickPanel />'), 'Homepage must not duplicate the old Move quick panel');
-assert(homeBusiness.includes('Where are you going?'), 'Homepage business hub must keep destination-first Move access');
+assert(homeBusiness.includes('Pick a Move service'), 'Homepage business hub must keep a clear Move entry');
+assert(homeBusiness.includes('/move/request?service=Auto'), 'Homepage business hub must keep a direct Auto entry');
 for (const shortcut of ['Auto', 'Cab', 'Send parcel', 'Mini Truck']) {
   assert(homeBusiness.includes(shortcut), `Homepage business hub missing ${shortcut} shortcut`);
 }
@@ -88,7 +89,7 @@ for (const scope of ['Jagtial','Telangana','India']) {
 for (const path of ['/earn','/partners','/help']) {
   assert(homeBusiness.includes(`href="${path}"`), `Homepage business hub missing business/support route: ${path}`);
 }
-assert(homeBusiness.includes('Shop. Move. Send. Recharge. One Zeshu.'), 'Homepage business hub must explain Zeshu at first glance');
+assert(homeBusiness.includes('Shop, move, send and manage everyday services with Zeshu.'), 'Homepage business hub must explain Zeshu at first glance');
 assert(!homeBusiness.includes('navigator.geolocation'), 'Homepage business hub must not request GPS before customer intent');
 assert(!homeBusiness.includes('Uber'), 'Homepage business hub must not mention competitor brands');
 assert(!homeBusiness.includes('compliance-gated'), 'Homepage business hub must not expose internal compliance wording');
