@@ -126,23 +126,48 @@ export default function HomeBusinessHub({
               </span>
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-              <button
-                type="button"
-                onClick={onShopNearby}
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-[#075E45] shadow-sm transition active:scale-[.98]"
-              >
-                <ShoppingBag size={18} />
-                {t("Shop nearby")}
-              </button>
+            <div className="mt-5 rounded-[24px] bg-white p-3 text-slate-950 shadow-lg md:max-w-2xl">
+              <div className="flex items-center justify-between gap-3 px-1">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[.14em] text-[#075E45]">Zeshu Move</p>
+                  <p className="mt-0.5 text-xs font-bold text-slate-500">Telangana · {anyMoveAvailable ? t("Available") : t("Opening soon")}</p>
+                </div>
+                <Link href="/move" className="inline-flex items-center gap-1 text-[11px] font-black text-[#075E45]">
+                  {t("See all")} <ChevronRight size={14} />
+                </Link>
+              </div>
+
               <Link
                 href="/move/request?service=Auto"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-3 text-sm font-black text-white ring-1 ring-white/20 transition active:scale-[.98]"
+                className="mt-3 flex min-h-14 items-center gap-3 rounded-[18px] bg-[#f3f6f4] px-4 transition active:scale-[.99]"
               >
-                <MapPin size={18} />
-                {t("Where are you going?")}
+                <Search size={19} className="shrink-0 text-slate-700" />
+                <span className="min-w-0 flex-1 text-base font-black text-slate-950">{t("Where are you going?")}</span>
+                <MapPin size={18} className="shrink-0 text-[#075E45]" />
               </Link>
+
+              <div className="mt-3 grid grid-cols-4 gap-2">
+                {moveShortcuts.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="rounded-2xl bg-white p-2 text-center ring-1 ring-slate-100 transition active:scale-[.98]"
+                  >
+                    <span className="mx-auto grid h-8 w-8 place-items-center rounded-xl bg-emerald-50 text-[#075E45]">{item.icon}</span>
+                    <p className="mt-1 truncate text-[10px] font-black text-slate-900">{item.label}</p>
+                  </Link>
+                ))}
+              </div>
             </div>
+
+            <button
+              type="button"
+              onClick={onShopNearby}
+              className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-2.5 text-xs font-black text-white ring-1 ring-white/20 transition active:scale-[.98]"
+            >
+              <ShoppingBag size={17} />
+              {t("Shop nearby")}
+            </button>
           </div>
         </div>
 
@@ -232,43 +257,6 @@ export default function HomeBusinessHub({
                 {nationwideCheckoutEnabled ? t("Shop India delivery") : t("Browse catalog")} <ChevronRight size={14} />
               </span>
             </button>
-          </div>
-
-          <div className="mt-5 rounded-[22px] bg-[#f5f8f6] p-3.5 md:p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[.14em] text-[#075E45]">Zeshu Move</p>
-                <h3 className="mt-0.5 text-sm font-black text-slate-950">{t("Ride, send or move goods")}</h3>
-              </div>
-              <Link href="/move" className="inline-flex items-center gap-1 text-[11px] font-black text-[#075E45]">
-                {t("See all")} <ChevronRight size={14} />
-              </Link>
-            </div>
-
-            <Link
-              href="/move/request?service=Auto"
-              className="mt-3 flex min-h-14 items-center gap-3 rounded-[18px] bg-white px-4 shadow-sm ring-1 ring-slate-100 transition active:scale-[.99]"
-            >
-              <Search size={19} className="shrink-0 text-slate-700" />
-              <span className="min-w-0 flex-1 text-base font-black text-slate-950">{t("Where are you going?")}</span>
-              <MapPin size={18} className="shrink-0 text-[#075E45]" />
-            </Link>
-
-            <div className="mt-3 grid grid-cols-4 gap-2">
-              {moveShortcuts.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="rounded-2xl bg-white p-2.5 text-center shadow-sm ring-1 ring-slate-100 transition active:scale-[.98]"
-                >
-                  <span className="mx-auto grid h-8 w-8 place-items-center rounded-xl bg-emerald-50 text-[#075E45]">{item.icon}</span>
-                  <p className="mt-1.5 truncate text-[10px] font-black text-slate-900">{item.label}</p>
-                  <p className={`mt-0.5 text-[8px] font-black ${item.available ? "text-emerald-700" : "text-slate-400"}`}>
-                    {item.available ? t("Available") : t("Opening soon")}
-                  </p>
-                </Link>
-              ))}
-            </div>
           </div>
 
           <section className="mt-5 border-t border-slate-100 pt-5" aria-labelledby="how-zeshu-works-title">
