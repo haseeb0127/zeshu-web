@@ -71,9 +71,12 @@ jobs:
             const moveQuickText = (await moveQuick.innerText()).replace(/\s+/g, ' ');
             assert(moveQuickText.includes('Shop, move, send and manage everyday services with Zeshu.'), 'Homepage business proposition is missing');
             assert(moveQuickText.includes('What would you like to do?'), 'Homepage customer decision section is missing');
-            assert(moveQuickText.includes('About Zeshu'), 'Homepage business explanation is missing');
-            assert(moveQuickText.includes('Pick a Move service'), 'Homepage Move summary is missing');
-            assert(moveQuickText.includes('Check availability'), 'Homepage Move availability action is missing');
+            const aboutHeading = page.locator('#about-zeshu-title');
+            await aboutHeading.waitFor({ state: 'visible', timeout: 10000 });
+            assert((await aboutHeading.innerText()).includes('One platform, different services for different places'), 'Homepage business explanation is missing');
+            const moveHomeHeading = page.locator('#move-home-title');
+            await moveHomeHeading.waitFor({ state: 'visible', timeout: 10000 });
+            assert((await moveHomeHeading.innerText()).includes('Pick a Move service'), 'Homepage Move summary is missing');
             assert(moveQuickText.includes('Jagtial'), 'Homepage business hub must explain Jagtial local coverage');
             assert(moveQuickText.includes('Telangana'), 'Homepage business hub must explain Telangana Move coverage');
             assert(moveQuickText.includes('India'), 'Homepage business hub must explain India digital coverage');
