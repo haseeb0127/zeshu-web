@@ -266,9 +266,9 @@ jobs:
               assert(moveQuickText.includes(service), `Homepage Move launcher is missing ${service}`);
             }
             assert(!moveQuickText.includes('Pick a Move service'), 'Homepage still duplicates the Move decision section');
-            assert(moveQuickText.includes('Jagtial'), 'Homepage business hub must explain Jagtial local coverage');
-            assert(moveQuickText.includes('Telangana'), 'Homepage business hub must explain Telangana Move coverage');
-            assert(moveQuickText.includes('India'), 'Homepage business hub must explain India digital coverage');
+            assert(promoText.includes('Jagtial'), 'Homepage promotions must explain Jagtial local coverage');
+            assert(promoText.includes('Telangana'), 'Homepage promotions must explain Telangana Move coverage');
+            assert(promoText.includes('India'), 'Homepage promotions must explain India digital coverage');
             assert(moveQuickText.includes('Earn with Zeshu'), 'Homepage business hub must expose driver/delivery earning path');
             assert(moveQuickText.includes('Sell on Zeshu'), 'Homepage business hub must expose seller path');
             assert(moveQuickText.includes('Promote with Zeshu'), 'Homepage business hub must expose brand promotion path');
