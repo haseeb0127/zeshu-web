@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   BadgeCheck,
   Car,
+  ChevronLeft,
   ChevronRight,
   Headphones,
   MapPin,
@@ -77,58 +78,175 @@ export default function HomeBusinessHub({
   const moveStatus = (state: Readiness | undefined) =>
     isMatchingReady(state) ? t("Check availability") : t("Opening soon");
 
+  const promoTrackRef = useRef<HTMLDivElement>(null);
+  const [promoIndex, setPromoIndex] = useState(0);
+
+  const promoSlides = [
+    {
+      scope: "Jagtial",
+      eyebrow: t("Local shopping"),
+      title: t("Shop in Jagtial"),
+      description: t("Browse available groceries and everyday essentials from nearby sellers."),
+      cta: t("Shop now"),
+      action: "shop",
+      Icon: ShoppingBag,
+      theme: "bg-[linear-gradient(135deg,#063f31_0%,#075E45_58%,#0a7654_100%)]",
+      chips: [t("Groceries & essentials"), t("Shopping & delivery")],
+    },
+    {
+      scope: "Telangana",
+      eyebrow: t("Move with Zeshu"),
+      title: t("Move & Travel"),
+      description: t("Rides, courier and travel — one trusted place."),
+      cta: t("Check availability"),
+      action: "move",
+      Icon: Car,
+      theme: "bg-[linear-gradient(135deg,#123c4a_0%,#175d6d_58%,#23839a_100%)]",
+      chips: [t("Auto"), t("Cab"), t("Courier"), t("Travel")],
+    },
+    {
+      scope: "India",
+      eyebrow: t("Bills & Services"),
+      title: t("Recharge & bills"),
+      description: t("Explore mobile, DTH and bill services supported by available providers."),
+      cta: t("Explore services"),
+      action: "services",
+      Icon: Receipt,
+      theme: "bg-[linear-gradient(135deg,#6b430d_0%,#a36313_58%,#cf851d_100%)]",
+      chips: [t("India-wide services"), t("Digital services")],
+    },
+    {
+      scope: "India",
+      eyebrow: t("Marketplace"),
+      title: t("Marketplace"),
+      description: t("Browse products from verified sellers as the Zeshu catalog expands."),
+      cta: t("Browse catalog"),
+      action: "catalog",
+      Icon: Store,
+      theme: "bg-[linear-gradient(135deg,#392b5a_0%,#5a4183_58%,#755ca0_100%)]",
+      chips: [t("Verified where applicable"), t("Clear availability")],
+    },
+  ];
+
+  const goToPromo = (index: number) => {
+    const track = promoTrackRef.current;
+    if (!track) return;
+    const slides = Array.from(track.querySelectorAll<HTMLElement>("[data-promo-slide]"));
+    const nextIndex = (index + slides.length) % slides.length;
+    const target = slides[nextIndex];
+    if (!target) return;
+    track.scrollTo({ left: target.offsetLeft - track.offsetLeft, behavior: "smooth" });
+    setPromoIndex(nextIndex);
+  };
+
+  const syncPromoIndex = () => {
+    const track = promoTrackRef.current;
+    if (!track) return;
+    const slides = Array.from(track.querySelectorAll<HTMLElement>("[data-promo-slide]"));
+    let bestIndex = 0;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    slides.forEach((slide, index) => {
+      const distance = Math.abs(slide.offsetLeft - track.offsetLeft - track.scrollLeft);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestIndex = index;
+      }
+    });
+    setPromoIndex(bestIndex);
+  };
+
   return (
     <section className="mb-6 px-4 md:px-0" aria-labelledby="zeshu-home-hub-title">
       <div className="overflow-hidden rounded-[30px] border border-[#dce8df] bg-white shadow-[0_14px_44px_rgba(15,36,24,.06)]">
-        <div className="bg-[linear-gradient(135deg,#063f31_0%,#075E45_58%,#0a7654_100%)] px-5 py-6 text-white md:px-8 md:py-9">
-          <div className="max-w-4xl">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.14em] text-emerald-50 ring-1 ring-white/15">
-              <BadgeCheck size={14} />
-              {t("One place for everyday needs")}
-            </div>
+        <div className="bg-white px-5 pt-5 md:px-7 md:pt-6">
+          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.14em] text-[#075E45] ring-1 ring-emerald-100">
+            <BadgeCheck size={14} />
+            {t("One place for everyday needs")}
+          </div>
+          <h1
+            id="zeshu-home-hub-title"
+            className="mt-3 max-w-4xl text-[1.55rem] font-black leading-[1.08] tracking-[-.03em] text-slate-950 md:text-4xl"
+          >
+            {t("Shop, move, send and manage everyday services with Zeshu.")}
+          </h1>
+        </div>
 
-            <h1
-              id="zeshu-home-hub-title"
-              className="mt-3 max-w-3xl text-[2rem] font-black leading-[1.04] tracking-[-.035em] md:text-5xl"
-            >
-              {t("Shop, move, send and manage everyday services with Zeshu.")}
-            </h1>
-
-            <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-emerald-50/90 md:text-base">
-              {t("Local shopping in Jagtial, Move & Courier across supported Telangana zones, and digital services across India where providers are available.")}
-            </p>
-
-            <div className="mt-5 grid grid-cols-3 gap-2" aria-label={t("Where Zeshu works")}>
-              <div className="rounded-2xl bg-white/10 px-3 py-2.5 ring-1 ring-white/10">
-                <p className="text-xs font-black">Jagtial</p>
-                <p className="mt-0.5 truncate text-[9px] font-bold text-emerald-50/80">{t("Shopping & delivery")}</p>
-              </div>
-              <div className="rounded-2xl bg-white/10 px-3 py-2.5 ring-1 ring-white/10">
-                <p className="text-xs font-black">Telangana</p>
-                <p className="mt-0.5 truncate text-[9px] font-bold text-emerald-50/80">{t("Move & Courier")}</p>
-              </div>
-              <div className="rounded-2xl bg-white/10 px-3 py-2.5 ring-1 ring-white/10">
-                <p className="text-xs font-black">India</p>
-                <p className="mt-0.5 truncate text-[9px] font-bold text-emerald-50/80">{t("Digital services")}</p>
-              </div>
-            </div>
-
-            <div className="mt-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-              <button
-                type="button"
-                onClick={onShopNearby}
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-[#075E45] shadow-sm transition active:scale-[.98]"
+        <div className="px-3 pt-4 md:px-4" aria-roledescription="carousel" aria-label={t("Explore Zeshu")}>
+          <div
+            ref={promoTrackRef}
+            onScroll={syncPromoIndex}
+            className="flex snap-x snap-mandatory gap-3 overflow-x-auto no-scrollbar"
+          >
+            {promoSlides.map((slide, index) => (
+              <article
+                key={slide.title}
+                data-promo-slide
+                aria-label={`${index + 1} / ${promoSlides.length}: ${slide.title}`}
+                className={`relative min-w-full snap-start overflow-hidden rounded-[26px] ${slide.theme} px-5 py-5 text-white md:px-7 md:py-7`}
               >
-                <ShoppingBag size={18} />
-                {t("Shop essentials")}
+                <span className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/10" aria-hidden="true" />
+                <span className="pointer-events-none absolute -bottom-16 right-16 h-40 w-40 rounded-full bg-black/10" aria-hidden="true" />
+                <div className="relative z-10 max-w-[78%] md:max-w-[68%]">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-white/12 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.14em] text-white ring-1 ring-white/15">
+                      Zeshu · {slide.scope}
+                    </span>
+                    <span className="text-[10px] font-black uppercase tracking-[.12em] text-white/75">{slide.eyebrow}</span>
+                  </div>
+                  <h2 className="mt-3 text-2xl font-black leading-[1.05] tracking-[-.03em] md:text-4xl">{slide.title}</h2>
+                  <p className="mt-2 max-w-2xl text-xs font-semibold leading-5 text-white/85 md:text-sm md:leading-6">{slide.description}</p>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {slide.chips.map((chip) => (
+                      <span key={chip} className="rounded-full bg-white/10 px-2.5 py-1 text-[9px] font-black text-white/90 ring-1 ring-white/10">{chip}</span>
+                    ))}
+                  </div>
+                  <div className="mt-4">
+                    {slide.action === "shop" ? (
+                      <button type="button" onClick={onShopNearby} className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-black text-slate-900 shadow-sm transition active:scale-[.98]">
+                        <ShoppingBag size={16} /> {slide.cta} <ChevronRight size={15} />
+                      </button>
+                    ) : slide.action === "services" ? (
+                      <button type="button" onClick={onOpenServices} className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-black text-slate-900 shadow-sm transition active:scale-[.98]">
+                        <Receipt size={16} /> {slide.cta} <ChevronRight size={15} />
+                      </button>
+                    ) : slide.action === "catalog" ? (
+                      <button type="button" onClick={onBrowseCatalog} className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-black text-slate-900 shadow-sm transition active:scale-[.98]">
+                        <Store size={16} /> {slide.cta} <ChevronRight size={15} />
+                      </button>
+                    ) : (
+                      <Link href="/move" className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-black text-slate-900 shadow-sm transition active:scale-[.98]">
+                        <Car size={16} /> {slide.cta} <ChevronRight size={15} />
+                      </Link>
+                    )}
+                  </div>
+                </div>
+                <div className="absolute right-5 top-1/2 hidden h-28 w-28 -translate-y-1/2 place-items-center rounded-[30px] bg-white/12 text-white ring-1 ring-white/15 md:grid" aria-hidden="true">
+                  <slide.Icon size={52} strokeWidth={1.6} />
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between gap-3 px-1 py-3">
+            <div className="flex items-center gap-1.5" aria-label={t("Explore Zeshu")}>
+              {promoSlides.map((slide, index) => (
+                <button
+                  key={slide.title}
+                  type="button"
+                  onClick={() => goToPromo(index)}
+                  aria-label={`${t("Explore Zeshu")} ${index + 1}`}
+                  aria-current={promoIndex === index ? "true" : undefined}
+                  className={`h-2 rounded-full transition-all ${promoIndex === index ? "w-6 bg-[#075E45]" : "w-2 bg-slate-300"}`}
+                />
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => goToPromo(promoIndex - 1)} aria-label="Previous promotion" className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition active:scale-[.96]">
+                <ChevronLeft size={17} />
               </button>
-              <Link
-                href="/move"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-3 text-sm font-black text-white ring-1 ring-white/20 transition active:scale-[.98]"
-              >
-                <Car size={18} />
-                {t("Move & Courier")}
-              </Link>
+              <button type="button" onClick={() => goToPromo(promoIndex + 1)} aria-label="Next promotion" className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition active:scale-[.96]">
+                <ChevronRight size={17} />
+              </button>
             </div>
           </div>
         </div>

@@ -32,6 +32,12 @@ for (const href of ['/move', '/earn', '/partners', '/help', '/policies', '/app']
   assert(homeHub.includes(`href="${href}"`) || homeHub.includes(`href={${JSON.stringify(href)}`), `Homepage business hub missing key destination: ${href}`);
 }
 
+assert(homeHub.includes('aria-roledescription="carousel"'), 'Homepage must expose the Zeshu self-promotion carousel accessibly');
+assert(homeHub.includes('data-promo-slide'), 'Homepage promo carousel must render slide markers');
+for (const promo of ['Shop in Jagtial', 'Move & Travel', 'Recharge & bills', 'Marketplace']) {
+  assert(homeHub.includes(promo), `Homepage promo carousel missing ${promo}`);
+}
+assert(homeHub.includes('promoTrackRef'), 'Homepage promo carousel must support manual swipe/arrow navigation');
 assert(homeHub.includes('/api/move/matching/readiness'), 'Homepage Move status must come from live readiness');
 assert(homeHub.includes('Check availability'), 'Move card must use customer-friendly availability wording');
 assert(homeHub.includes('matching_enabled'), 'Move card must consider matching readiness before presenting live availability');
