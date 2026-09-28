@@ -34,6 +34,7 @@ for (const href of ['/move', '/earn', '/partners', '/help', '/policies', '/app']
 
 assert(homeHub.includes('aria-roledescription="carousel"'), 'Homepage must expose the Zeshu self-promotion carousel accessibly');
 assert(homeHub.includes('data-promo-slide'), 'Homepage promo carousel must render slide markers');
+assert(homeHub.includes('data-promo-scope={slide.scope}'), 'Homepage promo carousel must expose structural scope markers');
 for (const promo of ['Shop in Jagtial', 'Move & Travel', 'Recharge & bills', 'Marketplace']) {
   assert(homeHub.includes(promo), `Homepage promo carousel missing ${promo}`);
 }
