@@ -251,6 +251,12 @@ jobs:
             const moveEntry = moveQuick.locator('a[href="/move"]').first();
             await moveEntry.waitFor({ state: 'visible', timeout: 10000 });
             assert(await moveEntry.isVisible(), 'Homepage Zeshu Move entry is missing');
+            const promoSlides = moveQuick.locator('[data-promo-slide]');
+            assert(await promoSlides.count() === 4, 'Homepage must show four Zeshu self-promotion slides');
+            const promoText = (await promoSlides.allInnerTexts()).join(' ').replace(/\s+/g, ' ');
+            for (const promo of ['Shop in Jagtial', 'Move & Travel', 'Recharge & bills', 'Marketplace']) {
+              assert(promoText.includes(promo), `Homepage promo carousel is missing ${promo}`);
+            }
             const moveQuickText = (await moveQuick.innerText()).replace(/\s+/g, ' ');
             assert(moveQuickText.includes('Shop, move, send and manage everyday services with Zeshu.'), 'Homepage business proposition is missing');
             assert(moveQuickText.includes('What would you like to do?'), 'Homepage customer decision section is missing');
