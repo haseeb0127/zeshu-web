@@ -181,6 +181,7 @@ export default function HomeBusinessHub({
               <article
                 key={slide.title}
                 data-promo-slide
+                data-promo-scope={slide.scope}
                 aria-label={`${index + 1} / ${promoSlides.length}: ${slide.title}`}
                 className={`relative min-w-full snap-start overflow-hidden rounded-[26px] ${slide.theme} px-5 py-5 text-white md:px-7 md:py-7`}
               >
