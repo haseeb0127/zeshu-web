@@ -45,7 +45,7 @@ assert(productCard.includes('data-product-card="marketplace"'), 'Product cards m
 assert(homeHub.includes('aria-roledescription="carousel"'), 'Homepage must expose the Zeshu self-promotion carousel accessibly');
 assert(homeHub.includes('data-promo-slide'), 'Homepage promo carousel must render slide markers');
 assert(homeHub.includes('data-promo-scope={slide.scope}'), 'Homepage promo carousel must expose structural scope markers');
-for (const promo of ['Shop in Jagtial', 'Move & Travel', 'Recharge & bills', 'Zeshu Fashion', 'Marketplace']) {
+for (const promo of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Marketplace']) {
   assert(homeHub.includes(promo), `Homepage promo carousel missing ${promo}`);
 }
 assert(homeHub.includes('promoTrackRef'), 'Homepage promo carousel must support manual swipe/arrow navigation');
@@ -64,7 +64,11 @@ assert(!homeHub.includes('compliance-gated'), 'Homepage must not expose internal
 assert(page.includes("t('Set your address')"), 'Homepage header must use a clear address action');
 assert(page.includes('Shop in Jagtial'), 'Homepage must clearly separate local shopping from service discovery');
 assert(page.includes('support@zeshu.in'), 'Homepage footer must expose customer support email');
-assert(page.includes('+91 79772 04533'), 'Homepage footer must expose customer support phone');
+assert(!page.includes('+91 79772 04533'), 'Homepage must not expose the customer support phone number in the shopping surface');
+assert(page.includes('data-customer-department-nav="primary"'), 'Homepage must expose a clear customer department navigation row');
+for (const department of ['Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Customer Service', 'Sell on Zeshu']) {
+  assert(page.includes(department), `Homepage department navigation missing ${department}`);
+}
 assert(page.includes('Based in Jagtial, Telangana'), 'Homepage footer must state business location');
 
 assert(layout.includes('Telangana Move & Courier'), 'Site metadata must describe broader Zeshu service scope');
