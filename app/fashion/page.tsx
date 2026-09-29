@@ -3,7 +3,6 @@ import Link from "next/link";
 import {
   ArrowRight,
   BadgeCheck,
-  Megaphone,
   PackageCheck,
   Store,
   Truck,
@@ -168,73 +167,15 @@ export default function FashionPage() {
           </article>
         </section>
 
-        <section className="mt-7 rounded-3xl border border-emerald-100 bg-white p-6 md:p-8" aria-labelledby="fashion-seller-title">
-          <div className="grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
+        <section className="mt-7 rounded-2xl border border-emerald-100 bg-emerald-50 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#075E45]">
-                For manufacturers, boutiques, wholesalers & D2C brands
-              </p>
-              <h2 id="fashion-seller-title" className="mt-2 text-2xl font-black tracking-tight">
-                Sell on Zeshu — keep your inventory with you
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-slate-600">
-                Reach Zeshu customers without Zeshu purchasing your stock. Zeshu provides discovery, ordering, promotion and logistics integration; sellers fulfil from their own inventory after onboarding and commercial approval.
-              </p>
-              <div className="mt-5 rounded-2xl bg-emerald-50 p-4">
-                <p className="text-xs font-black uppercase tracking-wide text-emerald-800">Zero-inventory flow</p>
-                <p className="mt-2 text-sm font-black text-slate-900">
-                  Customer → Zeshu → seller / manufacturer → selected logistics → customer
-                </p>
-              </div>
-              <Link
-                href="/partners#fashion-sellers"
-                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#075E45] px-5 py-3 text-sm font-black text-white"
-              >
-                Apply to sell fashion on Zeshu <ArrowRight size={16} />
-              </Link>
+              <p className="text-xs font-black uppercase tracking-wide text-[#075E45]">Sell fashion on Zeshu</p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">Manufacturers, boutiques, wholesalers and brands can keep their inventory and apply to sell through Zeshu.</p>
             </div>
-
-            <div className="rounded-2xl bg-slate-50 p-5">
-              <h3 className="font-black">What Zeshu wants from fashion partners</h3>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
-                {[
-                  "Catalogue feed or API / structured product catalogue",
-                  "Seller pricing and proposed marketplace / BFF economics",
-                  "Direct fulfilment or drop-shipping capability",
-                  "Return, exchange and refund responsibility",
-                  "Shipping ownership, serviceability and tracking",
-                  "GST, invoicing and settlement requirements",
-                  "Permission to promote eligible products nationally",
-                ].map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <BadgeCheck size={16} className="mt-1 shrink-0 text-[#075E45]" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-7" aria-labelledby="fashion-growth-title">
-          <div className="flex items-center gap-3">
-            <Megaphone className="text-[#075E45]" size={24} />
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#075E45]">Seller growth tools</p>
-              <h2 id="fashion-growth-title" className="text-2xl font-black tracking-tight">Promotion without misleading shoppers</h2>
-            </div>
-          </div>
-          <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">
-            Paid visibility must remain distinguishable from organic discovery. Fees, eligibility and campaign economics will be published only after Zeshu knows the real payment, logistics, return, tax and network costs.
-          </p>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {sellerPrograms.map((program) => (
-              <article key={program.title} className="rounded-2xl border border-slate-200 bg-white p-5">
-                <h3 className="font-black">{program.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{program.body}</p>
-              </article>
-            ))}
+            <Link href="/partners#fashion-sellers" className="inline-flex items-center gap-2 rounded-xl bg-[#075E45] px-4 py-3 text-sm font-black text-white">
+              Seller information <ArrowRight size={16} />
+            </Link>
           </div>
         </section>
 
