@@ -3030,11 +3030,11 @@ export default function ZeshuSuperApp() {
                aria-label="Zeshu customer departments"
                className="mb-4 flex gap-1.5 overflow-x-auto border-y border-slate-200 bg-white px-3 py-2 no-scrollbar md:rounded-xl md:border md:px-3"
              >
-               <button type="button" onClick={() => { setActiveCategory('All'); setFulfillmentFilter('ALL'); requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-emerald-50 hover:text-[#075E45]">{t('Shop now')}</button>
+               <button type="button" onClick={() => { setActiveCategory('All'); setFulfillmentFilter('ALL'); requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-emerald-50 hover:text-[#075E45]">{t('Shop')}</button>
                <Link href="/fashion" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-fuchsia-50 hover:text-fuchsia-800">Zeshu Fashion</Link>
                <button type="button" onClick={() => openServices()} className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-amber-50 hover:text-amber-800">Zeshu Pay <span className="font-bold text-slate-400">· {t('Recharge & bills')}</span></button>
                <Link href="/move" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-sky-50 hover:text-sky-800">Zeshu Move</Link>
-               <Link href="/help" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-slate-100">{t('Customer support')}</Link>
+               <Link href="/help" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-slate-100">{t('Customer Service')}</Link>
                <span className="my-1 hidden w-px shrink-0 bg-slate-200 md:block" aria-hidden="true" />
                <Link href="/partners" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-[#075E45] transition hover:bg-emerald-50">{t('Sell on Zeshu')}</Link>
              </nav>
@@ -3400,7 +3400,7 @@ export default function ZeshuSuperApp() {
           <div>
             <p className="text-xs font-black uppercase tracking-[.14em] text-slate-400">{t('Explore Zeshu')}</p>
             <div className="mt-3 flex flex-col items-start gap-2">
-              <button type="button" onClick={() => { setActiveTab('home'); setActiveCategory('All'); setFulfillmentFilter('ALL'); requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="font-black text-slate-700 hover:text-[#075E45]">{t('Shop now')}</button>
+              <button type="button" onClick={() => { setActiveTab('home'); setActiveCategory('All'); setFulfillmentFilter('ALL'); requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="font-black text-slate-700 hover:text-[#075E45]">{t('Shop')}</button>
               <Link href="/fashion" className="font-black text-slate-700 hover:text-[#075E45]">Zeshu Fashion</Link>
               <button type="button" onClick={() => openServices()} className="font-black text-slate-700 hover:text-[#075E45]">Zeshu Pay · {t('Recharge & bills')}</button>
               <Link href="/move" className="font-black text-slate-700 hover:text-[#075E45]">Zeshu Move · {t('Move & Courier')}</Link>
@@ -3408,7 +3408,7 @@ export default function ZeshuSuperApp() {
           </div>
 
           <div>
-            <p className="text-xs font-black uppercase tracking-[.14em] text-slate-400">{t('Customer support')}</p>
+            <p className="text-xs font-black uppercase tracking-[.14em] text-slate-400">{t('Customer Service')}</p>
             <div className="mt-3 flex flex-col items-start gap-2">
               <Link href="/help" className="font-black text-slate-700 hover:text-[#075E45]">{t('Help & Support')}</Link>
               <Link href="/policies" className="font-black text-slate-700 hover:text-[#075E45]">{t('Policies & Trust Center')}</Link>
