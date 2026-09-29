@@ -66,7 +66,7 @@ assert(page.includes('Shop in Jagtial'), 'Homepage must clearly separate local s
 assert(page.includes('support@zeshu.in'), 'Homepage footer must expose customer support email');
 assert(!page.includes('+91 79772 04533'), 'Homepage must not expose the customer support phone number in the shopping surface');
 assert(page.includes('data-customer-department-nav="primary"'), 'Homepage must expose a clear customer department navigation row');
-for (const department of ['Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Customer support', 'Sell on Zeshu']) {
+for (const department of ['Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Customer Service', 'Sell on Zeshu']) {
   assert(page.includes(department), `Homepage department navigation missing ${department}`);
 }
 assert(page.includes('Based in Jagtial, Telangana'), 'Homepage footer must state business location');
