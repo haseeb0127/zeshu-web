@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import FashionLiveCatalogue from "../components/FashionLiveCatalogue";
 import {
   ArrowRight,
   BadgeCheck,
@@ -143,6 +144,8 @@ export default function FashionPage() {
             ))}
           </div>
         </section>
+
+        <FashionLiveCatalogue />
 
         <section className="mt-7 grid gap-4 md:grid-cols-3" aria-label="Fashion marketplace principles">
           <article className="rounded-2xl border border-slate-200 bg-white p-5">
