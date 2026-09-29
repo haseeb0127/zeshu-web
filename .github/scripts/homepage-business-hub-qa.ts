@@ -17,6 +17,12 @@ for (const phrase of [
   'Rides & courier',
   'Recharge & bills',
   'Marketplace',
+  'Explore Zeshu Fashion',
+  'Sarees',
+  'Kurtis',
+  'Kidswear',
+  'Footwear',
+  'Accessories',
   'Clear availability',
   'Customer support',
   'For customers, drivers, sellers and brands',
@@ -28,7 +34,7 @@ for (const scope of ['Jagtial', 'Telangana', 'India']) {
   assert(homeHub.includes(scope), `Homepage business hub missing geographic scope: ${scope}`);
 }
 
-for (const href of ['/move', '/earn', '/partners', '/help', '/policies', '/app']) {
+for (const href of ['/move', '/fashion', '/earn', '/partners', '/help', '/policies', '/app']) {
   assert(homeHub.includes(`href="${href}"`) || homeHub.includes(`href={${JSON.stringify(href)}`), `Homepage business hub missing key destination: ${href}`);
 }
 
@@ -39,7 +45,7 @@ assert(productCard.includes('data-product-card="marketplace"'), 'Product cards m
 assert(homeHub.includes('aria-roledescription="carousel"'), 'Homepage must expose the Zeshu self-promotion carousel accessibly');
 assert(homeHub.includes('data-promo-slide'), 'Homepage promo carousel must render slide markers');
 assert(homeHub.includes('data-promo-scope={slide.scope}'), 'Homepage promo carousel must expose structural scope markers');
-for (const promo of ['Shop in Jagtial', 'Move & Travel', 'Recharge & bills', 'Marketplace']) {
+for (const promo of ['Shop in Jagtial', 'Move & Travel', 'Recharge & bills', 'Zeshu Fashion', 'Marketplace']) {
   assert(homeHub.includes(promo), `Homepage promo carousel missing ${promo}`);
 }
 assert(homeHub.includes('promoTrackRef'), 'Homepage promo carousel must support manual swipe/arrow navigation');
