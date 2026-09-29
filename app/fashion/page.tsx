@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import FashionLiveCatalogue from "../components/FashionLiveCatalogue";
-import { ArrowRight, BadgeCheck } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Zeshu Fashion | Clothing, Footwear & Accessories",
