@@ -98,7 +98,7 @@ jobs:
             const departmentNav = page.locator('[data-customer-department-nav="primary"]');
             await departmentNav.waitFor({ state: 'visible', timeout: 10000 });
             const departmentText = (await departmentNav.innerText()).replace(/\s+/g, ' ');
-            for (const department of ['Shop', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Customer support', 'Sell on Zeshu']) {
+            for (const department of ['Shop', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Customer Service', 'Sell on Zeshu']) {
               assert(departmentText.includes(department), `Homepage department navigation is missing ${department}`);
             }
             const homepageText = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
