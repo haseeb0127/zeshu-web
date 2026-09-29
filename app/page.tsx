@@ -3025,6 +3025,22 @@ export default function ZeshuSuperApp() {
 
         <div className="flex-1 min-w-0 pb-32">
            {activeTab === 'home' && normalizedSearch === '' && (
+             <nav
+               data-customer-department-nav="primary"
+               aria-label="Zeshu customer departments"
+               className="mb-4 flex gap-1.5 overflow-x-auto border-y border-slate-200 bg-white px-3 py-2 no-scrollbar md:rounded-xl md:border md:px-3"
+             >
+               <button type="button" onClick={() => { setActiveCategory('All'); setFulfillmentFilter('ALL'); requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-emerald-50 hover:text-[#075E45]">{t('Shop now')}</button>
+               <Link href="/fashion" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-fuchsia-50 hover:text-fuchsia-800">Zeshu Fashion</Link>
+               <button type="button" onClick={() => openServices()} className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-amber-50 hover:text-amber-800">Zeshu Pay <span className="font-bold text-slate-400">· {t('Recharge & bills')}</span></button>
+               <Link href="/move" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-sky-50 hover:text-sky-800">Zeshu Move</Link>
+               <Link href="/help" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-slate-100">{t('Customer support')}</Link>
+               <span className="my-1 hidden w-px shrink-0 bg-slate-200 md:block" aria-hidden="true" />
+               <Link href="/partners" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-[#075E45] transition hover:bg-emerald-50">{t('Sell on Zeshu')}</Link>
+             </nav>
+           )}
+
+           {activeTab === 'home' && normalizedSearch === '' && (
              <HomeBusinessHub
                nationwideCheckoutEnabled={fulfillmentStatus.nationwide_checkout_enabled}
                onShopNearby={() => {
@@ -3369,38 +3385,49 @@ export default function ZeshuSuperApp() {
 
       {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && cart.length === 0 && <button type="button" onClick={openAiSupport} aria-label="Chat with Zeshu Assistant" className="fixed bottom-[5.75rem] right-4 z-30 inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#075E45] text-sm font-black text-white shadow-xl transition hover:bg-[#065F38] active:scale-95 lg:bottom-8 lg:right-8 lg:h-auto lg:w-auto lg:min-h-12 lg:gap-2 lg:px-4 lg:py-3"><MessageCircle size={20} aria-hidden="true" /><span className="hidden lg:inline">{t('Ask Zeshu')}</span></button>}
 
-      <footer className="border-t border-[#dce8df] bg-white px-4 pb-28 pt-8 text-sm text-slate-600 lg:px-8 lg:py-10">
-        <div className="mx-auto grid max-w-[1400px] gap-7 md:grid-cols-[1.3fr_1fr_1fr]">
+      <footer className="border-t border-[#dce8df] bg-[#f4f7f5] px-4 pb-28 pt-8 text-sm text-slate-600 lg:px-8 lg:py-10">
+        <div className="mx-auto grid max-w-[1400px] gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-2">
               <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#075E45] text-base font-black text-white">Z</span>
               <div><p className="font-black text-slate-950">ZESHU</p><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#075E45]">{t('Everyday, simply')}</p></div>
             </div>
-            <p className="mt-3 max-w-md text-xs leading-5 text-slate-500">{t('Local shopping in Jagtial, Move & Courier across supported Telangana zones, and digital services across India where providers are available.')}</p>
+            <p className="mt-3 max-w-sm text-xs leading-5 text-slate-500">{t('Local shopping in Jagtial, Move & Courier across supported Telangana zones, and digital services across India where providers are available.')}</p>
             <p className="mt-3 text-xs font-bold text-slate-600">{t('Based in Jagtial, Telangana')}</p>
-          </div>
-
-          <div>
-            <p className="text-xs font-black uppercase tracking-[.14em] text-slate-400">{t('Customer support')}</p>
-            <div className="mt-3 space-y-2">
-              <a href="mailto:support@zeshu.in" className="block font-black text-[#075E45] hover:underline">support@zeshu.in</a>
-              <a href="tel:+917977204533" className="block font-black text-[#075E45] hover:underline">+91 79772 04533</a>
-              <Link href="/help" className="inline-flex items-center gap-1 font-black text-[#075E45] hover:underline">{t('Help & Support')} <ChevronRight size={14} /></Link>
-            </div>
+            <Link href="/app" className="mt-3 inline-flex font-black text-[#075E45] hover:underline">{t('Get Zeshu')}</Link>
           </div>
 
           <div>
             <p className="text-xs font-black uppercase tracking-[.14em] text-slate-400">{t('Explore Zeshu')}</p>
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
-              <Link href="/move" className="font-black text-[#075E45] hover:underline">{t('Move & Courier')}</Link>
-              <Link href="/services" className="font-black text-[#075E45] hover:underline">{t('Recharge & Bills')}</Link>
-              <Link href="/partners" className="font-black text-[#075E45] hover:underline">{t('Sell or partner')}</Link>
-              <Link href="/policies" className="font-black text-[#075E45] hover:underline">{t('Policies & Trust Center')}</Link>
-              <Link href="/app" className="font-black text-[#075E45] hover:underline">{t('Get Zeshu')}</Link>
+            <div className="mt-3 flex flex-col items-start gap-2">
+              <button type="button" onClick={() => { setActiveTab('home'); setActiveCategory('All'); setFulfillmentFilter('ALL'); requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="font-black text-slate-700 hover:text-[#075E45]">{t('Shop now')}</button>
+              <Link href="/fashion" className="font-black text-slate-700 hover:text-[#075E45]">Zeshu Fashion</Link>
+              <button type="button" onClick={() => openServices()} className="font-black text-slate-700 hover:text-[#075E45]">Zeshu Pay · {t('Recharge & bills')}</button>
+              <Link href="/move" className="font-black text-slate-700 hover:text-[#075E45]">Zeshu Move · {t('Move & Courier')}</Link>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-black uppercase tracking-[.14em] text-slate-400">{t('Customer support')}</p>
+            <div className="mt-3 flex flex-col items-start gap-2">
+              <Link href="/help" className="font-black text-slate-700 hover:text-[#075E45]">{t('Help & Support')}</Link>
+              <Link href="/policies" className="font-black text-slate-700 hover:text-[#075E45]">{t('Policies & Trust Center')}</Link>
+              <a href="mailto:support@zeshu.in" className="font-black text-slate-700 hover:text-[#075E45]">support@zeshu.in</a>
+            </div>
+            <p className="mt-3 text-[11px] leading-5 text-slate-500">{t('Contact details and grievance information are available in Help and Policies.')}</p>
+          </div>
+
+          <div>
+            <p className="text-xs font-black uppercase tracking-[.14em] text-slate-400">{t('Work with Zeshu')}</p>
+            <div className="mt-3 flex flex-col items-start gap-2">
+              <Link href="/partners#fashion-sellers" className="font-black text-slate-700 hover:text-[#075E45]">{t('Sell on Zeshu')}</Link>
+              <Link href="/earn" className="font-black text-slate-700 hover:text-[#075E45]">{t('Earn with Zeshu')}</Link>
+              <Link href="/partners" className="font-black text-slate-700 hover:text-[#075E45]">{t('Promote with Zeshu')}</Link>
+              <Link href="/partners" className="font-black text-slate-700 hover:text-[#075E45]">{t('Brands & Partners')}</Link>
             </div>
           </div>
         </div>
-        <div className="mx-auto mt-7 max-w-[1400px] border-t border-slate-100 pt-4 text-[11px] font-semibold leading-5 text-slate-500">
+        <div className="mx-auto mt-8 max-w-[1400px] border-t border-slate-200 pt-4 text-[11px] font-semibold leading-5 text-slate-500">
           © Zeshu · {t('Service availability varies by location and verified provider or seller coverage.')}
         </div>
       </footer>
