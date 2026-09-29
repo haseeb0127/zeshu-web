@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 
 const TYPES = [
-  ["LOCAL_VENDOR", "Local vendor / supplier"],
+  ["LOCAL_VENDOR", "Seller / manufacturer / wholesaler"],
   ["LICENSED_PHARMACY", "Licensed pharmacy"],
   ["MEDICINE_DISTRIBUTOR", "Medicine distributor"],
   ["RECHARGE_BILLS", "Recharge / bills provider"],
@@ -86,7 +86,7 @@ export default function PartnerLeadForm() {
         <input maxLength={240} value={form.licence_or_gst} onChange={(event) => setForm({ ...form, licence_or_gst: event.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 font-medium" placeholder="GSTIN, drug licence, API/agent authorization, etc." />
       </label>
       <label className="md:col-span-2 text-sm font-black text-slate-700">Commercial proposal
-        <textarea maxLength={2400} rows={5} value={form.proposal} onChange={(event) => setForm({ ...form, proposal: event.target.value })} className="mt-2 w-full resize-none rounded-xl border border-slate-200 px-3 py-3 font-medium" placeholder="Products/services, coverage, expected commission or margin, settlement cycle, API/white-label availability, minimum commitment and support details." />
+        <textarea maxLength={2400} rows={5} value={form.proposal} onChange={(event) => setForm({ ...form, proposal: event.target.value })} className="mt-2 w-full resize-none rounded-xl border border-slate-200 px-3 py-3 font-medium" placeholder="Products/services, catalogue or API feed, seller pricing, commission/BFF or margin, drop-shipping/direct fulfilment, returns, shipping responsibility, serviceability, settlement and national promotion permission." />
       </label>
 
       <input tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" value={form.company_fax} onChange={(event) => setForm({ ...form, company_fax: event.target.value })} />
