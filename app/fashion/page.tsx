@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRight,
-  BadgeCheck,
   PackageCheck,
   Store,
   Truck,
@@ -11,7 +10,7 @@ import {
 export const metadata: Metadata = {
   title: "Zeshu Fashion | Clothing, Footwear & Accessories",
   description:
-    "Discover Zeshu Fashion categories and learn how brands, manufacturers, wholesalers and boutiques can sell through Zeshu without Zeshu buying inventory.",
+    "Discover clothing, footwear and accessories on Zeshu Fashion from eligible seller-owned catalogues with clear availability.",
 };
 
 const fashionGroups = [
