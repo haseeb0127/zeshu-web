@@ -71,7 +71,7 @@ jobs:
             const promoSlides = moveQuick.locator('[data-promo-slide]');
             assert(await promoSlides.count() === 5, 'Homepage must show five Zeshu self-promotion slides including Fashion');
             const promoText = (await promoSlides.allInnerTexts()).join(' ').replace(/\s+/g, ' ');
-            for (const promo of ['Shop in Jagtial', 'Move & Travel', 'Recharge & bills', 'Zeshu Fashion', 'Marketplace']) {
+            for (const promo of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Marketplace']) {
               assert(promoText.includes(promo), `Homepage promo carousel is missing ${promo}`);
             }
             const moveQuickText = (await moveQuick.innerText()).replace(/\s+/g, ' ');
@@ -95,9 +95,15 @@ jobs:
             }
             assert(await moveQuick.locator('a[href="/fashion"]').count() > 0, 'Homepage Fashion link is missing');
             assert(await moveQuick.locator('a[href="/move"]').count() > 0, 'Homepage business hub Move link is missing');
+            const departmentNav = page.locator('[data-customer-department-nav="primary"]');
+            await departmentNav.waitFor({ state: 'visible', timeout: 10000 });
+            const departmentText = (await departmentNav.innerText()).replace(/\s+/g, ' ');
+            for (const department of ['Shop', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Customer support', 'Sell on Zeshu']) {
+              assert(departmentText.includes(department), `Homepage department navigation is missing ${department}`);
+            }
             const homepageText = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
             assert(homepageText.includes('support@zeshu.in'), 'Homepage customer support email is missing');
-            assert(homepageText.includes('+91 79772 04533'), 'Homepage customer support phone is missing');
+            assert(!homepageText.includes('+91 79772 04533'), 'Homepage must not expose the support phone number');
             assert(homepageText.includes('Based in Jagtial, Telangana'), 'Homepage business location is missing');
             const categoryText = await categories.innerText();
             console.log('Mobile categories:', categoryText.replace(/\s+/g, ' ').trim());
