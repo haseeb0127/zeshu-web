@@ -3035,8 +3035,6 @@ export default function ZeshuSuperApp() {
                <button type="button" onClick={() => openServices()} className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-amber-50 hover:text-amber-800">Zeshu Pay <span className="font-bold text-slate-400">· {t('Recharge & bills')}</span></button>
                <Link href="/move" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-sky-50 hover:text-sky-800">Zeshu Move</Link>
                <Link href="/help" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-slate-100">{t('Customer Service')}</Link>
-               <span className="my-1 hidden w-px shrink-0 bg-slate-200 md:block" aria-hidden="true" />
-               <Link href="/partners" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-[#075E45] transition hover:bg-emerald-50">{t('Sell on Zeshu')}</Link>
              </nav>
            )}
 
