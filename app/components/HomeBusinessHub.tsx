@@ -156,22 +156,22 @@ export default function HomeBusinessHub({
   };
 
   return (
-    <section className="mb-6 px-4 md:px-0" aria-labelledby="zeshu-home-hub-title">
-      <div className="overflow-hidden rounded-[30px] border border-[#dce8df] bg-white shadow-[0_14px_44px_rgba(15,36,24,.06)]">
-        <div className="bg-white px-5 pt-5 md:px-7 md:pt-6">
-          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.14em] text-[#075E45] ring-1 ring-emerald-100">
+    <section className="mb-5 px-4 md:px-0" aria-labelledby="zeshu-home-hub-title" data-marketplace-layout="professional">
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-[0_2px_10px_rgba(15,23,42,.04)] md:px-5 md:py-5">
+          <div className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[.16em] text-[#075E45]">
             <BadgeCheck size={14} />
             {t("One place for everyday needs")}
           </div>
           <h1
             id="zeshu-home-hub-title"
-            className="mt-3 max-w-4xl text-[1.55rem] font-black leading-[1.08] tracking-[-.03em] text-slate-950 md:text-4xl"
+            className="mt-2 max-w-4xl text-[1.35rem] font-black leading-[1.12] tracking-[-.025em] text-slate-950 md:text-3xl"
           >
             {t("Shop, move, send and manage everyday services with Zeshu.")}
           </h1>
         </div>
 
-        <div className="px-3 pt-4 md:px-4" aria-roledescription="carousel" aria-label={t("Explore Zeshu")}>
+        <div className="relative" aria-roledescription="carousel" aria-label={t("Explore Zeshu")}>
           <div
             ref={promoTrackRef}
             onScroll={syncPromoIndex}
@@ -183,7 +183,7 @@ export default function HomeBusinessHub({
                 data-promo-slide
                 data-promo-scope={slide.scope}
                 aria-label={`${index + 1} / ${promoSlides.length}: ${slide.title}`}
-                className={`relative min-w-full snap-start overflow-hidden rounded-[26px] ${slide.theme} px-5 py-5 text-white md:px-7 md:py-7`}
+                className={`relative min-w-full snap-start overflow-hidden rounded-2xl ${slide.theme} px-5 py-5 text-white md:px-7 md:py-7`}
               >
                 <span className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/10" aria-hidden="true" />
                 <span className="pointer-events-none absolute -bottom-16 right-16 h-40 w-40 rounded-full bg-black/10" aria-hidden="true" />
@@ -196,32 +196,32 @@ export default function HomeBusinessHub({
                   </div>
                   <h2 className="mt-3 text-2xl font-black leading-[1.05] tracking-[-.03em] md:text-4xl">{slide.title}</h2>
                   <p className="mt-2 max-w-2xl text-xs font-semibold leading-5 text-white/85 md:text-sm md:leading-6">{slide.description}</p>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
+                  <div className="mt-3 hidden flex-wrap gap-1.5 sm:flex">
                     {slide.chips.map((chip) => (
                       <span key={chip} className="rounded-full bg-white/10 px-2.5 py-1 text-[9px] font-black text-white/90 ring-1 ring-white/10">{chip}</span>
                     ))}
                   </div>
                   <div className="mt-4">
                     {slide.action === "shop" ? (
-                      <button type="button" onClick={onShopNearby} className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-black text-slate-900 shadow-sm transition active:scale-[.98]">
+                      <button type="button" onClick={onShopNearby} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-black text-slate-900 shadow-sm transition active:scale-[.98]">
                         <ShoppingBag size={16} /> {slide.cta} <ChevronRight size={15} />
                       </button>
                     ) : slide.action === "services" ? (
-                      <button type="button" onClick={onOpenServices} className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-black text-slate-900 shadow-sm transition active:scale-[.98]">
+                      <button type="button" onClick={onOpenServices} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-black text-slate-900 shadow-sm transition active:scale-[.98]">
                         <Receipt size={16} /> {slide.cta} <ChevronRight size={15} />
                       </button>
                     ) : slide.action === "catalog" ? (
-                      <button type="button" onClick={onBrowseCatalog} className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-black text-slate-900 shadow-sm transition active:scale-[.98]">
+                      <button type="button" onClick={onBrowseCatalog} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-black text-slate-900 shadow-sm transition active:scale-[.98]">
                         <Store size={16} /> {slide.cta} <ChevronRight size={15} />
                       </button>
                     ) : (
-                      <Link href="/move" className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-black text-slate-900 shadow-sm transition active:scale-[.98]">
+                      <Link href="/move" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-black text-slate-900 shadow-sm transition active:scale-[.98]">
                         <Car size={16} /> {slide.cta} <ChevronRight size={15} />
                       </Link>
                     )}
                   </div>
                 </div>
-                <div className="absolute right-5 top-1/2 hidden h-28 w-28 -translate-y-1/2 place-items-center rounded-[30px] bg-white/12 text-white ring-1 ring-white/15 md:grid" aria-hidden="true">
+                <div className="absolute right-5 top-1/2 hidden h-28 w-28 -translate-y-1/2 place-items-center rounded-2xl bg-white/12 text-white ring-1 ring-white/15 md:grid" aria-hidden="true">
                   <slide.Icon size={52} strokeWidth={1.6} />
                 </div>
               </article>
@@ -252,8 +252,8 @@ export default function HomeBusinessHub({
           </div>
         </div>
 
-        <div className="p-4 md:p-6">
-          <section className="mb-6 rounded-[26px] border border-emerald-100 bg-[linear-gradient(135deg,#f0fbf5_0%,#ffffff_55%,#eef7f2_100%)] p-4 shadow-[0_8px_24px_rgba(7,94,69,.06)] md:p-5" aria-labelledby="home-move-launcher-title">
+        <div className="space-y-4">
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_2px_10px_rgba(15,23,42,.04)] md:p-5" aria-labelledby="home-move-launcher-title">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[.14em] text-[#075E45]">{t("Move with Zeshu")}</p>
@@ -264,7 +264,7 @@ export default function HomeBusinessHub({
 
             <Link
               href="/move/request?service=Auto"
-              className="mt-4 flex min-h-16 items-center gap-3 rounded-[22px] border border-white bg-white px-4 text-left shadow-[0_8px_24px_rgba(15,23,42,.07)] transition active:scale-[.99]"
+              className="mt-4 flex min-h-14 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 text-left transition hover:border-emerald-200 hover:bg-white active:scale-[.99]"
             >
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-emerald-50 text-[#075E45]">
                 <Search size={22} />
@@ -277,32 +277,32 @@ export default function HomeBusinessHub({
             </Link>
 
             <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
-              <Link href="/move/request?service=Auto" className="rounded-2xl bg-white px-2 py-3 text-center shadow-sm transition active:scale-[.98]">
+              <Link href="/move/request?service=Auto" className="rounded-xl border border-slate-100 bg-white px-2 py-3 text-center transition hover:border-emerald-200 hover:bg-emerald-50/40 active:scale-[.98]">
                 <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-emerald-50 text-lg" aria-hidden="true">🛺</span>
                 <span className="mt-1.5 block text-[10px] font-black text-slate-800">{t("Auto")}</span>
                 <span className="mt-1 block text-[8px] font-bold leading-3 text-slate-400">{moveStatus(moveServices.AUTO_DRIVER)}</span>
               </Link>
-              <Link href="/move/request?service=Cab" className="rounded-2xl bg-white px-2 py-3 text-center shadow-sm transition active:scale-[.98]">
+              <Link href="/move/request?service=Cab" className="rounded-xl border border-slate-100 bg-white px-2 py-3 text-center transition hover:border-emerald-200 hover:bg-emerald-50/40 active:scale-[.98]">
                 <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-blue-50 text-lg" aria-hidden="true">🚕</span>
                 <span className="mt-1.5 block text-[10px] font-black text-slate-800">{t("Cab")}</span>
                 <span className="mt-1 block text-[8px] font-bold leading-3 text-slate-400">{moveStatus(moveServices.CAB_DRIVER)}</span>
               </Link>
-              <Link href="/move/request?service=Bike%20Courier" className="rounded-2xl bg-white px-2 py-3 text-center shadow-sm transition active:scale-[.98]">
+              <Link href="/move/request?service=Bike%20Courier" className="rounded-xl border border-slate-100 bg-white px-2 py-3 text-center transition hover:border-emerald-200 hover:bg-emerald-50/40 active:scale-[.98]">
                 <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-amber-50 text-[#9a6700]" aria-hidden="true"><Package size={18} /></span>
                 <span className="mt-1.5 block text-[10px] font-black text-slate-800">{t("Courier")}</span>
                 <span className="mt-1 block text-[8px] font-bold leading-3 text-slate-400">{moveStatus(moveServices.BIKE_COURIER)}</span>
               </Link>
-              <Link href="/move/request?service=Auto%20%2F%20Mini%20Truck" className="rounded-2xl bg-white px-2 py-3 text-center shadow-sm transition active:scale-[.98]">
+              <Link href="/move/request?service=Auto%20%2F%20Mini%20Truck" className="rounded-xl border border-slate-100 bg-white px-2 py-3 text-center transition hover:border-emerald-200 hover:bg-emerald-50/40 active:scale-[.98]">
                 <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-orange-50 text-orange-700" aria-hidden="true"><Truck size={18} /></span>
                 <span className="mt-1.5 block text-[10px] font-black text-slate-800">{t("Mini Truck")}</span>
                 <span className="mt-1 block text-[8px] font-bold leading-3 text-slate-400">{moveStatus(moveServices.GOODS_DRIVER)}</span>
               </Link>
-              <Link href="/move/request?service=Rental%20Car" className="rounded-2xl bg-white px-2 py-3 text-center shadow-sm transition active:scale-[.98]">
+              <Link href="/move/request?service=Rental%20Car" className="rounded-xl border border-slate-100 bg-white px-2 py-3 text-center transition hover:border-emerald-200 hover:bg-emerald-50/40 active:scale-[.98]">
                 <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-violet-50 text-violet-700" aria-hidden="true"><Car size={18} /></span>
                 <span className="mt-1.5 block text-[10px] font-black text-slate-800">{t("Rental")}</span>
                 <span className="mt-1 block text-[8px] font-bold leading-3 text-slate-400">{t("Opening soon")}</span>
               </Link>
-              <Link href="/move" className="rounded-2xl bg-white px-2 py-3 text-center shadow-sm transition active:scale-[.98]">
+              <Link href="/move" className="rounded-xl border border-slate-100 bg-white px-2 py-3 text-center transition hover:border-emerald-200 hover:bg-emerald-50/40 active:scale-[.98]">
                 <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-sky-50 text-sky-700" aria-hidden="true"><Plane size={18} /></span>
                 <span className="mt-1.5 block text-[10px] font-black text-slate-800">{t("Travel")}</span>
                 <span className="mt-1 block text-[8px] font-bold leading-3 text-slate-400">{t("Opening soon")}</span>
@@ -331,7 +331,7 @@ export default function HomeBusinessHub({
             <button
               type="button"
               onClick={onShopNearby}
-              className="group rounded-[22px] border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
+              className="group rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-50 text-[#075E45]"><Zap size={20} /></span>
@@ -348,7 +348,7 @@ export default function HomeBusinessHub({
 
             <Link
               href="/move"
-              className="group rounded-[22px] border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
+              className="group rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-50 text-[#075E45]"><Car size={20} /></span>
@@ -371,7 +371,7 @@ export default function HomeBusinessHub({
             <button
               type="button"
               onClick={onOpenServices}
-              className="group rounded-[22px] border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
+              className="group rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-50 text-[#075E45]"><Receipt size={20} /></span>
@@ -389,7 +389,7 @@ export default function HomeBusinessHub({
             <button
               type="button"
               onClick={onBrowseCatalog}
-              className="group rounded-[22px] border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
+              className="group rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-50 text-[#075E45]"><Store size={20} /></span>
@@ -407,7 +407,7 @@ export default function HomeBusinessHub({
             </button>
           </div>
 
-          <div className="mt-5 rounded-[22px] border border-emerald-100 bg-emerald-50/55 p-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_2px_10px_rgba(15,23,42,.03)]">
             <div className="flex gap-3">
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-[#075E45] shadow-sm"><ShieldCheck size={18} /></span>
               <div>

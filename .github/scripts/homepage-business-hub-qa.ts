@@ -32,6 +32,10 @@ for (const href of ['/move', '/earn', '/partners', '/help', '/policies', '/app']
   assert(homeHub.includes(`href="${href}"`) || homeHub.includes(`href={${JSON.stringify(href)}`), `Homepage business hub missing key destination: ${href}`);
 }
 
+assert(homeHub.includes('data-marketplace-layout="professional"'), 'Homepage must use the professional marketplace layout shell');
+assert(page.includes('data-category-strip="marketplace"'), 'Mobile homepage must use icon-led marketplace category discovery');
+const productCard = read('app/components/ProductCard.tsx');
+assert(productCard.includes('data-product-card="marketplace"'), 'Product cards must use the professional marketplace card system');
 assert(homeHub.includes('aria-roledescription="carousel"'), 'Homepage must expose the Zeshu self-promotion carousel accessibly');
 assert(homeHub.includes('data-promo-slide'), 'Homepage promo carousel must render slide markers');
 assert(homeHub.includes('data-promo-scope={slide.scope}'), 'Homepage promo carousel must expose structural scope markers');
