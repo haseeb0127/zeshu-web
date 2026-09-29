@@ -117,6 +117,17 @@ export default function HomeBusinessHub({
     },
     {
       scope: "India",
+      eyebrow: t("Fashion"),
+      title: t("Zeshu Fashion"),
+      description: t("Clothing, footwear and accessories from seller-owned inventory."),
+      cta: t("Explore fashion"),
+      action: "fashion",
+      Icon: ShoppingBag,
+      theme: "bg-[linear-gradient(135deg,#5b214f_0%,#8a3d73_58%,#b0578f_100%)]",
+      chips: [t("Women"), t("Men"), t("Kids"), t("Footwear")],
+    },
+    {
+      scope: "India",
       eyebrow: t("Marketplace"),
       title: t("Marketplace"),
       description: t("Browse products from verified sellers as the Zeshu catalog expands."),
@@ -214,6 +225,10 @@ export default function HomeBusinessHub({
                       <button type="button" onClick={onBrowseCatalog} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-black text-slate-900 shadow-sm transition active:scale-[.98]">
                         <Store size={16} /> {slide.cta} <ChevronRight size={15} />
                       </button>
+                    ) : slide.action === "fashion" ? (
+                      <Link href="/fashion" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-black text-slate-900 shadow-sm transition active:scale-[.98]">
+                        <ShoppingBag size={16} /> {slide.cta} <ChevronRight size={15} />
+                      </Link>
                     ) : (
                       <Link href="/move" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-black text-slate-900 shadow-sm transition active:scale-[.98]">
                         <Car size={16} /> {slide.cta} <ChevronRight size={15} />
@@ -251,6 +266,36 @@ export default function HomeBusinessHub({
             </div>
           </div>
         </div>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_2px_10px_rgba(15,23,42,.04)] md:p-5" aria-labelledby="home-fashion-title">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[.14em] text-[#075E45]">{t("Fashion")}</p>
+              <h2 id="home-fashion-title" className="mt-1 text-xl font-black tracking-tight text-slate-950 md:text-2xl">{t("Explore Zeshu Fashion")}</h2>
+              <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{t("Seller-owned fashion catalogues, shown only when real stock and fulfilment are ready.")}</p>
+            </div>
+            <Link href="/fashion" className="inline-flex min-h-10 items-center gap-1 rounded-xl bg-[#075E45] px-3 py-2 text-xs font-black text-white">
+              {t("View fashion")} <ChevronRight size={14} />
+            </Link>
+          </div>
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1 no-scrollbar" aria-label={t("Fashion categories")}>
+            {[
+              ["👗", t("Sarees")],
+              ["🧥", t("Kurtis")],
+              ["👚", t("Women’s western wear")],
+              ["👕", t("Men’s shirts & T-shirts")],
+              ["👖", t("Jeans")],
+              ["🧒", t("Kidswear")],
+              ["👟", t("Footwear")],
+              ["👜", t("Accessories")],
+            ].map(([icon, label]) => (
+              <Link key={label} href="/fashion" className="min-w-[96px] rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-center transition hover:border-emerald-200 hover:bg-emerald-50/50">
+                <span className="block text-xl" aria-hidden="true">{icon}</span>
+                <span className="mt-1.5 block text-[10px] font-black leading-3 text-slate-700">{label}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
 
         <div className="space-y-4">
           <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_2px_10px_rgba(15,23,42,.04)] md:p-5" aria-labelledby="home-move-launcher-title">

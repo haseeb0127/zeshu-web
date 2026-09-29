@@ -34,6 +34,41 @@ export default function PartnersPage() {
           ))}
         </section>
 
+        <section id="fashion-sellers" className="mt-6 rounded-3xl border border-fuchsia-100 bg-white p-6 md:p-8">
+          <p className="text-xs font-black uppercase tracking-[.16em] text-[#075E45]">Zeshu Fashion sellers</p>
+          <h2 className="mt-2 text-2xl font-black tracking-tight">Sell on Zeshu — keep your inventory with you</h2>
+          <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-600">
+            Zeshu is onboarding clothing manufacturers, boutiques, wholesalers and D2C brands without buying their stock. Priority categories include sarees, kurtis, women’s western wear, men’s shirts and T-shirts, jeans, kidswear, footwear and accessories.
+          </p>
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <div className="rounded-2xl bg-emerald-50 p-5">
+              <h3 className="font-black text-slate-900">What to include in your proposal</h3>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+                {[
+                  'Catalogue/API feed or structured product file',
+                  'Seller pricing, proposed commission/BFF or margin economics',
+                  'Drop-shipping or direct-fulfilment capability',
+                  'Return, exchange and refund responsibility',
+                  'Shipping responsibility, serviceability and tracking',
+                  'Settlement, tax and invoicing requirements',
+                  'Permission for Zeshu to promote eligible products nationally without purchasing inventory',
+                ].map((item) => <li key={item} className="flex gap-2"><span aria-hidden="true">✓</span><span>{item}</span></li>)}
+              </ul>
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-5">
+              <h3 className="font-black text-slate-900">Seller growth options</h3>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {['Sponsored Products','Featured Store','Featured Brand','Fashion Deals','New Launch','Telangana Spotlight','Free-Delivery Campaigns'].map((label) => (
+                  <span key={label} className="rounded-full bg-white px-3 py-2 text-xs font-black text-slate-700 ring-1 ring-slate-200">{label}</span>
+                ))}
+              </div>
+              <p className="mt-4 text-xs leading-5 text-slate-500">
+                Paid placements will be clearly labelled to customers. Zeshu will publish seller fees only after real network, payment, shipping, return and tax costs are known.
+              </p>
+            </div>
+          </div>
+        </section>
+
         <section className="mt-6 rounded-3xl border border-emerald-100 bg-white p-6 md:p-8">
           <h2 className="text-xl font-black">What Zeshu will not do</h2>
           <div className="mt-3 grid gap-3 text-sm leading-6 text-slate-600 md:grid-cols-2">

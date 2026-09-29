@@ -1,0 +1,250 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import {
+  ArrowRight,
+  BadgeCheck,
+  Megaphone,
+  PackageCheck,
+  Store,
+  Truck,
+} from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Zeshu Fashion | Clothing, Footwear & Accessories",
+  description:
+    "Discover Zeshu Fashion categories and learn how brands, manufacturers, wholesalers and boutiques can sell through Zeshu without Zeshu buying inventory.",
+};
+
+const fashionGroups = [
+  {
+    title: "Women",
+    icon: "👗",
+    items: ["Sarees", "Kurtis & ethnic wear", "Women’s western wear", "Jeans & bottoms"],
+  },
+  {
+    title: "Men",
+    icon: "👕",
+    items: ["Shirts", "T-shirts", "Jeans & trousers", "Ethnic wear"],
+  },
+  {
+    title: "Kids",
+    icon: "🧒",
+    items: ["Girls’ clothing", "Boys’ clothing", "Baby clothing", "School & occasion wear"],
+  },
+  {
+    title: "Footwear",
+    icon: "👟",
+    items: ["Women’s footwear", "Men’s footwear", "Kids’ footwear", "Sandals & casual shoes"],
+  },
+  {
+    title: "Accessories",
+    icon: "👜",
+    items: ["Bags & wallets", "Fashion jewellery", "Watches", "Belts, caps & accessories"],
+  },
+] as const;
+
+const sellerPrograms = [
+  {
+    title: "Sponsored Products",
+    body: "Paid product visibility in relevant discovery surfaces, clearly labelled Sponsored to customers.",
+  },
+  {
+    title: "Featured Store",
+    body: "A dedicated seller or boutique spotlight when the catalogue, stock and service quality are verified.",
+  },
+  {
+    title: "Featured Brand",
+    body: "Brand-led discovery for eligible manufacturers and D2C labels with transparent commercial placement.",
+  },
+  {
+    title: "Fashion Deals",
+    body: "Genuine seller-funded offers only. Zeshu will not manufacture a fake MRP, discount or urgency claim.",
+  },
+  {
+    title: "New Launch",
+    body: "Launch collections for newly onboarded products once real inventory and fulfilment are active.",
+  },
+  {
+    title: "Telangana Spotlight",
+    body: "Extra discovery for eligible Telangana manufacturers, boutiques and brands without hiding nationwide alternatives.",
+  },
+  {
+    title: "Free-Delivery Campaigns",
+    body: "Seller- or brand-funded shipping campaigns only when the actual logistics economics support the promise.",
+  },
+] as const;
+
+export default function FashionPage() {
+  return (
+    <main className="min-h-screen bg-[#f8fbf8] text-slate-900">
+      <div className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-12">
+        <Link href="/" className="text-sm font-black text-[#075E45]">
+          ← Back to Zeshu
+        </Link>
+
+        <header className="mt-6 overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#143d2c_0%,#075E45_55%,#2f765a_100%)] p-6 text-white md:p-10">
+          <div className="max-w-3xl">
+            <p className="text-xs font-black uppercase tracking-[.18em] text-emerald-100">
+              Zeshu Fashion
+            </p>
+            <h1 className="mt-2 text-3xl font-black tracking-tight md:text-5xl">
+              Clothing, footwear and accessories from seller-owned inventory
+            </h1>
+            <p className="mt-4 text-sm font-semibold leading-6 text-emerald-50 md:text-base">
+              Zeshu is building Fashion as a zero-inventory marketplace. Products appear only when an eligible seller has a real catalogue, active stock and a verified fulfilment path.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-black">
+              <span className="rounded-full bg-white/12 px-3 py-2 ring-1 ring-white/15">Seller-owned stock</span>
+              <span className="rounded-full bg-white/12 px-3 py-2 ring-1 ring-white/15">Real availability</span>
+              <span className="rounded-full bg-white/12 px-3 py-2 ring-1 ring-white/15">Clear sponsored labels</span>
+            </div>
+          </div>
+        </header>
+
+        <section className="mt-7" aria-labelledby="fashion-categories-title">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#075E45]">
+                Shop by category
+              </p>
+              <h2 id="fashion-categories-title" className="mt-1 text-2xl font-black tracking-tight">
+                Fashion list
+              </h2>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
+                These are the priority categories Zeshu is onboarding. Available products will be shown from live seller catalogues rather than placeholder inventory.
+              </p>
+            </div>
+            <Link
+              href="/#products"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#075E45] px-4 py-3 text-sm font-black text-white"
+            >
+              Browse available products <ArrowRight size={16} />
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {fashionGroups.map((group) => (
+              <article key={group.title} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-50 text-xl" aria-hidden="true">
+                    {group.icon}
+                  </span>
+                  <h3 className="font-black">{group.title}</h3>
+                </div>
+                <ul className="mt-4 space-y-2 text-sm font-semibold text-slate-600">
+                  {group.items.map((item) => (
+                    <li key={item} className="flex gap-2">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#075E45]" aria-hidden="true" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-7 grid gap-4 md:grid-cols-3" aria-label="Fashion marketplace principles">
+          <article className="rounded-2xl border border-slate-200 bg-white p-5">
+            <Store className="text-[#075E45]" size={24} />
+            <h2 className="mt-3 text-lg font-black">Seller-owned inventory</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Zeshu does not need to buy or warehouse fashion stock. The seller or manufacturer remains responsible for its inventory.
+            </p>
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-white p-5">
+            <PackageCheck className="text-[#075E45]" size={24} />
+            <h2 className="mt-3 text-lg font-black">Verified catalogue first</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Stock, product details, pricing, return terms, taxes and seller identity should be complete before products become orderable.
+            </p>
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-white p-5">
+            <Truck className="text-[#075E45]" size={24} />
+            <h2 className="mt-3 text-lg font-black">Real shipping responsibility</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Nationwide delivery is activated only where a real seller or Zeshu-selected logistics path can quote, track and support the shipment.
+            </p>
+          </article>
+        </section>
+
+        <section className="mt-7 rounded-3xl border border-emerald-100 bg-white p-6 md:p-8" aria-labelledby="fashion-seller-title">
+          <div className="grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#075E45]">
+                For manufacturers, boutiques, wholesalers & D2C brands
+              </p>
+              <h2 id="fashion-seller-title" className="mt-2 text-2xl font-black tracking-tight">
+                Sell on Zeshu — keep your inventory with you
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                Reach Zeshu customers without Zeshu purchasing your stock. Zeshu provides discovery, ordering, promotion and logistics integration; sellers fulfil from their own inventory after onboarding and commercial approval.
+              </p>
+              <div className="mt-5 rounded-2xl bg-emerald-50 p-4">
+                <p className="text-xs font-black uppercase tracking-wide text-emerald-800">Zero-inventory flow</p>
+                <p className="mt-2 text-sm font-black text-slate-900">
+                  Customer → Zeshu → seller / manufacturer → selected logistics → customer
+                </p>
+              </div>
+              <Link
+                href="/partners#fashion-sellers"
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#075E45] px-5 py-3 text-sm font-black text-white"
+              >
+                Apply to sell fashion on Zeshu <ArrowRight size={16} />
+              </Link>
+            </div>
+
+            <div className="rounded-2xl bg-slate-50 p-5">
+              <h3 className="font-black">What Zeshu wants from fashion partners</h3>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+                {[
+                  "Catalogue feed or API / structured product catalogue",
+                  "Seller pricing and proposed marketplace / BFF economics",
+                  "Direct fulfilment or drop-shipping capability",
+                  "Return, exchange and refund responsibility",
+                  "Shipping ownership, serviceability and tracking",
+                  "GST, invoicing and settlement requirements",
+                  "Permission to promote eligible products nationally",
+                ].map((item) => (
+                  <li key={item} className="flex gap-2">
+                    <BadgeCheck size={16} className="mt-1 shrink-0 text-[#075E45]" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-7" aria-labelledby="fashion-growth-title">
+          <div className="flex items-center gap-3">
+            <Megaphone className="text-[#075E45]" size={24} />
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#075E45]">Seller growth tools</p>
+              <h2 id="fashion-growth-title" className="text-2xl font-black tracking-tight">Promotion without misleading shoppers</h2>
+            </div>
+          </div>
+          <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">
+            Paid visibility must remain distinguishable from organic discovery. Fees, eligibility and campaign economics will be published only after Zeshu knows the real payment, logistics, return, tax and network costs.
+          </p>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {sellerPrograms.map((program) => (
+              <article key={program.title} className="rounded-2xl border border-slate-200 bg-white p-5">
+                <h3 className="font-black">{program.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{program.body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-7 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <h2 className="font-black text-amber-950">Customer promise</h2>
+          <p className="mt-2 text-sm leading-6 text-amber-900/80">
+            A category being listed here does not mean every item is currently orderable. Zeshu will show actual product availability, seller information and delivery eligibility when those inputs are live.
+          </p>
+        </section>
+      </div>
+    </main>
+  );
+}
