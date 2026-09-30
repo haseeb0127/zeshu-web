@@ -1,0 +1,10 @@
+import Link from "next/link";
+import { ArrowRight, Building2, Home, Lamp, Paintbrush, Ruler, UtensilsCrossed } from "lucide-react";
+export const metadata={title:"Zeshu Interiors | Find Interior Professionals",description:"Discover interior designers and specialists and request project quotes through Zeshu."};
+const cats=[["Full home interiors",Home],["Modular kitchens",UtensilsCrossed],["Wardrobes & furniture",Ruler],["Painting & finishes",Paintbrush],["Lighting & ceilings",Lamp],["Office & commercial",Building2]];
+export default function Interiors(){return <main className="mx-auto min-h-screen max-w-6xl px-4 py-8 md:py-12">
+ <p className="text-xs font-black uppercase tracking-[.16em] text-[#075E45]">Zeshu Interiors</p><h1 className="mt-2 max-w-3xl text-3xl font-black tracking-tight md:text-5xl">From an idea to a clear project scope.</h1>
+ <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">Share your location, property type, approximate area, budget range and work needed. Compare written scope and quotes when suitable professionals are available.</p>
+ <div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-3">{cats.map(([name,Icon])=>{const I=Icon as typeof Home;return <div key={name as string} className="rounded-2xl border border-slate-200 bg-white p-4"><I className="text-[#075E45]" size={22}/><h2 className="mt-3 text-sm font-black">{name as string}</h2></div>})}</div>
+ <section className="mt-7 rounded-3xl bg-[#075E45] p-6 text-white md:p-8"><Ruler size={26}/><h2 className="mt-3 text-2xl font-black">Request an interior professional</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-white/85">Initial figures should be treated as estimates until scope, measurements, materials, exclusions, taxes and milestones are documented in a provider quote.</p><Link href="/help" className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-black text-slate-900">Contact Customer Service <ArrowRight size={16}/></Link></section>
+ </main>}
