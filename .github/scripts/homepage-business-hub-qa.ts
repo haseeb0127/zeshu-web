@@ -37,6 +37,7 @@ const productCard = read('app/components/ProductCard.tsx');
 assert(productCard.includes('data-product-card="marketplace"'), 'Product cards must use the professional marketplace card system');
 assert(homeHub.includes('snap-mandatory'), 'Homepage must expose the Zeshu self-promotion carousel');
 assert(homeHub.includes('data-slide'), 'Homepage promo carousel must render slide markers');
+assert(homeHub.includes('slides = ['), 'Homepage promo carousel must be driven by the compact customer slide set');
 for (const promo of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move']) {
   assert(homeHub.includes(promo), `Homepage promo carousel missing ${promo}`);
 }
