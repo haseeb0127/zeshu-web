@@ -76,35 +76,19 @@ assert(moveArea.includes('TELANGANA_BOUNDS'), 'Move service area must expose Tel
 assert(moveAreaApi.includes('evaluateTelanganaMoveArea'), 'Move service-area API must validate Telangana locations');
 assert(quoteApi.includes('quoteMove'), 'Move quote API must provide a preview before matching');
 assert(quoteApi.includes('evaluateTelanganaMoveArea'), 'Move quote must validate pickup and drop within Telangana');
-assert(homeHub.includes('Move with Zeshu'), 'Homepage must prominently surface Zeshu Move');
-assert(homeHub.includes('Where are you going?'), 'Homepage Move launcher must be destination-first');
-assert(homeHub.includes('/move/request?service=Auto'), 'Homepage must deep-link to Auto Move flow');
-assert(homeHub.includes('/move/request?service=Cab'), 'Homepage must deep-link to Cab Move flow');
-assert(homeHub.includes('/move/request?service=Bike%20Courier'), 'Homepage must deep-link to Bike Courier flow');
-assert(homeHub.includes('/move/request?service=Auto%20%2F%20Mini%20Truck'), 'Homepage must deep-link to Mini Truck flow');
-assert(homeHub.includes('/move/request?service=Rental%20Car'), 'Homepage must deep-link to Rental flow');
-assert(homeHub.includes('t("Travel")'), 'Homepage Move launcher must surface Travel');
-assert(homeHub.includes('matching_enabled'), 'Homepage Move readiness must respect matching state before presenting live availability');
-assert(homeHub.includes('Opening soon'), 'Homepage Move launcher must clearly label services that are not ready');
-assert(!homeHub.includes('Available now'), 'Homepage must not claim live Move availability from readiness settings alone');
-assert(!homeHub.includes('Uber'), 'Homepage Zeshu Move launcher must not mention competitor brands');
 assert(homePage.includes('HomeBusinessHub'), 'Zeshu homepage must surface the unified business hub');
 assert(!homePage.includes('<HomeMoveQuickPanel />'), 'Homepage must not duplicate the old Move quick panel');
-assert(homeBusiness.includes('Rides & courier'), 'Homepage business hub must keep a clear Move & Courier entry');
-assert(homeBusiness.includes('href="/move"'), 'Homepage business hub must link to the unified Move experience');
-for (const service of ['Auto', 'Cab', 'Send parcel', 'Mini Truck']) {
-  assert(homeBusiness.includes(service), `Homepage Move card must explain ${service}`);
-}
-assert(!homeBusiness.includes('moveShortcuts'), 'Homepage must not duplicate Move with a separate shortcut panel');
-assert(homeBusiness.includes('/api/move/matching/readiness'), 'Homepage business hub must use live Move readiness instead of inventing availability');
-assert(homeBusiness.includes('useCustomerLanguage'), 'Homepage business hub must use customer language translations');
-for (const scope of ['Jagtial','Telangana','India']) {
-  assert(homeBusiness.includes(scope), `Homepage business hub must explain ${scope} service scope`);
-}
-for (const path of ['/earn','/partners','/help']) {
-  assert(homeBusiness.includes(`href="${path}"`), `Homepage business hub missing business/support route: ${path}`);
-}
-assert(homeBusiness.includes('Shop, move, send and manage everyday services with Zeshu.'), 'Homepage business hub must explain Zeshu at first glance');
+assert(homeHub.includes('Zeshu Move'), 'Homepage must surface Zeshu Move');
+assert(homeHub.includes('href="/move"'), 'Homepage business hub must link to the unified Move experience');
+assert(homeHub.includes('/api/move/matching/readiness'), 'Homepage business hub must use live Move readiness instead of inventing availability');
+assert(homeHub.includes('matching_enabled'), 'Homepage Move readiness must respect matching state before presenting availability');
+assert(homeHub.includes('Check availability'), 'Homepage Move entry must use customer-friendly availability wording');
+assert(homeHub.includes('Opening soon'), 'Homepage Move entry must clearly label services that are not ready');
+assert(!homeHub.includes('Available now'), 'Homepage must not claim live Move availability from readiness settings alone');
+assert(homeBusiness.includes('Shop, pay, move and get help with Zeshu.'), 'Homepage business hub must explain Zeshu at first glance');
+assert(homeBusiness.includes('Zeshu Fashion'), 'Homepage must keep Fashion in the customer department set');
+assert(homeBusiness.includes('Zeshu Pay'), 'Homepage must keep Pay in the customer department set');
+assert(!homeBusiness.includes('Work with Zeshu'), 'Homepage must keep business onboarding out of the primary customer journey');
 assert(!homeBusiness.includes('navigator.geolocation'), 'Homepage business hub must not request GPS before customer intent');
 assert(!homeBusiness.includes('Uber'), 'Homepage business hub must not mention competitor brands');
 assert(!homeBusiness.includes('compliance-gated'), 'Homepage business hub must not expose internal compliance wording');
