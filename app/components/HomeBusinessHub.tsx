@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { BadgeCheck, Car, ChevronLeft, ChevronRight, Package, Receipt, ShoppingBag, Store } from "lucide-react";
+import { BadgeCheck, Car, ChevronLeft, ChevronRight, Paintbrush, PartyPopper, Receipt, ShoppingBag, Store } from "lucide-react";
 import { useCustomerLanguage } from "@/app/components/CustomerLanguageProvider";
 
 type Readiness = { request_enabled?: boolean; matching_enabled?: boolean; compliance_gate?: boolean };
@@ -62,6 +62,14 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
       <button onClick={onOpenServices} className="rounded-2xl border border-slate-200 bg-white p-4 text-left"><Receipt className="text-[#075E45]" size={22}/><h2 className="mt-3 font-black">Zeshu Pay</h2><p className="mt-1 text-xs text-slate-500">{t("Recharge & bills")}</p></button>
       <Link href="/move" className="rounded-2xl border border-slate-200 bg-white p-4"><Car className="text-[#075E45]" size={22}/><h2 className="mt-3 font-black">Zeshu Move</h2><p className="mt-1 text-xs text-slate-500">{anyMoveReady?t("Check availability"):t("Opening soon")}</p></Link>
     </div>
+
+    <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4" aria-labelledby="professional-services-title">
+      <div className="flex items-end justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.14em] text-[#075E45]">Zeshu Services</p><h2 id="professional-services-title" className="mt-1 text-lg font-black text-slate-950">Plan something bigger</h2><p className="mt-1 text-xs leading-5 text-slate-500">Explore services and request quotes where professionals are onboarded.</p></div><Link href="/professional-services" className="hidden text-xs font-black text-[#075E45] sm:inline">View services →</Link></div>
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <Link href="/professional-services/weddings" className="rounded-xl bg-rose-50 p-4"><PartyPopper className="text-[#075E45]" size={22}/><h3 className="mt-2 text-sm font-black">Zeshu Weddings</h3><p className="mt-1 text-xs leading-5 text-slate-600">Planning, venues, catering, decor & more</p><span className="mt-2 inline-block text-xs font-black text-[#075E45]">Request quotes →</span></Link>
+        <Link href="/professional-services/interiors" className="rounded-xl bg-amber-50 p-4"><Paintbrush className="text-[#075E45]" size={22}/><h3 className="mt-2 text-sm font-black">Zeshu Interiors</h3><p className="mt-1 text-xs leading-5 text-slate-600">Homes, kitchens, painting & renovation</p><span className="mt-2 inline-block text-xs font-black text-[#075E45]">Request quotes →</span></Link>
+      </div>
+    </section>
 
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4">
       <div><p className="text-sm font-black text-slate-900">{t("Shop products")}</p><p className="mt-1 text-xs text-slate-500">{nationwideCheckoutEnabled?t("Local and eligible India delivery products."):t("Local products and eligible marketplace discovery.")}</p></div>
