@@ -20,6 +20,10 @@ for (const phrase of [
   'Recharge & bills',
   'Shop products',
   'Browse products',
+  'Zeshu Services',
+  'Zeshu Weddings',
+  'Zeshu Interiors',
+  'Request quotes',
 ]) {
   assert(homeHub.includes(phrase), `Homepage business hub missing customer-facing phrase: ${phrase}`);
 }
@@ -28,7 +32,7 @@ for (const scope of ['Jagtial', 'Telangana', 'India']) {
   assert(homeHub.includes(scope), `Homepage business hub missing geographic scope: ${scope}`);
 }
 
-for (const href of ['/move', '/fashion']) {
+for (const href of ['/move', '/fashion', '/professional-services/weddings', '/professional-services/interiors']) {
   assert(homeHub.includes(`href="${href}"`), `Homepage business hub missing key customer destination: ${href}`);
 }
 
@@ -50,6 +54,7 @@ assert(!homeHub.includes('Available now'), 'Homepage must not claim live Move av
 assert(homeHub.includes('Opening soon'), 'Homepage Move card must clearly label services that are not ready');
 assert(!homeHub.includes('Uber'), 'Homepage must not mention competitor brands');
 assert(!homeHub.includes('compliance-gated'), 'Homepage must not expose internal compliance terminology');
+assert(homeHub.includes('Plan something bigger'), 'Homepage must group professional services without adding oversized hero clutter');
 assert(!homeHub.includes('For customers, drivers, sellers and brands'), 'Homepage must keep business onboarding out of the primary customer journey');
 
 assert(page.includes("t('Set your address')"), 'Homepage header must use a clear address action');
