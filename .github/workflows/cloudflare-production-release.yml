@@ -251,33 +251,31 @@ jobs:
             const moveEntry = moveQuick.locator('a[href="/move"]').first();
             await moveEntry.waitFor({ state: 'visible', timeout: 10000 });
             assert(await moveEntry.isVisible(), 'Homepage Zeshu Move entry is missing');
-            const promoSlides = moveQuick.locator('[data-promo-slide]');
-            assert(await promoSlides.count() === 5, 'Homepage must show five Zeshu self-promotion slides including Fashion');
+            const promoSlides = moveQuick.locator('[data-slide]');
+            assert(await promoSlides.count() === 4, 'Homepage must show the four core Zeshu promotions');
             const promoText = (await promoSlides.allInnerTexts()).join(' ').replace(/\s+/g, ' ');
-            for (const promo of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Marketplace']) {
+            for (const promo of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move']) {
               assert(promoText.includes(promo), `Homepage promo carousel is missing ${promo}`);
             }
-            const moveQuickText = (await moveQuick.innerText()).replace(/\s+/g, ' ');
-            assert(moveQuickText.includes('Shop, move, send and manage everyday services with Zeshu.'), 'Homepage business proposition is missing');
-            assert(moveQuickText.includes('What would you like to do?'), 'Homepage customer decision section is missing');
-            assert(moveQuickText.includes('Clear availability'), 'Homepage trust explanation is missing');
-            assert(moveQuickText.includes('Rides & courier'), 'Homepage Move & Courier entry is missing');
-            for (const service of ['Auto', 'Cab', 'Courier', 'Mini Truck', 'Rental', 'Travel']) {
-              assert(moveQuickText.includes(service), `Homepage Move launcher is missing ${service}`);
+            const promoScopes = await promoSlides.evaluateAll((slides) =>
+              slides.map((slide) => slide.querySelector('span')?.textContent || ''),
+            );
+            for (const scope of ['Jagtial', 'India', 'Telangana']) {
+              assert(promoScopes.some((label) => label.includes(scope)), `Homepage promotions are missing ${scope} coverage`);
             }
-            assert(!moveQuickText.includes('Pick a Move service'), 'Homepage still duplicates the Move decision section');
-            assert(await moveQuick.locator('[data-promo-slide][data-promo-scope="Jagtial"]').count() === 1, 'Homepage promotions must explain Jagtial local coverage');
-            assert(await moveQuick.locator('[data-promo-slide][data-promo-scope="Telangana"]').count() === 1, 'Homepage promotions must explain Telangana Move coverage');
-            assert(await moveQuick.locator('[data-promo-slide][data-promo-scope="India"]').count() === 3, 'Homepage promotions must explain India digital, Fashion and marketplace coverage');
-            assert(moveQuickText.includes('Earn with Zeshu'), 'Homepage business hub must expose driver/delivery earning path');
-            assert(moveQuickText.includes('Sell on Zeshu'), 'Homepage business hub must expose seller path');
-            assert(moveQuickText.includes('Promote with Zeshu'), 'Homepage business hub must expose brand promotion path');
-            assert(moveQuickText.includes('Explore Zeshu Fashion'), 'Homepage Fashion discovery section is missing');
-            for (const category of ['Sarees', 'Kurtis', 'Women’s western wear', 'Men’s shirts & T-shirts', 'Jeans', 'Kidswear', 'Footwear', 'Accessories']) {
-              assert(moveQuickText.includes(category), `Homepage Fashion list is missing ${category}`);
+            const moveQuickText = ((await moveQuick.textContent()) || '').replace(/\s+/g, ' ');
+            assert(moveQuickText.includes('Shop, pay, move and get help with Zeshu.'), 'Homepage business proposition is missing');
+            for (const service of ['Shop', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move']) {
+              assert(moveQuickText.includes(service), `Homepage core service launcher is missing ${service}`);
             }
+            assert(moveQuickText.includes('Zeshu Services'), 'Homepage professional services section is missing');
+            assert(moveQuickText.includes('Zeshu Weddings'), 'Homepage Weddings entry is missing');
+            assert(moveQuickText.includes('Zeshu Interiors'), 'Homepage Interiors entry is missing');
             assert(await moveQuick.locator('a[href="/fashion"]').count() > 0, 'Homepage Fashion link is missing');
-            assert(await moveQuick.locator('a[href="/move"]').count() > 0, 'Homepage business hub Move link is missing');
+            assert(await moveQuick.locator('a[href="/move"]').count() > 0, 'Homepage Move link is missing');
+            assert(await moveQuick.locator('a[href="/professional-services"]').count() > 0, 'Homepage professional services link is missing');
+            assert(await moveQuick.locator('a[href="/professional-services/weddings"]').count() > 0, 'Homepage Weddings link is missing');
+            assert(await moveQuick.locator('a[href="/professional-services/interiors"]').count() > 0, 'Homepage Interiors link is missing');
             const departmentNav = page.locator('[data-customer-department-nav="primary"]');
             await departmentNav.waitFor({ state: 'visible', timeout: 10000 });
             const departmentText = (await departmentNav.innerText()).replace(/\s+/g, ' ');
