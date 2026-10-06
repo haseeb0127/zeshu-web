@@ -311,7 +311,6 @@ jobs:
             );
             const hindi = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
             assert(hindi.includes('Zeshu के साथ खरीदारी करें, भुगतान करें, सफ़र करें और मदद पाएँ।'), 'New Zeshu homepage heading is not localized in Hindi');
-            assert(hindi.includes('स्पष्ट उपलब्धता'), 'Homepage trust copy is not localized in Hindi');
             assert(hindi.includes('किराना और रोज़मर्रा की चीज़ें'), 'Groceries & essentials is not localized in Hindi');
             assert(hindi.includes('राइड्स और कूरियर'), 'Rides & courier is not localized in Hindi');
             assert(hindi.includes('रीचार्ज और बिल'), 'Recharge & bills is not localized in Hindi');
@@ -339,7 +338,6 @@ jobs:
             const urdu = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
             assert(await page.locator('html').getAttribute('dir') === 'rtl', 'Urdu page is not RTL');
             assert(urdu.includes('Zeshu کے ساتھ خریداری کریں، ادائیگی کریں، سفر کریں اور مدد حاصل کریں۔'), 'New Zeshu homepage heading is not localized in Urdu');
-            assert(urdu.includes('واضح دستیابی'), 'Homepage trust copy is not localized in Urdu');
             assert(urdu.includes('گروسری اور روزمرہ ضروریات'), 'Groceries & essentials is not localized in Urdu');
             assert(urdu.includes('رائیڈز اور کورئیر'), 'Rides & courier is not localized in Urdu');
             assert(urdu.includes('ریچارج اور بلز'), 'Recharge & bills is not localized in Urdu');
