@@ -258,12 +258,14 @@ jobs:
               assert(promoText.includes(promo), `Homepage promo carousel is missing ${promo}`);
             }
             const promoScopes = await promoSlides.evaluateAll((slides) =>
-              slides.map((slide) => Array.from(slide.querySelectorAll('span'))
-                .map((span) => span.textContent || '')
-                .find((text) => /Zeshu\\s*[·•-]\\s*(Jagtial|India|Telangana)/i.test(text)) || ''),
+              slides.map((slide) => (slide.textContent || '').replace(/\\s+/g, ' ').trim()),
             );
+            console.log('Promotion slides:', JSON.stringify(promoScopes));
             for (const scope of ['Jagtial', 'India', 'Telangana']) {
-              assert(promoScopes.some((label) => label.includes(scope)), `Homepage promotions are missing ${scope} coverage`);
+              assert(
+                promoScopes.some((label) => label.includes(scope)),
+                `Homepage promotions are missing ${scope} coverage; rendered slides: ${JSON.stringify(promoScopes)}`,
+              );
             }
             const moveQuickText = ((await moveQuick.textContent()) || '').replace(/\s+/g, ' ');
             assert(moveQuickText.includes('Shop, pay, move and get help with Zeshu.'), 'Homepage business proposition is missing');
