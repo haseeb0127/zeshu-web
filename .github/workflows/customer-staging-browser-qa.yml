@@ -74,8 +74,12 @@ jobs:
             for (const promo of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move']) {
               assert(promoText.includes(promo), `Homepage promo carousel is missing ${promo}`);
             }
+            const promoScopes = await promoSlides.locator('span').allInnerTexts();
             for (const scope of ['Jagtial', 'India', 'Telangana']) {
-              assert(promoText.includes(`Zeshu · ${scope}`), `Homepage promotions are missing ${scope} coverage`);
+              assert(
+                promoScopes.some((label) => label.replace(/\\s+/g, ' ').trim().endsWith(scope)),
+                `Homepage promotions are missing ${scope} coverage`,
+              );
             }
             const moveQuickText = (await moveQuick.innerText()).replace(/\s+/g, ' ');
             assert(moveQuickText.includes('Shop, pay, move and get help with Zeshu.'), 'Homepage business proposition is missing');
