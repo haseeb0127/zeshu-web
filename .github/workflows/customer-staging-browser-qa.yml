@@ -75,7 +75,9 @@ jobs:
               assert(promoText.includes(promo), `Homepage promo carousel is missing ${promo}`);
             }
             const promoScopes = await promoSlides.evaluateAll((slides) =>
-              slides.map((slide) => slide.querySelector('span')?.textContent || ''),
+              slides.map((slide) => Array.from(slide.querySelectorAll('span'))
+                .map((span) => span.textContent || '')
+                .find((text) => /Zeshu\\s*[·•-]\\s*(Jagtial|India|Telangana)/i.test(text)) || ''),
             );
             console.log('Promotion scopes:', JSON.stringify(promoScopes));
             for (const scope of ['Jagtial', 'India', 'Telangana']) {
