@@ -84,7 +84,7 @@ jobs:
                 `Homepage promotions are missing ${scope} coverage; rendered scopes: ${JSON.stringify(promoScopes)}`,
               );
             }
-            const moveQuickText = (await moveQuick.innerText()).replace(/\s+/g, ' ');
+            const moveQuickText = ((await moveQuick.textContent()) || '').replace(/\s+/g, ' ');
             assert(moveQuickText.includes('Shop, pay, move and get help with Zeshu.'), 'Homepage business proposition is missing');
             for (const service of ['Shop', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move']) {
               assert(moveQuickText.includes(service), `Homepage core service launcher is missing ${service}`);
