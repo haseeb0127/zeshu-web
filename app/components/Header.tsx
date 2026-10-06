@@ -44,8 +44,8 @@ export default function Header({
           
           <div className="flex items-center gap-4 md:gap-6">
             <button type="button" aria-label="Zeshu home" className="flex shrink-0 items-center gap-2 md:gap-3 md:border-r border-gray-200/60 md:pr-6 active:scale-[0.97] transition-transform" onClick={() => setActiveTab('home')}>
-              <span className="relative h-[50px] w-[50px] shrink-0 overflow-hidden rounded-[15px] shadow-[0_6px_18px_rgba(7,94,69,.20)] ring-1 ring-[#075E45]/10 md:h-[54px] md:w-[54px] md:rounded-[17px]">
-                <Image src="/zeshu-icon.svg" alt="" fill priority sizes="54px" className="object-cover" />
+              <span className="relative h-[60px] w-[60px] shrink-0 overflow-hidden rounded-[18px] shadow-[0_6px_18px_rgba(7,94,69,.20)] ring-1 ring-[#075E45]/10 md:h-[60px] md:w-[60px] md:rounded-[18px]">
+                <Image src="/zeshu-icon.svg" alt="" fill priority sizes="60px" className="object-cover" />
               </span>
               <span className="hidden md:flex flex-col text-left"><span className="text-[22px] font-black tracking-tighter leading-none text-[#17201C]">ZESHU</span><span className="text-[10px] font-extrabold text-[#075E45] tracking-[0.2em] uppercase mt-0.5">Super App</span></span>
             </button>
