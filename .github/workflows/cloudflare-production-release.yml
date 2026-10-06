@@ -258,7 +258,9 @@ jobs:
               assert(promoText.includes(promo), `Homepage promo carousel is missing ${promo}`);
             }
             const promoScopes = await promoSlides.evaluateAll((slides) =>
-              slides.map((slide) => slide.querySelector('span')?.textContent || ''),
+              slides.map((slide) => Array.from(slide.querySelectorAll('span'))
+                .map((span) => span.textContent || '')
+                .find((text) => /Zeshu\\s*[·•-]\\s*(Jagtial|India|Telangana)/i.test(text)) || ''),
             );
             for (const scope of ['Jagtial', 'India', 'Telangana']) {
               assert(promoScopes.some((label) => label.includes(scope)), `Homepage promotions are missing ${scope} coverage`);
@@ -303,7 +305,7 @@ jobs:
             await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'hi'));
             await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
             await page.waitForFunction(
-              () => document.body.innerText.includes('स्पष्ट उपलब्धता'),
+              () => document.body.innerText.includes('Zeshu के साथ खरीदारी करें, भुगतान करें, सफ़र करें और मदद पाएँ।'),
               null,
               { timeout: 15000 },
             );
@@ -326,7 +328,7 @@ jobs:
             await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
             await page.waitForFunction(() => document.documentElement.dir === 'rtl', null, { timeout: 10000 });
             await page.waitForFunction(
-              () => document.body.innerText.includes('واضح دستیابی'),
+              () => document.body.innerText.includes('Zeshu کے ساتھ خریداری کریں، ادائیگی کریں، سفر کریں اور مدد حاصل کریں۔'),
               null,
               { timeout: 15000 },
             );
