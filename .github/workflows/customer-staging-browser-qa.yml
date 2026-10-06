@@ -220,13 +220,13 @@ jobs:
             await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'hi'));
             await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
             await page.waitForFunction(
-              () => document.body.innerText.includes('Zeshu के साथ खरीदें, सफ़र करें, भेजें और रोज़मर्रा की सेवाएँ संभालें।'),
+              () => document.body.innerText.includes('Zeshu के साथ खरीदारी करें, भुगतान करें, सफ़र करें और मदद पाएँ।'),
               null,
               { timeout: 15000 },
             );
 
             const hindi = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
-            assert(hindi.includes('Zeshu के साथ खरीदें, सफ़र करें, भेजें और रोज़मर्रा की सेवाएँ संभालें।'), 'New Zeshu homepage heading is not localized in Hindi');
+            assert(hindi.includes('Zeshu के साथ खरीदारी करें, भुगतान करें, सफ़र करें और मदद पाएँ।'), 'New Zeshu homepage heading is not localized in Hindi');
             assert(hindi.includes('स्पष्ट उपलब्धता'), 'Homepage trust copy is not localized in Hindi');
             assert(hindi.includes('किराना और रोज़मर्रा की चीज़ें'), 'Groceries & essentials is not localized in Hindi');
             assert(hindi.includes('राइड्स और कूरियर'), 'Rides & courier is not localized in Hindi');
@@ -258,14 +258,14 @@ jobs:
             await page.reload({ waitUntil: 'networkidle', timeout: 60000 });
             await page.waitForFunction(() => document.documentElement.dir === 'rtl', null, { timeout: 10000 });
             await page.waitForFunction(
-              () => document.body.innerText.includes('Zeshu کے ساتھ خریدیں، سفر کریں، بھیجیں اور روزمرہ خدمات سنبھالیں۔'),
+              () => document.body.innerText.includes('Zeshu کے ساتھ خریداری کریں، ادائیگی کریں، سفر کریں اور مدد حاصل کریں۔'),
               null,
               { timeout: 15000 },
             );
 
             const urdu = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
             assert(await page.locator('html').getAttribute('dir') === 'rtl', 'Urdu page is not RTL');
-            assert(urdu.includes('Zeshu کے ساتھ خریدیں، سفر کریں، بھیجیں اور روزمرہ خدمات سنبھالیں۔'), 'New Zeshu homepage heading is not localized in Urdu');
+            assert(urdu.includes('Zeshu کے ساتھ خریداری کریں، ادائیگی کریں، سفر کریں اور مدد حاصل کریں۔'), 'New Zeshu homepage heading is not localized in Urdu');
             assert(urdu.includes('واضح دستیابی'), 'Homepage trust copy is not localized in Urdu');
             assert(urdu.includes('گروسری اور روزمرہ ضروریات'), 'Groceries & essentials is not localized in Urdu');
             assert(urdu.includes('رائیڈز اور کورئیر'), 'Rides & courier is not localized in Urdu');
