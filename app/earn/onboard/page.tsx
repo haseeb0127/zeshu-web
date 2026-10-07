@@ -136,6 +136,9 @@ export default function DriverOnboardingPage() {
   const hasCommercialService = form.requested_services.some((service) =>
     service === "AUTO_DRIVER" || service === "CAB_DRIVER" || service === "GOODS_DRIVER"
   );
+  const hasPassengerService = form.requested_services.some((service) =>
+    service === "AUTO_DRIVER" || service === "CAB_DRIVER"
+  );
 
   const toggleService = (value: string) => {
     setForm((current) => {
@@ -331,6 +334,7 @@ export default function DriverOnboardingPage() {
           </div>
 
           {hasCommercialService && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900"><strong>Auto, Cab or Goods selected:</strong> Zeshu will require a transport/commercial registration plus the applicable permit and fitness documents before verification.</p>}
+          {hasPassengerService && <p className="mt-3 rounded-xl bg-blue-50 p-3 text-xs leading-5 text-blue-950"><strong>Auto/Cab passenger onboarding:</strong> Complete the required documents first. After they qualify, Zeshu arranges the required police/background verification and keeps the passenger service inactive while it is pending. You normally do not need to obtain a police-verification certificate yourself.</p>}
 
           {!locked && <button disabled={busy === "save"} className="mt-5 w-full rounded-xl bg-[#075E45] py-3.5 font-black text-white disabled:opacity-50">{busy === "save" ? "Saving…" : application ? "Save changes & continue" : "Continue to documents"}</button>}
         </form>
@@ -361,12 +365,12 @@ export default function DriverOnboardingPage() {
         </section>}
 
         {application && <section className="mt-5 grid gap-4 md:grid-cols-2">
-          <div className="rounded-3xl bg-white p-5"><p className="text-xs font-black uppercase text-[#075E45]">Step 3</p><h2 className="mt-1 text-lg font-black">Background verification</h2><p className="mt-2 text-sm leading-6 text-slate-600">{application.status === "UNDER_REVIEW" ? "Zeshu will verify your identity, driving eligibility and required safety information as part of onboarding. You may be contacted if any additional document or action is required. Uploading documents alone does not make a driver verified." : application.status === "ACTION_REQUIRED" ? "One or more items need attention. Zeshu will tell you exactly what additional document or action is required." : application.status === "VERIFIED" ? "Required document and background checks are complete. Service activation remains separate." : "Submit the required documents to begin Zeshu review and background verification."}</p></div>
+          <div className="rounded-3xl bg-white p-5"><p className="text-xs font-black uppercase text-[#075E45]">Step 3</p><h2 className="mt-1 text-lg font-black">Background verification</h2><p className="mt-2 text-sm leading-6 text-slate-600">{application.status === "UNDER_REVIEW" ? hasPassengerService ? "Your documents are being reviewed first. Once they qualify, Zeshu arranges the required police/background verification. Passenger matching stays disabled while verification is pending. You can complete other onboarding steps meanwhile." : "Zeshu will verify your identity, driving eligibility and required safety information as part of onboarding. You may be contacted if any additional document or action is required. Uploading documents alone does not make a driver verified." : application.status === "ACTION_REQUIRED" ? "One or more items need attention. Zeshu will tell you exactly what additional document or action is required." : application.status === "VERIFIED" ? "Required document and background checks are complete. Service activation remains separate." : "Submit the required documents to begin Zeshu review and background verification."}</p></div>
           <div className="rounded-3xl bg-white p-5"><p className="text-xs font-black uppercase text-[#075E45]">Step 4</p><h2 className="mt-1 text-lg font-black">Service activation</h2>{activeServices > 0 ? <p className="mt-2 flex items-center gap-2 text-sm font-black text-emerald-700"><FileCheck2 size={18} />{activeServices} service(s) active. Open the Rider dashboard and go online.</p> : <p className="mt-2 text-sm leading-6 text-slate-600">{application.status === "VERIFIED" ? "Your profile is verified. Zeshu activates eligible services when operations are ready in your area." : "Activation appears after successful verification."}</p>}</div>
         </section>}
 
         <section className="mt-5 rounded-3xl border border-emerald-100 bg-emerald-50 p-5 text-sm leading-6 text-emerald-950">
-          <strong>Background checks:</strong> You do not normally need to obtain and upload a separate police-verification certificate. By submitting your application, you consent to Zeshu or an authorised verification provider checking the identity, driving eligibility, address/antecedent and safety information required for the service you selected. Zeshu will ask for an additional police or authority document only when the applicable process requires it. <strong>Passenger services:</strong> Auto and Cab activation remains subject to the compliant passenger-service setup for your area. Passenger Bike Taxi is not part of this onboarding flow.
+          <strong>Background checks:</strong> By submitting your application, you consent to Zeshu arranging the identity, driving-eligibility, address/antecedent and safety checks required for your selected service. For Auto/Cab passenger onboarding, Zeshu will arrange the required police/background verification after the other required documents qualify and will retain the verification record. You normally do not need to obtain a police-verification certificate yourself; Zeshu will contact you if the applicable authority requires an additional document or action. Passenger service remains inactive until all mandatory checks and Zeshu's service/compliance gates pass. Passenger Bike Taxi is not part of this onboarding flow.
         </section>
       </div>
     </main>
