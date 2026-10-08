@@ -2954,12 +2954,12 @@ export default function ZeshuSuperApp() {
 
       <header className="fixed top-0 z-40 w-full border-b border-slate-200 bg-white pt-[env(safe-area-inset-top)] shadow-[0_2px_10px_rgba(15,23,42,.05)] lg:pt-0">
         <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 lg:py-0 lg:h-[88px] flex flex-col lg:flex-row items-center justify-between gap-3 lg:gap-4 2xl:gap-8">
-          <div className="flex min-w-0 items-center justify-between w-full lg:w-auto gap-2 sm:gap-3">
-            <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4 lg:gap-6">
+          <div className="flex min-w-0 flex-wrap items-start justify-between w-full lg:w-auto gap-2 sm:gap-3 lg:flex-nowrap lg:items-center">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2 sm:gap-4 lg:flex-nowrap lg:gap-6">
               <button aria-label="Go to Zeshu home" className="flex shrink-0 items-center gap-2 lg:gap-3 lg:border-r border-gray-200/60 lg:pr-6 active:scale-[0.97] transition-transform" onClick={goToHome}>
-                <img src="/zeshu-dark-wordmark.svg" width="560" height="180" alt="ZESHU" className="h-11 w-[138px] shrink-0 rounded-lg object-contain sm:h-12 sm:w-[155px] lg:h-[58px] lg:w-[180px]" />
+                <img src="/zeshu-dark-wordmark.svg" width="560" height="180" alt="ZESHU" className="h-10 w-[126px] shrink-0 rounded-lg object-contain sm:h-12 sm:w-[155px] lg:h-[58px] lg:w-[180px]" />
               </button>
-              <button type="button" aria-label="Detect or change delivery location" className="flex min-w-0 flex-1 max-w-[240px] flex-col cursor-pointer text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#075E45] sm:max-w-[360px] lg:flex-none lg:max-w-[220px]" onClick={handleAutoDetectLocation}>
+              <button type="button" aria-label="Detect or change delivery location" className="order-last flex w-full min-w-0 flex-col cursor-pointer rounded-lg bg-emerald-50/60 px-2 py-1 text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#075E45] sm:max-w-[360px] lg:order-none lg:w-auto lg:flex-1 lg:bg-transparent lg:p-0 lg:max-w-[220px]" onClick={handleAutoDetectLocation}>
                 <div className="flex min-w-0 items-center gap-1.5 text-[12px] font-black md:text-[15px]"><span className="truncate">{currentAddress !== 'Location not set' ? t('Deliver to') : t('Set your address')}</span><MapPin size={14} className="shrink-0 text-[#075E45]"/></div>
                 <div className="mt-0.5 flex min-w-0 items-center text-[10px] font-medium text-[#6B7280] md:text-xs"><span className="truncate">{currentAddress === 'Location not set' ? t("See what's available near you") : currentAddress}</span><ChevronDown size={14} className="ml-1 shrink-0"/></div>
               </button>
