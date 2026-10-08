@@ -28,8 +28,12 @@ for (const scope of ['Jagtial', 'Telangana', 'India']) {
   assert(homeHub.includes(scope), `Homepage business hub missing geographic scope: ${scope}`);
 }
 
-for (const href of ['/move', '/fashion', '/professional-services/weddings', '/professional-services/interiors']) {
+for (const href of ['/move', '/fashion']) {
   assert(homeHub.includes(`href="${href}"`), `Homepage business hub missing key customer destination: ${href}`);
+}
+
+for (const destination of ['/professional-services/weddings', '/professional-services/interiors']) {
+  assert(homeHub.includes(destination), `Homepage carousel missing service destination: ${destination}`);
 }
 
 assert(page.includes('data-category-strip="marketplace"'), 'Mobile homepage must use icon-led marketplace category discovery');
