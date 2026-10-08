@@ -2955,11 +2955,11 @@ export default function ZeshuSuperApp() {
       <header className="fixed top-0 z-40 w-full border-b border-slate-200 bg-white pt-[env(safe-area-inset-top)] shadow-[0_2px_10px_rgba(15,23,42,.05)] lg:pt-0">
         <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 lg:py-0 lg:h-[88px] flex flex-col lg:flex-row items-center justify-between gap-3 lg:gap-4 2xl:gap-8">
           <div className="flex min-w-0 flex-wrap items-start justify-between w-full lg:w-auto gap-2 sm:gap-3 lg:flex-nowrap lg:items-center">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2 sm:gap-4 lg:flex-nowrap lg:gap-6">
+            <div className="flex w-full min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2 sm:gap-4 lg:w-auto lg:flex-nowrap lg:gap-6">
               <button aria-label="Go to Zeshu home" className="flex shrink-0 items-center gap-2 lg:gap-3 lg:border-r border-gray-200/60 lg:pr-6 active:scale-[0.97] transition-transform" onClick={goToHome}>
                 <img src="/zeshu-dark-wordmark.svg" width="560" height="180" alt="ZESHU" className="h-10 w-[126px] shrink-0 rounded-lg object-contain sm:h-12 sm:w-[155px] lg:h-[58px] lg:w-[180px]" />
               </button>
-              <button type="button" aria-label="Detect or change delivery location" className="order-last flex w-full min-w-0 flex-col cursor-pointer rounded-lg bg-emerald-50/60 px-2 py-1 text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#075E45] sm:max-w-[360px] lg:order-none lg:w-auto lg:flex-1 lg:bg-transparent lg:p-0 lg:max-w-[220px]" onClick={handleAutoDetectLocation}>
+              <button type="button" aria-label="Detect or change delivery location" className="order-last flex w-full min-w-0 flex-col cursor-pointer rounded-lg bg-emerald-50/60 px-3 py-2 text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#075E45] sm:max-w-[360px] lg:order-none lg:w-auto lg:flex-1 lg:bg-transparent lg:p-0 lg:max-w-[220px]" onClick={handleAutoDetectLocation}>
                 <div className="flex min-w-0 items-center gap-1.5 text-[12px] font-black md:text-[15px]"><span className="truncate">{currentAddress !== 'Location not set' ? t('Deliver to') : t('Set your address')}</span><MapPin size={14} className="shrink-0 text-[#075E45]"/></div>
                 <div className="mt-0.5 flex min-w-0 items-center text-[10px] font-medium text-[#6B7280] md:text-xs"><span className="truncate">{currentAddress === 'Location not set' ? t("See what's available near you") : currentAddress}</span><ChevronDown size={14} className="ml-1 shrink-0"/></div>
               </button>
@@ -3027,11 +3027,11 @@ export default function ZeshuSuperApp() {
              <nav
                data-customer-department-nav="primary"
                aria-label="Zeshu customer departments"
-               className="mb-4 flex gap-1.5 overflow-x-auto border-y border-slate-200 bg-white px-3 py-2 no-scrollbar md:rounded-xl md:border md:px-3"
+               className="mb-3 flex gap-1.5 overflow-x-auto border-y border-slate-200 bg-white px-3 py-1.5 no-scrollbar md:mb-4 md:rounded-xl md:border md:px-3 md:py-2"
              >
                <button type="button" onClick={() => { setActiveCategory('All'); setFulfillmentFilter('ALL'); requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-emerald-50 hover:text-[#075E45]">{t('Shop')}</button>
                <Link href="/fashion" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-fuchsia-50 hover:text-fuchsia-800">Zeshu Fashion</Link>
-               <button type="button" onClick={() => openServices()} className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-amber-50 hover:text-amber-800">Zeshu Pay <span className="font-bold text-slate-400">· {t('Recharge & bills')}</span></button>
+               <button type="button" onClick={() => openServices()} className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-amber-50 hover:text-amber-800">Zeshu Pay <span className="hidden font-bold text-slate-400 lg:inline">· {t('Recharge & bills')}</span></button>
                <Link href="/move" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-sky-50 hover:text-sky-800">Zeshu Move</Link>
                <Link href="/help" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-slate-100">{t('Customer Service')}</Link>
                <span className="my-1 hidden w-px shrink-0 bg-slate-200 md:block" aria-hidden="true" />
