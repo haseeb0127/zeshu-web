@@ -2957,8 +2957,8 @@ export default function ZeshuSuperApp() {
           <div className="flex min-w-0 items-center justify-between w-full lg:w-auto gap-2 sm:gap-3">
             <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4 lg:gap-6">
               <button aria-label="Go to Zeshu home" className="flex shrink-0 items-center gap-2 lg:gap-3 lg:border-r border-gray-200/60 lg:pr-6 active:scale-[0.97] transition-transform" onClick={goToHome}>
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#075E45] text-xl font-black tracking-tighter text-white shadow-sm md:h-12 md:w-12 md:rounded-2xl md:text-2xl">Z</div>
-                <div className="flex flex-col text-left"><span className="text-[16px] sm:text-[20px] lg:text-[22px] font-black tracking-tighter leading-none">ZESHU</span><span className="hidden sm:block text-[10px] font-extrabold text-[#075E45] tracking-[0.2em] uppercase mt-0.5">{t('Everyday, simply')}</span></div>
+                <img src="/zeshu-icon.svg" width="48" height="48" alt="" aria-hidden="true" className="h-10 w-10 shrink-0 rounded-xl md:h-12 md:w-12 md:rounded-2xl" />
+                <div className="flex flex-col text-left"><span className="text-[17px] sm:text-[21px] lg:text-[24px] font-black tracking-[-0.045em] leading-none text-[#004B36]">ZESHU</span><span className="hidden sm:block text-[10px] font-extrabold text-[#075E45] tracking-[0.2em] uppercase mt-0.5">{t('Everyday, simply')}</span></div>
               </button>
               <button type="button" aria-label="Detect or change delivery location" className="flex min-w-0 flex-1 max-w-[240px] flex-col cursor-pointer text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#075E45] sm:max-w-[360px] lg:flex-none lg:max-w-[220px]" onClick={handleAutoDetectLocation}>
                 <div className="flex min-w-0 items-center gap-1.5 text-[12px] font-black md:text-[15px]"><span className="truncate">{currentAddress !== 'Location not set' ? t('Deliver to') : t('Set your address')}</span><MapPin size={14} className="shrink-0 text-[#075E45]"/></div>
