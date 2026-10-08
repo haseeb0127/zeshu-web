@@ -100,7 +100,7 @@ jobs:
               assert(departmentText.includes(department), `Homepage department navigation is missing ${department}`);
             }
             const homepageText = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
-            assert(homepageText.includes('support@zeshu.in'), 'Homepage customer support email is missing');
+            assert(await page.locator('a[href="/help"]').count() > 0, 'Mobile homepage must offer a Help & Support entry');
             assert(!homepageText.includes('+91 95052 11212'), 'Homepage must not expose the support phone number');
             assert(homepageText.includes('Based in Jagtial, Telangana'), 'Homepage business location is missing');
             const categoryText = await categories.innerText();
