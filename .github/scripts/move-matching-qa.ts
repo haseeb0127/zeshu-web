@@ -79,11 +79,11 @@ assert(quoteApi.includes('evaluateTelanganaMoveArea'), 'Move quote must validate
 assert(homePage.includes('HomeBusinessHub'), 'Zeshu homepage must surface the unified business hub');
 assert(!homePage.includes('<HomeMoveQuickPanel />'), 'Homepage must not duplicate the old Move quick panel');
 assert(homeHub.includes('Zeshu Move'), 'Homepage must surface Zeshu Move');
-assert(homeHub.includes('href="/move"'), 'Homepage business hub must link to the unified Move experience');
+assert(homeHub.includes('"/move"'), 'Homepage carousel must link to the unified Move experience');
 assert(homeHub.includes('/api/move/matching/readiness'), 'Homepage business hub must use live Move readiness instead of inventing availability');
 assert(homeHub.includes('matching_enabled'), 'Homepage Move readiness must respect matching state before presenting availability');
 assert(homeHub.includes('Check availability'), 'Homepage Move entry must use customer-friendly availability wording');
-assert(homeHub.includes('Opening soon'), 'Homepage Move entry must clearly label services that are not ready');
+assert(homeHub.includes('See services'), 'Homepage Move promotion must use neutral wording when services are not ready');
 assert(!homeHub.includes('Available now'), 'Homepage must not claim live Move availability from readiness settings alone');
 assert(homeBusiness.includes('Shop, pay, move and get help with Zeshu.'), 'Homepage business hub must explain Zeshu at first glance');
 assert(homeBusiness.includes('Zeshu Fashion'), 'Homepage must keep Fashion in the customer department set');
