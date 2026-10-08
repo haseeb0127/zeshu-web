@@ -90,7 +90,7 @@ export default function EarnWithZeshuPage() {
           </div>
         </header>
 
-        <section className="mt-6 overflow-hidden rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm md:p-7">
+        <section className="mt-6 rounded-3xl border border-emerald-200 bg-white p-6"><h2 className="text-xl font-black">Become a Zeshu Field Promoter</h2><p className="mt-2 text-sm text-slate-600">Visit shops, drivers, wedding professionals and interior designers. Apply to recruit verified partners and earn approved onboarding incentives.</p><Link href="/earn/promoters" className="mt-4 inline-flex rounded-xl bg-[#075E45] px-4 py-3 text-sm font-black text-white">Apply as a field promoter</Link></section><section className="mt-6 overflow-hidden rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm md:p-7">
           <div className="grid gap-5 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-[.14em] text-[#075E45]">
