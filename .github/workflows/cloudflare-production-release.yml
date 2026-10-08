@@ -318,7 +318,7 @@ jobs:
             assert(hindi.includes('अभी कोई समीक्षा नहीं'), 'Review empty state is not localized in Hindi');
             assert(hindi.includes('समीक्षाएँ देखें'), 'Review action is not localized in Hindi');
             assert(hindi.includes('जोड़ें'), 'ADD action is not localized in Hindi');
-            assert(hindi.includes('उपलब्धता देखें') || hindi.includes('अभी उपलब्ध') || hindi.includes('जल्द शुरू होगा'), 'Homepage Move availability action is not localized in Hindi');
+            assert(hindi.includes('उपलब्धता देखें') || hindi.includes('सेवाएँ देखें') || hindi.includes('अभी उपलब्ध') || hindi.includes('जल्द शुरू होगा'), 'Homepage Move availability action is not localized in Hindi');
             assert(hindi.includes('Zeshu पर बेचें'), 'Seller path is not localized in Hindi');
             assert(hindi.includes('Zeshu के साथ प्रचार करें'), 'Brand promotion path is not localized in Hindi');
             for (const english of ['All Items', 'No reviews yet', 'See reviews', 'Image unavailable']) {
@@ -336,7 +336,7 @@ jobs:
             const urdu = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
             assert(await page.locator('html').getAttribute('dir') === 'rtl', 'Urdu page is not RTL');
             assert(urdu.includes('Zeshu کے ساتھ خریداری کریں، ادائیگی کریں، سفر کریں اور مدد حاصل کریں۔'), 'New Zeshu homepage heading is not localized in Urdu');
-            assert(urdu.includes('دستیابی دیکھیں') || urdu.includes('ابھی دستیاب') || urdu.includes('جلد شروع ہوگا'), 'Homepage Move availability action is not localized in Urdu');
+            assert(urdu.includes('دستیابی دیکھیں') || urdu.includes('خدمات دیکھیں') || urdu.includes('ابھی دستیاب') || urdu.includes('جلد شروع ہوگا'), 'Homepage Move availability action is not localized in Urdu');
             assert(urdu.includes('Zeshu پر فروخت کریں'), 'Seller path is not localized in Urdu');
             assert(urdu.includes('Zeshu کے ساتھ تشہیر کریں'), 'Brand promotion path is not localized in Urdu');
 
