@@ -16,14 +16,10 @@ for (const phrase of [
   'Zeshu Fashion',
   'Zeshu Pay',
   'Zeshu Move',
-  'Real seller stock',
-  'Recharge & bills',
   'Shop products',
   'Browse products',
-  'Zeshu Services',
   'Zeshu Weddings',
   'Zeshu Interiors',
-  'Request quotes',
 ]) {
   assert(homeHub.includes(phrase), `Homepage business hub missing customer-facing phrase: ${phrase}`);
 }
@@ -51,10 +47,10 @@ assert(homeHub.includes('/api/move/matching/readiness'), 'Homepage Move status m
 assert(homeHub.includes('Check availability'), 'Move card must use customer-friendly availability wording');
 assert(homeHub.includes('matching_enabled'), 'Move card must consider matching readiness before presenting live availability');
 assert(!homeHub.includes('Available now'), 'Homepage must not claim live Move availability from readiness settings alone');
-assert(homeHub.includes('Opening soon'), 'Homepage Move card must clearly label services that are not ready');
+assert(homeHub.includes('See services'), 'Homepage Move promotion must use a neutral availability action');
 assert(!homeHub.includes('Uber'), 'Homepage must not mention competitor brands');
 assert(!homeHub.includes('compliance-gated'), 'Homepage must not expose internal compliance terminology');
-assert(homeHub.includes('Plan something bigger'), 'Homepage must group professional services without adding oversized hero clutter');
+assert(!homeHub.includes('Plan something bigger'), 'Homepage must not repeat professional services below the carousel');
 assert(!homeHub.includes('For customers, drivers, sellers and brands'), 'Homepage must keep business onboarding out of the primary customer journey');
 
 assert(page.includes("t('Set your address')"), 'Homepage header must use a clear address action');
