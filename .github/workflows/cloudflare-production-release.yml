@@ -320,7 +320,7 @@ jobs:
             assert(hindi.includes('जोड़ें'), 'ADD action is not localized in Hindi');
             assert(hindi.includes('उपलब्धता देखें') || hindi.includes('सेवाएँ देखें') || hindi.includes('अभी उपलब्ध') || hindi.includes('जल्द शुरू होगा'), 'Homepage Move availability action is not localized in Hindi');
             assert(hindi.includes('Zeshu पर बेचें'), 'Seller path is not localized in Hindi');
-            assert(hindi.includes('Zeshu के साथ प्रचार करें'), 'Brand promotion path is not localized in Hindi');
+            assert((await page.locator('footer').textContent())?.includes('Zeshu के साथ प्रचार करें'), 'Brand promotion path is not localized in Hindi desktop footer');
             for (const english of ['All Items', 'No reviews yet', 'See reviews', 'Image unavailable']) {
               assert(!hindi.includes(english), `English storefront label still visible in Hindi: ${english}`);
             }
@@ -338,7 +338,7 @@ jobs:
             assert(urdu.includes('Zeshu کے ساتھ خریداری کریں، ادائیگی کریں، سفر کریں اور مدد حاصل کریں۔'), 'New Zeshu homepage heading is not localized in Urdu');
             assert(urdu.includes('دستیابی دیکھیں') || urdu.includes('خدمات دیکھیں') || urdu.includes('ابھی دستیاب') || urdu.includes('جلد شروع ہوگا'), 'Homepage Move availability action is not localized in Urdu');
             assert(urdu.includes('Zeshu پر فروخت کریں'), 'Seller path is not localized in Urdu');
-            assert(urdu.includes('Zeshu کے ساتھ تشہیر کریں'), 'Brand promotion path is not localized in Urdu');
+            assert((await page.locator('footer').textContent())?.includes('Zeshu کے ساتھ تشہیر کریں'), 'Brand promotion path is not localized in Urdu desktop footer');
 
             await page.evaluate(() => localStorage.setItem('zeshu.customer.language', 'en'));
             await page.goto('https://zeshu.in/help', { waitUntil: 'networkidle', timeout: 60000 });
