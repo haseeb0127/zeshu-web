@@ -28,7 +28,7 @@ for (const scope of ['Jagtial', 'Telangana', 'India']) {
   assert(homeHub.includes(scope), `Homepage business hub missing geographic scope: ${scope}`);
 }
 
-for (const href of ['/move', '/fashion']) {
+for (const href of ['/fashion']) {
   assert(homeHub.includes(`href="${href}"`), `Homepage business hub missing key customer destination: ${href}`);
 }
 
@@ -36,6 +36,7 @@ for (const destination of ['/professional-services/weddings', '/professional-ser
   assert(homeHub.includes(destination), `Homepage carousel missing service destination: ${destination}`);
 }
 
+assert(homeHub.includes('"/move"'), 'Homepage carousel must link to Move');
 assert(page.includes('data-category-strip="marketplace"'), 'Mobile homepage must use icon-led marketplace category discovery');
 const productCard = read('app/components/ProductCard.tsx');
 assert(productCard.includes('data-product-card="marketplace"'), 'Product cards must use the professional marketplace card system');
@@ -48,7 +49,7 @@ for (const promo of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Mov
 assert(!homeHub.includes('title:t("Marketplace")'), 'Homepage must not duplicate Marketplace as a promo department');
 assert(homeHub.includes('trackRef'), 'Homepage promo carousel must support manual swipe/arrow navigation');
 assert(homeHub.includes('/api/move/matching/readiness'), 'Homepage Move status must come from live readiness');
-assert(homeHub.includes('Check availability'), 'Move card must use customer-friendly availability wording');
+assert(homeHub.includes('Check availability'), 'Move promotion must use customer-friendly availability wording');
 assert(homeHub.includes('matching_enabled'), 'Move card must consider matching readiness before presenting live availability');
 assert(!homeHub.includes('Available now'), 'Homepage must not claim live Move availability from readiness settings alone');
 assert(homeHub.includes('See services'), 'Homepage Move promotion must use a neutral availability action');
