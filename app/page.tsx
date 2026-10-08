@@ -3387,32 +3387,33 @@ export default function ZeshuSuperApp() {
 
       <footer className="border-t border-slate-700 bg-[#172337] text-slate-200">
         <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="w-full bg-[#30445f] px-4 py-3 text-center text-xs font-bold text-white transition hover:bg-[#405776]">{t('Back to top')}</button>
-        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-9 px-5 py-10 sm:px-8 md:grid-cols-4 md:gap-x-10 md:py-12">
-          <div className="min-w-0"><h2 className="mb-4 text-sm font-black text-white">{t('Explore Zeshu')}</h2><nav aria-label="Explore Zeshu" className="flex flex-col items-start gap-3 text-xs leading-5 sm:text-sm">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-x-10 gap-y-9 px-6 py-10 sm:grid-cols-2 sm:px-8 lg:grid-cols-4 lg:gap-x-14 lg:py-14">
+          <div className="min-w-0"><h2 className="mb-4 text-sm font-black text-white">{t('Explore Zeshu')}</h2><nav aria-label="Explore Zeshu" className="flex flex-col items-start gap-3 text-sm leading-6">
             <button type="button" onClick={() => { setActiveTab('home'); setActiveCategory('All'); setFulfillmentFilter('ALL'); document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-left hover:underline">{t('Shop')}</button>
             <Link href="/fashion" className="hover:underline">Zeshu Fashion</Link>
             <button type="button" onClick={() => openServices()} className="text-left hover:underline">Zeshu Pay</button>
             <Link href="/move" className="hover:underline">Zeshu Move</Link>
             <Link href="/professional-services" className="hover:underline">{t('Zeshu Services')}</Link>
           </nav></div>
-          <div className="min-w-0"><h2 className="mb-4 text-sm font-black text-white">{t('Customer Service')}</h2><nav aria-label="Customer Service" className="flex flex-col items-start gap-3 text-xs leading-5 sm:text-sm">
+          <div className="min-w-0"><h2 className="mb-4 text-sm font-black text-white">{t('Customer Service')}</h2><nav aria-label="Customer Service" className="flex flex-col items-start gap-3 text-sm leading-6">
             <Link href="/help" className="hover:underline">{t('Help & Support')}</Link>
             <Link href="/policies" className="hover:underline">{t('Policies & Trust Center')}</Link>
             <a href="mailto:support@zeshu.in" className="break-all hover:underline">support@zeshu.in</a>
           </nav></div>
-          <div className="min-w-0"><h2 className="mb-4 text-sm font-black text-white">{t('Work with Zeshu')}</h2><nav aria-label="Work with Zeshu" className="flex flex-col items-start gap-3 text-xs leading-5 sm:text-sm">
+          <div className="min-w-0"><h2 className="mb-4 text-sm font-black text-white">{t('Work with Zeshu')}</h2><nav aria-label="Work with Zeshu" className="flex flex-col items-start gap-3 text-sm leading-6">
             <Link href="/partners#fashion-sellers" className="hover:underline">{t('Sell on Zeshu')}</Link>
             <Link href="/earn" className="hover:underline">{t('Earn with Zeshu')}</Link>
             <Link href="/partners" className="hover:underline">{t('Promote with Zeshu')}</Link>
             <Link href="/partners" className="hover:underline">{t('Brands & Partners')}</Link>
           </nav></div>
-          <div className="min-w-0"><h2 className="mb-4 text-sm font-black text-white">{t('About Zeshu')}</h2><div className="flex flex-col items-start gap-3 text-xs leading-5 sm:text-sm">
+          <div className="min-w-0"><h2 className="mb-4 text-sm font-black text-white">{t('About Zeshu')}</h2><div className="flex flex-col items-start gap-3 text-sm leading-6">
             <p>{t('Based in Jagtial, Telangana')}</p>
             <p>{t('Local shopping in Jagtial, Move & Courier across supported Telangana zones, and digital services across India where providers are available.')}</p>
             <Link href="/app" className="hover:underline">{t('Get Zeshu')}</Link>
           </div></div>
         </div>
-        <div className="border-t border-white/15 px-5 py-6 text-center text-xs leading-6 text-slate-300">
+        <div className="border-t border-white/15 bg-[#223148] px-5 py-5 text-center text-xs text-slate-200"><div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-6 gap-y-2"><Link href="/help" className="hover:underline">{t('Help & Support')}</Link><Link href="/policies" className="hover:underline">{t('Policies & Trust Center')}</Link><Link href="/app" className="hover:underline">{t('Get Zeshu')}</Link><span>{t('Based in Jagtial, Telangana')}</span></div></div>
+        <div className="border-t border-white/15 px-5 py-8 text-center text-xs leading-6 text-slate-300">
           <Link href="/" className="inline-flex items-center gap-2 text-base font-black tracking-wider text-white"><span className="grid h-8 w-8 place-items-center rounded-lg bg-[#087a55]">Z</span>ZESHU</Link>
           <p className="mt-3">© {new Date().getFullYear()} Zeshu · {t('Service availability varies by location and verified provider or seller coverage.')}</p>
         </div>
