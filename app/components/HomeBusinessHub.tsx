@@ -35,18 +35,18 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
   const go=(next:number)=>{const el=trackRef.current;if(!el)return;const items=Array.from(el.querySelectorAll<HTMLElement>("[data-slide]"));const n=(next+items.length)%items.length;el.scrollTo({left:items[n].offsetLeft-el.offsetLeft,behavior:"smooth"});setIndex(n);};
 
   return <section className="mb-5 px-4 md:px-0" aria-labelledby="zeshu-home-hub-title">
-    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-[0_2px_10px_rgba(15,23,42,.04)] md:px-5">
+    <div className="hidden rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-[0_2px_10px_rgba(15,23,42,.04)] md:block md:px-5">
       <div className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[.16em] text-[#075E45]"><BadgeCheck size={14}/>{t("One place for everyday needs")}</div>
       <h1 id="zeshu-home-hub-title" className="mt-2 text-[1.35rem] font-black leading-tight tracking-tight text-slate-950 md:text-3xl">{t("Shop, pay, move and get help with Zeshu.")}</h1>
     </div>
 
-    <div className="relative mt-4">
+    <div className="relative mt-0 md:mt-4">
       <div ref={trackRef} className="flex snap-x snap-mandatory gap-3 overflow-x-auto no-scrollbar">
-        {slides.map((s,i)=><article key={s.title} data-slide className={`relative min-w-full snap-start overflow-hidden rounded-2xl ${s.theme} px-5 py-5 text-white md:px-7 md:py-7`}>
+        {slides.map((s,i)=><article key={s.title} data-slide className={`relative min-w-full snap-start overflow-hidden rounded-2xl ${s.theme} px-5 py-4 text-white md:px-7 md:py-7`}>
           <div className="max-w-[78%] md:max-w-[68%]">
             <span className="rounded-full bg-white/12 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.14em] ring-1 ring-white/15">Zeshu · {s.scope}</span>
-            <h2 className="mt-3 text-2xl font-black md:text-4xl">{s.title}</h2><p className="mt-2 text-xs font-semibold leading-5 text-white/85 md:text-sm">{s.description}</p>
-            <div className="mt-4">
+            <h2 className="mt-2 text-2xl font-black md:mt-3 md:text-4xl">{s.title}</h2><p className="mt-2 text-xs font-semibold leading-5 text-white/85 md:text-sm">{s.description}</p>
+            <div className="mt-3 md:mt-4">
               {s.action==="shop"?<button onClick={onShopNearby} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></button>
               :s.action==="services"?<button onClick={onOpenServices} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></button>
               :s.action==="fashion"?<Link href="/fashion" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>
