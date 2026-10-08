@@ -3386,8 +3386,8 @@ export default function ZeshuSuperApp() {
       {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && cart.length === 0 && <button type="button" onClick={openAiSupport} aria-label="Chat with Zeshu Assistant" className="fixed bottom-[5.75rem] right-4 z-30 inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#075E45] text-sm font-black text-white shadow-xl transition hover:bg-[#065F38] active:scale-95 lg:bottom-8 lg:right-8 lg:h-auto lg:w-auto lg:min-h-12 lg:gap-2 lg:px-4 lg:py-3"><MessageCircle size={20} aria-hidden="true" /><span className="hidden lg:inline">{t('Ask Zeshu')}</span></button>}
 
       <footer className="border-t border-[#dce8df] bg-[#f4f7f5] px-4 pb-28 pt-8 text-sm text-slate-600 lg:px-8 lg:py-10">
-        <div className="mx-auto grid max-w-[1400px] grid-cols-2 gap-x-5 gap-y-9 md:grid-cols-4 md:gap-8">
-          <div className="col-span-2 border-b border-slate-200 pb-5 md:col-span-1 md:border-0 md:pb-0">
+        <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-10">
+          <div className="border-b border-slate-200 pb-6 sm:col-span-2 lg:col-span-1 lg:border-0 lg:pb-0">
             <div className="flex items-center gap-2">
               <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#075E45] text-base font-black text-white">Z</span>
               <div><p className="font-black text-slate-950">ZESHU</p><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#075E45]">{t('Everyday, simply')}</p></div>
@@ -3402,12 +3402,12 @@ export default function ZeshuSuperApp() {
             <div className="mt-3 flex flex-col items-start gap-3">
               <button type="button" onClick={() => { setActiveTab('home'); setActiveCategory('All'); setFulfillmentFilter('ALL'); requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="font-black text-slate-700 hover:text-[#075E45]">{t('Shop')}</button>
               <Link href="/fashion" className="font-black text-slate-700 hover:text-[#075E45]">Zeshu Fashion</Link>
-              <button type="button" onClick={() => openServices()} className="font-black text-slate-700 hover:text-[#075E45]">Zeshu Pay · {t('Recharge & bills')}</button>
+              <button type="button" onClick={() => openServices()} className="max-w-full text-left font-black leading-6 text-slate-700 hover:text-[#075E45]">Zeshu Pay · {t('Recharge & bills')}</button>
               <Link href="/move" className="font-black text-slate-700 hover:text-[#075E45]">Zeshu Move · {t('Move & Courier')}</Link>
             </div>
           </div>
 
-          <div className="col-span-2 md:col-span-1">
+          <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-[.14em] text-slate-400">{t('Customer Service')}</p>
             <div className="mt-3 flex flex-col items-start gap-2">
               <Link href="/help" className="font-black text-slate-700 hover:text-[#075E45]">{t('Help & Support')}</Link>
