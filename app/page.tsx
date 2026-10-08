@@ -3385,7 +3385,16 @@ export default function ZeshuSuperApp() {
 
       {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && cart.length === 0 && <button type="button" onClick={openAiSupport} aria-label="Chat with Zeshu Assistant" className="fixed bottom-[5.75rem] right-4 z-30 inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#075E45] text-sm font-black text-white shadow-xl transition hover:bg-[#065F38] active:scale-95 lg:bottom-8 lg:right-8 lg:h-auto lg:w-auto lg:min-h-12 lg:gap-2 lg:px-4 lg:py-3"><MessageCircle size={20} aria-hidden="true" /><span className="hidden lg:inline">{t('Ask Zeshu')}</span></button>}
 
-      <footer className="border-t border-slate-700 bg-[#172337] text-slate-200">
+      <div className="border-t border-slate-200 bg-[#f7f9f8] px-4 pb-28 pt-5 text-center text-[11px] text-slate-600 md:hidden">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+            <Link href="/help" className="font-semibold hover:underline">{t('Help & Support')}</Link>
+            <Link href="/policies" className="font-semibold hover:underline">{t('Policies & Trust Center')}</Link>
+            <Link href="/partners" className="font-semibold hover:underline">{t('Work with Zeshu')}</Link>
+          </div>
+          <p className="mt-3">© {new Date().getFullYear()} Zeshu · {t('Based in Jagtial, Telangana')}</p>
+        </div>
+        <div className="hidden md:block">
+          <footer className="border-t border-slate-700 bg-[#172337] text-slate-200">
         <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="w-full bg-[#30445f] px-4 py-3 text-center text-xs font-bold text-white transition hover:bg-[#405776]">{t('Back to top')}</button>
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-5 gap-y-10 px-4 py-9 sm:gap-x-10 sm:px-8 lg:grid-cols-4 lg:gap-x-14 lg:py-12">
           <div className="min-w-0"><h2 className="mb-4 text-sm font-black text-white">{t('Explore Zeshu')}</h2><nav aria-label="Explore Zeshu" className="flex flex-col items-start gap-2.5 text-xs leading-5 sm:text-sm sm:leading-6">
@@ -3418,6 +3427,7 @@ export default function ZeshuSuperApp() {
           <p className="mt-3">© {new Date().getFullYear()} Zeshu · {t('Service availability varies by location and verified provider or seller coverage.')}</p>
         </div>
       </footer>
+        </div>
 
       {/* Compact mobile mini-cart: visible without covering primary navigation. */}
       {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && cart.length > 0 && activeTab === 'home' && (
