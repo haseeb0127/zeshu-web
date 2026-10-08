@@ -246,39 +246,15 @@ jobs:
             await search.waitFor({ state: 'visible', timeout: 20000 });
             const categories = page.locator('[aria-label="Shop by Category"]');
             await categories.waitFor({ state: 'visible', timeout: 10000 });
-            const moveQuick = page.locator('section[aria-labelledby="zeshu-home-hub-title"]');
-            await moveQuick.waitFor({ state: 'visible', timeout: 10000 });
-            const moveEntry = moveQuick.locator('a[href="/move"]').first();
-            await moveEntry.waitFor({ state: 'visible', timeout: 10000 });
-            assert(await moveEntry.isVisible(), 'Homepage Zeshu Move entry is missing');
-            const promoSlides = moveQuick.locator('[data-slide]');
-            assert(await promoSlides.count() === 6, 'Homepage must show six distinct Zeshu promotions');
-            const promoText = (await promoSlides.allInnerTexts()).join(' ').replace(/\s+/g, ' ');
-            for (const promo of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move']) {
-              assert(promoText.includes(promo), `Homepage promo carousel is missing ${promo}`);
+            // The legacy six-slide home hub was removed during storefront simplification.
+            // Verify current real customer routes and the selected brand asset instead.
+            const brandLogo = page.locator('img[src="/zeshu-bag-logo.svg"]');
+            await brandLogo.waitFor({ state: 'visible', timeout: 10000 });
+            assert(await brandLogo.isVisible(), 'Bag-style Zeshu logo missing from live homepage');
+            for (const route of ['/fashion','/move','/professional-services/weddings','/professional-services/interiors']) {
+              const response = await page.request.get('https://zeshu.in' + route);
+              assert(response.ok(), `Customer service route unavailable: ${route}`);
             }
-            const promoScopes = await promoSlides.evaluateAll((slides) =>
-              slides.map((slide) => (slide.textContent || '').replace(/\\s+/g, ' ').trim()),
-            );
-            console.log('Promotion slides:', JSON.stringify(promoScopes));
-            for (const scope of ['Jagtial', 'India', 'Telangana']) {
-              assert(
-                promoScopes.some((label) => label.includes(scope)),
-                `Homepage promotions are missing ${scope} coverage; rendered slides: ${JSON.stringify(promoScopes)}`,
-              );
-            }
-            const moveQuickText = ((await moveQuick.textContent()) || '').replace(/\s+/g, ' ');
-            assert(moveQuickText.includes('Shop, pay, move and get help with Zeshu.'), 'Homepage business proposition is missing');
-            for (const service of ['Shop', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move']) {
-              assert(moveQuickText.includes(service), `Homepage core service launcher is missing ${service}`);
-            }
-            assert(!moveQuickText.includes('Plan something bigger'), 'Homepage must not duplicate professional services below carousel');
-            assert(moveQuickText.includes('Zeshu Weddings'), 'Homepage Weddings entry is missing');
-            assert(moveQuickText.includes('Zeshu Interiors'), 'Homepage Interiors entry is missing');
-            assert(await moveQuick.locator('a[href="/fashion"]').count() > 0, 'Homepage Fashion link is missing');
-            assert(await moveQuick.locator('a[href="/move"]').count() > 0, 'Homepage Move link is missing');
-            assert(await moveQuick.locator('a[href="/professional-services/weddings"]').count() > 0, 'Homepage Weddings link is missing');
-            assert(await moveQuick.locator('a[href="/professional-services/interiors"]').count() > 0, 'Homepage Interiors link is missing');
             const departmentNav = page.locator('[data-customer-department-nav="primary"]');
             await departmentNav.waitFor({ state: 'visible', timeout: 10000 });
             const departmentText = (await departmentNav.innerText()).replace(/\s+/g, ' ');
