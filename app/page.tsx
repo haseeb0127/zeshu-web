@@ -3385,50 +3385,36 @@ export default function ZeshuSuperApp() {
 
       {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && cart.length === 0 && <button type="button" onClick={openAiSupport} aria-label="Chat with Zeshu Assistant" className="fixed bottom-[5.75rem] right-4 z-30 inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#075E45] text-sm font-black text-white shadow-xl transition hover:bg-[#065F38] active:scale-95 lg:bottom-8 lg:right-8 lg:h-auto lg:w-auto lg:min-h-12 lg:gap-2 lg:px-4 lg:py-3"><MessageCircle size={20} aria-hidden="true" /><span className="hidden lg:inline">{t('Ask Zeshu')}</span></button>}
 
-      <footer className="border-t border-[#dce8df] bg-[#f4f7f5] px-4 pb-28 pt-8 text-sm text-slate-600 lg:px-8 lg:pb-12 lg:pt-12">
-        <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-x-12 lg:gap-y-8">
-          <div className="min-w-0 border-b border-slate-200 pb-6 sm:col-span-2 lg:col-span-1 lg:border-0 lg:pb-0">
-            <div className="flex items-center gap-2">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#075E45] text-base font-black text-white">Z</span>
-              <div><p className="font-black text-slate-950">ZESHU</p><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#075E45]">{t('Everyday, simply')}</p></div>
-            </div>
-            <p className="mt-3 max-w-sm text-xs leading-5 text-slate-500">{t('Local shopping in Jagtial, Move & Courier across supported Telangana zones, and digital services across India where providers are available.')}</p>
-            <p className="mt-3 text-xs font-bold text-slate-600">{t('Based in Jagtial, Telangana')}</p>
-            <Link href="/app" className="mt-3 inline-flex font-black text-[#075E45] hover:underline">{t('Get Zeshu')}</Link>
-          </div>
-
-          <div>
-            <p className="text-xs font-black uppercase tracking-[.14em] text-slate-400">{t('Explore Zeshu')}</p>
-            <div className="mt-3 flex flex-col items-start gap-3 break-words">
-              <button type="button" onClick={() => { setActiveTab('home'); setActiveCategory('All'); setFulfillmentFilter('ALL'); requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="font-black text-slate-700 hover:text-[#075E45]">{t('Shop')}</button>
-              <Link href="/fashion" className="font-black text-slate-700 hover:text-[#075E45]">Zeshu Fashion</Link>
-              <button type="button" onClick={() => openServices()} className="max-w-full text-left font-black leading-6 text-slate-700 hover:text-[#075E45]">Zeshu Pay · {t('Recharge & bills')}</button>
-              <Link href="/move" className="font-black text-slate-700 hover:text-[#075E45]">Zeshu Move · {t('Move & Courier')}</Link>
-            </div>
-          </div>
-
-          <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-[.14em] text-slate-400">{t('Customer Service')}</p>
-            <div className="mt-3 flex flex-col items-start gap-3 break-words">
-              <Link href="/help" className="font-black text-slate-700 hover:text-[#075E45]">{t('Help & Support')}</Link>
-              <Link href="/policies" className="font-black text-slate-700 hover:text-[#075E45]">{t('Policies & Trust Center')}</Link>
-              <a href="mailto:support@zeshu.in" className="break-all font-black text-slate-700 hover:text-[#075E45]">support@zeshu.in</a>
-            </div>
-            <p className="mt-3 text-[11px] leading-5 text-slate-500">{t('Contact details and grievance information are available in Help and Policies.')}</p>
-          </div>
-
-          <div>
-            <p className="text-xs font-black uppercase tracking-[.14em] text-slate-400">{t('Work with Zeshu')}</p>
-            <div className="mt-3 flex flex-col items-start gap-3 break-words">
-              <Link href="/partners#fashion-sellers" className="font-black text-slate-700 hover:text-[#075E45]">{t('Sell on Zeshu')}</Link>
-              <Link href="/earn" className="font-black text-slate-700 hover:text-[#075E45]">{t('Earn with Zeshu')}</Link>
-              <Link href="/partners" className="font-black text-slate-700 hover:text-[#075E45]">{t('Promote with Zeshu')}</Link>
-              <Link href="/partners" className="font-black text-slate-700 hover:text-[#075E45]">{t('Brands & Partners')}</Link>
-            </div>
-          </div>
+      <footer className="border-t border-slate-700 bg-[#172337] text-slate-200">
+        <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="w-full bg-[#30445f] px-4 py-3 text-center text-xs font-bold text-white transition hover:bg-[#405776]">{t('Back to top')}</button>
+        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-9 px-5 py-10 sm:px-8 md:grid-cols-4 md:gap-x-10 md:py-12">
+          <div className="min-w-0"><h2 className="mb-4 text-sm font-black text-white">{t('Explore Zeshu')}</h2><nav aria-label="Explore Zeshu" className="flex flex-col items-start gap-3 text-xs leading-5 sm:text-sm">
+            <button type="button" onClick={() => { setActiveTab('home'); setActiveCategory('All'); setFulfillmentFilter('ALL'); document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-left hover:underline">{t('Shop')}</button>
+            <Link href="/fashion" className="hover:underline">Zeshu Fashion</Link>
+            <button type="button" onClick={() => openServices()} className="text-left hover:underline">Zeshu Pay</button>
+            <Link href="/move" className="hover:underline">Zeshu Move</Link>
+            <Link href="/professional-services" className="hover:underline">{t('Zeshu Services')}</Link>
+          </nav></div>
+          <div className="min-w-0"><h2 className="mb-4 text-sm font-black text-white">{t('Customer Service')}</h2><nav aria-label="Customer Service" className="flex flex-col items-start gap-3 text-xs leading-5 sm:text-sm">
+            <Link href="/help" className="hover:underline">{t('Help & Support')}</Link>
+            <Link href="/policies" className="hover:underline">{t('Policies & Trust Center')}</Link>
+            <a href="mailto:support@zeshu.in" className="break-all hover:underline">support@zeshu.in</a>
+          </nav></div>
+          <div className="min-w-0"><h2 className="mb-4 text-sm font-black text-white">{t('Work with Zeshu')}</h2><nav aria-label="Work with Zeshu" className="flex flex-col items-start gap-3 text-xs leading-5 sm:text-sm">
+            <Link href="/partners#fashion-sellers" className="hover:underline">{t('Sell on Zeshu')}</Link>
+            <Link href="/earn" className="hover:underline">{t('Earn with Zeshu')}</Link>
+            <Link href="/partners" className="hover:underline">{t('Promote with Zeshu')}</Link>
+            <Link href="/partners" className="hover:underline">{t('Brands & Partners')}</Link>
+          </nav></div>
+          <div className="min-w-0"><h2 className="mb-4 text-sm font-black text-white">{t('About Zeshu')}</h2><div className="flex flex-col items-start gap-3 text-xs leading-5 sm:text-sm">
+            <p>{t('Based in Jagtial, Telangana')}</p>
+            <p>{t('Local shopping in Jagtial, Move & Courier across supported Telangana zones, and digital services across India where providers are available.')}</p>
+            <Link href="/app" className="hover:underline">{t('Get Zeshu')}</Link>
+          </div></div>
         </div>
-        <div className="mx-auto mt-8 max-w-[1400px] border-t border-slate-200 pt-5 text-[11px] font-semibold leading-5 text-slate-500">
-          © Zeshu · {t('Service availability varies by location and verified provider or seller coverage.')}
+        <div className="border-t border-white/15 px-5 py-6 text-center text-xs leading-6 text-slate-300">
+          <Link href="/" className="inline-flex items-center gap-2 text-base font-black tracking-wider text-white"><span className="grid h-8 w-8 place-items-center rounded-lg bg-[#087a55]">Z</span>ZESHU</Link>
+          <p className="mt-3">© {new Date().getFullYear()} Zeshu · {t('Service availability varies by location and verified provider or seller coverage.')}</p>
         </div>
       </footer>
 
