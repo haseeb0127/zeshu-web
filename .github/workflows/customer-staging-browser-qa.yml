@@ -69,7 +69,7 @@ jobs:
             await moveEntry.waitFor({ state: 'visible', timeout: 10000 });
             assert(await moveEntry.isVisible(), 'Homepage Zeshu Move entry is missing');
             const promoSlides = moveQuick.locator('[data-slide]');
-            assert(await promoSlides.count() === 4, 'Homepage must show the four core Zeshu promotions');
+            assert(await promoSlides.count() === 6, 'Homepage must show the six distinct Zeshu promotions');
             const promoText = (await promoSlides.allInnerTexts()).join(' ').replace(/\s+/g, ' ');
             for (const promo of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move']) {
               assert(promoText.includes(promo), `Homepage promo carousel is missing ${promo}`);
@@ -86,17 +86,13 @@ jobs:
             }
             const moveQuickText = ((await moveQuick.textContent()) || '').replace(/\s+/g, ' ');
             assert(moveQuickText.includes('Shop, pay, move and get help with Zeshu.'), 'Homepage business proposition is missing');
-            for (const service of ['Shop', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move']) {
-              assert(moveQuickText.includes(service), `Homepage core service launcher is missing ${service}`);
+            for (const service of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Zeshu Weddings', 'Zeshu Interiors']) {
+              assert(moveQuickText.includes(service), `Homepage promotional carousel is missing ${service}`);
             }
-            assert(await moveQuick.locator('a[href="/fashion"]').count() > 0, 'Homepage Fashion link is missing');
-            assert(await moveQuick.locator('a[href="/move"]').count() > 0, 'Homepage Move link is missing');
-            assert(moveQuickText.includes('Zeshu Services'), 'Homepage professional services section is missing');
-            assert(moveQuickText.includes('Zeshu Weddings'), 'Homepage Weddings entry is missing');
-            assert(moveQuickText.includes('Zeshu Interiors'), 'Homepage Interiors entry is missing');
-            assert(await moveQuick.locator('a[href="/professional-services"]').count() > 0, 'Homepage professional services link is missing');
-            assert(await moveQuick.locator('a[href="/professional-services/weddings"]').count() > 0, 'Homepage Weddings link is missing');
-            assert(await moveQuick.locator('a[href="/professional-services/interiors"]').count() > 0, 'Homepage Interiors link is missing');
+            for (const destination of ['/fashion', '/move', '/professional-services/weddings', '/professional-services/interiors']) {
+              assert(await moveQuick.locator(`a[href="${destination}"]`).count() > 0, `Homepage promotion link missing: ${destination}`);
+            }
+            assert(!moveQuickText.includes('Plan something bigger'), 'Homepage must not duplicate Weddings and Interiors below the carousel');
             const departmentNav = page.locator('[data-customer-department-nav="primary"]');
             await departmentNav.waitFor({ state: 'visible', timeout: 10000 });
             const departmentText = (await departmentNav.innerText()).replace(/\s+/g, ' ');
