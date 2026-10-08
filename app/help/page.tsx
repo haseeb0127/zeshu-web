@@ -299,7 +299,7 @@ export default function HelpPage() {
               <h2 className="font-black text-blue-950">{t("Need a person?")}</h2>
               <p className="mt-2 text-sm leading-6 text-blue-800">{t("Human support is available for every Zeshu service. Signed-in customers can open a private conversation for orders, payments, marketplace, rides, courier, car share, travel, recharge/bills, account or safety issues.")}</p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <a href="tel:+917977204533" className="inline-flex rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-xs font-black text-blue-900 shadow-sm">{t("Call customer service")}: +91 79772 04533</a>
+                <a href="tel:+919505211212" className="inline-flex rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-xs font-black text-blue-900 shadow-sm">{t("Call customer service")}: +91 95052 11212</a>
                 <a href="mailto:support@zeshu.in" className="inline-flex rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-xs font-black text-blue-900 shadow-sm">{t("Email support")}: support@zeshu.in</a>
               </div>
             </div>
