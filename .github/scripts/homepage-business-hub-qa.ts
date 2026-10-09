@@ -59,7 +59,8 @@ assert(!homeHub.includes('Plan something bigger'), 'Homepage must not repeat pro
 assert(!homeHub.includes('For customers, drivers, sellers and brands'), 'Homepage must keep business onboarding out of the primary customer journey');
 
 assert(page.includes("t('Set your address')"), 'Homepage header must use a clear address action');
-assert(page.includes('Shop in Jagtial'), 'Homepage must clearly separate local shopping from service discovery');
+assert(homeHub.includes('Shop in Jagtial') && page.includes('data-category-strip="marketplace"'), 'Homepage must preserve real shopping discovery without repeating the local hero');
+assert(!page.includes('id="shop-jagtial-title"'), 'Homepage must not render a duplicate Shop in Jagtial heading');
 assert(page.includes('support@zeshu.in'), 'Homepage footer must expose customer support email');
 assert(!page.includes('+91 95052 11212'), 'Homepage must not expose the customer support phone number in the shopping surface');
 assert(page.includes('data-customer-department-nav="primary"'), 'Homepage must expose a clear customer department navigation row');
