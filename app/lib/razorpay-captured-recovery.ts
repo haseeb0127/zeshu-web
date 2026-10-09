@@ -1,4 +1,4 @@
-import Razorpay from 'razorpay';
+import type Razorpay from 'razorpay';
 
 /**
  * Recovery is allowed ONLY after provider-side read-only verification of a
