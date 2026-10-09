@@ -106,6 +106,11 @@ jobs:
               assert(await moveQuick.locator(`a[href="${destination}"]`).count() > 0, `Homepage promotion link missing: ${destination}`);
             }
             assert(!moveQuickText.includes('Plan something bigger'), 'Homepage must not duplicate Weddings and Interiors below the carousel');
+            // Mobile header must be clean: location + language only; cart stays in bottom nav.
+            assert(await page.locator('header button[aria-label="View notifications and account updates"]').count() === 0, 'Mobile header still has notifications');
+            assert(await page.locator('header button[aria-label="Open shopping cart"]').count() === 0, 'Mobile header still duplicates the cart');
+            assert(await page.locator('nav[aria-label="Primary navigation"] button').count() >= 4, 'Mobile cart navigation missing');
+            assert(await page.locator('section[aria-labelledby="shop-jagtial-title"]').count() === 0, 'Duplicate Shop in Jagtial promo still rendered');
             const mobileDepartments = moveQuick.locator('nav[aria-label="Explore Zeshu departments"]');
             await mobileDepartments.waitFor({ state: 'visible', timeout: 10000 });
             const mobileDepartmentText = (await mobileDepartments.innerText()).replace(/\s+/g, ' ');

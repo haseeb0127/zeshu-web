@@ -255,6 +255,9 @@ jobs:
               const response = await page.request.get('https://zeshu.in' + route);
               assert(response.ok(), `Customer service route unavailable: ${route}`);
             }
+            assert(await page.locator('header button[aria-label="View notifications and account updates"]').count() === 0, 'Live mobile bell was not removed');
+            assert(await page.locator('header button[aria-label="Open shopping cart"]').count() === 0, 'Live mobile header still has cart');
+            assert(await page.locator('nav[aria-label="Primary navigation"] button').count() >= 4, 'Mobile cart navigation unavailable');
             const mobileQuickNav = page.locator('nav[aria-label="Explore Zeshu departments"]');
             await mobileQuickNav.waitFor({ state: 'visible', timeout: 10000 });
             for (const item of ['Shop', 'Fashion', 'Pay', 'Move', 'Services']) {

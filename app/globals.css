@@ -216,3 +216,37 @@ input[aria-label="Search Zeshu"]:focus-visible { outline: none; box-shadow: none
 .zeshu-gloss-hero:has([data-glossy-art]) > p,.zeshu-gloss-hero:has([data-glossy-art]) > h1 {position:relative;z-index:2;max-width:65%;}
 @media(min-width:768px){.zeshu-gloss-hero:has([data-glossy-art]){min-height:355px}.zeshu-gloss-hero:has([data-glossy-art]) > :not([data-glossy-art]){max-width:66%;}}
 @media(max-width:767px){.zeshu-gloss-hero [data-glossy-art] {opacity:.66;}}
+
+/* Zeshu Prism Glass: nine distinctive premium 3D marketing departments.
+   Only decorative CGI posters are colour-treated, never real product images. */
+[data-glossy-banner] {
+  --gloss-tint: #034b36;
+  --gloss-glow: rgba(123,255,191,.31);
+  background: radial-gradient(circle at 81% 9%,var(--gloss-glow),transparent 49%),linear-gradient(135deg,var(--gloss-tint),#052e24 85%);
+  box-shadow:inset 0 2px 2px rgba(255,255,255,.26),inset 0 -5px 12px rgba(0,0,0,.15),0 13px 28px rgba(15,36,31,.21);
+}
+[data-glossy-banner]::after {
+ content:"";position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:inherit;
+ background:linear-gradient(118deg,rgba(255,255,255,.13),transparent 24%,transparent 71%,rgba(255,255,255,.17) 86%,transparent 92%);
+}
+[data-glossy-banner] [data-glossy-art] > div:last-child {
+ background:linear-gradient(90deg,color-mix(in srgb,var(--gloss-tint) 94%,#000 6%) 0%,color-mix(in srgb,var(--gloss-tint) 76%,#000 24%) 33%,color-mix(in srgb,var(--gloss-tint) 26%,transparent) 70%,transparent 96%);
+}
+[data-glossy-banner] [data-glossy-image] {filter:saturate(1.13) contrast(1.04); }
+[data-glossy-banner="shop"] {--gloss-tint:#064c34;--gloss-glow:rgba(132,255,162,.35)}
+[data-glossy-banner="fashion"] {--gloss-tint:#832f5b;--gloss-glow:rgba(255,131,191,.40)}
+[data-glossy-banner="pay"] {--gloss-tint:#154d93;--gloss-glow:rgba(115,194,255,.40)}
+[data-glossy-banner="move"] {--gloss-tint:#985315;--gloss-glow:rgba(255,192,98,.40)}
+[data-glossy-banner="services"] {--gloss-tint:#583692;--gloss-glow:rgba(190,147,255,.39)}
+[data-glossy-banner="weddings"] {--gloss-tint:#a45064;--gloss-glow:rgba(255,210,180,.37)}
+[data-glossy-banner="interiors"] {--gloss-tint:#68532f;--gloss-glow:rgba(245,219,142,.37)}
+[data-glossy-banner="support"] {--gloss-tint:#0e6471;--gloss-glow:rgba(144,250,244,.36)}
+[data-glossy-banner="app"] {--gloss-tint:#145d62;--gloss-glow:rgba(121,236,234,.39)}
+[data-glossy-banner="fashion"] [data-glossy-image] {filter:hue-rotate(32deg) saturate(1.25) contrast(1.06)}
+[data-glossy-banner="pay"] [data-glossy-image] {filter:hue-rotate(64deg) saturate(1.23) contrast(1.04)}
+[data-glossy-banner="move"] [data-glossy-image] {filter:hue-rotate(-35deg) saturate(1.27) contrast(1.05)}
+[data-glossy-banner="services"] [data-glossy-image] {filter:hue-rotate(86deg) saturate(1.17)}
+[data-glossy-banner="weddings"] [data-glossy-image] {filter:hue-rotate(28deg) saturate(1.18)}
+[data-glossy-banner="interiors"] [data-glossy-image] {filter:sepia(.24) saturate(1.16)}
+[data-glossy-banner="support"] [data-glossy-image] {filter:hue-rotate(56deg) saturate(1.09)}
+@media(prefers-reduced-motion:reduce){[data-glossy-banner]::after{transition:none}}

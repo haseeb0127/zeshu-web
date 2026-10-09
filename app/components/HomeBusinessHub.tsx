@@ -42,7 +42,7 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
 
 
   return <section className="zeshu-premium-home mb-5 px-2.5 md:px-0" aria-labelledby="zeshu-home-hub-title">
-    <div className="hidden rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm md:block md:px-5">
+    <div className="sr-only">
       <div className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[.16em] text-[#075E45]"><BadgeCheck size={14}/>{t("One place for everyday needs")}</div>
       <h1 id="zeshu-home-hub-title" className="mt-2 text-[1.35rem] font-black leading-tight tracking-tight text-slate-950 md:text-3xl">{t("Shop, pay, move and get help with Zeshu.")}</h1>
     </div>

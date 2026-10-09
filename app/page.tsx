@@ -1384,7 +1384,7 @@ export default function ZeshuSuperApp() {
   };
   const showCheckoutError = (message: string, code?: string, requestId?: string) => {
     setCheckoutError({ message, code, requestId });
-    showToast(message);
+    if (!isCartOpen) showToast(message);
   };
   const getUtilityAuthHeaders = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -2822,6 +2822,8 @@ export default function ZeshuSuperApp() {
       }
 
       let paymentSucceeded = false;
+      let paymentAttemptFailed = false;
+      const isTestPayment = String(orderData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '').startsWith('rzp_test_');
       const options = {
         key: orderData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, amount: Number(orderData.amount), currency: orderData.currency || 'INR', name: "Zeshu Super App", order_id: orderId,
         retry: { enabled: true },
@@ -2849,16 +2851,31 @@ export default function ZeshuSuperApp() {
         },
         modal: {
           ondismiss: () => {
-            if (paymentSucceeded) return;
+            if (paymentSucceeded || paymentAttemptFailed) return;
             setCheckoutError(null);
-            showToast('Payment cancelled. You can retry whenever you\'re ready.');
+            showToast('Payment window closed. No order is confirmed. You can try again after checking your payment status.');
             setIsLoading(false);
             setIsCheckoutOpening(false);
           },
         },
         theme: { color: "#075E45" },
       };
-      const rzp = new (window as any).Razorpay(options); rzp.open();
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', () => {
+        paymentAttemptFailed = true;
+        setIsLoading(false);
+        setIsCheckoutOpening(false);
+        setIsCartOpen(true);
+        setCheckoutError({
+          code: isTestPayment ? 'RAZORPAY_TEST_PAYMENT_FAILED' : 'RAZORPAY_PAYMENT_FAILED',
+          message: isTestPayment
+            ? 'This TEST payment was not completed. No real checkout was confirmed. You can retry using the Razorpay test instructions.'
+            : 'Your payment was not confirmed. If you see a bank debit, check its status with support before attempting another payment.',
+        });
+        // Suppress overlapping provider failure screens where supported.
+        try { rzp.close(); } catch { /* Razorpay may already have closed. */ }
+      });
+      rzp.open();
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
       const lower = message.toLowerCase();
@@ -2976,7 +2993,7 @@ export default function ZeshuSuperApp() {
                 <div className="mt-0.5 flex min-w-0 items-center text-[10px] font-medium text-[#6B7280] md:text-xs"><span className="truncate">{currentAddress === 'Location not set' ? t("See what's available near you") : currentAddress}</span><ChevronDown size={14} className="ml-1 shrink-0"/></div>
               </button>
             </div>
-            <div className="flex shrink-0 items-center gap-0.5 lg:hidden"><LanguageSwitcher compact /><button aria-label="View notifications and account updates" onClick={() => user ? openAccountHome() : setIsAuthModalOpen(true)} className="grid h-9 w-8 place-items-center rounded-xl text-slate-800"><Bell size={22}/></button><button aria-label="Open shopping cart" onClick={() => setIsCartOpen(true)} className="relative grid h-9 w-8 place-items-center rounded-xl text-slate-800"><ShoppingBag size={23}/><span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-[#075E45] px-1 text-[10px] font-black text-white">{cartItemCount}</span></button></div>
+            <div className="flex shrink-0 items-center lg:hidden"><LanguageSwitcher compact /></div>
           </div>
 
           <div className="w-full min-w-0 lg:flex-1 max-w-3xl order-last lg:order-none mt-0.5 lg:mt-0">
@@ -2998,11 +3015,6 @@ export default function ZeshuSuperApp() {
               <QrCode size={18} /><span className="hidden 2xl:inline">{t('Scan')}</span>
             </Link>
             <button aria-label={user ? t('Account') : t('Login')} onClick={() => user ? openAccountHome() : setIsAuthModalOpen(true)} className="flex items-center gap-2 rounded-full px-2 py-2.5 text-[#4B5563] font-extrabold text-sm active:scale-95"><User size={20}/><span className="hidden 2xl:inline">{user ? t('Account') : t('Login')}</span></button>
-            <button aria-label={cart.length > 0 ? `Open cart, total ₹${finalCartTotal}` : t('My Cart')} onClick={() => setIsCartOpen(true)} className="flex min-w-[52px] items-center justify-center gap-2 rounded-xl bg-[#075E45] px-3 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#064d3a] active:scale-[0.96] 2xl:min-w-[112px] 2xl:px-4">
-              <ShoppingBag size={22} />
-              <span className="hidden xl:inline">{cart.length > 0 ? `₹${finalCartTotal}` : t('My Cart')}</span>
-              {cart.length > 0 && <span className="xl:hidden rounded-full bg-white/20 px-1.5 py-0.5 text-[10px]">{cartItemCount}</span>}
-            </button>
           </div>
         </div>
       </header>
@@ -3072,21 +3084,6 @@ export default function ZeshuSuperApp() {
                <span className="my-1 hidden w-px shrink-0 bg-slate-200 md:block" aria-hidden="true" />
                <Link href="/partners" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-[#075E45] transition hover:bg-emerald-50">{t('Sell on Zeshu')}</Link>
              </nav>
-           )}
-
-           {activeTab === 'home' && normalizedSearch === '' && (
-             <section className="mb-4 px-4 md:px-0" aria-labelledby="shop-jagtial-title">
-               <div className="flex flex-wrap items-end justify-between gap-3 border-t border-[#dce8df] pt-6">
-                 <div>
-                   <p className="text-[10px] font-black uppercase tracking-[.14em] text-[#075E45]">{t('Local shopping')}</p>
-                   <h2 id="shop-jagtial-title" className="mt-1 text-xl font-black tracking-tight text-slate-950 md:text-2xl">{t('Shop in Jagtial')}</h2>
-                   <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{t('Browse available groceries and everyday essentials from nearby sellers.')}</p>
-                 </div>
-                 <button type="button" onClick={handleAutoDetectLocation} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-[#075E45]">
-                   <MapPin size={15} aria-hidden="true" /> {currentAddress === 'Location not set' ? t('Set your address') : t('Change address')}
-                 </button>
-               </div>
-             </section>
            )}
 
            {activeTab === 'home' && <div data-category-strip="marketplace" className="mb-5 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar md:px-0 lg:hidden" aria-label={t('Shop by Category')}>{mobileProductCategories.map((category) => { const definition = categoryDefinition(category); const selected = activeCategory === category; return <button type="button" key={category} onClick={() => setActiveCategory(category)} aria-pressed={selected} className={`flex min-w-[76px] flex-col items-center gap-1.5 rounded-xl border px-2 py-2.5 text-center text-[10px] font-black transition ${selected ? 'border-[#075E45] bg-emerald-50 text-[#075E45]' : 'border-slate-200 bg-white text-slate-600'}`}><span className={`grid h-9 w-9 place-items-center rounded-full text-base ${selected ? 'bg-white' : 'bg-slate-50'}`} aria-hidden="true">{definition.icon}</span><span className="line-clamp-2 leading-3">{t(definition.label)}</span></button>; })}</div>}
@@ -3390,6 +3387,7 @@ export default function ZeshuSuperApp() {
         </div>
       </main>
 
+      {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && <button type="button" aria-label={cart.length > 0 ? `Open cart, total ₹${finalCartTotal}` : 'Open cart'} onClick={() => setIsCartOpen(true)} className="fixed bottom-6 left-6 z-40 hidden items-center gap-2 rounded-full bg-[linear-gradient(135deg,#079665,#005b3e)] px-5 py-3 text-sm font-black text-white shadow-[0_10px_28px_rgba(0,69,41,.25)] lg:flex"><ShoppingBag size={19}/><span>{t('Cart')}</span>{cartItemCount > 0 && <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">{cartItemCount}</span>}</button>}
       {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(15,23,42,.08)] backdrop-blur lg:hidden" aria-label="Primary navigation">
         <div className="mx-auto grid max-w-md grid-cols-5 items-end">
           <button type="button" onClick={goToHome} aria-current={activeTab === 'home' ? 'page' : undefined} className={"relative flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black " + (activeTab === 'home' ? 'text-[#075E45]' : 'text-slate-500')}><Home size={22} fill={activeTab==='home' ? 'currentColor' : 'none'} aria-hidden="true" /><span>{t('Home')}</span>{activeTab==='home' && <span className="absolute bottom-0 h-[3px] w-10 rounded-full bg-[#075E45]"/>}</button>
@@ -3589,8 +3587,15 @@ export default function ZeshuSuperApp() {
               <div className="mb-2 flex items-center justify-between gap-3"><span className="min-w-0 truncate text-[10px] font-medium text-slate-500 md:text-xs">{t('Stock and price are checked again before payment.')}</span><button type="button" onClick={clearCart} disabled={!cart.length || isCheckoutOpening} className="shrink-0 text-[10px] font-black text-red-600 disabled:text-slate-300 md:text-xs">{t('Clear cart')}</button></div>
               <details className="group mb-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[10px] text-slate-600 md:text-xs"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-black text-emerald-800"><span className="flex items-center gap-2"><ShieldCheck size={15} aria-hidden="true" /> {t('Secure checkout')}</span><ChevronDown size={15} aria-hidden="true" className="text-emerald-700 transition-transform group-open:rotate-180" /></summary><div className="pt-2 leading-5"><p>{t('Your final total and stock are verified before payment, and the order is confirmed only after server-side payment verification.')}</p><p className="mt-1 font-bold text-slate-500">{t('Never share your OTP, card CVV or UPI PIN with Zeshu support.')}</p><button type="button" onClick={() => { setIsCartOpen(false); openAiSupport(); }} className="mt-2 rounded-lg bg-white px-3 py-2 text-[10px] font-black text-emerald-800 shadow-sm md:text-xs">{t('Payment help')}</button></div></details>
               {checkoutError?.code === 'PAYMENT_RECONCILIATION_REQUIRED' && <div role="status" className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950"><div className="flex items-start gap-3"><div className="mt-0.5 rounded-full bg-amber-100 p-2 text-amber-700"><Clock size={16} aria-hidden="true" /></div><div><p className="font-black">{t('Checking previous payment')}</p><p className="mt-1 text-xs font-medium leading-5 text-amber-800">{t("We're confirming the status of your previous payment before starting another one. This prevents duplicate charges.")}</p></div></div><button type="button" onClick={() => void handleCheckPaymentStatus()} disabled={isCheckingPaymentStatus || isCheckoutOpening} className="mt-3 rounded-xl bg-amber-700 px-3 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-60">{isCheckingPaymentStatus ? t('Checking payment status…') : t('Check payment status')}</button>{checkoutError.requestId && <p className="mt-2 text-[10px] font-medium text-amber-700">Reference: {checkoutError.requestId}</p>}</div>}
-              {checkoutError && checkoutError.code !== 'PAYMENT_RECONCILIATION_REQUIRED' && <div role="alert" aria-live="assertive" className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-sm font-bold text-red-700"><p>{checkoutError.message}</p>{checkoutError.code && <p className="mt-1 text-xs font-semibold text-red-600">Code: {checkoutError.code}{checkoutError.requestId ? ` · Reference: ${checkoutError.requestId}` : ''}</p>}</div>}
+              {checkoutError && checkoutError.code !== 'PAYMENT_RECONCILIATION_REQUIRED' && <div role="alert" aria-live="assertive" className="mb-3 rounded-2xl border border-amber-200 bg-[linear-gradient(145deg,#fff,#fff8e7)] px-4 py-4 text-sm text-amber-950 shadow-sm">
+                <p className="font-black">{checkoutError.code?.startsWith('RAZORPAY_') ? 'Payment was not completed' : 'Please review your checkout'}</p>
+                <p className="mt-1.5 text-xs font-medium leading-5">{checkoutError.message}</p>
+                {checkoutError.code?.startsWith('RAZORPAY_') && <p className="mt-2 text-xs text-slate-600">Your cart is saved. If a bank debit appears, contact support before retrying. Zeshu cannot confirm a successful payment from this message.</p>}
+                <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => setCheckoutError(null)} className="rounded-xl bg-[#075E45] px-3 py-2 text-xs font-black text-white">Review basket</button><Link href="/help" className="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-black text-[#075E45]">Contact support</Link></div>
+                {checkoutError.requestId && <p className="mt-2 text-[10px] font-medium text-amber-700">Reference: {checkoutError.requestId}</p>}
+              </div>}
               <p className="mb-2 text-center text-[9px] leading-4 text-slate-500 md:text-[10px] md:leading-4">{t("By proceeding, you agree to Zeshu's")} <Link href="/policies#terms" className="font-black text-[#075E45] underline underline-offset-2">{t('Terms')}</Link>, <Link href="/policies#privacy" className="font-black text-[#075E45] underline underline-offset-2">{t('Privacy Policy')}</Link>, {t('and')} <Link href="/policies#cancellation-refunds" className="font-black text-[#075E45] underline underline-offset-2">{t('Cancellation & Refund Policy')}</Link>.</p>
+              {String(process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '').startsWith('rzp_test_') && <div role="note" className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-[11px] font-black text-amber-900">Razorpay TEST MODE · No real money or live order fulfillment</div>}
               <button disabled={cart.length === 0 || isLoading || isCheckoutOpening} onClick={() => void handleCartCheckout()} className="flex min-h-14 w-full items-center justify-between rounded-2xl bg-[#075E45] px-5 py-3.5 text-white font-black shadow-[0_8px_20px_rgba(7,94,69,.18)] disabled:bg-[#a7b6ac] md:px-6 md:text-base">
                 <span>{isLoading ? t('Preparing secure checkout…') : t('Proceed to secure payment')}</span><span>₹{finalCartTotal}</span>
               </button>
