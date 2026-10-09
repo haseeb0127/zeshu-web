@@ -3685,7 +3685,7 @@ export default function ZeshuSuperApp() {
                   void navigator.clipboard.writeText('https://zeshu.in/').then(() => showToast('Zeshu link copied. Paste it into Chrome.')).catch(() => showToast('Open https://zeshu.in directly in Chrome.'));
                 }} className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-[11px] font-black text-emerald-800">Copy website link</button></details>
               </div>}
-              <button disabled={cart.length === 0 || isLoading || isCheckoutOpening || isCheckingPaymentStatus} onClick={() => void handleCartCheckout()} className="flex min-h-14 w-full items-center justify-between rounded-2xl bg-[#075E45] px-5 py-3.5 text-white font-black shadow-[0_8px_20px_rgba(7,94,69,.18)] disabled:bg-[#a7b6ac] md:px-6 md:text-base">
+              <button disabled={cart.length === 0 || isLoading || isCheckoutOpening || isCheckingPaymentStatus || checkoutError?.code === 'PREVIOUS_PAYMENT_REQUIRES_REVIEW'} onClick={() => void handleCartCheckout()} className="flex min-h-14 w-full items-center justify-between rounded-2xl bg-[#075E45] px-5 py-3.5 text-white font-black shadow-[0_8px_20px_rgba(7,94,69,.18)] disabled:bg-[#a7b6ac] md:px-6 md:text-base">
                 <span>{isCheckingPaymentStatus ? t('Securing your checkout…') : isLoading ? t('Preparing secure checkout…') : t('Proceed to secure payment')}</span><span>₹{finalCartTotal}</span>
               </button>
             </div>
