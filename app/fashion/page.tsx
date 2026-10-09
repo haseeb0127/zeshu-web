@@ -70,7 +70,7 @@ const sellerPrograms = [
 
 export default function FashionPage() {
   return (
-    <main data-zeshu-experience="glossy" className="zeshu-experience "min-h-screen bg-[#f8fbf8] text-slate-900">
+    <main data-zeshu-experience="glossy" className="zeshu-experience min-h-screen bg-[#f8fbf8] text-slate-900">
       <div className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-12">
         <Link href="/" className="text-sm font-black text-[#075E45]">
           ← Back to Zeshu

@@ -9,7 +9,7 @@ import { useCustomerLanguage } from '../components/CustomerLanguageProvider';
 export default function GetZeshuPage() {
   const { t } = useCustomerLanguage();
   return (
-    <main data-zeshu-experience="glossy" className="zeshu-experience "min-h-screen bg-[#f7f9f5] px-4 py-8 text-slate-900 md:px-8 md:py-14">
+    <main data-zeshu-experience="glossy" className="zeshu-experience min-h-screen bg-[#f7f9f5] px-4 py-8 text-slate-900 md:px-8 md:py-14">
       <div className="mx-auto max-w-5xl">
         <Link href="/" className="text-sm font-black text-[#075E45]">← {t('Back to Zeshu')}</Link>
 

@@ -70,7 +70,7 @@ export default function MoveTravelPage() {
   const { t } = useCustomerLanguage();
 
   return (
-    <main data-zeshu-experience="glossy" className="zeshu-experience "min-h-screen bg-[#f6faf7] px-4 py-6 text-slate-900 md:px-8 md:py-10">
+    <main data-zeshu-experience="glossy" className="zeshu-experience min-h-screen bg-[#f6faf7] px-4 py-6 text-slate-900 md:px-8 md:py-10">
       <div className="mx-auto max-w-6xl">
         <div className="flex items-center justify-between gap-3">
           <Link href="/" className="inline-flex items-center gap-2 text-sm font-black text-[#075E45]">
