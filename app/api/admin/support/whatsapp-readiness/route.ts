@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getSupportWhatsappReadiness } from '@/app/lib/support-whatsapp-sender';
 import { auditMetaSupportTemplates } from '@/app/lib/support-whatsapp-template-readiness';
 import { getRuntimeEnvValue, getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
+import { decryptMetaToken } from '@/app/lib/meta-embedded-signup';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -38,14 +39,31 @@ export async function GET(request: Request) {
     'WHATSAPP_SUPPORT_RESOLVED_TEMPLATE_NAME','WHATSAPP_SUPPORT_RESOLVED_TEMPLATE_LANGUAGE'] as const;
   const configs = await Promise.all(names.map(key=>getRuntimeEnvValue(key)));
   const vals = Object.fromEntries(names.map((key,index)=>[key,configs[index]])) as Record<typeof names[number],string>;
+  // Prefer the owner-authorized encrypted Meta connection for admin read-only
+  // template audit. This does NOT enable or reconfigure the message sender.
+  const {data:meta, error:metaError}=await service.from('whatsapp_meta_connections')
+    .select('waba_id,graph_version,token_iv,token_ciphertext,token_auth_tag')
+    .eq('singleton_id',1).maybeSingle();
+  let connectedToken='';
+  if(meta && !metaError) {
+    try {
+      const key=await getRuntimeEnvValue('WHATSAPP_META_TOKEN_ENCRYPTION_KEY');
+      connectedToken=decryptMetaToken(meta,key);
+    }catch{
+      // Missing/changed key: fail closed, no ciphertext disclosed.
+    }
+  }
+  const metaAuditToken=connectedToken||vals.WHATSAPP_ACCESS_TOKEN;
+  const metaAuditWaba=(connectedToken && meta?.waba_id)||vals.WHATSAPP_BUSINESS_ACCOUNT_ID;
+  const metaAuditVersion=(connectedToken && meta?.graph_version)||vals.WHATSAPP_GRAPH_API_VERSION;
   const [templateAudit, outbox, preferences, delivered] = await Promise.all([
     auditMetaSupportTemplates({
-      token: vals.WHATSAPP_ACCESS_TOKEN, wabaId: vals.WHATSAPP_BUSINESS_ACCOUNT_ID,
-      graphVersion: vals.WHATSAPP_GRAPH_API_VERSION,
-      replyName: vals.WHATSAPP_SUPPORT_REPLY_TEMPLATE_NAME,
-      replyLanguage: vals.WHATSAPP_SUPPORT_REPLY_TEMPLATE_LANGUAGE,
-      resolvedName: vals.WHATSAPP_SUPPORT_RESOLVED_TEMPLATE_NAME,
-      resolvedLanguage: vals.WHATSAPP_SUPPORT_RESOLVED_TEMPLATE_LANGUAGE,
+      token: metaAuditToken, wabaId: metaAuditWaba,
+      graphVersion: metaAuditVersion,
+      replyName: vals.WHATSAPP_SUPPORT_REPLY_TEMPLATE_NAME || 'zeshu_support_reply',
+      replyLanguage: vals.WHATSAPP_SUPPORT_REPLY_TEMPLATE_LANGUAGE || 'en',
+      resolvedName: vals.WHATSAPP_SUPPORT_RESOLVED_TEMPLATE_NAME || 'zeshu_support_case_closed',
+      resolvedLanguage: vals.WHATSAPP_SUPPORT_RESOLVED_TEMPLATE_LANGUAGE || 'en',
     }),
     service.from('support_notification_outbox').select('event_id',{head:true,count:'exact'}),
     service.from('support_notification_preferences').select('user_id',{head:true,count:'exact'})
@@ -58,7 +76,8 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ...readiness,
     cronConfigured,
-    wabaConfigured: /^\d{5,32}$/.test(vals.WHATSAPP_BUSINESS_ACCOUNT_ID),
+    wabaConfigured: /^\d{5,32}$/.test(metaAuditWaba),
+    directMetaAccountConnected: Boolean(connectedToken),
     templateAudit,
     metrics: statisticsAvailable
       ? { queuedEvents: outbox.count || 0, optedInAccounts: preferences.count || 0, deliveryEvents: delivered.count || 0 }
