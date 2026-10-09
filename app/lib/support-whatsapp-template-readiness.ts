@@ -1,5 +1,3 @@
-import 'server-only';
-
 export type MetaTemplateAudit = {
   event: 'SUPPORT_REPLY' | 'SUPPORT_RESOLVED';
   name: string | null;
