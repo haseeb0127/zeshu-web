@@ -6,10 +6,10 @@ import { BadgeCheck, Car, ChevronLeft, ChevronRight, Paintbrush, PartyPopper, Re
 import { useCustomerLanguage } from "@/app/components/CustomerLanguageProvider";
 
 type Readiness = { request_enabled?: boolean; matching_enabled?: boolean; compliance_gate?: boolean };
-type Props = { onShopNearby: () => void; onBrowseCatalog: () => void; onOpenServices: () => void; nationwideCheckoutEnabled: boolean };
+type Props = { onShopNearby: () => void; onBrowseCatalog: () => void; onOpenServices: () => void; onSelectCategory: (category: string) => void; nationwideCheckoutEnabled: boolean };
 const ready = (state: Readiness | undefined) => Boolean(state?.request_enabled && state?.matching_enabled && !state?.compliance_gate);
 
-export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenServices, nationwideCheckoutEnabled }: Props) {
+export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenServices, onSelectCategory, nationwideCheckoutEnabled }: Props) {
   const { t } = useCustomerLanguage();
   const [moveServices, setMoveServices] = useState<Record<string, Readiness>>({});
   const trackRef = useRef<HTMLDivElement>(null);
@@ -65,5 +65,6 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
       <img src="/zeshu-grocery-hero.svg" alt="" className="pointer-events-none absolute -bottom-10 -right-7 h-40 w-32 object-contain opacity-95 md:-bottom-16 md:right-2 md:h-56 md:w-48" />
       <button onClick={onBrowseCatalog} className="relative z-10 rounded-2xl bg-[#006b49] px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-[#004e37]">{t("Browse products")}</button>
     </div>
+    <div className="mt-4 grid grid-cols-5 gap-2 md:gap-4" aria-label="Shop popular categories">{[{label:"Groceries",category:"All",emoji:"🛒",tone:"from-[#eaf7e9] to-white"},{label:"Fruits & Vegetables",category:"Fruits",emoji:"🍎",tone:"from-[#fff3e5] to-white"},{label:"Dairy",category:"Dairy",emoji:"🥛",tone:"from-[#eff8ff] to-white"},{label:"Snacks",category:"Snacks",emoji:"🍿",tone:"from-[#fff4e7] to-white"},{label:"Drinks",category:"Drinks",emoji:"🥤",tone:"from-[#edf6ff] to-white"}].map(item=><button key={item.label} type="button" onClick={()=>onSelectCategory(item.category)} className={`flex min-w-0 flex-col items-center rounded-[22px] border border-slate-100 bg-gradient-to-b ${item.tone} px-1 py-3 text-center shadow-[0_5px_18px_rgba(16,24,40,.07)] transition active:scale-95 md:py-5`}><span aria-hidden="true" className="grid h-16 w-full place-items-center text-4xl drop-shadow-sm md:h-24 md:text-6xl">{item.emoji}</span><span className="mt-2 text-[10px] font-extrabold leading-tight text-slate-900 sm:text-xs md:text-sm">{item.label}</span></button>)}</div>
   </section>;
 }
