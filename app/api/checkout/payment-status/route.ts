@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Razorpay from 'razorpay';
-import { getRuntimeEnvValue, getRuntimeSupabaseEnv } from '../../lib/runtime-env';
+import { getRuntimeEnvValue, getRuntimeSupabaseEnv } from '../../../lib/runtime-env';
 
 export const dynamic = 'force-dynamic';
 
