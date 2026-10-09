@@ -42,25 +42,25 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
 
     <div className="relative mt-0 md:mt-4">
       <div ref={trackRef} className="flex snap-x snap-mandatory gap-3 overflow-x-auto no-scrollbar">
-        {slides.map((s,i)=><article key={s.title} data-slide className={`relative min-w-full snap-start overflow-hidden rounded-2xl ${s.theme} px-5 py-4 text-white md:px-7 md:py-7`}>
-          <div className="max-w-[78%] md:max-w-[68%]">
+        {slides.map((s,i)=><article key={s.title} data-slide className={`relative min-w-full snap-start overflow-hidden rounded-[28px] ${s.theme} min-h-[270px] px-6 py-7 text-white shadow-[0_12px_30px_rgba(0,65,40,.14)] md:min-h-[310px] md:px-9 md:py-9`}>
+          <div className="relative z-10 max-w-[65%] md:max-w-[64%]">
             <span className="rounded-full bg-white/12 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.14em] ring-1 ring-white/15">Zeshu · {s.scope}</span>
-            <h2 className="mt-2 text-2xl font-black md:mt-3 md:text-4xl">{s.title}</h2><p className="mt-2 text-xs font-semibold leading-5 text-white/85 md:text-sm">{s.description}</p>
+            <h2 className="mt-4 text-[2rem] font-black leading-tight tracking-tight md:mt-5 md:text-5xl">{s.title}</h2><p className="mt-3 text-sm font-medium leading-6 text-white/90 md:text-base">{s.description}</p>
             <div className="mt-3 md:mt-4">
               {s.action==="shop"?<button onClick={onShopNearby} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></button>
               :s.action==="services"?<button onClick={onOpenServices} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></button>
               :s.action==="fashion"?<Link href="/fashion" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>
               :<Link href={s.action==="weddings"?"/professional-services/weddings":s.action==="interiors"?"/professional-services/interiors":"/move"} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>}
             </div>
-          </div><div className="absolute right-5 top-1/2 hidden h-28 w-28 -translate-y-1/2 place-items-center rounded-2xl bg-white/12 md:grid"><s.icon size={52}/></div>
+          </div><div className="absolute -right-4 bottom-1 grid h-48 w-40 place-items-center opacity-95 md:right-8 md:bottom-4 md:h-64 md:w-56">{i===0?<img src="/zeshu-bag-logo.svg" alt="" className="h-40 w-32 rotate-[-7deg] object-contain drop-shadow-[0_14px_14px_rgba(0,0,0,.25)] md:h-56 md:w-48"/>:<div className="grid h-28 w-28 place-items-center rounded-3xl border border-white/20 bg-white/10 shadow-xl backdrop-blur-sm md:h-40 md:w-40"><s.icon size={62}/></div>}</div>
         </article>)}
       </div>
       <div className="flex items-center justify-between px-1 py-3"><div className="flex gap-1.5">{slides.map((s,i)=><button key={s.title} onClick={()=>go(i)} aria-label={`Promotion ${i+1}`} className={`h-2 rounded-full ${index===i?"w-6 bg-[#075E45]":"w-2 bg-slate-300"}`}/>)}</div><div className="flex gap-2"><button onClick={()=>go(index-1)} aria-label="Previous promotion" className="grid h-9 w-9 place-items-center rounded-full border bg-white"><ChevronLeft size={17}/></button><button onClick={()=>go(index+1)} aria-label="Next promotion" className="grid h-9 w-9 place-items-center rounded-full border bg-white"><ChevronRight size={17}/></button></div></div>
     </div>
 
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+    <div className="mt-4 flex min-h-36 flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-100 bg-[linear-gradient(110deg,#fff_60%,#e9f8ed)] p-5 shadow-[0_6px_24px_rgba(0,50,30,.06)] md:p-7">
       <div><p className="text-sm font-black text-slate-900">{t("Shop products")}</p><p className="mt-1 text-xs text-slate-500">{nationwideCheckoutEnabled?t("Local and eligible India delivery products."):t("Local products and eligible marketplace discovery.")}</p></div>
-      <button onClick={onBrowseCatalog} className="rounded-xl bg-[#075E45] px-4 py-2.5 text-xs font-black text-white">{t("Browse products")}</button>
+      <button onClick={onBrowseCatalog} className="rounded-2xl bg-[#006b49] px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-[#004e37]">{t("Browse products")}</button>
     </div>
   </section>;
 }
