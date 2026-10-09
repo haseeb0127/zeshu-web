@@ -66,17 +66,24 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
       <div ref={trackRef} onScroll={onScroll} className="flex snap-x snap-mandatory gap-3 overflow-x-auto no-scrollbar scroll-smooth">
         {slides.map((s,i) => <article key={s.title} data-slide data-glossy-banner={s.poster} className={`zeshu-premium-hero relative isolate min-w-full snap-start overflow-hidden rounded-[24px] ${s.theme} h-[245px] min-h-[245px] px-5 py-4 text-white shadow-[0_12px_26px_rgba(0,65,40,.16)] md:min-h-[350px] md:rounded-[30px] md:px-9 md:py-9`}>
           <GlossyArtwork kind={s.poster as "shop"|"fashion"|"pay"|"move"|"services"|"weddings"|"interiors"|"support"|"app"} loading={i===0?"eager":"lazy"}/>
-          <div className="relative z-10 max-w-[62%] md:max-w-[60%]">
+          {/* The full glossy promotion is tappable, including the illustration.
+              Use document links to avoid the reproduced Next.js Android navigation crash. */}
+          {s.action==="shop" || s.action==="pay"
+            ? <button type="button" aria-label={s.action==="shop"?"Open Zeshu Shop":"Open Zeshu Pay"} onClick={s.action==="shop"?onShopNearby:onOpenServices}
+                className="absolute inset-0 z-[1] cursor-pointer rounded-[24px] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[-3px] focus-visible:outline-white"/>
+            : <Link href={s.action==="weddings"?"/professional-services/weddings":s.action==="interiors"?"/professional-services/interiors":s.action==="services"?"/professional-services":s.action==="support"?"/help":s.action==="app"?"/app":s.action==="fashion"?"/fashion":"/move"}
+                aria-label={`Open ${s.title}`} className="absolute inset-0 z-[1] cursor-pointer rounded-[24px] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[-3px] focus-visible:outline-white"/>}
+          <div className="pointer-events-none relative z-10 max-w-[62%] md:max-w-[60%]">
             <span className="inline-flex rounded-full bg-white/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.15em] ring-1 ring-white/10 md:text-[11px]">Zeshu · {s.scope}</span>
             <h2 className="mt-2 text-[34px] font-black leading-[1.04] tracking-tight md:mt-5 md:text-5xl">
               {i===0 && language==='en' ? <><span className="block">Shop in</span>{" "}<span className="block text-[#a6eb4a]">Jagtial</span></> : s.title}
             </h2>
             <p className="mt-2.5 max-w-[165px] text-[11.5px] font-semibold leading-[1.45] text-white/95 md:mt-4 md:max-w-none md:text-base">{s.description}</p>
-            <div className="mt-3 md:mt-5">
-              {s.action==="shop" ? <button onClick={onShopNearby} className="inline-flex min-h-10 items-center gap-2 rounded-[18px] bg-white px-5 text-xs font-black text-[#142034] shadow-[0_8px_16px_rgba(0,0,0,.14)] md:min-h-11 md:text-sm">{s.cta}<ChevronRight size={16}/></button>
-                :s.action==="pay" ? <button onClick={onOpenServices} className="inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></button>
-                :s.action==="fashion" ? <Link href="/fashion" className="inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>
-                :<Link href={s.action==="weddings"?"/professional-services/weddings":s.action==="interiors"?"/professional-services/interiors":s.action==="services"?"/professional-services":s.action==="support"?"/help":s.action==="app"?"/app":"/move"} className="inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>}
+            <div className="pointer-events-none mt-3 md:mt-5">
+              {s.action==="shop" ? <button onClick={onShopNearby} className="pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-[18px] bg-white px-5 text-xs font-black text-[#142034] shadow-[0_8px_16px_rgba(0,0,0,.14)] md:min-h-11 md:text-sm">{s.cta}<ChevronRight size={16}/></button>
+                :s.action==="pay" ? <button onClick={onOpenServices} className="pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></button>
+                :s.action==="fashion" ? <Link href="/fashion" className="pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>
+                :<Link href={s.action==="weddings"?"/professional-services/weddings":s.action==="interiors"?"/professional-services/interiors":s.action==="services"?"/professional-services":s.action==="support"?"/help":s.action==="app"?"/app":"/move"} className="pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>}
             </div>
           </div>
           <span className="pointer-events-none absolute bottom-1.5 right-2 z-[2] rounded-full bg-[#003b2a]/65 px-2 py-0.5 text-[8px] font-semibold text-white/95 md:text-[10px]">Illustrative artwork</span>

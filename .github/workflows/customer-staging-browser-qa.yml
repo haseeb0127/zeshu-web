@@ -137,6 +137,27 @@ jobs:
               await page.goBack({ waitUntil: 'domcontentloaded', timeout: 25000 });
               await page.locator('nav[aria-label="Explore Zeshu departments"]').waitFor({ state: 'visible', timeout: 15000 });
             }
+            // Tap EVERY premium banner on mobile, navigate and return.
+            // Catch black Android/WebView load errors and broken back navigation.
+            const bannerRoutes = [
+              ['fashion','/fashion'], ['move','/move'],
+              ['services','/professional-services'],
+              ['weddings','/professional-services/weddings'],
+              ['interiors','/professional-services/interiors'],
+              ['support','/help'], ['app','/app'],
+            ];
+            for (const [poster, route] of bannerRoutes) {
+              const link = page.locator('[data-glossy-banner="' + poster + '"] a[aria-label^="Open "]');
+              assert(await link.count() === 1, 'Whole banner not tappable: ' + poster);
+              await link.click();
+              await page.waitForURL(url => url.pathname === route, { timeout: 25000 });
+              await page.locator('main').first().waitFor({ state: 'visible', timeout: 15000 });
+              const body = await page.locator('body').innerText();
+              assert(!(/This page couldn.t load|This Zeshu page needs another try|Zeshu needs a moment/i).test(body), 'Banner tap failed: ' + poster);
+              await page.goBack({ waitUntil: 'domcontentloaded', timeout: 25000 });
+              await page.locator('[data-glossy-banner="shop"]').waitFor({ state: 'visible', timeout: 15000 });
+              await page.locator('input[aria-label="Search Zeshu"]').waitFor({ state: 'visible', timeout: 15000 });
+            }
             await page.waitForLoadState('networkidle', { timeout: 30000 });
             const allGlossyImages = moveQuick.locator('img[data-glossy-image]');
             assert(await allGlossyImages.count() === 9, 'All nine glossy 3D marketing artwork images must be configured');

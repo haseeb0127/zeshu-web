@@ -1,7 +1,7 @@
 /* Zeshu navigation resilience. Only cache this public offline information page.
    NEVER cache HTML responses, API calls, user sessions, checkout, payments,
    account pages or other private customer content. */
-const OFFLINE_CACHE = 'zeshu-public-offline-v1';
+const OFFLINE_CACHE = 'zeshu-public-offline-v2';
 const OFFLINE_PAGE = '/offline.html';
 
 self.addEventListener('install', event => {
@@ -32,7 +32,14 @@ self.addEventListener('fetch', event => {
   event.respondWith((async () => {
     try {
       // Network-first. Successful navigation is NEVER stored by this worker.
-      return await fetch(request);
+      const response = await fetch(request);
+      // A temporary Cloudflare gateway failure should show a branded retry
+      // rather than a browser-black-screen. Never cache customer HTML or APIs.
+      if ([502, 503, 504].includes(response.status)) {
+        const cached = await caches.match(OFFLINE_PAGE, { cacheName: OFFLINE_CACHE });
+        if (cached) return cached;
+      }
+      return response;
     } catch (error) {
       const cached = await caches.match(OFFLINE_PAGE, { cacheName: OFFLINE_CACHE });
       if (cached) return cached;

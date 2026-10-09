@@ -282,6 +282,20 @@ jobs:
               await page.goBack({ waitUntil: 'domcontentloaded', timeout: 25000 });
               await page.locator('nav[aria-label="Explore Zeshu departments"]').waitFor({ state: 'visible', timeout: 15000 });
             }
+            // Check actual production banner taps and browser Back recovery.
+            for (const [poster, route] of [
+              ['fashion','/fashion'], ['weddings','/professional-services/weddings'],
+              ['support','/help'], ['app','/app'],
+            ]) {
+              const link = page.locator('[data-glossy-banner="' + poster + '"] a[aria-label^="Open "]');
+              await link.click();
+              await page.waitForURL(url => url.pathname === route, { timeout: 25000 });
+              await page.locator('main').first().waitFor({ state: 'visible', timeout: 15000 });
+              const body = await page.locator('body').innerText();
+              assert(!(/This page couldn.t load|This Zeshu page needs another try|Zeshu needs a moment/i).test(body), 'Live banner navigation failed: ' + poster);
+              await page.goBack({ waitUntil: 'domcontentloaded', timeout: 25000 });
+              await page.locator('[data-glossy-banner="shop"]').waitFor({ state: 'visible', timeout: 15000 });
+            }
             await page.waitForLoadState('networkidle', { timeout: 30000 });
             const homeChat = page.locator('[data-zeshu-home-assistant="true"]');
             await homeChat.waitFor({state:'visible',timeout:10000});
