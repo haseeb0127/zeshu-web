@@ -42,7 +42,7 @@ async function readMetaConfig(){
   const decodedKeyLength=storageKey ? Buffer.from(storageKey,'base64').length : 0;
   const keyStatus: 'READY' | 'NOT_VISIBLE_TO_RUNTIME' | 'INVALID_BASE64_KEY' =
     !storageKey ? 'NOT_VISIBLE_TO_RUNTIME'
-      : /^[A-Za-z0-9+/]{43}=$/.test(storageKey) && decodedKeyLength === 32
+      : decodedKeyLength === 32
         ? 'READY' : 'INVALID_BASE64_KEY';
   return {appId,configId,appSecret,graphVersion,storageKey,keyStatus,
     ready:metaIdValid(appId) && metaIdValid(configId) && appSecret.length>=16
