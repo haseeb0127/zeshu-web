@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import { getRuntimeEnvValue, getRuntimeSupabaseEnv } from '../../lib/runtime-env';
+import { reconcileCapturedTestCheckout } from '../../lib/razorpay-captured-recovery';
 
 type RazorpayPaymentRecord = { id?: string; order_id?: string; amount?: number | string; status?: string; captured?: boolean };
 
@@ -93,9 +94,35 @@ export async function POST(req: Request) {
       p_payment_id: razorpayPaymentId,
       p_captured_amount_paise: paymentAmount,
     });
-    if (finalizeError) return finalizationErrorResponse(finalizeError.message);
+    // A sandbox payment may have been captured at Razorpay but the customer
+    // lost connectivity before callback verification. Recover the SAME paid
+    // reservation once, with fresh gateway verification, rather than charge again.
+    let recoveredExpired = false;
+    let recoveredOrderId: string | null = null;
+    if (finalizeError) {
+      if (finalizeError.message !== 'reservation expired; payment reconciliation required' ||
+          !runtimeRazorpayKeyId.startsWith('rzp_test_')) return finalizationErrorResponse(finalizeError.message);
+      const { data: originalReservation, error: reservationError } = await supabase
+        .from('inventory_reservations')
+        .select('id,expected_total_paid')
+        .eq('id', reservationId).eq('user_id', user.id)
+        .eq('razorpay_order_id', razorpayOrderId).eq('status', 'PAYMENT_PENDING')
+        .maybeSingle();
+      if (reservationError || !originalReservation) return finalizationErrorResponse(finalizeError.message);
+      const recovery = await reconcileCapturedTestCheckout({
+        gateway: razorpay, serviceClient: supabase,
+        userId: user.id, reservationId, razorpayOrderId,
+        expectedTotalRupees: Number(originalReservation.expected_total_paid),
+      });
+      if (recovery !== 'RECOVERED') return finalizationErrorResponse(finalizeError.message);
+      const { data: recoveredOrder } = await supabase.from('orders')
+        .select('id').eq('user_id', user.id).eq('payment_id', razorpayPaymentId).maybeSingle();
+      if (!recoveredOrder?.id) return finalizationErrorResponse(finalizeError.message);
+      recoveredOrderId = recoveredOrder.id;
+      recoveredExpired = true;
+    }
 
-    const orderId = Array.isArray(finalizedOrderId) ? finalizedOrderId[0] : finalizedOrderId;
+    const orderId = recoveredOrderId ?? (Array.isArray(finalizedOrderId) ? finalizedOrderId[0] : finalizedOrderId);
     if (typeof orderId !== 'string' || !orderId) return NextResponse.json({ success: false, error: 'Verified payment did not return an order reference. Retry confirmation with the same payment; do not pay again.' }, { status: 500 });
 
     const { data: destinationSnapshot } = await supabase.from('inventory_reservation_location_snapshots').select('latitude,longitude,accuracy_meters,source').eq('reservation_id', reservationId).eq('user_id', user.id).maybeSingle();
@@ -104,10 +131,12 @@ export async function POST(req: Request) {
       if (destinationError && isDevelopment) console.error('[checkout] destination snapshot update failed', destinationError.message);
     }
 
-    const { error: redemptionError } = await supabase.rpc('consume_zeshu_cash_redemption', {
-      p_reservation_id: reservationId,
-      p_order_id: orderId,
-    });
+    const { error: redemptionError } = recoveredExpired
+      ? { error: null }
+      : await supabase.rpc('consume_zeshu_cash_redemption', {
+          p_reservation_id: reservationId,
+          p_order_id: orderId,
+        });
     if (redemptionError && redemptionError.message !== 'reward redemption not found') {
       return NextResponse.json({ success: false, error: 'Order was finalized, but Zeshu Cash could not be completed. Retry confirmation with the same payment; do not pay again.' }, { status: 500 });
     }
