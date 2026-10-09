@@ -3051,7 +3051,7 @@ export default function ZeshuSuperApp() {
              <nav
                data-customer-department-nav="primary"
                aria-label="Zeshu customer departments"
-               className="mt-4 mb-3 flex gap-1.5 overflow-x-auto border-y border-slate-200 bg-white px-3 py-1.5 no-scrollbar md:mb-4 md:rounded-xl md:border md:px-3 md:py-2"
+               className="mt-4 mb-3 hidden gap-1.5 overflow-x-auto border-y border-slate-200 bg-white px-3 py-1.5 no-scrollbar md:mb-4 md:flex md:rounded-xl md:border md:px-3 md:py-2"
              >
                <button type="button" onClick={() => { setActiveCategory('All'); setFulfillmentFilter('ALL'); requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-emerald-50 hover:text-[#075E45]">{t('Shop')}</button>
                <Link href="/fashion" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-fuchsia-50 hover:text-fuchsia-800">Zeshu Fashion</Link>

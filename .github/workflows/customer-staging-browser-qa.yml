@@ -93,12 +93,34 @@ jobs:
               assert(await moveQuick.locator(`a[href="${destination}"]`).count() > 0, `Homepage promotion link missing: ${destination}`);
             }
             assert(!moveQuickText.includes('Plan something bigger'), 'Homepage must not duplicate Weddings and Interiors below the carousel');
+            const mobileDepartments = moveQuick.locator('nav[aria-label="Explore Zeshu departments"]');
+            await mobileDepartments.waitFor({ state: 'visible', timeout: 10000 });
+            const mobileDepartmentText = (await mobileDepartments.innerText()).replace(/\s+/g, ' ');
+            for (const department of ['Shop', 'Fashion', 'Pay', 'Move', 'Services']) {
+              assert(mobileDepartmentText.includes(department), `Homepage mobile quick-launch is missing ${department}`);
+            }
+            const referenceArtwork = moveQuick.locator('svg[data-reference-art="hero"] image');
+            await referenceArtwork.waitFor({ state: 'attached', timeout: 10000 });
+            const referenceArtworkUrl = await referenceArtwork.getAttribute('href');
+            const artworkReady = await page.evaluate(async (url) => {
+              if (!url) return false;
+              const img = new Image();
+              return await new Promise((resolve) => {
+                const timeout = setTimeout(() => resolve(false), 12000);
+                img.onload = () => { clearTimeout(timeout); resolve(img.naturalWidth > 0); };
+                img.onerror = () => { clearTimeout(timeout); resolve(false); };
+                img.src = url;
+              });
+            }, referenceArtworkUrl);
+            assert(artworkReady, 'Approved grocery reference artwork is not loading in the staging browser');
             const departmentNav = page.locator('[data-customer-department-nav="primary"]');
+            await page.setViewportSize({ width: 1280, height: 900 });
             await departmentNav.waitFor({ state: 'visible', timeout: 10000 });
             const departmentText = (await departmentNav.innerText()).replace(/\s+/g, ' ');
             for (const department of ['Shop', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Customer Service', 'Sell on Zeshu']) {
-              assert(departmentText.includes(department), `Homepage department navigation is missing ${department}`);
+              assert(departmentText.includes(department), `Homepage desktop department navigation is missing ${department}`);
             }
+            await page.setViewportSize({ width: 390, height: 844 });
             const homepageText = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
             assert(await page.locator('a[href="/help"]').count() > 0, 'Mobile homepage must offer a Help & Support entry');
             assert(!homepageText.includes('+91 95052 11212'), 'Homepage must not expose the support phone number');

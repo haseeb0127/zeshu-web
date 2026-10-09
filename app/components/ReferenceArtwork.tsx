@@ -23,6 +23,7 @@ export type ReferenceArtworkSlice = keyof typeof slices;
 export default function ReferenceArtwork({ slice, className = "" }: { slice: ReferenceArtworkSlice; className?: string }) {
   return <svg
     viewBox={slices[slice]}
+    data-reference-art={slice}
     className={className}
     preserveAspectRatio="xMidYMid slice"
     aria-hidden="true"

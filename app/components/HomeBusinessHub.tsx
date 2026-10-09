@@ -67,9 +67,9 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
             <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_84%_33%,transparent_44%,rgba(0,42,30,.12)_100%)]" />
           </>}
           <div className="relative z-10 max-w-[62%] md:max-w-[60%]">
-            <span className="inline-flex rounded-full bg-white/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.15em] ring-1 ring-white/10 md:text-[11px]">ZESHU · {s.scope.toUpperCase()}</span>
+            <span className="inline-flex rounded-full bg-white/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.15em] ring-1 ring-white/10 md:text-[11px]">Zeshu · {s.scope}</span>
             <h2 className="mt-3 text-[34px] font-black leading-[1.04] tracking-tight md:mt-5 md:text-5xl">
-              {i===0 && language==='en' ? <><span className="block">Shop in</span><span className="block text-[#a6eb4a]">Jagtial</span></> : s.title}
+              {i===0 && language==='en' ? <><span className="block">Shop in</span>{" "}<span className="block text-[#a6eb4a]">Jagtial</span></> : s.title}
             </h2>
             <p className="mt-2.5 max-w-[190px] text-[11.5px] font-semibold leading-[1.45] text-white/95 md:mt-4 md:max-w-none md:text-base">{s.description}</p>
             <div className="mt-3 md:mt-5">
