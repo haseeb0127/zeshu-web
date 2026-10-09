@@ -69,7 +69,7 @@ jobs:
             await moveEntry.waitFor({ state: 'visible', timeout: 10000 });
             assert(await moveEntry.isVisible(), 'Homepage Zeshu Move entry is missing');
             const promoSlides = moveQuick.locator('[data-slide]');
-            assert(await promoSlides.count() === 6, 'Homepage must show the six distinct Zeshu promotions');
+            assert(await promoSlides.count() === 9, 'Homepage must show the nine distinct glossy 3D Zeshu promotions');
             const promoText = (await promoSlides.allInnerTexts()).join(' ').replace(/\s+/g, ' ');
             for (const promo of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move']) {
               assert(promoText.includes(promo), `Homepage promo carousel is missing ${promo}`);
@@ -86,7 +86,7 @@ jobs:
             }
             const moveQuickText = ((await moveQuick.textContent()) || '').replace(/\s+/g, ' ');
             assert(moveQuickText.includes('Shop, pay, move and get help with Zeshu.'), 'Homepage business proposition is missing');
-            for (const service of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Zeshu Weddings', 'Zeshu Interiors']) {
+            for (const service of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Zeshu Services', 'Zeshu Weddings', 'Zeshu Interiors', 'Customer Service', 'Zeshu App']) {
               assert(moveQuickText.includes(service), `Homepage promotional carousel is missing ${service}`);
             }
             for (const destination of ['/fashion', '/move', '/professional-services/weddings', '/professional-services/interiors']) {
@@ -104,9 +104,9 @@ jobs:
             await homeChat.click();
             await page.locator('#zeshu-assistant-panel input[aria-label="Ask Zeshu Assistant"]').waitFor({state:'visible',timeout:10000});
             await page.locator('#zeshu-assistant-panel').getByRole('button',{name:'Close Zeshu Assistant'}).click();
-            const referenceArtwork = moveQuick.locator('svg[data-reference-art="hero"] image');
-            await referenceArtwork.waitFor({ state: 'attached', timeout: 10000 });
-            const referenceArtworkUrl = await referenceArtwork.getAttribute('href');
+            const allGlossyImages = moveQuick.locator('img[data-glossy-image]');
+            assert(await allGlossyImages.count() === 9, 'All nine glossy 3D marketing artwork images must be configured');
+            const referenceArtworkUrl = await allGlossyImages.first().getAttribute('src');
             const artworkReady = await page.evaluate(async (url) => {
               if (!url) return false;
               const img = new Image();
@@ -117,7 +117,7 @@ jobs:
                 img.src = url;
               });
             }, referenceArtworkUrl);
-            assert(artworkReady, 'Approved grocery reference artwork is not loading in the staging browser');
+            assert(artworkReady, 'Approved optimized glossy grocery artwork is not loading in the staging browser');
             const departmentNav = page.locator('[data-customer-department-nav="primary"]');
             await page.setViewportSize({ width: 1280, height: 900 });
             await departmentNav.waitFor({ state: 'visible', timeout: 10000 });

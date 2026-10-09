@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { BadgeCheck, Car, ChevronLeft, ChevronRight, Paintbrush, PartyPopper, Receipt, ShoppingBag, ShoppingBasket, CreditCard, CarFront, Grid2X2, Bot, Sparkles, ArrowUpRight } from "lucide-react";
 import ReferenceArtwork from "@/app/components/ReferenceArtwork";
+import GlossyArtwork from "@/app/components/GlossyArtwork";
 import { useCustomerLanguage } from "@/app/components/CustomerLanguageProvider";
 
 type Readiness = { request_enabled?: boolean; matching_enabled?: boolean; compliance_gate?: boolean };
@@ -26,12 +27,15 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
 
   const anyMoveReady = [moveServices.AUTO_DRIVER, moveServices.CAB_DRIVER, moveServices.BIKE_COURIER, moveServices.GOODS_DRIVER].some(ready);
   const slides = [
-    { scope:"Jagtial", title:t("Shop in Jagtial"), description:t("Groceries and everyday essentials from nearby sellers."), cta:t("Shop now"), action:"shop", icon:ShoppingBag, theme:"bg-[linear-gradient(135deg,#063f31,#0a7654)]" },
-    { scope:"India", title:"Zeshu Fashion", description:t("Clothing, footwear and accessories when real seller stock is available."), cta:t("Explore fashion"), action:"fashion", icon:ShoppingBag, theme:"bg-[linear-gradient(135deg,#5b214f,#b0578f)]" },
-    { scope:"India", title:"Zeshu Pay", description:t("Mobile, DTH and bill services supported by available providers."), cta:t("Explore services"), action:"services", icon:Receipt, theme:"bg-[linear-gradient(135deg,#6b430d,#cf851d)]" },
-    { scope:"India", title:"Zeshu Weddings", description:t("Plan celebrations and request quotes from suitable service providers."), cta:t("Explore weddings"), action:"weddings", icon:PartyPopper, theme:"bg-[linear-gradient(135deg,#71234c,#c55b7d)]" },
-    { scope:"India", title:"Zeshu Interiors", description:t("Discover interior design services and request a quote."), cta:t("Explore interiors"), action:"interiors", icon:Paintbrush, theme:"bg-[linear-gradient(135deg,#304a41,#779d78)]" },
-    { scope:"Telangana", title:"Zeshu Move", description:t("Check rides and courier availability for your area."), cta:anyMoveReady?t("Check availability"):t("See services"), action:"move", icon:Car, theme:"bg-[linear-gradient(135deg,#123c4a,#23839a)]" },
+    { scope:"Jagtial", title:t("Shop in Jagtial"), description:t("Groceries and everyday essentials from nearby sellers."), cta:t("Shop now"), action:"shop", poster:"shop", icon:ShoppingBag, theme:"bg-[#044c37]" },
+    { scope:"India", title:t("Zeshu Fashion"), description:t("Explore clothing and accessories from independent sellers where stock is available."), cta:t("Explore fashion"), action:"fashion", poster:"fashion", icon:ShoppingBag, theme:"bg-[#074734]" },
+    { scope:"India", title:t("Zeshu Pay"), description:t("Explore recharge and bill services supported by available providers."), cta:t("Explore Zeshu Pay"), action:"pay", poster:"pay", icon:Receipt, theme:"bg-[#074734]" },
+    { scope:"Telangana", title:t("Zeshu Move"), description:t("Check rides and courier availability for your area."), cta:anyMoveReady?t("Check availability"):t("See services"), action:"move", poster:"move", icon:Car, theme:"bg-[#074734]" },
+    { scope:"India", title:t("Zeshu Services"), description:t("Discover eligible services and request quotations."), cta:t("Explore services"), action:"services", poster:"services", icon:Grid2X2, theme:"bg-[#074734]" },
+    { scope:"India", title:t("Zeshu Weddings"), description:t("Plan celebrations and request quotes from suitable service providers."), cta:t("Explore weddings"), action:"weddings", poster:"weddings", icon:PartyPopper, theme:"bg-[#074734]" },
+    { scope:"India", title:t("Zeshu Interiors"), description:t("Discover interior design services and request a quote."), cta:t("Explore interiors"), action:"interiors", poster:"interiors", icon:Paintbrush, theme:"bg-[#074734]" },
+    { scope:"India", title:t("Customer Service"), description:t("Get help with orders, payments, delivery and your account."), cta:t("Get help"), action:"support", poster:"support", icon:Bot, theme:"bg-[#074734]" },
+    { scope:"India", title:t("Zeshu App"), description:t("Shop, fashion, pay, move and services in one convenient app."), cta:t("Open app"), action:"app", poster:"app", icon:ShoppingBag, theme:"bg-[#074734]" }
   ];
   const onScroll=()=>{const el=trackRef.current;if(!el)return;const items=Array.from(el.querySelectorAll<HTMLElement>("[data-slide]"));let closest=0,dist=Infinity;items.forEach((item,i)=>{const delta=Math.abs(item.offsetLeft-el.offsetLeft-el.scrollLeft);if(delta<dist){dist=delta;closest=i}});setIndex(closest)};
   const go=(next:number)=>{const el=trackRef.current;if(!el)return;const items=Array.from(el.querySelectorAll<HTMLElement>("[data-slide]"));const n=(next+items.length)%items.length;el.scrollTo({left:items[n].offsetLeft-el.offsetLeft,behavior:"smooth"});setIndex(n);};
@@ -60,12 +64,8 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
 
     <div className="relative mt-0 md:mt-4">
       <div ref={trackRef} onScroll={onScroll} className="flex snap-x snap-mandatory gap-3 overflow-x-auto no-scrollbar scroll-smooth">
-        {slides.map((s,i) => <article key={s.title} data-slide className={`zeshu-premium-hero relative isolate min-w-full snap-start overflow-hidden rounded-[24px] ${s.theme} h-[245px] min-h-[245px] px-5 py-4 text-white shadow-[0_12px_26px_rgba(0,65,40,.16)] md:min-h-[350px] md:rounded-[30px] md:px-9 md:py-9`}>
-          {i===0 && <>
-            <ReferenceArtwork slice="hero" className="pointer-events-none absolute inset-y-0 right-0 z-0 h-full w-[59%]" />
-            <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 bg-[linear-gradient(90deg,#01392e_4%,rgba(2,54,40,.98)_26%,rgba(0,48,34,.72)_47%,transparent_74%)]" />
-            <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_84%_33%,transparent_44%,rgba(0,42,30,.12)_100%)]" />
-          </>}
+        {slides.map((s,i) => <article key={s.title} data-slide data-glossy-banner={s.poster} className={`zeshu-premium-hero relative isolate min-w-full snap-start overflow-hidden rounded-[24px] ${s.theme} h-[245px] min-h-[245px] px-5 py-4 text-white shadow-[0_12px_26px_rgba(0,65,40,.16)] md:min-h-[350px] md:rounded-[30px] md:px-9 md:py-9`}>
+          <GlossyArtwork kind={s.poster as "shop"|"fashion"|"pay"|"move"|"services"|"weddings"|"interiors"|"support"|"app"} loading={i===0?"eager":"lazy"}/>
           <div className="relative z-10 max-w-[62%] md:max-w-[60%]">
             <span className="inline-flex rounded-full bg-white/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.15em] ring-1 ring-white/10 md:text-[11px]">Zeshu · {s.scope}</span>
             <h2 className="mt-2 text-[34px] font-black leading-[1.04] tracking-tight md:mt-5 md:text-5xl">
@@ -74,12 +74,12 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
             <p className="mt-2.5 max-w-[165px] text-[11.5px] font-semibold leading-[1.45] text-white/95 md:mt-4 md:max-w-none md:text-base">{s.description}</p>
             <div className="mt-3 md:mt-5">
               {s.action==="shop" ? <button onClick={onShopNearby} className="inline-flex min-h-10 items-center gap-2 rounded-[18px] bg-white px-5 text-xs font-black text-[#142034] shadow-[0_8px_16px_rgba(0,0,0,.14)] md:min-h-11 md:text-sm">{s.cta}<ChevronRight size={16}/></button>
-                :s.action==="services" ? <button onClick={onOpenServices} className="inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></button>
+                :s.action==="pay" ? <button onClick={onOpenServices} className="inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></button>
                 :s.action==="fashion" ? <Link href="/fashion" className="inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>
-                :<Link href={s.action==="weddings"?"/professional-services/weddings":s.action==="interiors"?"/professional-services/interiors":"/move"} className="inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>}
+                :<Link href={s.action==="weddings"?"/professional-services/weddings":s.action==="interiors"?"/professional-services/interiors":s.action==="services"?"/professional-services":s.action==="support"?"/help":s.action==="app"?"/app":"/move"} className="inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>}
             </div>
           </div>
-          {i!==0 && <div className="absolute -right-1 bottom-0 z-0 grid h-44 w-[42%] place-items-center opacity-80 md:h-72"><div className="grid h-28 w-28 place-items-center rounded-3xl border border-white/20 bg-white/10 shadow-xl backdrop-blur-sm md:h-40 md:w-40"><s.icon size={62}/></div></div>}
+          <span className="pointer-events-none absolute bottom-1.5 right-2 z-[2] rounded-full bg-[#003b2a]/65 px-2 py-0.5 text-[8px] font-semibold text-white/95 md:text-[10px]">Illustrative artwork</span>
         </article>)}
       </div>
       <div className="flex items-center justify-between px-1 py-2 md:py-3">

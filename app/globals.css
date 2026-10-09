@@ -203,3 +203,16 @@ input[aria-label="Search Zeshu"]:focus-visible { outline: none; box-shadow: none
  .zeshu-chat-orb:hover{transform:translate3d(0,-2px,0);}
  .zeshu-gloss-cta:hover{filter:brightness(1.08);}}
 @media(prefers-reduced-motion:reduce){.zeshu-gloss-card,.zeshu-chat-orb{transition:none;transform:none!important}}
+
+/* Zeshu Premium CGI promotional surfaces: realistic 3D visuals, optimized WebP,
+   composited glass highlights, and true DOM controls for all locales. */
+.zeshu-premium-hero { box-shadow:inset 0 1px 0 rgba(255,255,255,.34),0 12px 32px rgba(3,70,39,.24);}
+.zeshu-premium-hero::after {content:"";position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:inherit;background:linear-gradient(128deg,rgba(255,255,255,.14),transparent 22%,transparent 77%,rgba(255,255,255,.09));}
+.zeshu-premium-hero h2 {text-shadow:0 4px 12px rgba(0,28,18,.4);}
+.zeshu-premium-hero a,.zeshu-premium-hero button {box-shadow:inset 0 1px 0 #fff,0 7px 18px rgba(0,33,23,.23);}
+.zeshu-gloss-hero:has([data-glossy-art]) {min-height:280px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;background-color:#064734;}
+.zeshu-gloss-hero:has([data-glossy-art]) > [data-glossy-art] {position:absolute!important;z-index:0!important;}
+.zeshu-gloss-hero:has([data-glossy-art]) > :not([data-glossy-art]) {position:relative;z-index:2;}
+.zeshu-gloss-hero:has([data-glossy-art]) > p,.zeshu-gloss-hero:has([data-glossy-art]) > h1 {position:relative;z-index:2;max-width:65%;}
+@media(min-width:768px){.zeshu-gloss-hero:has([data-glossy-art]){min-height:355px}.zeshu-gloss-hero:has([data-glossy-art]) > :not([data-glossy-art]){max-width:66%;}}
+@media(max-width:767px){.zeshu-gloss-hero [data-glossy-art] {opacity:.66;}}
