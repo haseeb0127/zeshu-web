@@ -2952,7 +2952,7 @@ export default function ZeshuSuperApp() {
         <div className="bg-[#1F2937]/95 backdrop-blur-xl text-white px-6 py-3.5 rounded-full font-bold text-sm shadow-2xl flex items-center gap-2.5 border border-white/10"><CheckCircle size={18} className="text-[#10B981]"/>{toastMessage}</div>
       </div>
 
-      <header className="fixed top-0 z-40 w-full border-b border-slate-200 bg-white pt-[env(safe-area-inset-top)] shadow-[0_2px_10px_rgba(15,23,42,.05)] lg:pt-0">
+      <header className="fixed top-0 z-40 w-full border-b border-emerald-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fffb_100%)] pt-[env(safe-area-inset-top)] shadow-[0_8px_26px_rgba(0,70,46,.09)] lg:pt-0">
         <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 lg:py-0 lg:h-[88px] flex flex-col lg:flex-row items-center justify-between gap-3 lg:gap-4 2xl:gap-8">
           <div className="flex min-w-0 flex-wrap items-center justify-between w-full lg:w-auto gap-2 sm:gap-3 lg:flex-nowrap lg:items-center">
             <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-2 sm:gap-4 lg:w-auto lg:gap-6">
@@ -2968,7 +2968,7 @@ export default function ZeshuSuperApp() {
           </div>
 
           <div className="w-full min-w-0 lg:flex-1 max-w-3xl order-last lg:order-none mt-1 lg:mt-0">
-            <div className="flex min-h-[60px] items-center rounded-[22px] border border-slate-200 bg-white px-4 py-3 shadow-[0_3px_12px_rgba(15,23,42,.09)] transition focus-within:border-[#075E45] focus-within:ring-2 focus-within:ring-[#075E45]/15 md:px-4 md:py-3">
+            <div className="flex min-h-[60px] items-center rounded-[22px] border border-emerald-100 bg-white px-4 py-3 shadow-[0_5px_22px_rgba(0,82,53,.12)] transition focus-within:border-[#075E45] focus-within:ring-2 focus-within:ring-[#075E45]/15 md:px-4 md:py-3">
               <Search className="text-[#9CA3AF] w-[18px] h-[18px] md:w-[22px] md:h-[22px]" />
               <input aria-label="Search Zeshu" type="search" placeholder={t('Search milk, atta, snacks, recharge...')} className="min-w-0 bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => { const value = e.target.value; setSearchQuery(value); setVoiceSearchMessage(''); if (value.trim()) setActiveTab('home'); }} />
               {searchQuery && <button type="button" aria-label="Clear search" className="text-gray-500 p-1" onClick={() => setSearchQuery('')}><X size={16}/></button>}
