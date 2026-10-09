@@ -73,7 +73,7 @@ jobs:
       - run: npm ci
 
       - name: Build Cloudflare Worker
-        run: npx --yes @opennextjs/cloudflare@1.20.6 build
+        run: bash .github/scripts/build-cloudflare-pinned.sh
 
       - name: Deploy only to workers.dev staging
         run: npx --yes wrangler@4.68.0 deploy --config wrangler.jsonc --name zeshu-web-staging
