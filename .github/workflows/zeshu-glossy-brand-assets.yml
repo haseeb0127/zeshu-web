@@ -1,0 +1,81 @@
+name: Prepare official Zeshu glossy app assets
+
+# One-time source import; the generated, optimized assets are committed and
+# stay in the repository so future APK and PWA builds work without the CDN.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/zeshu-glossy-brand-assets.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download owner-approved Zeshu logo source
+        env:
+          ZESHU_LOGO_URL: "https://d2ol7oe51mr4n9.cloudfront.net/user_3JEWOqisqN1dgwr4TYI6pNAfQYR/8958871c-99a8-4342-bdd5-4b57ba6a04e5.png"
+        run: |
+          curl -fL --retry 4 --retry-all-errors --max-time 40 "$ZESHU_LOGO_URL" -o /tmp/zeshu-owner-logo.png
+          test -s /tmp/zeshu-owner-logo.png
+          python -m pip install --disable-pip-version-check pillow
+
+      - name: Create permanent launcher, splash and PWA PNG assets
+        shell: bash
+        run: |
+          python - <<'PY'
+          from PIL import Image, ImageOps, ImageDraw
+          from pathlib import Path
+
+          original = Image.open('/tmp/zeshu-owner-logo.png').convert('RGB')
+          if original.width < 200 or original.height < 200:
+              raise SystemExit('Branded logo input resolution too small.')
+          icon = ImageOps.fit(original, (512,512), method=Image.Resampling.LANCZOS, centering=(0.5,0.5)).convert('RGBA')
+          mask = Image.new('L', icon.size)
+          ImageDraw.Draw(mask).rounded_rectangle((1,1,510,510), radius=88, fill=255)
+          icon.putalpha(mask)
+
+          brand_web = Path('public')
+          brand_app = Path('android-shell/app/src/main/res/drawable-nodpi')
+          brand_web.mkdir(parents=True, exist_ok=True)
+          brand_app.mkdir(parents=True, exist_ok=True)
+          icon.save(brand_web/'zeshu-glossy-icon.png',optimize=True)
+          icon.save(brand_app/'zeshu_glossy_icon.png',optimize=True)
+          icon.resize((192,192),Image.Resampling.LANCZOS).save(brand_web/'zeshu-glossy-icon-192.png',optimize=True)
+
+          # Adaptive and maskable icons keep the entire brand inside the safe area.
+          # No unapproved changes to other app icons or OS home-screen wallpaper.
+          maskable = Image.new('RGBA',(512,512),'#075E45')
+          safe = icon.resize((348,348),Image.Resampling.LANCZOS)
+          maskable.alpha_composite(safe,((512-348)//2,(512-348)//2))
+          maskable.save(brand_web/'zeshu-glossy-maskable.png',optimize=True)
+          foreground = Image.new('RGBA',(512,512),(0,0,0,0))
+          foreground.alpha_composite(safe,((512-348)//2,(512-348)//2))
+          foreground.save(brand_app/'zeshu_launcher_foreground.png',optimize=True)
+          print('Generated real Zeshu glossy brand icon and safe zone variants.')
+          PY
+
+      - name: Commit generated assets to source control
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/zeshu-glossy-icon.png public/zeshu-glossy-icon-192.png public/zeshu-glossy-maskable.png android-shell/app/src/main/res/drawable-nodpi/zeshu_glossy_icon.png android-shell/app/src/main/res/drawable-nodpi/zeshu_launcher_foreground.png
+          if git diff --cached --quiet; then
+            echo "Brand assets already tracked."
+            exit 0
+          fi
+          git commit -m "Add actual glossy Zeshu splash and launcher icon assets"
+          git push origin HEAD:main
