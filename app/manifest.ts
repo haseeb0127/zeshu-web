@@ -8,23 +8,14 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: '/',
     scope: '/',
     display: 'standalone',
-    background_color: '#F7F8F4',
-    theme_color: '#075E45',
+    background_color: '#FCFCF9',
+    theme_color: '#FCFCF9',
     orientation: 'portrait-primary',
     categories: ['shopping', 'lifestyle'],
     icons: [
-      {
-        src: '/zeshu-icon.svg',
-        sizes: 'any',
-        type: 'image/svg+xml',
-        purpose: 'any',
-      },
-      {
-        src: '/zeshu-maskable.svg',
-        sizes: 'any',
-        type: 'image/svg+xml',
-        purpose: 'maskable',
-      },
+      { src: '/zeshu-glossy-icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/zeshu-glossy-icon.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/zeshu-glossy-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   };
 }

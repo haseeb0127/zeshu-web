@@ -18,7 +18,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#0B6F47",
+  themeColor: "#FCFCF9",
   colorScheme: "light",
 };
 
@@ -29,8 +29,8 @@ export const metadata: Metadata = {
   description: "Zeshu brings Jagtial shopping, Telangana Move & Courier, India-wide digital services, marketplace discovery and support into one simple platform.",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/zeshu-icon.svg",
-    apple: "/zeshu-icon.svg",
+    icon: [{ url: "/zeshu-glossy-icon.png", sizes: "512x512", type: "image/png" }],
+    apple: "/zeshu-glossy-icon.png",
   },
   appleWebApp: {
     capable: true,

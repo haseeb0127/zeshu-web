@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - qa/android-staging-shell-20260922
+      - main
     paths:
       - "android-shell/**"
       - ".github/workflows/android-staging-apk.yml"
@@ -51,6 +52,13 @@ jobs:
 
       - name: Build staging debug APK
         run: gradle -p android-shell --no-daemon assembleDebug
+
+      - name: Verify glossy brand assets packaged in APK
+        shell: bash
+        run: |
+          test -s android-shell/app/build/outputs/apk/debug/app-debug.apk
+          unzip -l android-shell/app/build/outputs/apk/debug/app-debug.apk | grep -q 'zeshu_glossy_icon.png'
+          unzip -l android-shell/app/build/outputs/apk/debug/app-debug.apk | grep -q 'zeshu_launcher_foreground.png'
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

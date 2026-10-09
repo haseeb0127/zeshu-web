@@ -144,3 +144,29 @@ textarea:focus-visible {
 input[aria-label="Search Zeshu"]:focus-visible { outline: none; box-shadow: none; }
 /* Blend the owner-approved grocery basket into the white Shop card. */
 .zeshu-premium-shop-card svg[data-reference-art="basket"] { -webkit-mask-image: linear-gradient(to right, transparent, #000 26%); mask-image: linear-gradient(to right, transparent, #000 26%); }
+
+/* Startup treatment from the owner's approved glossy ZESHU splash reference.
+   Visible only to the installed PWA, never during regular browser shopping. */
+.zeshu-installed-app-splash { display: none; }
+@media (display-mode: standalone) {
+  .zeshu-installed-app-splash {
+    position: fixed; inset: 0; z-index: 2147483647;
+    display: flex; align-items: center; justify-content: center;
+    background: #fcfcf9;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    opacity: 1; pointer-events: none;
+    transition: opacity 300ms ease;
+    animation: zeshu-splash-safety-exit 500ms 5s forwards;
+  }
+  .zeshu-installed-app-splash img {
+    width: min(56vw, 256px);
+    height: auto; aspect-ratio: 1;
+    object-fit: contain;
+  }
+  .zeshu-installed-app-splash.is-leaving { opacity: 0; }
+}
+@keyframes zeshu-splash-safety-exit { to { opacity: 0; visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) {
+  .zeshu-installed-app-splash { transition: none; }
+}
