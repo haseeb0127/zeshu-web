@@ -9,12 +9,13 @@ import ProductCard from './components/ProductCard';
 import ReviewForm, { ReviewProduct } from './components/ReviewForm';
 import LocationSelector, { type LocationSelection } from './components/LocationSelector';
 import HomeBusinessHub from './components/HomeBusinessHub';
+import ReferenceArtwork from './components/ReferenceArtwork';
 import { LanguageSwitcher, useCustomerLanguage } from './components/CustomerLanguageProvider';
 import { 
   Mic, MapPin, Search, User, ChevronRight, Zap, Smartphone, 
   Tv, HeartHandshake, Plus, Minus, ShoppingBag, X, LogOut, Ticket, QrCode,
   Droplets, Wifi, Car, Landmark, ShieldCheck, PhoneCall, Phone, Package, Flame, BadgeCheck,
-  History, ChevronDown, CheckSquare, Square, Clock, CheckCircle, Menu, Info, AlertCircle, BookUser, Truck, Receipt, SlidersHorizontal,
+  History, ChevronDown, CheckSquare, Square, Clock, CheckCircle, Menu, Info, AlertCircle, BookUser, Truck, Receipt, Grid2X2, SlidersHorizontal,
   Crown, MessageCircle, Home, Share2, Bell
 } from 'lucide-react';
 import { customerSupabase } from './lib/browser-supabase';
@@ -2953,22 +2954,22 @@ export default function ZeshuSuperApp() {
       </div>
 
       <header className="fixed top-0 z-40 w-full border-b border-emerald-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fffb_100%)] pt-[env(safe-area-inset-top)] shadow-[0_8px_26px_rgba(0,70,46,.09)] lg:pt-0">
-        <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 lg:py-0 lg:h-[88px] flex flex-col lg:flex-row items-center justify-between gap-3 lg:gap-4 2xl:gap-8">
-          <div className="flex min-w-0 flex-wrap items-center justify-between w-full lg:w-auto gap-2 sm:gap-3 lg:flex-nowrap lg:items-center">
-            <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-2 sm:gap-4 lg:w-auto lg:gap-6">
+        <div className="max-w-[1400px] mx-auto px-3 md:px-8 py-2.5 lg:py-0 lg:h-[88px] flex flex-col lg:flex-row items-center justify-between gap-3 lg:gap-4 2xl:gap-8">
+          <div className="flex min-w-0 flex-nowrap items-center justify-between w-full lg:w-auto gap-1.5 sm:gap-3 lg:items-center">
+            <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 sm:gap-4 lg:w-auto lg:gap-6">
               <button aria-label="Go to Zeshu home" className="flex shrink-0 items-center gap-2 lg:gap-3 lg:border-r border-gray-200/60 lg:pr-6 active:scale-[0.97] transition-transform" onClick={goToHome}>
-                <img src="/zeshu-bag-logo.svg" width="240" height="280" alt="ZESHU" className="h-[66px] w-[58px] shrink-0 rounded-[18px] object-contain drop-shadow-[0_6px_8px_rgba(0,70,40,.18)] sm:h-20 sm:w-[70px] lg:h-[70px] lg:w-[60px]" />
+                <span className="relative block h-[59px] w-[57px] shrink-0 overflow-hidden rounded-[14px] bg-emerald-900 shadow-[0_4px_10px_rgba(0,76,44,.14)] sm:h-[64px] sm:w-[62px] lg:h-[70px] lg:w-[66px]"><img src="/zeshu-bag-logo.svg" alt="ZESHU" className="absolute inset-0 h-full w-full object-contain"/><ReferenceArtwork slice="logo" className="absolute inset-0 h-full w-full"/></span>
               </button>
-              <button type="button" aria-label="Detect or change delivery location" className="flex min-w-0 flex-1 flex-col cursor-pointer rounded-lg bg-transparent px-1 py-2 text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#075E45] lg:max-w-[220px]" onClick={handleAutoDetectLocation}>
+              <button type="button" aria-label="Detect or change delivery location" className="flex min-w-0 flex-1 flex-col cursor-pointer rounded-lg bg-transparent px-0.5 py-2 text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#075E45] lg:max-w-[220px]" onClick={handleAutoDetectLocation}>
                 <div className="flex min-w-0 items-center gap-1.5 text-[12px] font-black md:text-[15px]"><span className="truncate">{currentAddress !== 'Location not set' ? t('Deliver to') : t('Set your address')}</span><MapPin size={14} className="shrink-0 text-[#075E45]"/></div>
                 <div className="mt-0.5 flex min-w-0 items-center text-[10px] font-medium text-[#6B7280] md:text-xs"><span className="truncate">{currentAddress === 'Location not set' ? t("See what's available near you") : currentAddress}</span><ChevronDown size={14} className="ml-1 shrink-0"/></div>
               </button>
             </div>
-            <div className="flex shrink-0 items-center gap-1 lg:hidden"><LanguageSwitcher compact /><button aria-label="View notifications and account updates" onClick={() => user ? openAccountHome() : setIsAuthModalOpen(true)} className="grid h-10 w-9 place-items-center rounded-xl text-slate-800"><Bell size={22}/></button><button aria-label="Open shopping cart" onClick={() => setIsCartOpen(true)} className="relative grid h-10 w-9 place-items-center rounded-xl text-slate-800"><ShoppingBag size={23}/><span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-[#075E45] px-1 text-[10px] font-black text-white">{cartItemCount}</span></button></div>
+            <div className="flex shrink-0 items-center gap-0.5 lg:hidden"><LanguageSwitcher compact /><button aria-label="View notifications and account updates" onClick={() => user ? openAccountHome() : setIsAuthModalOpen(true)} className="grid h-9 w-8 place-items-center rounded-xl text-slate-800"><Bell size={22}/></button><button aria-label="Open shopping cart" onClick={() => setIsCartOpen(true)} className="relative grid h-9 w-8 place-items-center rounded-xl text-slate-800"><ShoppingBag size={23}/><span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-[#075E45] px-1 text-[10px] font-black text-white">{cartItemCount}</span></button></div>
           </div>
 
-          <div className="w-full min-w-0 lg:flex-1 max-w-3xl order-last lg:order-none mt-1 lg:mt-0">
-            <div className="flex min-h-[60px] items-center rounded-[22px] border border-emerald-100 bg-white px-4 py-3 shadow-[0_5px_22px_rgba(0,82,53,.12)] transition focus-within:border-[#075E45] focus-within:ring-2 focus-within:ring-[#075E45]/15 md:px-4 md:py-3">
+          <div className="w-full min-w-0 lg:flex-1 max-w-3xl order-last lg:order-none mt-0.5 lg:mt-0">
+            <div className="flex min-h-[47px] items-center rounded-[19px] border border-[#e4e8e9] bg-white px-3 py-2.5 shadow-[0_3px_11px_rgba(0,50,40,.1)] transition focus-within:border-[#075E45] focus-within:ring-2 focus-within:ring-[#075E45]/15 md:px-4 md:py-3">
               <Search className="text-[#9CA3AF] w-[18px] h-[18px] md:w-[22px] md:h-[22px]" />
               <input aria-label="Search Zeshu" type="search" placeholder={t('Search milk, atta, snacks, recharge...')} className="min-w-0 bg-transparent border-none outline-none flex-1 ml-2 md:ml-3 text-[14px] md:text-[16px] font-medium" value={searchQuery} onChange={(e) => { const value = e.target.value; setSearchQuery(value); setVoiceSearchMessage(''); if (value.trim()) setActiveTab('home'); }} />
               {searchQuery && <button type="button" aria-label="Clear search" className="text-gray-500 p-1" onClick={() => setSearchQuery('')}><X size={16}/></button>}
@@ -2995,7 +2996,7 @@ export default function ZeshuSuperApp() {
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto w-full md:px-8 py-4 md:py-8 pt-[calc(168px+env(safe-area-inset-top))] sm:pt-[calc(164px+env(safe-area-inset-top))] lg:pt-[120px] flex gap-8">
+      <main className="max-w-[1400px] mx-auto w-full md:px-8 py-4 md:py-8 pt-[calc(136px+env(safe-area-inset-top))] sm:pt-[calc(136px+env(safe-area-inset-top))] lg:pt-[120px] flex gap-8">
         {activeTab === 'home' && normalizedSearch === '' && (
           <aside className="sticky top-[120px] hidden h-[calc(100vh-120px)] w-[244px] shrink-0 overflow-y-auto pr-4 no-scrollbar lg:block">
             <div className="mb-4 px-3">
@@ -3024,22 +3025,6 @@ export default function ZeshuSuperApp() {
 
         <div className="flex-1 min-w-0 pb-32">
            {activeTab === 'home' && normalizedSearch === '' && (
-             <nav
-               data-customer-department-nav="primary"
-               aria-label="Zeshu customer departments"
-               className="mb-3 flex gap-1.5 overflow-x-auto border-y border-slate-200 bg-white px-3 py-1.5 no-scrollbar md:mb-4 md:rounded-xl md:border md:px-3 md:py-2"
-             >
-               <button type="button" onClick={() => { setActiveCategory('All'); setFulfillmentFilter('ALL'); requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-emerald-50 hover:text-[#075E45]">{t('Shop')}</button>
-               <Link href="/fashion" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-fuchsia-50 hover:text-fuchsia-800">Zeshu Fashion</Link>
-               <button type="button" onClick={() => openServices()} className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-amber-50 hover:text-amber-800">Zeshu Pay <span className="hidden font-bold text-slate-400 lg:inline">· {t('Recharge & bills')}</span></button>
-               <Link href="/move" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-sky-50 hover:text-sky-800">Zeshu Move</Link>
-               <Link href="/help" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-slate-100">{t('Customer Service')}</Link>
-               <span className="my-1 hidden w-px shrink-0 bg-slate-200 md:block" aria-hidden="true" />
-               <Link href="/partners" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-[#075E45] transition hover:bg-emerald-50">{t('Sell on Zeshu')}</Link>
-             </nav>
-           )}
-
-           {activeTab === 'home' && normalizedSearch === '' && (
              <HomeBusinessHub
                nationwideCheckoutEnabled={fulfillmentStatus.nationwide_checkout_enabled}
                onShopNearby={() => {
@@ -3060,6 +3045,22 @@ export default function ZeshuSuperApp() {
                  requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
                }}
              />
+           )}
+
+           {activeTab === 'home' && normalizedSearch === '' && (
+             <nav
+               data-customer-department-nav="primary"
+               aria-label="Zeshu customer departments"
+               className="mt-4 mb-3 flex gap-1.5 overflow-x-auto border-y border-slate-200 bg-white px-3 py-1.5 no-scrollbar md:mb-4 md:rounded-xl md:border md:px-3 md:py-2"
+             >
+               <button type="button" onClick={() => { setActiveCategory('All'); setFulfillmentFilter('ALL'); requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-emerald-50 hover:text-[#075E45]">{t('Shop')}</button>
+               <Link href="/fashion" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-fuchsia-50 hover:text-fuchsia-800">Zeshu Fashion</Link>
+               <button type="button" onClick={() => openServices()} className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-amber-50 hover:text-amber-800">Zeshu Pay <span className="hidden font-bold text-slate-400 lg:inline">· {t('Recharge & bills')}</span></button>
+               <Link href="/move" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-sky-50 hover:text-sky-800">Zeshu Move</Link>
+               <Link href="/help" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-slate-100">{t('Customer Service')}</Link>
+               <span className="my-1 hidden w-px shrink-0 bg-slate-200 md:block" aria-hidden="true" />
+               <Link href="/partners" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-[#075E45] transition hover:bg-emerald-50">{t('Sell on Zeshu')}</Link>
+             </nav>
            )}
 
            {activeTab === 'home' && normalizedSearch === '' && (
@@ -3380,9 +3381,9 @@ export default function ZeshuSuperApp() {
 
       {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(15,23,42,.08)] backdrop-blur lg:hidden" aria-label="Primary navigation">
         <div className="mx-auto grid max-w-md grid-cols-5 items-end">
-          <button type="button" onClick={goToHome} aria-current={activeTab === 'home' ? 'page' : undefined} className={"flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black " + (activeTab === 'home' ? 'text-[#075E45]' : 'text-slate-500')}><Home size={19} aria-hidden="true" /><span>{t('Home')}</span></button>
-          <button type="button" onClick={() => openServices()} aria-current={activeTab === 'recharge' ? 'page' : undefined} className={"flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black " + (activeTab === 'recharge' ? 'text-[#075E45]' : 'text-slate-500')}><Smartphone size={19} aria-hidden="true" /><span>{t('Services')}</span></button>
-          <Link href="/scanner" aria-label="Scan QR" className="mx-auto -mt-5 flex min-h-16 flex-col items-center justify-end gap-1 text-[10px] font-black text-[#075E45]"><span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#075E45] text-white shadow-lg shadow-emerald-900/20 active:scale-95"><QrCode size={24} aria-hidden="true" /></span><span>{t('Scan')}</span></Link>
+          <button type="button" onClick={goToHome} aria-current={activeTab === 'home' ? 'page' : undefined} className={"relative flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black " + (activeTab === 'home' ? 'text-[#075E45]' : 'text-slate-500')}><Home size={22} fill={activeTab==='home' ? 'currentColor' : 'none'} aria-hidden="true" /><span>{t('Home')}</span>{activeTab==='home' && <span className="absolute bottom-0 h-[3px] w-10 rounded-full bg-[#075E45]"/>}</button>
+          <button type="button" onClick={() => openServices()} aria-current={activeTab === 'recharge' ? 'page' : undefined} className={"flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black " + (activeTab === 'recharge' ? 'text-[#075E45]' : 'text-slate-500')}><Grid2X2 size={22} aria-hidden="true" /><span>{t('Services')}</span></button>
+          <Link href="/scanner" aria-label="Scan QR" className="mx-auto -mt-6 flex min-h-[70px] flex-col items-center justify-end gap-1 text-[10px] font-black text-[#075E45]"><span className="flex h-[56px] w-[56px] items-center justify-center rounded-full bg-[radial-gradient(circle_at_35%_22%,#10c17b,#007049_66%,#005d3c)] text-white shadow-[0_5px_14px_rgba(0,97,62,.38)] active:scale-95"><QrCode size={27} aria-hidden="true" /></span><span>{t('Scan')}</span></Link>
           <button type="button" onClick={() => user ? openAccountHome() : setIsAuthModalOpen(true)} className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black text-slate-500"><User size={19} aria-hidden="true" /><span>{user ? t('Account') : t('Login')}</span></button>
           <button type="button" onClick={() => setIsCartOpen(true)} className="relative flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-black text-slate-500"><span className="relative"><ShoppingBag size={19} aria-hidden="true" />{cart.length > 0 && <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black text-white">{cartItemCount}</span>}</span><span>{t('Cart')}</span></button>
         </div>
