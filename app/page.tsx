@@ -104,6 +104,7 @@ const CHECKOUT_ERROR_MESSAGES: Record<string, string> = {
   PRODUCT_LOOKUP_FAILED: "We couldn't verify the products in your cart. Please try again.",
   RESERVATION_CREATE_FAILED: "We couldn't prepare your checkout. Please try again.",
   RAZORPAY_CREATE_FAILED: "We couldn't start the payment service. Please try again.",
+  CHECKOUT_SDK_NOT_READY: 'Secure payment is still loading. Check your internet connection and try again in a moment. No payment was started.',
   PAYMENT_KEY_CONFIGURATION_INVALID: 'Zeshu test payment keys require attention. Please contact support.',
   TEST_PAYMENT_KEYS_REQUIRED: 'Only Razorpay sandbox payments are enabled.',
   RESERVATION_BIND_FAILED: 'Unable to bind the checkout reservation. Please try again.',
@@ -2707,6 +2708,14 @@ export default function ZeshuSuperApp() {
     if (checkoutVendorIds.length !== cart.length || new Set(checkoutVendorIds).size !== 1) {
       return showCheckoutError(CHECKOUT_ERROR_MESSAGES.MULTI_VENDOR_CART, 'MULTI_VENDOR_CART');
     }
+    // Razorpay's client script must load before we reserve inventory or create
+    // a gateway order. In embedded Android browsers the script can be blocked,
+    // causing orphaned PAYMENT_PENDING reservations with zero gateway attempts.
+    // Avoid creating those reservations unless the payment UI can initialize.
+    if (typeof (window as any).Razorpay !== 'function') {
+      setIsCartOpen(true);
+      return showCheckoutError(CHECKOUT_ERROR_MESSAGES.CHECKOUT_SDK_NOT_READY, 'CHECKOUT_SDK_NOT_READY');
+    }
     setIsCheckoutOpening(true);
     setIsLoading(true);
     try {
@@ -3604,7 +3613,15 @@ export default function ZeshuSuperApp() {
                 {checkoutError.requestId && <p className="mt-2 text-[10px] font-medium text-amber-700">Reference: {checkoutError.requestId}</p>}
               </div>}
               <p className="mb-2 text-center text-[9px] leading-4 text-slate-500 md:text-[10px] md:leading-4">{t("By proceeding, you agree to Zeshu's")} <Link href="/policies#terms" className="font-black text-[#075E45] underline underline-offset-2">{t('Terms')}</Link>, <Link href="/policies#privacy" className="font-black text-[#075E45] underline underline-offset-2">{t('Privacy Policy')}</Link>, {t('and')} <Link href="/policies#cancellation-refunds" className="font-black text-[#075E45] underline underline-offset-2">{t('Cancellation & Refund Policy')}</Link>.</p>
-              {(testCheckoutReady || String(process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '').startsWith('rzp_test_')) && <div role="note" data-test-checkout-guide="true" className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold leading-5 text-amber-900"><p className="font-black">Razorpay TEST MODE · No real money is collected.</p><p>For a success test: choose Netbanking, select any available bank, then press <strong>Success</strong> on Razorpay&apos;s mock bank page. Do not open Google Pay or another real UPI app.</p></div>}
+              {(testCheckoutReady || String(process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '').startsWith('rzp_test_')) && <div role="note" data-test-checkout-guide="true" className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold leading-5 text-amber-900">
+                <p className="font-black">Razorpay TEST MODE · No real money is collected.</p>
+                <p>For a success test: use <strong>Chrome</strong> (not an in-app browser), choose Netbanking and then <strong>Success</strong> on Razorpay&apos;s mock bank page. Never use a real UPI app.</p>
+                <p className="mt-1 text-amber-950">If checkout fails before you choose a bank, open <strong>zeshu.in</strong> directly in Chrome. An order can be created even when no payment attempt reaches Razorpay.</p>
+                <button type="button" onClick={() => {
+                  if (!navigator.clipboard?.writeText) { showToast('Open https://zeshu.in directly in Chrome.'); return; }
+                  void navigator.clipboard.writeText('https://zeshu.in/').then(() => showToast('Zeshu link copied. Paste it into Chrome to test checkout.')).catch(() => showToast('Open https://zeshu.in directly in Chrome.'));
+                }} className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-[11px] font-black text-emerald-800">Copy link to open in Chrome</button>
+              </div>}
               <button disabled={cart.length === 0 || isLoading || isCheckoutOpening} onClick={() => void handleCartCheckout()} className="flex min-h-14 w-full items-center justify-between rounded-2xl bg-[#075E45] px-5 py-3.5 text-white font-black shadow-[0_8px_20px_rgba(7,94,69,.18)] disabled:bg-[#a7b6ac] md:px-6 md:text-base">
                 <span>{isLoading ? t('Preparing secure checkout…') : t('Proceed to secure payment')}</span><span>₹{finalCartTotal}</span>
               </button>
@@ -3859,7 +3876,7 @@ export default function ZeshuSuperApp() {
         </>
       )}
 
-      <Script id="razorpay-checkout-js" src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+      <Script id="razorpay-checkout-js" src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
     </div>
   );
 }
