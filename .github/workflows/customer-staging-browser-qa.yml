@@ -137,6 +137,7 @@ jobs:
               await page.goBack({ waitUntil: 'domcontentloaded', timeout: 25000 });
               await page.locator('nav[aria-label="Explore Zeshu departments"]').waitFor({ state: 'visible', timeout: 15000 });
             }
+            await page.waitForLoadState('networkidle', { timeout: 30000 });
             const allGlossyImages = moveQuick.locator('img[data-glossy-image]');
             assert(await allGlossyImages.count() === 9, 'All nine glossy 3D marketing artwork images must be configured');
             const referenceArtworkUrl = await allGlossyImages.first().getAttribute('src');

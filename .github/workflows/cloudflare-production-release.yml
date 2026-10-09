@@ -282,6 +282,7 @@ jobs:
               await page.goBack({ waitUntil: 'domcontentloaded', timeout: 25000 });
               await page.locator('nav[aria-label="Explore Zeshu departments"]').waitFor({ state: 'visible', timeout: 15000 });
             }
+            await page.waitForLoadState('networkidle', { timeout: 30000 });
             const homeChat = page.locator('[data-zeshu-home-assistant="true"]');
             await homeChat.waitFor({state:'visible',timeout:10000});
             await homeChat.click();

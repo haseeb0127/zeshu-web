@@ -941,9 +941,20 @@ export default function ZeshuSuperApp() {
       setProductsLoading(false);
     };
     
-    fetchAppContent();
-    checkUser();
+    void fetchAppContent();
+    void checkUser();
     setIsDetectingLoc(false);
+    // Full-document navigation can restore Home from the back/forward cache.
+    // Pending product requests may have been aborted while leaving the page.
+    // Refresh seller-backed data on restore so cart/search never uses empty stock.
+    const onReturn = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        void fetchAppContent();
+        void checkUser();
+      }
+    };
+    window.addEventListener('pageshow', onReturn);
+    return () => window.removeEventListener('pageshow', onReturn);
   }, []);
 
   useEffect(() => {
