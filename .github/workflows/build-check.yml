@@ -85,4 +85,6 @@ jobs:
         run: node --experimental-strip-types .github/scripts/driver-rider-foundation-qa.ts
       - name: Verify captured TEST checkout recovery guards
         run: node --experimental-strip-types .github/scripts/razorpay-captured-recovery.test.mjs
+      - name: Verify WhatsApp template approval safety
+        run: node --experimental-strip-types --conditions=react-server .github/scripts/support-whatsapp-template-qa.mjs
       - run: npm run build
