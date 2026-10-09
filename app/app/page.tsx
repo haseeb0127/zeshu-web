@@ -1,4 +1,6 @@
 "use client";
+import GlossyArtwork from "@/app/components/GlossyArtwork";
+
 
 import Image from 'next/image';
 import Link from 'next/link';
@@ -14,6 +16,7 @@ export default function GetZeshuPage() {
         <Link href="/" className="text-sm font-black text-[#075E45]">← {t('Back to Zeshu')}</Link>
 
         <section className="zeshu-gloss-hero mt-6 overflow-hidden rounded-[32px] bg-[#083b27] p-6 text-white md:p-10">
+<GlossyArtwork kind="app"/>
           <p className="text-xs font-black uppercase tracking-[.18em] text-[#a6dfba]">{t('Get Zeshu')}</p>
           <h1 className="mt-2 max-w-3xl text-3xl font-black tracking-tight md:text-5xl">{t('Put Zeshu on your home screen.')}</h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-[#d9f3e3]">{t('Install the Zeshu web app today for faster access. Jagtial physical delivery and India-wide digital services stay available from the same account.')}</p>

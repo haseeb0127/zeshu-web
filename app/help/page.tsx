@@ -1,4 +1,6 @@
 "use client";
+import GlossyArtwork from "@/app/components/GlossyArtwork";
+
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -170,6 +172,7 @@ export default function HelpPage() {
         </div>
 
         <header className="zeshu-gloss-hero mt-6 rounded-[30px] bg-[#083b27] p-6 text-white shadow-xl md:p-9">
+<GlossyArtwork kind="support"/>
           <div className="flex items-start gap-4">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/10"><Headphones size={25} /></span>
             <div>

@@ -1,3 +1,4 @@
+import GlossyArtwork from "@/app/components/GlossyArtwork";
 import type { Metadata } from "next";
 import Link from "next/link";
 import FashionLiveCatalogue from "../components/FashionLiveCatalogue";
@@ -77,6 +78,7 @@ export default function FashionPage() {
         </Link>
 
         <header className="zeshu-gloss-hero mt-6 overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#143d2c_0%,#075E45_55%,#2f765a_100%)] p-6 text-white md:p-10">
+<GlossyArtwork kind="fashion"/>
           <div className="max-w-3xl">
             <p className="text-xs font-black uppercase tracking-[.18em] text-emerald-100">
               Zeshu Fashion

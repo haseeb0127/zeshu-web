@@ -1,4 +1,6 @@
 "use client";
+import GlossyArtwork from "@/app/components/GlossyArtwork";
+
 
 import Link from "next/link";
 import { ArrowLeft, Bike, Bus, Car, Hotel, Luggage, Package, Plane, ShieldCheck, Sparkles, TrainFront, Truck, Users } from "lucide-react";
@@ -80,6 +82,7 @@ export default function MoveTravelPage() {
         </div>
 
         <header className="zeshu-gloss-hero mt-6 overflow-hidden rounded-[30px] bg-[#083b27] p-6 text-white shadow-xl md:p-9">
+<GlossyArtwork kind="move"/>
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="max-w-3xl">
               <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.16em] text-[#c9f2d8]">
