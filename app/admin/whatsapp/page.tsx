@@ -13,6 +13,7 @@ type MetaConnection = {
 type MetaSetup = {
   configured:boolean;missingSetup:string[];appId:string|null;configId:string|null;
   graphVersion:string|null;nonce?:string;connection:MetaConnection|null;safeToSend:false;
+  keyDiagnostic?:'READY'|'NOT_VISIBLE_TO_RUNTIME'|'INVALID_BASE64_KEY';
 };
 type MetaJsSdk = {
   init:(opts:{appId:string;cookie:boolean;xfbml:boolean;version:string})=>void;
@@ -219,7 +220,10 @@ export default function WhatsAppReadinessPage() {
             <p className="mt-2 text-xs text-slate-500">You'll choose your existing Zeshu WhatsApp account in Meta. Only an authorized Zeshu administrator can complete this step.</p>
           </div> : <div className="mt-4 rounded-xl bg-amber-50 p-4">
             <p className="text-sm font-black text-amber-900">Meta Developer App configuration needed</p>
-            <p className="mt-1 text-xs text-amber-900">Set up Facebook Login for Business (WhatsApp Embedded Signup v4), and enter the missing configuration into Cloudflare Worker settings. The button unlocks automatically once those values are present.</p>
+            <p className="mt-1 text-xs text-amber-900">Zeshu's current running Worker has not passed its Meta configuration checks. The button unlocks after the production Worker sees valid configuration.</p>
+            {meta?.keyDiagnostic==='NOT_VISIBLE_TO_RUNTIME'&&<p role="status" className="mt-3 rounded-xl border border-amber-200 bg-white p-3 text-xs font-semibold leading-5 text-amber-900">Cloudflare key diagnosis: the active Zeshu Worker cannot see WHATSAPP_META_TOKEN_ENCRYPTION_KEY. Your saved key may be correct. Check whether the new secret version was actually deployed to 100% traffic on the Worker serving zeshu.in. Do not rotate the key.</p>}
+            {meta?.keyDiagnostic==='INVALID_BASE64_KEY'&&<p role="status" className="mt-3 rounded-xl border border-amber-200 bg-white p-3 text-xs font-semibold leading-5 text-amber-900">Cloudflare key diagnosis: the running Worker sees a value, but it is not exactly a Base64-encoded 32-byte key. Check the private entry without sharing its value. Do not rotate an existing active encryption key without a migration.</p>}
+            {meta?.keyDiagnostic==='READY'&&<p role="status" className="mt-3 rounded-xl border border-emerald-200 bg-white p-3 text-xs font-semibold text-emerald-900">Encryption-key binding is ready. Check the other missing configuration names below.</p>}
             <p className="mt-3 break-words font-mono text-xs leading-6 text-amber-800">{meta?.missingSetup.join(' · ')||'Checking server configuration…'}</p>
             <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-xs font-black text-[#075e45] underline">Open Meta for Developers ↗</a>
           </div>}
