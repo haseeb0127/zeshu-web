@@ -87,4 +87,6 @@ jobs:
         run: node --experimental-strip-types .github/scripts/razorpay-captured-recovery.test.mjs
       - name: Verify WhatsApp template approval safety
         run: node --experimental-strip-types --conditions=react-server .github/scripts/support-whatsapp-template-qa.mjs
+      - name: Verify direct Meta signup OAuth, CSRF and encryption safety
+        run: node --experimental-strip-types .github/scripts/meta-direct-signup-qa.mjs
       - run: npm run build
