@@ -345,7 +345,7 @@ export async function POST(request: Request) {
     if (!stagingPaymentSimulator && publicKeyId !== keyId)
       return checkoutError(requestId, 'PAYMENT_CONFIG', 'PAYMENT_KEY_CONFIGURATION_INVALID', 'Test payment keys need administrator attention. No payment was started.', 503);
     // Do not permit live checkout until the owner explicitly approves it.
-    if (!stagingPaymentSimulator && !keyId.startsWith('rzp_test_'))
+    if (!stagingPaymentSimulator && !String(keyId || '').startsWith('rzp_test_'))
       return checkoutError(requestId, 'PAYMENT_CONFIG', 'TEST_PAYMENT_KEYS_REQUIRED', 'Only Razorpay TEST payments are enabled.', 503);
     const razorpay = new Razorpay({
       key_id: keyId || 'rzp_test_staging_simulator',
