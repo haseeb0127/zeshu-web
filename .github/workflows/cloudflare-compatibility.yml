@@ -56,6 +56,6 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Build a Cloudflare Worker with OpenNext
-        run: npx --yes @opennextjs/cloudflare@latest build
+        run: bash .github/scripts/build-cloudflare-pinned.sh
       - name: Verify Worker output exists
         run: test -f .open-next/worker.js
