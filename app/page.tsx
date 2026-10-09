@@ -363,7 +363,6 @@ export default function ZeshuSuperApp() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckoutOpening, setIsCheckoutOpening] = useState(false);
   const [checkoutError, setCheckoutError] = useState<CheckoutErrorState | null>(null);
-  const [previousPaymentStatus, setPreviousPaymentStatus] = useState<{ message: string; safeToRetry: boolean } | null>(null);
   const [testCheckoutReady, setTestCheckoutReady] = useState(false);
   const [isCheckingPaymentStatus, setIsCheckingPaymentStatus] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
@@ -2668,7 +2667,7 @@ export default function ZeshuSuperApp() {
 
   const validateCartFreshness = refreshCartAvailability;
 
-  const handleCartCheckout = async (abandonPreviousCheckout = false, bypassOpeningGuard = false) => {
+  const handleCartCheckout = async (abandonPreviousCheckout = false, bypassOpeningGuard = false, automaticRecoveryTried = false) => {
     if (process.env.NODE_ENV === 'development') {
       console.info('Checkout button pressed', {
         cartLength: cart.length,
@@ -2681,7 +2680,6 @@ export default function ZeshuSuperApp() {
     }
     if (isCheckoutOpening && !bypassOpeningGuard) return;
     setCheckoutError(null);
-    setPreviousPaymentStatus(null);
     if (!cart.length || finalCartTotal === 0) return showCheckoutError('Add an available product before checkout.', 'INVALID_CHECKOUT_DATA');
     if (!user) return setIsAuthModalOpen(true);
     if (!currentAddress.trim() || currentAddress === 'Location not set' || currentAddress === 'Current GPS Location Synced') {
@@ -2734,9 +2732,47 @@ export default function ZeshuSuperApp() {
       }
       if (!orderResponse.ok || !orderData?.success) {
         const code = typeof orderData?.code === 'string' ? orderData.code : 'CHECKOUT_INTERNAL_ERROR';
-        if (code === 'ABANDONABLE_PAYMENT_CHECKOUT' && !abandonPreviousCheckout) {
-          showToast('Checking previous payment...');
-          return await handleCartCheckout(true, true);
+        if (code === 'ABANDONABLE_PAYMENT_CHECKOUT' && !abandonPreviousCheckout && !automaticRecoveryTried) {
+          // The backend must verify the prior Razorpay order before superseding it.
+          // Customer already asked to buy the current basket; no extra button needed.
+          return await handleCartCheckout(true, true, true);
+        }
+        if ((code === 'PAYMENT_RECONCILIATION_REQUIRED' || code === 'ACTIVE_PAYMENT_CHECKOUT') && !automaticRecoveryTried) {
+          // Only a read-only backend Razorpay verification may authorize a second
+          // attempt. Never create another order when status is unknown/captured.
+          setIsCheckingPaymentStatus(true);
+          try {
+            if (session?.access_token) {
+              const statusResponse = await fetch('/api/checkout/payment-status', {
+                method: 'GET',
+                cache: 'no-store',
+                headers: { Authorization: `Bearer ${session.access_token}` },
+              });
+              const statusData = await statusResponse.json().catch(() => ({}));
+              if (statusResponse.ok && statusData?.safeToRetry === true) {
+                setIsCheckingPaymentStatus(false);
+                setIsLoading(false);
+                setIsCheckoutOpening(false);
+                // Retry at most ONCE; create-order rechecks the provider and
+                // stock again, without requiring a manual status button.
+                return await handleCartCheckout(false, true, true);
+              }
+            }
+          } catch {
+            // Unknown provider/network state must block, not double-charge.
+          } finally {
+            setIsCheckingPaymentStatus(false);
+          }
+        }
+        if (code === 'PAYMENT_RECONCILIATION_REQUIRED' || code === 'ACTIVE_PAYMENT_CHECKOUT' || code === 'ABANDONABLE_PAYMENT_CHECKOUT') {
+          setIsLoading(false);
+          setIsCheckoutOpening(false);
+          showCheckoutError(
+            "We couldn't safely confirm the earlier attempt, so another payment wasn't started. Your basket is saved. Please try again later or contact support.",
+            'CHECKOUT_SAFETY_HOLD',
+            typeof orderData?.requestId === 'string' ? orderData.requestId : undefined,
+          );
+          return;
         }
         setIsLoading(false);
         setIsCheckoutOpening(false);
@@ -2746,8 +2782,6 @@ export default function ZeshuSuperApp() {
         showCheckoutError(serverMessage, code, typeof orderData?.requestId === 'string' ? orderData.requestId : undefined);
         return;
       }
-      if (orderData.abandonedCheckoutReleased) showToast('Previous payment was cancelled. You can continue with a new checkout.');
-      if (orderData.resumed) showToast('Previous checkout found. We will safely resume the same payment.');
       const orderId = orderData.orderId || orderData.id || orderData.order?.id;
       const reservationId = orderData.reservationId;
       if (typeof orderId !== 'string' || typeof reservationId !== 'string' || !Number.isSafeInteger(Number(orderData.amount)) || Number(orderData.amount) <= 0) throw new Error('Unable to prepare a verified payment checkout.');
@@ -2870,7 +2904,9 @@ export default function ZeshuSuperApp() {
           ondismiss: () => {
             if (paymentSucceeded || paymentAttemptFailed) return;
             setCheckoutError(null);
-            showToast('Payment window closed. No order is confirmed. You can try again after checking your payment status.');
+            // Dismissal can be intentional. Keep the cart without a scary
+            // status prompt; the next checkout performs server-side checks.
+            showToast('Checkout closed. Your basket is saved.');
             setIsLoading(false);
             setIsCheckoutOpening(false);
           },
@@ -2906,43 +2942,6 @@ export default function ZeshuSuperApp() {
       setIsCheckoutOpening(false);
     }
     setIsLoading(false);
-  };
-
-  const handleCheckPaymentStatus = async () => {
-    // This action must be read-only: checking payment status must NEVER start
-    // another Razorpay checkout or create a second order for the same customer.
-    if (isCheckingPaymentStatus || isCheckoutOpening) return;
-    setIsCheckingPaymentStatus(true);
-    setPreviousPaymentStatus(null);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        setPreviousPaymentStatus({ message: 'Please sign in again to check your previous payment.', safeToRetry: false });
-        return;
-      }
-      const response = await fetch('/api/checkout/payment-status', {
-        method: 'GET', cache: 'no-store',
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        setPreviousPaymentStatus({
-          message: typeof result.message === 'string' ? result.message : 'Payment status could not be verified. Please contact Zeshu support.',
-          safeToRetry: false,
-        });
-        return;
-      }
-      const safeToRetry = result.safeToRetry === true;
-      setPreviousPaymentStatus({
-        message: typeof result.message === 'string' ? result.message : 'Payment status is not yet confirmed.',
-        safeToRetry,
-      });
-      if (safeToRetry) setCheckoutError(null);
-    } catch {
-      setPreviousPaymentStatus({ message: 'Unable to verify your previous payment right now. No new payment was started.', safeToRetry: false });
-    } finally {
-      setIsCheckingPaymentStatus(false);
-    }
   };
 
   const handleContinueCurrentBasket = async () => {
@@ -3633,23 +3632,8 @@ export default function ZeshuSuperApp() {
             <div className="sticky bottom-0 z-10 mt-3 border-t bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 shadow-[0_-8px_24px_rgba(23,32,28,.08)] backdrop-blur md:mt-4 md:px-6 md:pb-4 md:pt-3">
               <div className="mb-2 flex items-center justify-between gap-3"><span className="min-w-0 truncate text-[10px] font-medium text-slate-500 md:text-xs">{t('Stock and price are checked again before payment.')}</span><button type="button" onClick={clearCart} disabled={!cart.length || isCheckoutOpening} className="shrink-0 text-[10px] font-black text-red-600 disabled:text-slate-300 md:text-xs">{t('Clear cart')}</button></div>
               <details className="group mb-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[10px] text-slate-600 md:text-xs"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-black text-emerald-800"><span className="flex items-center gap-2"><ShieldCheck size={15} aria-hidden="true" /> {t('Secure checkout')}</span><ChevronDown size={15} aria-hidden="true" className="text-emerald-700 transition-transform group-open:rotate-180" /></summary><div className="pt-2 leading-5"><p>{t('Your final total and stock are verified before payment, and the order is confirmed only after server-side payment verification.')}</p><p className="mt-1 font-bold text-slate-500">{t('Never share your OTP, card CVV or UPI PIN with Zeshu support.')}</p><button type="button" onClick={() => { setIsCartOpen(false); openAiSupport(); }} className="mt-2 rounded-lg bg-white px-3 py-2 text-[10px] font-black text-emerald-800 shadow-sm md:text-xs">{t('Payment help')}</button></div></details>
-              {(checkoutError?.code === 'PAYMENT_RECONCILIATION_REQUIRED' || previousPaymentStatus) && <div role="status" className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950">
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 rounded-full bg-amber-100 p-2 text-amber-700"><Clock size={16} aria-hidden="true" /></div>
-                  <div>
-                    <p className="font-black">{previousPaymentStatus?.safeToRetry ? 'Previous test payment was unpaid' : t('Checking previous payment')}</p>
-                    <p className="mt-1 text-xs font-medium leading-5 text-amber-800">{previousPaymentStatus?.message || t("We're confirming the status of your previous payment before starting another one. This prevents duplicate charges.")}</p>
-                  </div>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button type="button" onClick={() => void handleCheckPaymentStatus()} disabled={isCheckingPaymentStatus || isCheckoutOpening} className="rounded-xl bg-amber-700 px-3 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-60">{isCheckingPaymentStatus ? t('Checking payment status…') : 'Check payment status (no new charge)'}</button>
-                  {previousPaymentStatus?.safeToRetry && <button type="button" onClick={() => void handleCartCheckout()} disabled={isCheckoutOpening || isLoading} className="rounded-xl bg-[#075E45] px-3 py-2 text-xs font-black text-white disabled:opacity-60">Retry test checkout</button>}
-                  {!previousPaymentStatus?.safeToRetry && previousPaymentStatus && <Link href="/help" className="rounded-xl border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-amber-800">Contact support</Link>}
-                </div>
-                {checkoutError?.requestId && <p className="mt-2 text-[10px] font-medium text-amber-700">Reference: {checkoutError.requestId}</p>}
-              </div>}
               {checkoutError && checkoutError.code !== 'PAYMENT_RECONCILIATION_REQUIRED' && <div role="alert" aria-live="assertive" className="mb-3 rounded-2xl border border-amber-200 bg-[linear-gradient(145deg,#fff,#fff8e7)] px-4 py-4 text-sm text-amber-950 shadow-sm">
-                <p className="font-black">{checkoutError.code?.startsWith('RAZORPAY_') ? 'Payment was not completed' : 'Please review your checkout'}</p>
+                <p className="font-black">{checkoutError.code === 'CHECKOUT_SAFETY_HOLD' ? 'Your checkout is protected' : checkoutError.code?.startsWith('RAZORPAY_') ? 'Choose another payment option' : 'Please review your checkout'}</p>
                 <p className="mt-1.5 text-xs font-medium leading-5">{checkoutError.message}</p>
                 {checkoutError.code?.startsWith('RAZORPAY_') && <p className="mt-2 text-xs text-slate-600">Your cart is saved. If a bank debit appears, contact support before retrying. Zeshu cannot confirm a successful payment from this message.</p>}
                 <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => setCheckoutError(null)} className="rounded-xl bg-[#075E45] px-3 py-2 text-xs font-black text-white">Review basket</button><Link href="/help" className="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-black text-[#075E45]">Contact support</Link></div>
@@ -3665,8 +3649,8 @@ export default function ZeshuSuperApp() {
                   void navigator.clipboard.writeText('https://zeshu.in/').then(() => showToast('Zeshu link copied. Paste it into Chrome to test checkout.')).catch(() => showToast('Open https://zeshu.in directly in Chrome.'));
                 }} className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-[11px] font-black text-emerald-800">Copy link to open in Chrome</button>
               </div>}
-              <button disabled={cart.length === 0 || isLoading || isCheckoutOpening} onClick={() => void handleCartCheckout()} className="flex min-h-14 w-full items-center justify-between rounded-2xl bg-[#075E45] px-5 py-3.5 text-white font-black shadow-[0_8px_20px_rgba(7,94,69,.18)] disabled:bg-[#a7b6ac] md:px-6 md:text-base">
-                <span>{isLoading ? t('Preparing secure checkout…') : t('Proceed to secure payment')}</span><span>₹{finalCartTotal}</span>
+              <button disabled={cart.length === 0 || isLoading || isCheckoutOpening || isCheckingPaymentStatus} onClick={() => void handleCartCheckout()} className="flex min-h-14 w-full items-center justify-between rounded-2xl bg-[#075E45] px-5 py-3.5 text-white font-black shadow-[0_8px_20px_rgba(7,94,69,.18)] disabled:bg-[#a7b6ac] md:px-6 md:text-base">
+                <span>{isCheckingPaymentStatus ? t('Securing your checkout…') : isLoading ? t('Preparing secure checkout…') : t('Proceed to secure payment')}</span><span>₹{finalCartTotal}</span>
               </button>
             </div>
           </div>

@@ -56,6 +56,25 @@ const getProviderDiagnostics = (order: any, payments: any[] | null): ProviderDia
   paymentCount: Array.isArray(payments) ? payments.length : undefined,
 });
 
+// Razorpay lookups are read-only. One bounded retry smooths transient gateway
+// latency without ever retrying a charge or declaring an unknown status unpaid.
+const fetchProviderState = async (gateway: Razorpay, orderId: string) => {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const [order, payments] = await Promise.all([
+        gateway.orders.fetch(orderId),
+        gateway.orders.fetchPayments(orderId),
+      ]);
+      if (!Array.isArray((payments as any)?.items)) throw new Error('Provider payment list unavailable');
+      return { order, payments };
+    } catch (error) {
+      if (attempt === 1) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+  }
+  throw new Error('Provider state unavailable');
+};
+
 const isRetryableProviderOrder = (order: any, payments: any[], expectedAmountPaise: number) => {
   if (!order || Number(order.amount) !== expectedAmountPaise || String(order.currency || '').toUpperCase() !== 'INR') return false;
   if (Number(order.amount_paid) !== 0 || Number(order.amount_due) !== expectedAmountPaise || order.partial_payment === true) return false;
@@ -497,10 +516,9 @@ export async function POST(request: Request) {
       let recoveryOrder: any;
       let recoveryPaymentsResponse: any;
       try {
-        [recoveryOrder, recoveryPaymentsResponse] = await Promise.all([
-          razorpay.orders.fetch(expiredBoundReservation.razorpay_order_id),
-          razorpay.orders.fetchPayments(expiredBoundReservation.razorpay_order_id),
-        ]);
+        const previous = await fetchProviderState(razorpay, expiredBoundReservation.razorpay_order_id);
+        recoveryOrder = previous.order;
+        recoveryPaymentsResponse = previous.payments;
       } catch (error) {
         return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, error);
       }
@@ -613,10 +631,9 @@ export async function POST(request: Request) {
         let supersedeOrder: any;
         let supersedePaymentsResponse: any;
         try {
-          [supersedeOrder, supersedePaymentsResponse] = await Promise.all([
-            razorpay.orders.fetch(activeResumable.razorpay_order_id),
-            razorpay.orders.fetchPayments(activeResumable.razorpay_order_id),
-          ]);
+          const previous = await fetchProviderState(razorpay, activeResumable.razorpay_order_id);
+          supersedeOrder = previous.order;
+          supersedePaymentsResponse = previous.payments;
         } catch (error) {
           return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, error);
         }
@@ -651,10 +668,8 @@ export async function POST(request: Request) {
         // mutate the reservation or its reward hold. A resumable checkout must
         // remain the exact same payable, zero-payment provider order.
         try {
-          const [preflightOrder, preflightPaymentsResponse] = await Promise.all([
-            razorpay.orders.fetch(activeResumable.razorpay_order_id),
-            razorpay.orders.fetchPayments(activeResumable.razorpay_order_id),
-          ]);
+          const { order: preflightOrder, payments: preflightPaymentsResponse } =
+            await fetchProviderState(razorpay, activeResumable.razorpay_order_id);
           const preflightPayments = Array.isArray(preflightPaymentsResponse?.items) ? preflightPaymentsResponse.items : null;
           const preflightAmountPaise = Math.round(Number(activeResumable.expected_total_paid) * 100);
           if (preflightPayments === null || !isRetryableProviderOrder(preflightOrder, preflightPayments, preflightAmountPaise)) {
@@ -690,10 +705,8 @@ export async function POST(request: Request) {
       const resumedExpectedTotal = Number(resumedCash?.expected_total_paid ?? activeResumable.expected_total_paid);
 
       try {
-        const [existingOrder, paymentsResponse] = await Promise.all([
-          razorpay.orders.fetch(activeResumable.razorpay_order_id),
-          razorpay.orders.fetchPayments(activeResumable.razorpay_order_id),
-        ]);
+        const { order: existingOrder, payments: paymentsResponse } =
+          await fetchProviderState(razorpay, activeResumable.razorpay_order_id);
         const payments = Array.isArray(paymentsResponse?.items) ? paymentsResponse.items : [];
         const expectedAmountPaise = Math.round(resumedExpectedTotal * 100);
         if (!isRetryableProviderOrder(existingOrder, payments, expectedAmountPaise)) return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, undefined, getProviderDiagnostics(existingOrder, payments));
