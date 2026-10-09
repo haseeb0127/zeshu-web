@@ -32,3 +32,20 @@ The **Connect Meta securely** button at `https://zeshu.in/admin/whatsapp` uses M
 Security: All token exchange happens server-side; admin Supabase JWT, server role check, same-origin policy, signed ten-minute CSRF cookie, short-lived code, Graph WABA/phone verification, AES-256-GCM token encryption, RLS/revoked client-table privileges. No raw credential value should be displayed in screenshots or logged. The account connection record is one Zeshu WABA only, not a general tech-provider onboarding product.
 
 **Reality check:** Built functionality is not proof that the owner has already configured Meta Developer App permissions, owns the WABA or has granted access, nor that Meta delivery works. These are confirmed only after owner authorization and controlled pilot.
+
+## Zeshu-first-party Cloud API connection (preferred; no BSP or Tech Provider status)
+
+**Observed Meta blocking screen, 10 October 2026:** “It looks like this app isn't available. Embedded signup is only available for BSPs or TPs.” This is a Meta platform restriction, not a Zeshu encryption-key, browser or Cloudflare deploy defect. Do not retry the Embedded Signup button or claim Zeshu must become a Meta partner just to access its own WhatsApp account. The earlier Embedded Signup v4 approach was incorrect for the account's current eligibility; that older endpoint remains server-auth protected but the admin UI no longer offers it.
+
+**Instead, use Zeshu Support's already-existing business-owned WhatsApp Cloud API assets:**
+
+1. Open Meta Business Settings → Users → System users. Use a least-privilege dedicated system user with access to the actual Zeshu app and existing Zeshu WhatsApp Business Account. Generate a system-user access token with `whatsapp_business_management` and `whatsapp_business_messaging`, with a supported expiry/rotation plan. Do not share it in chat or GitHub.
+2. Open WhatsApp Manager / WhatsApp API Setup to find the existing **WhatsApp Business Account ID** and **Phone Number ID**. Do not create duplicate business assets or re-register the existing phone just to test API access.
+3. In Cloudflare *production* Worker `zeshu-web-production-candidate`, enter `WHATSAPP_ACCESS_TOKEN` as an encrypted Secret, `WHATSAPP_BUSINESS_ACCOUNT_ID` and `WHATSAPP_PHONE_NUMBER_ID` as runtime variables, and retain `WHATSAPP_GRAPH_API_VERSION` as an already-configured supported version. Confirm the new Worker version is actually serving traffic.
+4. Open `https://zeshu.in/admin/whatsapp` with an admin account and tap Refresh. The new **read-only own account check** calls Graph `GET /{waba_id}/phone_numbers` server-side with the token, confirms that the selected phone number belongs to Zeshu's selected WABA, and shows only safe status and phone display name. It never shows the token to the browser, posts to Graph, sends WhatsApp messages, registers numbers or subscribes a webhook.
+5. The existing template approval audit can then check the approved Utility templates. Keep sender, customer opt-in, WABA webhook subscription and messaging disabled pending separately approved pilot, real verification, consent and delivery receipts. A successful token check alone is not authorization to send.
+6. **Cloud API is a Meta service, not a free unlimited messaging entitlement.** Setup can use Meta's own API without TinyFish fees; messaging charges, policy conditions, verification, and token expiration requirements remain those of Meta.
+
+The older `WHATSAPP_META_APP_ID`, `WHATSAPP_META_CONFIG_ID`, `WHATSAPP_APP_SECRET`, and `WHATSAPP_META_TOKEN_ENCRYPTION_KEY` are not prerequisites for verifying an already-owned account with a system-user token in the new flow. **Do not delete or rotate them solely because this Meta popup failed**; the webhook and older backend may still use some of these values.
+
+Meta source: https://www.postman.com/meta/whatsapp-business-platform/documentation/wlk6lh4/whatsapp-cloud-api ; https://www.postman.com/meta/whatsapp-business-platform/documentation/du6gzjv/embedded-signup .
