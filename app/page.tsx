@@ -2732,6 +2732,26 @@ export default function ZeshuSuperApp() {
       }
       if (!orderResponse.ok || !orderData?.success) {
         const code = typeof orderData?.code === 'string' ? orderData.code : 'CHECKOUT_INTERNAL_ERROR';
+        if (code === 'PREVIOUS_TEST_PAYMENT_RECOVERED' || code === 'PREVIOUS_PAYMENT_REQUIRES_REVIEW') {
+          setIsLoading(false);
+          setIsCheckoutOpening(false);
+          setIsCheckingPaymentStatus(false);
+          // A prior captured payment is never treated as unpaid, even when its
+          // basket differs from the one the customer is buying today.
+          showCheckoutError(
+            code === 'PREVIOUS_TEST_PAYMENT_RECOVERED'
+              ? 'Your earlier test payment was received and its order has been recovered. Review your orders before making another test purchase.'
+              : 'Your earlier test payment was received but its order needs support review. Please do not pay again until it is resolved.',
+            code,
+            typeof orderData?.requestId === 'string' ? orderData.requestId : undefined,
+          );
+          if (code === 'PREVIOUS_TEST_PAYMENT_RECOVERED' && user) {
+            const { data: refreshedOrders } = await supabase.from('orders')
+              .select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20);
+            if (refreshedOrders) setMyOrders(refreshedOrders);
+          }
+          return;
+        }
         if (code === 'ABANDONABLE_PAYMENT_CHECKOUT' && !abandonPreviousCheckout && !automaticRecoveryTried) {
           // The backend must verify the prior Razorpay order before superseding it.
           // Customer already asked to buy the current basket; no extra button needed.
@@ -3650,7 +3670,11 @@ export default function ZeshuSuperApp() {
                 <p className="font-black">{checkoutError.code === 'CHECKOUT_SAFETY_HOLD' ? 'Checkout is temporarily unavailable' : checkoutError.code?.startsWith('RAZORPAY_') ? 'Try another payment method' : 'Please review your checkout'}</p>
                 <p className="mt-1.5 text-xs font-medium leading-5">{checkoutError.message}</p>
                 {checkoutError.code?.startsWith('RAZORPAY_') && <p className="mt-2 text-xs text-slate-600">Your cart is saved. If a bank debit appears, contact support before retrying. Zeshu cannot confirm a successful payment from this message.</p>}
-                <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => setCheckoutError(null)} className="rounded-xl bg-[#075E45] px-3 py-2 text-xs font-black text-white">Review basket</button><Link href="/help" className="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-black text-[#075E45]">Contact support</Link></div>
+                <div className="mt-3 flex flex-wrap gap-2">{checkoutError.code === 'PREVIOUS_TEST_PAYMENT_RECOVERED'
+  ? <button type="button" onClick={() => { setCheckoutError(null); setIsCartOpen(false); setIsAccountOpen(true); setAccountView('ORDERS'); }} className="rounded-xl bg-[#075E45] px-3 py-2 text-xs font-black text-white">View recovered order</button>
+  : checkoutError.code === 'PREVIOUS_PAYMENT_REQUIRES_REVIEW'
+    ? <span className="text-xs font-bold text-amber-900">Do not start another payment.</span>
+    : <button type="button" onClick={() => setCheckoutError(null)} className="rounded-xl bg-[#075E45] px-3 py-2 text-xs font-black text-white">Review basket</button>}<Link href="/help" className="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-black text-[#075E45]">Contact support</Link></div>
                 {checkoutError.requestId && <p className="mt-2 text-[10px] font-medium text-amber-700">Reference: {checkoutError.requestId}</p>}
               </div>}
               <p className="mb-2 text-center text-[9px] leading-4 text-slate-500 md:text-[10px] md:leading-4">{t("By proceeding, you agree to Zeshu's")} <Link href="/policies#terms" className="font-black text-[#075E45] underline underline-offset-2">{t('Terms')}</Link>, <Link href="/policies#privacy" className="font-black text-[#075E45] underline underline-offset-2">{t('Privacy Policy')}</Link>, {t('and')} <Link href="/policies#cancellation-refunds" className="font-black text-[#075E45] underline underline-offset-2">{t('Cancellation & Refund Policy')}</Link>.</p>
@@ -3661,7 +3685,7 @@ export default function ZeshuSuperApp() {
                   void navigator.clipboard.writeText('https://zeshu.in/').then(() => showToast('Zeshu link copied. Paste it into Chrome.')).catch(() => showToast('Open https://zeshu.in directly in Chrome.'));
                 }} className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-[11px] font-black text-emerald-800">Copy website link</button></details>
               </div>}
-              <button disabled={cart.length === 0 || isLoading || isCheckoutOpening || isCheckingPaymentStatus} onClick={() => void handleCartCheckout()} className="flex min-h-14 w-full items-center justify-between rounded-2xl bg-[#075E45] px-5 py-3.5 text-white font-black shadow-[0_8px_20px_rgba(7,94,69,.18)] disabled:bg-[#a7b6ac] md:px-6 md:text-base">
+              <button disabled={cart.length === 0 || isLoading || isCheckoutOpening || isCheckingPaymentStatus || checkoutError?.code === 'PREVIOUS_PAYMENT_REQUIRES_REVIEW'} onClick={() => void handleCartCheckout()} className="flex min-h-14 w-full items-center justify-between rounded-2xl bg-[#075E45] px-5 py-3.5 text-white font-black shadow-[0_8px_20px_rgba(7,94,69,.18)] disabled:bg-[#a7b6ac] md:px-6 md:text-base">
                 <span>{isCheckingPaymentStatus ? t('Securing your checkout…') : isLoading ? t('Preparing secure checkout…') : t('Proceed to secure payment')}</span><span>₹{finalCartTotal}</span>
               </button>
             </div>
