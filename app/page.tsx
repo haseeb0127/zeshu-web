@@ -3053,6 +3053,12 @@ export default function ZeshuSuperApp() {
                  requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
                }}
                onOpenServices={() => openServices()}
+               onSelectCategory={(category) => {
+                 const matched = productCategories.find((item) => item.toLowerCase() === category.toLowerCase() || (category === 'Fruits' && /fruit|vegetable|produce/i.test(item)) || (category === 'Snacks' && /snack|biscuit|chip/i.test(item)) || (category === 'Dairy' && /dairy|milk/i.test(item)) || (category === 'Drinks' && /drink|beverage/i.test(item)));
+                 setActiveCategory(matched || 'All');
+                 setFulfillmentFilter('ALL');
+                 requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+               }}
              />
            )}
 
