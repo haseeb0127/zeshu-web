@@ -1,5 +1,5 @@
 import GlossyArtwork from "@/app/components/GlossyArtwork";
-import Link from "next/link";
+import Link from "@/app/components/DocumentLink";
 import ProfessionalEnquiryForm from "@/app/components/ProfessionalEnquiryForm";
 import { ArrowRight, Building2, Home, MapPin, Paintbrush, PanelsTopLeft, Wrench } from "lucide-react";
 

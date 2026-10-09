@@ -1,5 +1,5 @@
 import GlossyArtwork from "@/app/components/GlossyArtwork";
-import Link from "next/link";
+import Link from "@/app/components/DocumentLink";
 import { ArrowRight, Building2, HeartHandshake, Home, Paintbrush, PartyPopper, ShieldCheck } from "lucide-react";
 
 export const metadata = {
