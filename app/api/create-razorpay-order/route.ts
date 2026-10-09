@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Razorpay from 'razorpay';
 import { isProvablyUnpaidRazorpayOrder } from '../../lib/razorpay-unpaid-order';
+import { reconcileCapturedTestCheckout } from '../../lib/razorpay-captured-recovery';
 import { randomUUID } from 'node:crypto';
 import { evaluateJagtialServiceArea, isJagtialServiceAreaEnforced } from '../../lib/service-area';
 import { getNationwideCourierQuotes, isNationwideCourierReady } from '../../lib/courier-server';
@@ -519,6 +520,21 @@ export async function POST(request: Request) {
 
       const recoveryPayments = Array.isArray(recoveryPaymentsResponse?.items) ? recoveryPaymentsResponse.items : null;
       const recoveryDiagnostics = getProviderDiagnostics(recoveryOrder, recoveryPayments);
+      if (String(recoveryOrder?.status).toLowerCase() === 'paid' && expiredBoundReservation.status === 'PAYMENT_PENDING') {
+        const outcome = await reconcileCapturedTestCheckout({
+          gateway: razorpay, serviceClient, userId: user.id,
+          reservationId: expiredBoundReservation.id,
+          razorpayOrderId: expiredBoundReservation.razorpay_order_id,
+          expectedTotalRupees: Number(recoveryReservation.expected_total_paid),
+          providerOrder: recoveryOrder, providerPayments: recoveryPaymentsResponse,
+        });
+        return checkoutError(requestId, 'CAPTURED_TEST_RECOVERY',
+          outcome === 'RECOVERED' ? 'PREVIOUS_TEST_PAYMENT_RECOVERED' : 'PREVIOUS_PAYMENT_REQUIRES_REVIEW',
+          outcome === 'RECOVERED'
+            ? 'Your earlier test payment has been linked to its order. Review your orders before starting another checkout.'
+            : 'We received an earlier test payment. Please contact support to reconcile that order. Do not pay again.',
+          409, undefined, recoveryDiagnostics);
+      }
       if (recoveryOrder?.id !== expiredBoundReservation.razorpay_order_id || recoveryPayments === null || !isRetryableProviderOrder(recoveryOrder, recoveryPayments, Math.round(Number(recoveryReservation.expected_total_paid) * 100))) {
         return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, undefined, recoveryDiagnostics);
       }
@@ -633,6 +649,21 @@ export async function POST(request: Request) {
         }
         const supersedePayments = Array.isArray(supersedePaymentsResponse?.items) ? supersedePaymentsResponse.items : null;
         const supersedeDiagnostics = getProviderDiagnostics(supersedeOrder, supersedePayments);
+        if (String(supersedeOrder?.status).toLowerCase() === 'paid') {
+          const outcome = await reconcileCapturedTestCheckout({
+            gateway: razorpay, serviceClient, userId: user.id,
+            reservationId: activeResumable.reservation_id,
+            razorpayOrderId: activeResumable.razorpay_order_id,
+            expectedTotalRupees: Number(activeResumable.expected_total_paid),
+            providerOrder: supersedeOrder, providerPayments: supersedePaymentsResponse,
+          });
+          return checkoutError(requestId, 'CAPTURED_TEST_RECOVERY',
+            outcome === 'RECOVERED' ? 'PREVIOUS_TEST_PAYMENT_RECOVERED' : 'PREVIOUS_PAYMENT_REQUIRES_REVIEW',
+            outcome === 'RECOVERED'
+              ? 'Your earlier test payment has been linked to its order. Review your orders before starting another checkout.'
+              : 'We received an earlier test payment. Please contact support to reconcile that order. Do not pay again.',
+            409, undefined, supersedeDiagnostics);
+        }
         const supersedeAmountPaise = Math.round(Number(activeResumable.expected_total_paid) * 100);
         if (supersedeOrder?.id !== activeResumable.razorpay_order_id
           || supersedePayments === null
@@ -666,6 +697,21 @@ export async function POST(request: Request) {
             await fetchProviderState(razorpay, activeResumable.razorpay_order_id);
           const preflightPayments = Array.isArray(preflightPaymentsResponse?.items) ? preflightPaymentsResponse.items : null;
           const preflightAmountPaise = Math.round(Number(activeResumable.expected_total_paid) * 100);
+          if (String(preflightOrder?.status).toLowerCase() === 'paid') {
+            const outcome = await reconcileCapturedTestCheckout({
+              gateway: razorpay, serviceClient, userId: user.id,
+              reservationId: activeResumable.reservation_id,
+              razorpayOrderId: activeResumable.razorpay_order_id,
+              expectedTotalRupees: Number(activeResumable.expected_total_paid),
+              providerOrder: preflightOrder, providerPayments: preflightPaymentsResponse,
+            });
+            return checkoutError(requestId, 'CAPTURED_TEST_RECOVERY',
+              outcome === 'RECOVERED' ? 'PREVIOUS_TEST_PAYMENT_RECOVERED' : 'PREVIOUS_PAYMENT_REQUIRES_REVIEW',
+              outcome === 'RECOVERED'
+                ? 'Your earlier test payment has been linked to its order. Review your orders before starting another checkout.'
+                : 'We received an earlier test payment. Please contact support to reconcile that order. Do not pay again.',
+              409, undefined, getProviderDiagnostics(preflightOrder, preflightPayments));
+          }
           if (preflightPayments === null || !isRetryableProviderOrder(preflightOrder, preflightPayments, preflightAmountPaise)) {
             return checkoutError(requestId, stage, 'PAYMENT_RECONCILIATION_REQUIRED', "We're checking your payment status. Please wait a moment before retrying.", 409, undefined, getProviderDiagnostics(preflightOrder, preflightPayments));
           }
