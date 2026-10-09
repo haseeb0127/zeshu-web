@@ -114,7 +114,16 @@ jobs:
               const link = moveQuick.locator('nav[aria-label="Explore Zeshu departments"] a[href="' + route + '"]');
               await link.click();
               await page.waitForURL(url => url.pathname === route, { timeout: 25000 });
-              await page.locator('main').first().waitFor({ state: 'visible', timeout: 15000 });
+              try {
+                await page.locator('main').first().waitFor({ state: 'visible', timeout: 15000 });
+              } catch (navigationError) {
+                console.log('BROKEN_MOBILE_NAVIGATION:', route, 'currentURL:', page.url());
+                console.log('DOCUMENT_TITLE:', await page.title().catch(()=>'unavailable'));
+                console.log('BODY_TEXT:', (await page.locator('body').innerText().catch(()=>'no body')).slice(0,3500));
+                console.log('DOCUMENT_HTML:', (await page.content().catch(()=>'no document')).slice(0,4500));
+                console.log('RESPONSE_STATUS:', (await page.request.get(base + route).catch(() => null))?.status());
+                throw navigationError;
+              }
               assert(!(await page.locator('body').innerText()).includes('This Zeshu page needs another try'), 'Department tap triggered the error boundary: ' + route);
               await page.goBack({ waitUntil: 'domcontentloaded', timeout: 25000 });
               await page.locator('nav[aria-label="Explore Zeshu departments"]').waitFor({ state: 'visible', timeout: 15000 });
