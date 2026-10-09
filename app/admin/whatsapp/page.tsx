@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { adminSupabase } from '../../lib/browser-supabase';
 import { ArrowLeft, RefreshCw, ShieldCheck, MessageCircle, AlertCircle, Link2 } from 'lucide-react';
@@ -15,14 +15,13 @@ type MetaSetup = {
   graphVersion:string|null;nonce?:string;connection:MetaConnection|null;safeToSend:false;
   encryptionKeyStatus:'NOT_VISIBLE_IN_ACTIVE_WORKER'|'FILTERED_BY_RUNTIME_ENV'|'INVALID_BASE64_OR_LENGTH'|'VALID_IN_ACTIVE_WORKER';
 };
-type MetaJsSdk = {
-  init:(opts:{appId:string;cookie:boolean;xfbml:boolean;version:string})=>void;
-  login:(cb:(resp:{authResponse?:{code?:string}})=>void,
-    opts:{config_id:string;response_type:'code';override_default_response_type:true;
-      extras:{setup:object;feature:string;sessionInfoVersion:string;version:string}})=>void;
+type OwnedStatus = {
+  status:'VERIFIED'|'MISSING_SETTINGS'|'TOKEN_UNAUTHORIZED'|'PHONE_NOT_IN_ACCOUNT'|
+    'META_UNAVAILABLE'|'INVALID_CONFIG';
+  missing:string[];verified:boolean;
+  phoneNumber:string|null;verifiedName:string|null;
+  senderEnabled:false;customerMessagingAuthorized:false;note:string;
 };
-const FBWindow = () => window as Window & {FB?:MetaJsSdk;fbAsyncInit?:()=>void};
-const META_SIGNUP_ORIGINS = new Set(['https://www.facebook.com','https://web.facebook.com','https://business.facebook.com']);
 type Audit = {event:string;name:string|null;language:string|null;status:string;category:string|null};
 type Readiness = {
   senderEnabled:boolean; uiEnabled:boolean; senderConfigured:boolean; webhookConfigured:boolean;
@@ -42,14 +41,7 @@ export default function WhatsAppReadinessPage() {
   const [busy,setBusy]=useState(true);
   const [error,setError]=useState('');
   const [meta,setMeta]=useState<MetaSetup|null>(null);
-  const [metaBusy,setMetaBusy]=useState(false);
-  const [sdkReady,setSdkReady]=useState(false);
-  const [connectStatus,setConnectStatus]=useState('');
-  const connectLock=useRef(false);
-  const metaSessionRef=useRef<{
-    nonce:string;code:string|null;ids:{wabaId:string;phoneNumberId:string}|null;
-    cleanup:()=>void;
-  }|null>(null);
+  const [owned,setOwned]=useState<OwnedStatus|null>(null);
   const reload=useCallback(async()=>{
     setBusy(true);setError('');
     try {
@@ -58,125 +50,24 @@ export default function WhatsAppReadinessPage() {
       if (!token) throw new Error('Admin sign-in required.');
 
       const headers={Authorization:`Bearer ${token}`};
-      const [response,metaResponse]=await Promise.all([
+      const [response,metaResponse,ownedResponse]=await Promise.all([
         fetch('/api/admin/support/whatsapp-readiness',{headers,cache:'no-store'}),
         fetch('/api/admin/whatsapp/connect',{headers,cache:'no-store'}),
+        fetch('/api/admin/whatsapp/own-account',{headers,cache:'no-store'}),
       ]);
-      const [payload,metaPayload]=await Promise.all([
+      const [payload,metaPayload,ownedPayload]=await Promise.all([
         response.json().catch(()=>({})),metaResponse.json().catch(()=>({})),
+        ownedResponse.json().catch(()=>({})),
       ]);
       if (!response.ok) throw new Error(payload.error||'Could not inspect WhatsApp readiness.');
       if (!metaResponse.ok) throw new Error(metaPayload.error||'Could not check Meta connection.');
       setData(payload as Readiness);
       setMeta(metaPayload as MetaSetup);
+      setOwned(ownedResponse.ok?(ownedPayload as OwnedStatus):null);
     } catch(e) {setError(e instanceof Error?e.message:'WhatsApp readiness unavailable.');}
     finally {setBusy(false);}
   },[]);
   useEffect(()=>{void reload();},[reload]);
-
-  // Meta's official JavaScript SDK loads from facebook.net; no browser automation
-  // subscriptions or customer notifications are involved in this admin login.
-  useEffect(()=>{
-    if (!meta?.configured || !meta.appId || !meta.graphVersion) return;
-    const fb=FBWindow();
-    const initialize=()=>{
-      if (!fb.FB) return;
-      fb.FB.init({appId:meta.appId!,cookie:true,xfbml:false,version:meta.graphVersion!});
-      setSdkReady(true);
-    };
-    if (fb.FB) {initialize();return;}
-    fb.fbAsyncInit=initialize;
-    if (!document.getElementById('facebook-jssdk')) {
-      const script=document.createElement('script');
-      script.id='facebook-jssdk';
-      script.src='https://connect.facebook.net/en_US/sdk.js';
-      script.async=true;
-      script.defer=true;
-      script.onerror=()=>setConnectStatus('Meta login could not load. Try opening this page directly in Chrome.');
-      document.head.appendChild(script);
-    }
-    return ()=>{fb.fbAsyncInit=undefined;};
-  },[meta?.configured,meta?.appId,meta?.graphVersion]);
-
-  useEffect(()=>()=>{metaSessionRef.current?.cleanup();},[]);
-  const connectMeta=async()=>{
-    if (connectLock.current || !meta?.configured || !meta.nonce || !meta.configId || !sdkReady) return;
-    const fb=FBWindow().FB;
-    if(!fb) return;
-    connectLock.current=true;
-    setMetaBusy(true);setConnectStatus('Opening Meta authorization…');
-    let timer:ReturnType<typeof setTimeout>;
-    const release=()=>{
-      window.removeEventListener('message',onMetaMessage);
-      clearTimeout(timer);
-      connectLock.current=false;setMetaBusy(false);
-      metaSessionRef.current=null;
-    };
-    const attempt={nonce:meta.nonce,code:null as string|null,
-      ids:null as {wabaId:string;phoneNumberId:string}|null,cleanup:release};
-    metaSessionRef.current=attempt;
-    const complete=async()=>{
-      if (!attempt.code || !attempt.ids || !connectLock.current) return;
-      // Clear the code immediately, preventing duplicate attempts on
-      // repeated Meta postMessages or multiple Facebook Login callbacks.
-      const code=attempt.code;attempt.code=null;
-      setConnectStatus('Verifying WhatsApp Business Account ownership with Meta…');
-      try{
-        const {data:session}=await supabase.auth.getSession();
-        const token=session.session?.access_token;
-        if(!token) throw Error('Admin session expired.');
-        const response=await fetch('/api/admin/whatsapp/connect',{
-          method:'POST',credentials:'same-origin',
-          headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
-          body:JSON.stringify({...attempt.ids,code,nonce:attempt.nonce}),
-        });
-        const body=await response.json().catch(()=>({}));
-        if(!response.ok) throw Error(body.error||'Meta connection could not be verified.');
-        setConnectStatus('Meta WhatsApp account connected and verified. Customer sending remains OFF.');
-        release();
-        void reload();
-      }catch(e){
-        setConnectStatus(e instanceof Error?e.message:'Meta connection failed.');
-        release();
-      }
-    };
-    function onMetaMessage(event:MessageEvent) {
-      if(!META_SIGNUP_ORIGINS.has(event.origin) || !connectLock.current) return;
-      try{
-        const message=typeof event.data==='string'?JSON.parse(event.data):event.data;
-        if(!message || message.type!=='WA_EMBEDDED_SIGNUP') return;
-        if(message.event==='CANCEL'){
-          setConnectStatus('Meta authorization was cancelled. No connection saved.');release();return;
-        }
-        if(message.event==='FINISH'){
-          const id=message.data;
-          if(!id || !/^[0-9]{5,32}$/.test(id.waba_id) || !/^[0-9]{5,32}$/.test(id.phone_number_id)) {
-            setConnectStatus('Meta did not return both account and phone IDs. No connection saved.');
-            release();return;
-          }
-          attempt.ids={wabaId:id.waba_id,phoneNumberId:id.phone_number_id};
-          void complete();
-        }
-      }catch{/* Ignore unrelated events. */}
-    }
-    window.addEventListener('message',onMetaMessage);
-    timer=setTimeout(()=>{
-      setConnectStatus('Meta authorization timed out. Refresh and try again.');
-      release();
-    },180000);
-    try{
-      fb.login((resp)=>{
-        const code=resp?.authResponse?.code;
-        if (typeof code==='string' && code.length>7) {attempt.code=code;void complete();}
-        else {setConnectStatus('Meta login closed or did not authorize access.');release();}
-      },{
-        config_id:meta.configId,response_type:'code',override_default_response_type:true,
-        extras:{setup:{},feature:'whatsapp_embedded_signup',sessionInfoVersion:'3',version:'v4'},
-      });
-    }catch{
-      setConnectStatus('Meta authorization popup could not open. Use Chrome and allow pop-ups.');release();
-    }
-  };
 
   const statuses=[
     {label:'Meta Business Account ID',ok:!!data?.wabaConfigured},
@@ -204,36 +95,33 @@ export default function WhatsAppReadinessPage() {
           </div>
         </section>
         <section className="rounded-2xl bg-white p-5 shadow-sm">
-          <h2 className="flex items-center gap-2 text-lg font-black"><Link2 size={20}/>Connect your Meta account directly</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">Authorize Zeshu through Meta's official WhatsApp Embedded Signup. This connection requires no TinyFish browser service. It verifies ownership of the selected WhatsApp Business Account and phone number, then stores the token encrypted on the server.</p>
-          {meta?.connection ? <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-            <p className="text-sm font-black text-emerald-900">Meta WhatsApp account connected</p>
-            <p className="mt-1 text-xs text-emerald-800">Sender: {meta.connection.verifiedName||'Verified business'} · {meta.connection.phoneNumber||'Phone verified with Meta'}</p>
-            <p className="mt-1 text-xs text-emerald-800">WABA: {meta.connection.wabaId} · Phone ID: {meta.connection.phoneNumberId}</p>
-            <p className="mt-2 text-xs font-bold text-emerald-900">Connection only: no messages, charges, webhook subscriptions or automated sends were started.</p>
-          </div> : null}
-          {meta?.configured ? <div className="mt-4">
-            <button type="button" onClick={()=>void connectMeta()} disabled={metaBusy || !sdkReady || busy}
-              className="rounded-xl bg-[#075e45] px-5 py-3 text-sm font-black text-white disabled:cursor-wait disabled:opacity-50">
-              {metaBusy ? 'Connecting securely…' : !sdkReady ? 'Loading Meta login…' : meta.connection ? 'Reconnect Meta business' : 'Connect Meta securely'}
-            </button>
-            <p className="mt-2 text-xs text-slate-500">You'll choose your existing Zeshu WhatsApp account in Meta. Only an authorized Zeshu administrator can complete this step.</p>
-          </div> : <div className="mt-4 rounded-xl bg-amber-50 p-4">
-            <p className="text-sm font-black text-amber-900">Meta Developer App configuration needed</p>
-            <p className="mt-1 text-xs text-amber-900">Set up Facebook Login for Business (WhatsApp Embedded Signup v4), and enter the missing configuration into Cloudflare Worker settings. The button unlocks automatically once those values are present.</p>
-            <p className="mt-3 break-words font-mono text-xs leading-6 text-amber-800">{meta?.missingSetup.join(' · ')||'Checking server configuration…'}</p>
-            {meta?.missingSetup.includes('WHATSAPP_META_TOKEN_ENCRYPTION_KEY') && <div className="mt-3 rounded-xl border border-amber-200 bg-white p-3 text-sm font-semibold text-amber-900" role="status">
-              {meta.encryptionKeyStatus==='NOT_VISIBLE_IN_ACTIVE_WORKER'
-                ? 'Diagnosis: the active Zeshu Worker cannot see this secret. It may exist in Cloudflare as a Ready version that is not serving traffic, or be saved to a different Worker/environment. Do not rotate the key. Check active rollout and Worker name.'
-                : meta.encryptionKeyStatus==='FILTERED_BY_RUNTIME_ENV'
-                  ? 'Diagnosis: the runtime configuration validator rejected this value. The secret exists, but Zeshu is filtering it before checking its format. Do not rotate yet.'
-                  : meta.encryptionKeyStatus==='INVALID_BASE64_OR_LENGTH'
-                    ? 'Diagnosis: Zeshu can see the secret, but its decoded value is not the required 32-byte Base64 key. Verify the saved value privately in Cloudflare. Do not share it.'
-                    : 'The key is valid in the running Worker. Refresh this page and check the remaining configuration.'}
-            </div>}
-            <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-xs font-black text-[#075e45] underline">Open Meta for Developers ↗</a>
+          <h2 className="flex items-center gap-2 text-lg font-black"><Link2 size={20}/>Connect Zeshu's own WhatsApp Business account</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Meta's WhatsApp Embedded Signup is restricted to approved Business Solution Providers and Tech Providers. Zeshu does not need that partner onboarding flow just to manage its own business phone. Use the official WhatsApp Cloud API with Zeshu's existing Meta business account instead — no TinyFish required.</p>
+          {owned?.verified ? <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+            <p className="font-black text-emerald-900">Existing Zeshu WhatsApp account verified with Meta ✅</p>
+            <p className="mt-2 text-sm text-emerald-900">{owned.verifiedName||'Zeshu'} · {owned.phoneNumber||'WhatsApp phone verified'}</p>
+            <p className="mt-2 text-xs text-emerald-900">This is a read-only check. No WhatsApp messages, charges or subscriptions were initiated. Customer sending remains OFF.</p>
+          </div> : <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <p className="font-black text-amber-950">Direct Cloud API connection {owned?.status==='MISSING_SETTINGS'?'needs setup':'not yet verified'}</p>
+            {owned?.status==='MISSING_SETTINGS' ? <p className="mt-2 break-words font-mono text-xs leading-6 text-amber-950">Cloudflare settings needed: {owned.missing.join(' · ')}</p> : null}
+            {owned?.status==='TOKEN_UNAUTHORIZED' ? <p className="mt-2 text-sm text-amber-950">Meta refused account access. Confirm that the System User has access to this Zeshu WhatsApp Business Account and that the token has the necessary WhatsApp permissions.</p> : null}
+            {owned?.status==='PHONE_NOT_IN_ACCOUNT' ? <p className="mt-2 text-sm text-amber-950">The configured phone number is not listed under the selected WhatsApp Business Account. Check both IDs in Meta.</p> : null}
+            {owned?.status==='META_UNAVAILABLE' ? <p className="mt-2 text-sm text-amber-950">Meta could not verify the phone right now. Refresh later; do not rotate any secrets just to retry.</p> : null}
+            {owned?.status==='INVALID_CONFIG' ? <p className="mt-2 text-sm text-amber-950">One of the Cloudflare values has an invalid format. Please check the names and IDs privately.</p> : null}
+            {!owned ? <p className="mt-2 text-sm text-amber-950">Account verification is temporarily unavailable; the existing website is unaffected.</p> : null}
           </div>}
-          {connectStatus&&<p role="status" aria-live="polite" className="mt-3 rounded-xl bg-slate-50 p-3 text-xs font-bold text-slate-800">{connectStatus}</p>}
+          <div className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
+            <p><strong>1.</strong> In Meta Business Settings, open <strong>Users → System users</strong>. Grant a Zeshu system user access to the existing Zeshu WhatsApp Business Account and Zeshu Support app, then generate a server-side token with <code>whatsapp_business_management</code> and <code>whatsapp_business_messaging</code>.</p>
+            <p><strong>2.</strong> Find the existing WhatsApp Business Account ID and its <strong>Phone number ID</strong> in Meta WhatsApp Manager / the app's WhatsApp API Setup. Do not create a new number or business.</p>
+            <p><strong>3.</strong> Save <code>WHATSAPP_ACCESS_TOKEN</code> as a <strong>Cloudflare Secret</strong>, and <code>WHATSAPP_BUSINESS_ACCOUNT_ID</code> and <code>WHATSAPP_PHONE_NUMBER_ID</code> as Cloudflare variables on the actual production Worker. Keep your existing <code>WHATSAPP_GRAPH_API_VERSION</code>. Do not paste tokens in this chat.</p>
+            <p><strong>4.</strong> Deploy the secret configuration to the active Worker version, then tap <strong>Refresh</strong> above. Zeshu will verify the phone's membership in your WhatsApp account without sending messages.</p>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <a href="https://business.facebook.com/settings/" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-emerald-300 px-4 py-2 text-xs font-black text-[#075e45]">Open Meta Business Settings ↗</a>
+            <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-emerald-300 px-4 py-2 text-xs font-black text-[#075e45]">Open Meta Developer app ↗</a>
+          </div>
+          <p className="mt-3 text-xs text-slate-500">A verified Cloud API connection is not proof that templates, webhooks, consent or sending are ready. No message sending will be enabled without explicit approval.</p>
+          {meta?.connection && <p className="mt-3 rounded-xl bg-slate-50 p-3 text-xs text-slate-700">An earlier Meta partner-style connection record exists. Your Zeshu-owned Cloud API setup is checked independently.</p>}
         </section>
         <section className="rounded-2xl bg-white p-5 shadow-sm">
           <h2 className="text-lg font-black">Integration checklist</h2>
