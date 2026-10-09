@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { BadgeCheck, Car, ChevronLeft, ChevronRight, Paintbrush, PartyPopper, Receipt, ShoppingBag, Store } from "lucide-react";
+import { BadgeCheck, Car, ChevronLeft, ChevronRight, Paintbrush, PartyPopper, Receipt, ShoppingBag, Store, Grid2X2 } from "lucide-react";
 import { useCustomerLanguage } from "@/app/components/CustomerLanguageProvider";
 
 type Readiness = { request_enabled?: boolean; matching_enabled?: boolean; compliance_gate?: boolean };
@@ -40,6 +40,7 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
       <h1 id="zeshu-home-hub-title" className="mt-2 text-[1.35rem] font-black leading-tight tracking-tight text-slate-950 md:text-3xl">{t("Shop, pay, move and get help with Zeshu.")}</h1>
     </div>
 
+    <nav aria-label="Explore Zeshu departments" className="mb-5 grid grid-cols-5 gap-2 md:hidden">{[{label:t("Shop"),icon:ShoppingBag,action:onShopNearby,style:"bg-emerald-50 text-emerald-700"},{label:"Fashion",icon:ShoppingBag,href:"/fashion",style:"bg-pink-50 text-pink-600"},{label:"Pay",icon:Receipt,action:onOpenServices,style:"bg-blue-50 text-blue-600"},{label:"Move",icon:Car,href:"/move",style:"bg-orange-50 text-orange-600"},{label:"Services",icon:Grid2X2,href:"/professional-services",style:"bg-purple-50 text-purple-600"}].map(item=><div key={item.label} className="min-w-0 text-center">{'href' in item&&item.href?<Link href={item.href} className={`mx-auto flex h-14 w-full items-center justify-center rounded-2xl ${item.style}`}><item.icon size={26} aria-hidden="true"/></Link>:<button type="button" onClick={item.action} className={`mx-auto flex h-14 w-full items-center justify-center rounded-2xl ${item.style}`}><item.icon size={26} aria-hidden="true"/></button>}<span className="mt-1 block text-[11px] font-bold text-slate-800">{item.label}</span></div>)}</nav>
     <div className="relative mt-0 md:mt-4">
       <div ref={trackRef} className="flex snap-x snap-mandatory gap-3 overflow-x-auto no-scrollbar">
         {slides.map((s,i)=><article key={s.title} data-slide className={`relative min-w-full snap-start overflow-hidden rounded-[28px] ${s.theme} min-h-[270px] px-6 py-7 text-white shadow-[0_12px_30px_rgba(0,65,40,.14)] md:min-h-[310px] md:px-9 md:py-9`}>
