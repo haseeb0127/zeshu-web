@@ -363,6 +363,7 @@ export default function ZeshuSuperApp() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckoutOpening, setIsCheckoutOpening] = useState(false);
   const [checkoutError, setCheckoutError] = useState<CheckoutErrorState | null>(null);
+  const [previousPaymentStatus, setPreviousPaymentStatus] = useState<{ message: string; safeToRetry: boolean } | null>(null);
   const [testCheckoutReady, setTestCheckoutReady] = useState(false);
   const [isCheckingPaymentStatus, setIsCheckingPaymentStatus] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
@@ -2680,6 +2681,7 @@ export default function ZeshuSuperApp() {
     }
     if (isCheckoutOpening && !bypassOpeningGuard) return;
     setCheckoutError(null);
+    setPreviousPaymentStatus(null);
     if (!cart.length || finalCartTotal === 0) return showCheckoutError('Add an available product before checkout.', 'INVALID_CHECKOUT_DATA');
     if (!user) return setIsAuthModalOpen(true);
     if (!currentAddress.trim() || currentAddress === 'Location not set' || currentAddress === 'Current GPS Location Synced') {
@@ -2907,10 +2909,37 @@ export default function ZeshuSuperApp() {
   };
 
   const handleCheckPaymentStatus = async () => {
+    // This action must be read-only: checking payment status must NEVER start
+    // another Razorpay checkout or create a second order for the same customer.
     if (isCheckingPaymentStatus || isCheckoutOpening) return;
     setIsCheckingPaymentStatus(true);
+    setPreviousPaymentStatus(null);
     try {
-      await handleCartCheckout();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setPreviousPaymentStatus({ message: 'Please sign in again to check your previous payment.', safeToRetry: false });
+        return;
+      }
+      const response = await fetch('/api/checkout/payment-status', {
+        method: 'GET', cache: 'no-store',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setPreviousPaymentStatus({
+          message: typeof result.message === 'string' ? result.message : 'Payment status could not be verified. Please contact Zeshu support.',
+          safeToRetry: false,
+        });
+        return;
+      }
+      const safeToRetry = result.safeToRetry === true;
+      setPreviousPaymentStatus({
+        message: typeof result.message === 'string' ? result.message : 'Payment status is not yet confirmed.',
+        safeToRetry,
+      });
+      if (safeToRetry) setCheckoutError(null);
+    } catch {
+      setPreviousPaymentStatus({ message: 'Unable to verify your previous payment right now. No new payment was started.', safeToRetry: false });
     } finally {
       setIsCheckingPaymentStatus(false);
     }
@@ -3604,7 +3633,21 @@ export default function ZeshuSuperApp() {
             <div className="sticky bottom-0 z-10 mt-3 border-t bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 shadow-[0_-8px_24px_rgba(23,32,28,.08)] backdrop-blur md:mt-4 md:px-6 md:pb-4 md:pt-3">
               <div className="mb-2 flex items-center justify-between gap-3"><span className="min-w-0 truncate text-[10px] font-medium text-slate-500 md:text-xs">{t('Stock and price are checked again before payment.')}</span><button type="button" onClick={clearCart} disabled={!cart.length || isCheckoutOpening} className="shrink-0 text-[10px] font-black text-red-600 disabled:text-slate-300 md:text-xs">{t('Clear cart')}</button></div>
               <details className="group mb-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[10px] text-slate-600 md:text-xs"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-black text-emerald-800"><span className="flex items-center gap-2"><ShieldCheck size={15} aria-hidden="true" /> {t('Secure checkout')}</span><ChevronDown size={15} aria-hidden="true" className="text-emerald-700 transition-transform group-open:rotate-180" /></summary><div className="pt-2 leading-5"><p>{t('Your final total and stock are verified before payment, and the order is confirmed only after server-side payment verification.')}</p><p className="mt-1 font-bold text-slate-500">{t('Never share your OTP, card CVV or UPI PIN with Zeshu support.')}</p><button type="button" onClick={() => { setIsCartOpen(false); openAiSupport(); }} className="mt-2 rounded-lg bg-white px-3 py-2 text-[10px] font-black text-emerald-800 shadow-sm md:text-xs">{t('Payment help')}</button></div></details>
-              {checkoutError?.code === 'PAYMENT_RECONCILIATION_REQUIRED' && <div role="status" className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950"><div className="flex items-start gap-3"><div className="mt-0.5 rounded-full bg-amber-100 p-2 text-amber-700"><Clock size={16} aria-hidden="true" /></div><div><p className="font-black">{t('Checking previous payment')}</p><p className="mt-1 text-xs font-medium leading-5 text-amber-800">{t("We're confirming the status of your previous payment before starting another one. This prevents duplicate charges.")}</p></div></div><button type="button" onClick={() => void handleCheckPaymentStatus()} disabled={isCheckingPaymentStatus || isCheckoutOpening} className="mt-3 rounded-xl bg-amber-700 px-3 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-60">{isCheckingPaymentStatus ? t('Checking payment status…') : t('Check payment status')}</button>{checkoutError.requestId && <p className="mt-2 text-[10px] font-medium text-amber-700">Reference: {checkoutError.requestId}</p>}</div>}
+              {(checkoutError?.code === 'PAYMENT_RECONCILIATION_REQUIRED' || previousPaymentStatus) && <div role="status" className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 rounded-full bg-amber-100 p-2 text-amber-700"><Clock size={16} aria-hidden="true" /></div>
+                  <div>
+                    <p className="font-black">{previousPaymentStatus?.safeToRetry ? 'Previous test payment was unpaid' : t('Checking previous payment')}</p>
+                    <p className="mt-1 text-xs font-medium leading-5 text-amber-800">{previousPaymentStatus?.message || t("We're confirming the status of your previous payment before starting another one. This prevents duplicate charges.")}</p>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" onClick={() => void handleCheckPaymentStatus()} disabled={isCheckingPaymentStatus || isCheckoutOpening} className="rounded-xl bg-amber-700 px-3 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-60">{isCheckingPaymentStatus ? t('Checking payment status…') : 'Check payment status (no new charge)'}</button>
+                  {previousPaymentStatus?.safeToRetry && <button type="button" onClick={() => void handleCartCheckout()} disabled={isCheckoutOpening || isLoading} className="rounded-xl bg-[#075E45] px-3 py-2 text-xs font-black text-white disabled:opacity-60">Retry test checkout</button>}
+                  {!previousPaymentStatus?.safeToRetry && previousPaymentStatus && <Link href="/help" className="rounded-xl border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-amber-800">Contact support</Link>}
+                </div>
+                {checkoutError?.requestId && <p className="mt-2 text-[10px] font-medium text-amber-700">Reference: {checkoutError.requestId}</p>}
+              </div>}
               {checkoutError && checkoutError.code !== 'PAYMENT_RECONCILIATION_REQUIRED' && <div role="alert" aria-live="assertive" className="mb-3 rounded-2xl border border-amber-200 bg-[linear-gradient(145deg,#fff,#fff8e7)] px-4 py-4 text-sm text-amber-950 shadow-sm">
                 <p className="font-black">{checkoutError.code?.startsWith('RAZORPAY_') ? 'Payment was not completed' : 'Please review your checkout'}</p>
                 <p className="mt-1.5 text-xs font-medium leading-5">{checkoutError.message}</p>
