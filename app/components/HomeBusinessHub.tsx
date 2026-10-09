@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { BadgeCheck, Car, ChevronLeft, ChevronRight, Paintbrush, PartyPopper, Receipt, ShoppingBag, ShoppingBasket, CreditCard, CarFront, Grid2X2 } from "lucide-react";
+import { BadgeCheck, Car, ChevronLeft, ChevronRight, Paintbrush, PartyPopper, Receipt, ShoppingBag, ShoppingBasket, CreditCard, CarFront, Grid2X2, Bot, Sparkles, ArrowUpRight } from "lucide-react";
 import ReferenceArtwork from "@/app/components/ReferenceArtwork";
 import { useCustomerLanguage } from "@/app/components/CustomerLanguageProvider";
 
@@ -112,5 +112,11 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
         <span className="mt-1 block min-h-[28px] text-[10px] font-extrabold leading-[1.25] text-[#1c2537] md:text-sm">{t(item.label)}</span>
       </button>)}
     </div>
+    <button type="button" data-zeshu-home-assistant="true" onClick={()=>window.dispatchEvent(new Event("zeshu:open-assistant"))}
+     className="zeshu-gloss-card group mt-3 flex w-full items-center gap-3 rounded-[22px] border border-emerald-100 bg-white px-3.5 py-3 text-left shadow-md md:mt-5 md:px-5 md:py-4">
+      <span className="zeshu-gloss-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-white"><Bot size={25}/></span>
+      <span className="min-w-0 flex-1"><span className="flex items-center gap-1.5 text-sm font-black text-[#075e45]"><Sparkles size={15}/>{t("Ask Zeshu Assistant")}</span><span className="mt-1 block text-[11px] font-medium text-slate-600">{t("Shopping, orders, services and support")}</span></span>
+      <ArrowUpRight size={20} className="shrink-0 text-[#075e45]"/>
+    </button>
   </section>;
 }

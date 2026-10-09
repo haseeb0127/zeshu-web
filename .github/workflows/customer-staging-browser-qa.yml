@@ -99,6 +99,11 @@ jobs:
             for (const department of ['Shop', 'Fashion', 'Pay', 'Move', 'Services']) {
               assert(mobileDepartmentText.includes(department), `Homepage mobile quick-launch is missing ${department}`);
             }
+            const homeChat = moveQuick.locator('[data-zeshu-home-assistant="true"]');
+            await homeChat.waitFor({state:'visible',timeout:10000});
+            await homeChat.click();
+            await page.locator('#zeshu-assistant-panel input[aria-label="Ask Zeshu Assistant"]').waitFor({state:'visible',timeout:10000});
+            await page.locator('#zeshu-assistant-panel').getByRole('button',{name:'Close Zeshu Assistant'}).click();
             const referenceArtwork = moveQuick.locator('svg[data-reference-art="hero"] image');
             await referenceArtwork.waitFor({ state: 'attached', timeout: 10000 });
             const referenceArtworkUrl = await referenceArtwork.getAttribute('href');

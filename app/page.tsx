@@ -3389,7 +3389,6 @@ export default function ZeshuSuperApp() {
         </div>
       </nav>}
 
-      {!isCartOpen && !isAccountOpen && !isAuthModalOpen && !locationSelectorOpen && !isTrackingOpen && cart.length === 0 && <button type="button" onClick={openAiSupport} aria-label="Chat with Zeshu Assistant" className="fixed bottom-[5.75rem] right-4 z-30 hidden lg:inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#075E45] text-sm font-black text-white shadow-xl transition hover:bg-[#065F38] active:scale-95 lg:bottom-8 lg:right-8 lg:h-auto lg:w-auto lg:min-h-12 lg:gap-2 lg:px-4 lg:py-3"><MessageCircle size={20} aria-hidden="true" /><span className="hidden lg:inline">{t('Ask Zeshu')}</span></button>}
 
       <div className="border-t border-slate-200 bg-[#f7f9f8] px-4 pb-28 pt-5 text-center text-[11px] text-slate-600 md:hidden">
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">

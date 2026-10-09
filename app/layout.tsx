@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PwaBoot from "./components/PwaBoot";
 import { CustomerLanguageProvider } from "./components/CustomerLanguageProvider";
+import ZeshuAssistantWidget from "./components/ZeshuAssistantWidget";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,7 +52,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
   <PwaBoot />
-  <CustomerLanguageProvider>{children}</CustomerLanguageProvider>
+  <CustomerLanguageProvider>{children}<ZeshuAssistantWidget /></CustomerLanguageProvider>
 </body>
     </html>
   );
