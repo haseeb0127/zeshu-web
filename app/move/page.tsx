@@ -2,7 +2,7 @@
 import GlossyArtwork from "@/app/components/GlossyArtwork";
 
 
-import Link from "next/link";
+import Link from "@/app/components/DocumentLink";
 import { ArrowLeft, Bike, Bus, Car, Hotel, Luggage, Package, Plane, ShieldCheck, Sparkles, TrainFront, Truck, Users } from "lucide-react";
 import { LanguageSwitcher, useCustomerLanguage } from "../components/CustomerLanguageProvider";
 

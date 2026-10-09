@@ -1,6 +1,6 @@
 import GlossyArtwork from "@/app/components/GlossyArtwork";
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/app/components/DocumentLink";
 import FashionLiveCatalogue from "../components/FashionLiveCatalogue";
 import { ArrowRight } from "lucide-react";
 

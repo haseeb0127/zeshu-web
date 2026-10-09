@@ -2,7 +2,7 @@
 import GlossyArtwork from "@/app/components/GlossyArtwork";
 
 
-import Link from "next/link";
+import Link from "@/app/components/DocumentLink";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Bot, Headphones, MessageCircle, ShieldCheck, Sparkles } from "lucide-react";
 import { LanguageSwitcher, useCustomerLanguage } from "../components/CustomerLanguageProvider";

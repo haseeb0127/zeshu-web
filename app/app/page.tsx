@@ -3,7 +3,7 @@ import GlossyArtwork from "@/app/components/GlossyArtwork";
 
 
 import Image from 'next/image';
-import Link from 'next/link';
+import Link from "@/app/components/DocumentLink";
 import PwaInstallButton from '../components/PwaInstallButton';
 import ShareZeshuButton from '../components/ShareZeshuButton';
 import { useCustomerLanguage } from '../components/CustomerLanguageProvider';
