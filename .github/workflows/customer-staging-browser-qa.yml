@@ -50,6 +50,15 @@ jobs:
             viewport: { width: 390, height: 844 },
             deviceScaleFactor: 1,
           });
+          // Log uncaught browser errors behind the generic Next.js crash screen.
+          page.on('pageerror', error => console.log('ZESHU_CLIENT_EXCEPTION:', error.stack || error.message));
+          page.on('console', message => {
+            if (message.type() === 'error') console.log('ZESHU_CONSOLE_ERROR:', message.text().slice(0,1500));
+          });
+          page.on('requestfailed', request => {
+            const url = new URL(request.url());
+            if (url.host === new URL(base).host) console.log('ZESHU_FAILED_REQUEST:', url.pathname, request.failure()?.errorText);
+          });
 
           const assert = (condition, message) => {
             if (!condition) throw new Error(message);
