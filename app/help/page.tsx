@@ -160,7 +160,7 @@ export default function HelpPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f6faf7] px-4 py-6 text-slate-900 md:px-8 md:py-10">
+    <main data-zeshu-experience="glossy" className="zeshu-experience "min-h-screen bg-[#f6faf7] px-4 py-6 text-slate-900 md:px-8 md:py-10">
       <div className="mx-auto max-w-6xl">
         <div className="flex items-center justify-between gap-3">
           <Link href="/" className="inline-flex items-center gap-2 text-sm font-black text-[#075E45]">
@@ -169,7 +169,7 @@ export default function HelpPage() {
           <LanguageSwitcher compact />
         </div>
 
-        <header className="mt-6 rounded-[30px] bg-[#083b27] p-6 text-white shadow-xl md:p-9">
+        <header className="zeshu-gloss-hero mt-6 rounded-[30px] bg-[#083b27] p-6 text-white shadow-xl md:p-9">
           <div className="flex items-start gap-4">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/10"><Headphones size={25} /></span>
             <div>
@@ -220,7 +220,7 @@ export default function HelpPage() {
           </div>
         </section>
 
-        <section className="mt-4 rounded-3xl border border-emerald-100 bg-emerald-50/70 p-4 md:p-6">
+        <section className="zeshu-gloss-card mt-4 rounded-3xl border border-emerald-100 bg-emerald-50/70 p-4 md:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-[#075E45]"><Bot size={22} /></span>

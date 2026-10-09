@@ -9,18 +9,18 @@ import { useCustomerLanguage } from '../components/CustomerLanguageProvider';
 export default function GetZeshuPage() {
   const { t } = useCustomerLanguage();
   return (
-    <main className="min-h-screen bg-[#f7f9f5] px-4 py-8 text-slate-900 md:px-8 md:py-14">
+    <main data-zeshu-experience="glossy" className="zeshu-experience "min-h-screen bg-[#f7f9f5] px-4 py-8 text-slate-900 md:px-8 md:py-14">
       <div className="mx-auto max-w-5xl">
         <Link href="/" className="text-sm font-black text-[#075E45]">← {t('Back to Zeshu')}</Link>
 
-        <section className="mt-6 overflow-hidden rounded-[32px] bg-[#083b27] p-6 text-white md:p-10">
+        <section className="zeshu-gloss-hero mt-6 overflow-hidden rounded-[32px] bg-[#083b27] p-6 text-white md:p-10">
           <p className="text-xs font-black uppercase tracking-[.18em] text-[#a6dfba]">{t('Get Zeshu')}</p>
           <h1 className="mt-2 max-w-3xl text-3xl font-black tracking-tight md:text-5xl">{t('Put Zeshu on your home screen.')}</h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-[#d9f3e3]">{t('Install the Zeshu web app today for faster access. Jagtial physical delivery and India-wide digital services stay available from the same account.')}</p>
         </section>
 
         <section className="mt-6 grid gap-5 md:grid-cols-[1fr_320px]">
-          <div className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm md:p-8">
+          <div className="zeshu-gloss-card rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm md:p-8">
             <h2 className="text-2xl font-black">{t('Install on this device')}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">{t('On supported Android browsers, tap Install Zeshu. If your browser does not show an install prompt, use Add to Home screen from the browser menu.')}</p>
             <div className="mt-5 grid max-w-sm gap-3"><PwaInstallButton /><ShareZeshuButton /></div>
