@@ -1,0 +1,113 @@
+name: Safely activate existing Meta encryption key Worker version
+
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/meta-safe-binding-promotion.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-production-release
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Promote only an identical-code Worker version with the saved Meta key
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const base='https://api.cloudflare.com/client/v4/accounts/'+process.env.CF_ACCOUNT_ID+
+            '/workers/scripts/zeshu-web-production-candidate';
+          const token=process.env.CF_API_TOKEN;
+          const OLD='7551befd-6c84-4329-bcd8-1837c0dae1c0';
+          const NEW='a5f2a157-8b9c-4e82-a3cf-323134304250';
+          const KEY='WHATSAPP_META_TOKEN_ENCRYPTION_KEY';
+          if(!process.env.CF_ACCOUNT_ID || !token)throw Error('Missing Cloudflare credentials.');
+          const api=async(path,options={})=>{
+            const res=await fetch(base+path,{
+              ...options,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json',...options.headers},
+              signal:AbortSignal.timeout(20000),redirect:'error'});
+            if(!res.ok)throw Error('Cloudflare HTTP '+res.status+' for '+path);
+            const body=await res.json();
+            if(!body.success)throw Error('Cloudflare deployment API rejected operation '+path);
+            return body.result;
+          };
+          const active=async()=>{
+            const r=await api('/deployments');
+            const all=Array.isArray(r)?r:r?.deployments;
+            if(!Array.isArray(all)||!all.length)throw Error('No active deployment metadata.');
+            all.sort((a,b)=>Date.parse(b.created_on||0)-Date.parse(a.created_on||0));
+            const v=all[0].versions||[];
+            if(v.length!==1 || Number(v[0].percentage)!==100)throw Error('Require one 100%-traffic Worker version.');
+            return v[0].version_id;
+          };
+          const live=await active();
+          if(live===NEW){
+            console.log('Already active on correct key-bound Worker version; no deployment needed.');
+            process.exit(0);
+          }
+          if(live!==OLD)throw Error('Worker active version has changed; refusing unsafe promotion.');
+          const before=await api('/versions/'+OLD);
+          const after=await api('/versions/'+NEW);
+          if(before.resources?.script?.etag!==after.resources?.script?.etag
+            || !before.resources?.script?.etag)throw Error('Worker code fingerprint mismatch.');
+          if(JSON.stringify(before.resources?.script_runtime??{})!==JSON.stringify(after.resources?.script_runtime??{}))
+            throw Error('Worker runtime differs.');
+          const names=x=>{
+            if(!Array.isArray(x))throw Error('Binding metadata missing.');
+            return x.map(b=>b.name+'|'+b.type).sort();
+          };
+          const oldB=before.resources?.bindings, newB=after.resources?.bindings;
+          const prior=names(oldB),next=names(newB);
+          const extra=next.filter(x=>!prior.includes(x));
+          if(extra.length!==1 || extra[0]!==KEY+'|secret_text' ||
+            prior.some(x=>!next.includes(x))) {
+            // Cloudflare may call the secret binding 'secret_text' or 'secret_text_jwt'
+            // in future; fail closed instead of promoting unexpectedly changed assets.
+            throw Error('Worker binding changes are not exactly the expected Meta secret.');
+          }
+          // Plaintext bindings must be identical; never print their values.
+          for(const b of oldB){
+            if(b.type==='plain_text'){
+              const match=newB.find(n=>n.name===b.name&&n.type===b.type);
+              if(!match||b.text!==match.text)throw Error('Public config values changed; abort.');
+            }
+          }
+          console.log('Verified: exact same Worker code, runtime and pre-existing bindings; only Meta key added.');
+          await api('/deployments',{method:'POST',
+            body:JSON.stringify({strategy:'percentage',
+              versions:[{version_id:NEW,percentage:100}],
+              annotations:{'workers/message':'Activate already-saved Meta key with same verified code; no secrets rotated'}})});
+          if(await active()!==NEW)throw Error('Deployment did not become 100% active.');
+          const current=await api('/versions/'+NEW);
+          if(!current.resources?.bindings?.some(b=>b.name===KEY))
+            throw Error('Active version still lacks Meta key binding.');
+          // Existing customer-facing functionality must remain healthy; do not
+          // exercise checkout, send messages, or change WhatsApp toggles.
+          const routes=['https://zeshu.in/','https://zeshu.in/admin/whatsapp','https://zeshu.in/policies'];
+          let safe=true;
+          for(const url of routes){
+            try{
+              const res=await fetch(url,{signal:AbortSignal.timeout(12000),redirect:'follow'});
+              if(!res.ok || res.headers.get('server')!=='cloudflare')safe=false;
+            }catch{safe=false;}
+          }
+          if(!safe){
+            // Restore exactly the previously active version for customer safety.
+            await api('/deployments?force=true',{method:'POST',
+              body:JSON.stringify({strategy:'percentage',versions:[{version_id:OLD,percentage:100}],
+                annotations:{'workers/message':'Automatic rollback: post-promotion website smoke failed'}})});
+            throw Error('Customer smoke verification failed; prior Worker version restored.');
+          }
+          console.log('SUCCESS: identical-code version with Meta encryption key serves 100% traffic; customer routes healthy.');
+          NODE
