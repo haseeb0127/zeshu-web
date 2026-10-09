@@ -1,0 +1,79 @@
+name: Read-only Meta secret binding audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/meta-active-binding-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Inspect active Cloudflare Worker binding metadata only
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          // Purely read-only metadata inspection. Never log binding values,
+          // API response bodies, secrets, HTTP headers or Cloudflare tokens.
+          const account=process.env.CF_ACCOUNT_ID, token=process.env.CF_API_TOKEN;
+          if (!account || !token) throw Error('Cloudflare inspection credentials unavailable in GitHub Actions.');
+          const name='zeshu-web-production-candidate';
+          const key='WHATSAPP_META_TOKEN_ENCRYPTION_KEY';
+          const api='https://api.cloudflare.com/client/v4/accounts/' + encodeURIComponent(account) +
+            '/workers/scripts/' + encodeURIComponent(name);
+          const read = async (path) => {
+            const response=await fetch(api + path, {
+              headers:{Authorization:'Bearer '+token},redirect:'error',
+              signal:AbortSignal.timeout(15000),
+            });
+            if (!response.ok) return {error:'HTTP_'+response.status};
+            const payload=await response.json();
+            return payload?.success === false ? {error:'API_FAILED'} : {data:payload.result};
+          };
+          function metadataContainsName(value, depth=0) {
+            if (depth > 5 || value === null || typeof value !== 'object') return false;
+            if (value.name === key) return true;
+            return Object.values(value).some(v => metadataContainsName(v,depth+1));
+          }
+          const dep=await read('/deployments');
+          const deployments=Array.isArray(dep.data)?dep.data:Array.isArray(dep.data?.deployments)?dep.data.deployments:[];
+          deployments.sort((a,b)=>Date.parse(b.created_on||0)-Date.parse(a.created_on||0));
+          const candidates=Array.isArray(deployments[0]?.versions)?deployments[0].versions:[];
+          const active=candidates.find(x=>Number(x.percentage)>=99) ||
+            candidates.slice().sort((a,b)=>Number(b.percentage||0)-Number(a.percentage||0))[0];
+          const v=active?.version_id?await read('/versions/'+encodeURIComponent(active.version_id)):
+            {error:'NO_ACTIVE_DEPLOYMENT'};
+          const settings=await read('/settings');
+          const names=await read('/secrets');
+          let activeBinding = 'UNKNOWN';
+          if (v.data && v.data.resources?.bindings != null)
+            activeBinding = metadataContainsName(v.data.resources.bindings)?'PRESENT':'ABSENT';
+          const scriptBinding = settings.data?.bindings != null
+            ? (metadataContainsName(settings.data.bindings)?'PRESENT':'ABSENT'):'UNKNOWN';
+          const list=Array.isArray(names.data)?names.data:Array.isArray(names.data?.result)?names.data.result:null;
+          const listedSecret=list ? (list.some(x=>x?.name===key)?'PRESENT':'ABSENT'):'UNKNOWN';
+          console.log(JSON.stringify({
+            worker:name,
+            activeVersion:active?.version_id?.slice(0,12)??'UNAVAILABLE',
+            activeTrafficPercentage:active?.percentage??null,
+            activeVersionMetaKeyBinding:activeBinding,
+            scriptSettingsMetaKeyBinding:scriptBinding,
+            secretDeclaredForScript:listedSecret,
+            metadataReadErrors:{
+              deployments:dep.error??null,
+              version:v.error??null,
+              settings:settings.error??null,
+              secrets:names.error??null,
+            },
+          },null,2));
+          NODE
