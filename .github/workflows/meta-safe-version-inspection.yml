@@ -48,8 +48,8 @@ jobs:
           const publicShape = binds=>(Array.isArray(binds)?binds:[]).map(b=>b.name+'|'+b.type).sort();
           const currentShape=publicShape(currentBindings);
           const versions=await read('/versions?per_page=30');
-          const rows=Array.isArray(versions)?versions:versions?.versions;
-          if(!Array.isArray(rows))throw Error('Version list unavailable.');
+          const rows=Array.isArray(versions)?versions:versions?.versions ?? versions?.items ?? versions?.data ?? versions?.results;
+          if(!Array.isArray(rows))throw Error('Version list shape unknown; keys: '+Object.keys(versions||{}).join(','));
           const recent=rows.filter(v=>v.id!==active.version_id).slice(0,25);
           const checks=await Promise.all(recent.map(async v=>{
             try{
