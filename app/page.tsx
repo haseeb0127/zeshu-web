@@ -15,7 +15,7 @@ import {
   Tv, HeartHandshake, Plus, Minus, ShoppingBag, X, LogOut, Ticket, QrCode,
   Droplets, Wifi, Car, Landmark, ShieldCheck, PhoneCall, Phone, Package, Flame, BadgeCheck,
   History, ChevronDown, CheckSquare, Square, Clock, CheckCircle, Menu, Info, AlertCircle, BookUser, Truck, Receipt, SlidersHorizontal,
-  Crown, MessageCircle, Home, Share2
+  Crown, MessageCircle, Home, Share2, Bell
 } from 'lucide-react';
 import { customerSupabase } from './lib/browser-supabase';
 import { isJagtialDeliveryCity } from './lib/service-scope';
@@ -2955,16 +2955,16 @@ export default function ZeshuSuperApp() {
       <header className="fixed top-0 z-40 w-full border-b border-slate-200 bg-white pt-[env(safe-area-inset-top)] shadow-[0_2px_10px_rgba(15,23,42,.05)] lg:pt-0">
         <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 lg:py-0 lg:h-[88px] flex flex-col lg:flex-row items-center justify-between gap-3 lg:gap-4 2xl:gap-8">
           <div className="flex min-w-0 flex-wrap items-center justify-between w-full lg:w-auto gap-2 sm:gap-3 lg:flex-nowrap lg:items-center">
-            <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-3 sm:gap-4 lg:w-auto lg:gap-6">
+            <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-2 sm:gap-4 lg:w-auto lg:gap-6">
               <button aria-label="Go to Zeshu home" className="flex shrink-0 items-center gap-2 lg:gap-3 lg:border-r border-gray-200/60 lg:pr-6 active:scale-[0.97] transition-transform" onClick={goToHome}>
-                <img src="/zeshu-bag-logo.svg" width="240" height="280" alt="ZESHU" className="h-[74px] w-[65px] shrink-0 rounded-[18px] object-contain drop-shadow-[0_6px_8px_rgba(0,70,40,.18)] sm:h-20 sm:w-[70px] lg:h-[70px] lg:w-[60px]" />
+                <img src="/zeshu-bag-logo.svg" width="240" height="280" alt="ZESHU" className="h-[66px] w-[58px] shrink-0 rounded-[18px] object-contain drop-shadow-[0_6px_8px_rgba(0,70,40,.18)] sm:h-20 sm:w-[70px] lg:h-[70px] lg:w-[60px]" />
               </button>
               <button type="button" aria-label="Detect or change delivery location" className="flex min-w-0 flex-1 flex-col cursor-pointer rounded-lg bg-transparent px-1 py-2 text-left transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#075E45] lg:max-w-[220px]" onClick={handleAutoDetectLocation}>
                 <div className="flex min-w-0 items-center gap-1.5 text-[12px] font-black md:text-[15px]"><span className="truncate">{currentAddress !== 'Location not set' ? t('Deliver to') : t('Set your address')}</span><MapPin size={14} className="shrink-0 text-[#075E45]"/></div>
                 <div className="mt-0.5 flex min-w-0 items-center text-[10px] font-medium text-[#6B7280] md:text-xs"><span className="truncate">{currentAddress === 'Location not set' ? t("See what's available near you") : currentAddress}</span><ChevronDown size={14} className="ml-1 shrink-0"/></div>
               </button>
             </div>
-            <LanguageSwitcher className="shrink-0 lg:hidden" compact />
+            <div className="flex shrink-0 items-center gap-1 lg:hidden"><LanguageSwitcher compact /><button aria-label="View notifications and account updates" onClick={() => user ? openAccountHome() : setIsAuthModalOpen(true)} className="grid h-10 w-9 place-items-center rounded-xl text-slate-800"><Bell size={22}/></button><button aria-label="Open shopping cart" onClick={() => setIsCartOpen(true)} className="relative grid h-10 w-9 place-items-center rounded-xl text-slate-800"><ShoppingBag size={23}/><span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-[#075E45] px-1 text-[10px] font-black text-white">{cartItemCount}</span></button></div>
           </div>
 
           <div className="w-full min-w-0 lg:flex-1 max-w-3xl order-last lg:order-none mt-1 lg:mt-0">
