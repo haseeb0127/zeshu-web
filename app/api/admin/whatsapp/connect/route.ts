@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
+import { env as runtimeEnv } from 'node:process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { getRuntimeEnvValue, getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
 import {
   META_CONNECT_COOKIE, META_CONNECT_TTL_MS, makeMetaConnectChallenge,
   verifyMetaConnectChallenge, exchangeMetaSignupCode, encryptMetaToken, metaIdValid, graphVersionValid,
+  diagnoseMetaEncryptionKey, type MetaEncryptionKeyStatus,
 } from '@/app/lib/meta-embedded-signup';
 
 export const runtime = 'nodejs';
@@ -63,13 +65,16 @@ export async function GET(request:Request){
   if(Buffer.from(config.storageKey,'base64').length!==32) missing.push('WHATSAPP_META_TOKEN_ENCRYPTION_KEY');
   const payload:{
     configured:boolean;missingSetup:string[];appId:string|null;configId:string|null;
-    graphVersion:string|null;nonce?:string;
+    graphVersion:string|null;nonce?:string; encryptionKeyStatus:MetaEncryptionKeyStatus;
     connection:object|null; safeToSend:boolean;
   } = {
     configured:config.ready,missingSetup:missing,
     appId:config.ready?config.appId:null,
     configId:config.ready?config.configId:null,
     graphVersion:config.ready?config.graphVersion:null,
+    encryptionKeyStatus:diagnoseMetaEncryptionKey(
+      runtimeEnv['WHATSAPP_META_TOKEN_ENCRYPTION_KEY'], config.storageKey,
+    ),
     connection:connection ? {
       wabaId:connection.waba_id,phoneNumberId:connection.phone_number_id,
       phoneNumber:connection.display_phone_number,verifiedName:connection.verified_name,

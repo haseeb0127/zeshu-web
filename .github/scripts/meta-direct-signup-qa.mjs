@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   makeMetaConnectChallenge,verifyMetaConnectChallenge,encryptMetaToken,
-  decryptMetaToken,exchangeMetaSignupCode,
+  decryptMetaToken,exchangeMetaSignupCode,diagnoseMetaEncryptionKey,
 } from '../../app/lib/meta-embedded-signup.ts';
 
 const secret='test-only-not-a-real-Meta-app-secret-2026';
@@ -14,6 +14,10 @@ assert.equal(verifyMetaConnectChallenge(challenge.cookieValue,challenge.nonce,'a
 assert.equal(verifyMetaConnectChallenge(challenge.cookieValue,challenge.nonce,uid,secret,now+11*60000),false);
 assert.equal(verifyMetaConnectChallenge(challenge.cookieValue+'a',challenge.nonce,uid,secret,now+2000),false);
 const key=Buffer.alloc(32,21).toString('base64');
+assert.equal(diagnoseMetaEncryptionKey(undefined,''),'NOT_VISIBLE_IN_ACTIVE_WORKER');
+assert.equal(diagnoseMetaEncryptionKey(key,''),'FILTERED_BY_RUNTIME_ENV');
+assert.equal(diagnoseMetaEncryptionKey('abc','abc'),'INVALID_BASE64_OR_LENGTH');
+assert.equal(diagnoseMetaEncryptionKey(key,key),'VALID_IN_ACTIVE_WORKER');
 const encrypted=encryptMetaToken('EAATestOnlyNotRealMetaToken123',key);
 assert.ok(!JSON.stringify(encrypted).includes('EAATest'));
 assert.equal(decryptMetaToken(encrypted,key),'EAATestOnlyNotRealMetaToken123');

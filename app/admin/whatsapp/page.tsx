@@ -13,6 +13,7 @@ type MetaConnection = {
 type MetaSetup = {
   configured:boolean;missingSetup:string[];appId:string|null;configId:string|null;
   graphVersion:string|null;nonce?:string;connection:MetaConnection|null;safeToSend:false;
+  encryptionKeyStatus:'NOT_VISIBLE_IN_ACTIVE_WORKER'|'FILTERED_BY_RUNTIME_ENV'|'INVALID_BASE64_OR_LENGTH'|'VALID_IN_ACTIVE_WORKER';
 };
 type MetaJsSdk = {
   init:(opts:{appId:string;cookie:boolean;xfbml:boolean;version:string})=>void;
@@ -221,6 +222,15 @@ export default function WhatsAppReadinessPage() {
             <p className="text-sm font-black text-amber-900">Meta Developer App configuration needed</p>
             <p className="mt-1 text-xs text-amber-900">Set up Facebook Login for Business (WhatsApp Embedded Signup v4), and enter the missing configuration into Cloudflare Worker settings. The button unlocks automatically once those values are present.</p>
             <p className="mt-3 break-words font-mono text-xs leading-6 text-amber-800">{meta?.missingSetup.join(' · ')||'Checking server configuration…'}</p>
+            {meta?.missingSetup.includes('WHATSAPP_META_TOKEN_ENCRYPTION_KEY') && <div className="mt-3 rounded-xl border border-amber-200 bg-white p-3 text-sm font-semibold text-amber-900" role="status">
+              {meta.encryptionKeyStatus==='NOT_VISIBLE_IN_ACTIVE_WORKER'
+                ? 'Diagnosis: the active Zeshu Worker cannot see this secret. It may exist in Cloudflare as a Ready version that is not serving traffic, or be saved to a different Worker/environment. Do not rotate the key. Check active rollout and Worker name.'
+                : meta.encryptionKeyStatus==='FILTERED_BY_RUNTIME_ENV'
+                  ? 'Diagnosis: the runtime configuration validator rejected this value. The secret exists, but Zeshu is filtering it before checking its format. Do not rotate yet.'
+                  : meta.encryptionKeyStatus==='INVALID_BASE64_OR_LENGTH'
+                    ? 'Diagnosis: Zeshu can see the secret, but its decoded value is not the required 32-byte Base64 key. Verify the saved value privately in Cloudflare. Do not share it.'
+                    : 'The key is valid in the running Worker. Refresh this page and check the remaining configuration.'}
+            </div>}
             <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-xs font-black text-[#075e45] underline">Open Meta for Developers ↗</a>
           </div>}
           {connectStatus&&<p role="status" aria-live="polite" className="mt-3 rounded-xl bg-slate-50 p-3 text-xs font-bold text-slate-800">{connectStatus}</p>}
