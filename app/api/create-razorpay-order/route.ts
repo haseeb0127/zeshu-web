@@ -128,9 +128,13 @@ export async function POST(request: Request) {
   let effectiveUrl = url;
   let effectiveAnonKey = anonKey;
   let effectiveServiceRoleKey = serviceRoleKey;
-  let effectiveRazorpayKeyId = process.env.RAZORPAY_KEY_ID;
-  let effectiveRazorpayKeySecret = process.env.RAZORPAY_KEY_SECRET;
-  let effectivePublicRazorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+  // Cloudflare production builds intentionally carry placeholder public/test
+  // values. Resolve merchant credentials from the Worker runtime instead of
+  // comparing a build-time NEXT_PUBLIC_* value with the real runtime key.
+  // The Checkout publishable key is the SAME test key used for order creation.
+  let effectiveRazorpayKeyId = await getRuntimeEnvValue('RAZORPAY_KEY_ID');
+  let effectiveRazorpayKeySecret = await getRuntimeEnvValue('RAZORPAY_KEY_SECRET');
+  let effectivePublicRazorpayKeyId = await getRuntimeEnvValue('NEXT_PUBLIC_RAZORPAY_KEY_ID');
 
   if (isStagingRequest) {
     const [stagingSupabase, stagingKeyId, stagingKeySecret, stagingPublicKeyId] = await Promise.all([
@@ -333,18 +337,22 @@ export async function POST(request: Request) {
 
     const keyId = effectiveRazorpayKeyId;
     const keySecret = effectiveRazorpayKeySecret;
-    const publicKeyId = effectivePublicRazorpayKeyId;
+    // Publishable rzp_test_ key IDs are safe to send to Checkout. Use the
+    // actual server merchant key for BOTH order creation and the browser,
+    // not the placeholder NEXT_PUBLIC_RAZORPAY_KEY_ID baked into the build.
+    const publicKeyId = keyId;
     const stagingPaymentSimulator = isStagingRequest && (
       isPlaceholderRazorpayValue(keyId)
       || isPlaceholderRazorpayValue(keySecret)
       || isPlaceholderRazorpayValue(publicKeyId)
     );
-    if (!stagingPaymentSimulator && (!keyId || !keySecret || !publicKeyId))
+    if (!stagingPaymentSimulator && (!keyId || !keySecret || isPlaceholderRazorpayValue(keySecret)))
       return checkoutError(requestId, 'PAYMENT_CONFIG', 'PAYMENT_SERVICE_UNAVAILABLE', 'Test payment configuration unavailable.', 503);
-    // Prevent the generic Razorpay payment failure caused by mismatched public/server keys.
-    if (!stagingPaymentSimulator && publicKeyId !== keyId)
-      return checkoutError(requestId, 'PAYMENT_CONFIG', 'PAYMENT_KEY_CONFIGURATION_INVALID', 'Test payment keys need administrator attention. No payment was started.', 503);
-    // Do not permit live checkout until the owner explicitly approves it.
+    // Staging still requires its own matching sandbox values, or uses the
+    // existing isolated staging simulator; production never simulates.
+    if (!stagingPaymentSimulator && isStagingRequest && effectivePublicRazorpayKeyId !== keyId)
+      return checkoutError(requestId, 'STAGING_CONFIG', 'PAYMENT_KEY_CONFIGURATION_INVALID', 'Staging test payment credentials do not match.', 503);
+    // Never activate Razorpay LIVE without explicit owner permission.
     if (!stagingPaymentSimulator && !String(keyId || '').startsWith('rzp_test_'))
       return checkoutError(requestId, 'PAYMENT_CONFIG', 'TEST_PAYMENT_KEYS_REQUIRED', 'Only Razorpay TEST payments are enabled.', 503);
     const razorpay = new Razorpay({
