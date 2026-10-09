@@ -80,9 +80,9 @@ export default function FashionLiveCatalogue() {
             const fromPrice = prices.length ? Math.min(...prices) : Number(product.price);
             const sizes = [...new Set(product.variants.map((variant) => variant.size_label).filter(Boolean))];
             const colours = [...new Set(product.variants.map((variant) => variant.colour_name).filter(Boolean))];
-            return <article key={product.id} className="rounded-2xl border border-slate-200 p-3">
-              <div className="aspect-square overflow-hidden rounded-xl bg-slate-50 p-3">
-                {product.image_url ? <img src={product.image_url} alt={product.name} className="h-full w-full object-contain" loading="lazy" /> : <div className="grid h-full place-items-center text-xs font-bold text-slate-400">Image unavailable</div>}
+            return <article key={product.id} className="zeshu-gloss-card rounded-2xl border border-slate-200 p-3">
+              <div className="zeshu-product-stage aspect-square overflow-hidden rounded-xl bg-slate-50 p-3">
+                {product.image_url ? <img src={product.image_url} alt={product.name} className="zeshu-product-photo h-full w-full object-contain" loading="lazy" /> : <div className="grid h-full place-items-center text-xs font-bold text-slate-400">Image unavailable</div>}
               </div>
               <h3 className="mt-3 line-clamp-2 text-sm font-black">{product.name}</h3>
               {product.brand && <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-[#075E45]">{product.brand}</p>}

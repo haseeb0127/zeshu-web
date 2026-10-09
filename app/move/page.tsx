@@ -44,9 +44,9 @@ function ServiceSection({ title, cards }: { title: string; cards: ServiceCard[] 
       <h2 className="text-lg font-black text-slate-950 md:text-xl">{t(title)}</h2>
       <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
-          <article key={card.title} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_16px_rgba(15,23,42,.04)]">
+          <article key={card.title} className="zeshu-gloss-card rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_16px_rgba(15,23,42,.04)]">
             <div className="flex items-start justify-between gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-[#075E45]" aria-hidden="true">{card.icon}</span>
+              <span className="zeshu-gloss-icon grid h-12 w-12 place-items-center rounded-2xl text-white" aria-hidden="true">{card.icon}</span>
               <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#075E45]">{t(card.regulatoryHold ? "Coming soon" : "Check availability")}</span>
             </div>
             <h3 className="mt-4 font-black text-slate-900">{t(card.title)}</h3>
@@ -70,7 +70,7 @@ export default function MoveTravelPage() {
   const { t } = useCustomerLanguage();
 
   return (
-    <main className="min-h-screen bg-[#f6faf7] px-4 py-6 text-slate-900 md:px-8 md:py-10">
+    <main data-zeshu-experience="glossy" className="zeshu-experience "min-h-screen bg-[#f6faf7] px-4 py-6 text-slate-900 md:px-8 md:py-10">
       <div className="mx-auto max-w-6xl">
         <div className="flex items-center justify-between gap-3">
           <Link href="/" className="inline-flex items-center gap-2 text-sm font-black text-[#075E45]">
@@ -79,7 +79,7 @@ export default function MoveTravelPage() {
           <LanguageSwitcher compact />
         </div>
 
-        <header className="mt-6 overflow-hidden rounded-[30px] bg-[#083b27] p-6 text-white shadow-xl md:p-9">
+        <header className="zeshu-gloss-hero mt-6 overflow-hidden rounded-[30px] bg-[#083b27] p-6 text-white shadow-xl md:p-9">
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="max-w-3xl">
               <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.16em] text-[#c9f2d8]">

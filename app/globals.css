@@ -170,3 +170,36 @@ input[aria-label="Search Zeshu"]:focus-visible { outline: none; box-shadow: none
 @media (prefers-reduced-motion: reduce) {
   .zeshu-installed-app-splash { transition: none; }
 }
+
+/* Zeshu Emerald Glass: shared customer app/PWA visual system. Actual catalogue
+   images and database values remain the source of truth; no fake pricing. */
+.zeshu-experience {
+ background-color:#f7faf7;
+ background-image:radial-gradient(ellipse at 12% 0,rgba(136,240,172,.15),transparent 38rem),
+                  radial-gradient(ellipse at 96% 18%,rgba(218,246,224,.18),transparent 35rem);
+}
+.zeshu-gloss-hero {position:relative;isolation:isolate;border:1px solid rgba(255,255,255,.18);
+ box-shadow:inset 0 1px rgba(255,255,255,.28),0 18px 38px rgba(7,64,43,.19);}
+.zeshu-gloss-hero::before {content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+ background:radial-gradient(ellipse at 83% 8%,rgba(224,255,228,.26),transparent 45%),
+ linear-gradient(124deg,rgba(255,255,255,.1),transparent 30%,transparent 66%,rgba(255,255,255,.08) 84%,transparent);}
+.zeshu-gloss-hero>*{position:relative;z-index:1}
+.zeshu-gloss-card {border-color:rgba(224,237,229,.9);
+ background-image:linear-gradient(145deg,rgba(255,255,255,.9),rgba(255,255,255,.28) 70%,rgba(235,249,241,.32));
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 5px 15px rgba(9,71,47,.085),0 13px 30px rgba(9,71,47,.044);
+ transition:transform .18s ease,box-shadow .18s ease;}
+.zeshu-gloss-icon,.zeshu-chat-orb {background:radial-gradient(circle at 30% 7%,#2ac78c,#0a9867 34%,#006e4b 69%,#004d36);
+ box-shadow:inset 0 2px 3px rgba(255,255,255,.37),inset 0 -3px 8px rgba(0,40,25,.27),0 8px 18px rgba(0,99,59,.22);}
+.zeshu-gloss-cta {background:linear-gradient(145deg,#128f60,#006e4a 69%,#005137);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.29),0 5px 13px rgba(0,96,58,.17);}
+.zeshu-product-stage {background:radial-gradient(ellipse at 48% 40%,#fff 4%,#f9fdf9 65%,#eaf5ed 100%);
+ border:1px solid rgba(222,239,229,.78);
+ box-shadow:inset 0 2px 7px rgba(22,81,53,.04),inset 0 -5px 13px rgba(22,81,53,.06);}
+.zeshu-product-photo {filter:drop-shadow(0 9px 8px rgba(18,50,30,.13));}
+.zeshu-chat-orb {border:1px solid rgba(255,255,255,.65);transition:transform .18s ease;}
+.zeshu-chat-panel {box-shadow:0 22px 60px rgba(5,59,37,.23),inset 0 1px 0 #fff;}
+@media(hover:hover) and (pointer:fine){.zeshu-gloss-card:hover{transform:translate3d(0,-2px,0);
+ box-shadow:inset 0 1px 0 #fff,0 15px 32px rgba(4,75,46,.13);}
+ .zeshu-chat-orb:hover{transform:translate3d(0,-2px,0);}
+ .zeshu-gloss-cta:hover{filter:brightness(1.08);}}
+@media(prefers-reduced-motion:reduce){.zeshu-gloss-card,.zeshu-chat-orb{transition:none;transform:none!important}}

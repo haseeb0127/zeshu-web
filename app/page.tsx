@@ -2913,7 +2913,7 @@ export default function ZeshuSuperApp() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F9F5] font-sans antialiased text-[#111827] overflow-x-hidden relative">
+    <div data-zeshu-experience="glossy" className="zeshu-experience min-h-screen bg-[#F7F9F5] font-sans antialiased text-[#111827] overflow-x-hidden relative">
       <LocationSelector open={locationSelectorOpen} initial={locationSelection} onClose={() => { setLocationSelectorOpen(false); setPendingAddProduct(null); }} onExploreDigital={() => { setLocationSelectorOpen(false); setPendingAddProduct(null); setActiveTab('recharge'); }} onConfirm={(selection, address) => {
         setDeliveryServiceability('ELIGIBLE');
         setLocationSelection(selection);

@@ -70,13 +70,13 @@ const sellerPrograms = [
 
 export default function FashionPage() {
   return (
-    <main className="min-h-screen bg-[#f8fbf8] text-slate-900">
+    <main data-zeshu-experience="glossy" className="zeshu-experience "min-h-screen bg-[#f8fbf8] text-slate-900">
       <div className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-12">
         <Link href="/" className="text-sm font-black text-[#075E45]">
           ← Back to Zeshu
         </Link>
 
-        <header className="mt-6 overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#143d2c_0%,#075E45_55%,#2f765a_100%)] p-6 text-white md:p-10">
+        <header className="zeshu-gloss-hero mt-6 overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#143d2c_0%,#075E45_55%,#2f765a_100%)] p-6 text-white md:p-10">
           <div className="max-w-3xl">
             <p className="text-xs font-black uppercase tracking-[.18em] text-emerald-100">
               Zeshu Fashion
@@ -118,9 +118,9 @@ export default function FashionPage() {
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {fashionGroups.map((group) => (
-              <article key={group.title} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <article key={group.title} className="zeshu-gloss-card rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="flex items-center gap-3">
-                  <span className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-50 text-xl" aria-hidden="true">
+                  <span className="zeshu-gloss-icon grid h-12 w-12 place-items-center rounded-2xl text-xl text-white" aria-hidden="true">
                     {group.icon}
                   </span>
                   <h3 className="font-black">{group.title}</h3>
