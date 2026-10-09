@@ -5,6 +5,27 @@ export const META_CONNECT_TTL_MS = 10 * 60 * 1000;
 export const metaIdValid = (id: unknown): id is string => typeof id === 'string' && /^[0-9]{5,32}$/.test(id);
 export const graphVersionValid = (value: unknown): value is string => typeof value === 'string' && /^v[0-9]+\.[0-9]+$/.test(value);
 
+/**
+ * Admin-only diagnostic. Never send or log the key, its prefix, suffix,
+ * actual byte count, digest or ciphertext. A Cloudflare "Ready" variable
+ * version need not be the version currently serving site traffic.
+ */
+export type MetaEncryptionKeyStatus =
+  | 'NOT_VISIBLE_IN_ACTIVE_WORKER'
+  | 'FILTERED_BY_RUNTIME_ENV'
+  | 'INVALID_BASE64_OR_LENGTH'
+  | 'VALID_IN_ACTIVE_WORKER';
+
+export function diagnoseMetaEncryptionKey(rawValue: unknown, effectiveValue: string): MetaEncryptionKeyStatus {
+  if (typeof rawValue !== 'string' || rawValue.length === 0)
+    return 'NOT_VISIBLE_IN_ACTIVE_WORKER';
+  if (!effectiveValue)
+    return 'FILTERED_BY_RUNTIME_ENV';
+  return Buffer.from(effectiveValue, 'base64').length === 32
+    ? 'VALID_IN_ACTIVE_WORKER' : 'INVALID_BASE64_OR_LENGTH';
+}
+
+
 function mac(value: string, secret: string): Buffer {
   return createHmac('sha256', secret).update(value).digest();
 }
