@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import Link from "next/link";
+import Link from "@/app/components/DocumentLink";
 import { usePathname } from "next/navigation";
 import { Bot, MessageCircle, Send, Sparkles, X, ShieldCheck, ArrowUpRight } from "lucide-react";
 import { customerSupabase } from "@/app/lib/browser-supabase";

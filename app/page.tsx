@@ -3,7 +3,7 @@
 "use client";
 import Script from 'next/script';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import Link from 'next/link';
+import Link from './components/DocumentLink';
 import OrderStatusTimeline from './components/OrderStatusTimeline';
 import ProductCard from './components/ProductCard';
 import ReviewForm, { ReviewProduct } from './components/ReviewForm';

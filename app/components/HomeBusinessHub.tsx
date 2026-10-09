@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/app/components/DocumentLink";
 import { useEffect, useRef, useState } from "react";
 import { BadgeCheck, Car, ChevronLeft, ChevronRight, Paintbrush, PartyPopper, Receipt, ShoppingBag, ShoppingBasket, CreditCard, CarFront, Grid2X2, Bot, Sparkles, ArrowUpRight } from "lucide-react";
 import ReferenceArtwork from "@/app/components/ReferenceArtwork";
