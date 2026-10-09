@@ -339,9 +339,14 @@ export async function POST(request: Request) {
       || isPlaceholderRazorpayValue(keySecret)
       || isPlaceholderRazorpayValue(publicKeyId)
     );
-    if (!stagingPaymentSimulator && (!keyId || !keySecret)) {
-      return checkoutError(requestId, stage, 'PAYMENT_SERVICE_UNAVAILABLE', 'Payment service is unavailable.', 503);
-    }
+    if (!stagingPaymentSimulator && (!keyId || !keySecret || !publicKeyId))
+      return checkoutError(requestId, 'PAYMENT_CONFIG', 'PAYMENT_SERVICE_UNAVAILABLE', 'Test payment configuration unavailable.', 503);
+    // Prevent the generic Razorpay payment failure caused by mismatched public/server keys.
+    if (!stagingPaymentSimulator && publicKeyId !== keyId)
+      return checkoutError(requestId, 'PAYMENT_CONFIG', 'PAYMENT_KEY_CONFIGURATION_INVALID', 'Test payment keys need administrator attention. No payment was started.', 503);
+    // Do not permit live checkout until the owner explicitly approves it.
+    if (!stagingPaymentSimulator && !keyId.startsWith('rzp_test_'))
+      return checkoutError(requestId, 'PAYMENT_CONFIG', 'TEST_PAYMENT_KEYS_REQUIRED', 'Only Razorpay TEST payments are enabled.', 503);
     const razorpay = new Razorpay({
       key_id: keyId || 'rzp_test_staging_simulator',
       key_secret: keySecret || 'staging-simulator-only',

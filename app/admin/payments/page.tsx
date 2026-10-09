@@ -58,6 +58,9 @@ const percentToBps = (value: string) => {
 export default function AdminPaymentsPage() {
   const [profiles, setProfiles] = useState<GatewayProfile[]>([]);
   const [attempts, setAttempts] = useState<Attempt[]>([]);
+  const [razorpayChecks,setRazorpayChecks]=useState<Array<{created_at:string;reservation_status:string;gateway_order_status?:string;payment_attempts?:Array<{status:string;method:string;error_code?:string;error_reason?:string;error_step?:string}>;error?:string}>>([]);
+  const [razorpayBusy,setRazorpayBusy]=useState(false);
+  const [razorpayError,setRazorpayError]=useState("");
   const [routerMode, setRouterMode] = useState("off");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState("");
@@ -97,6 +100,18 @@ export default function AdminPaymentsPage() {
     }
   };
 
+  const diagnoseRazorpay = async () => {
+    setRazorpayBusy(true);setRazorpayError("");
+    try{
+      const token=await getToken();
+      if(!token)throw new Error('Admin session expired.');
+      const response=await fetch('/api/admin/payments/diagnostics',{headers:{Authorization:`Bearer ${token}`},cache:'no-store'});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(data.error||'Razorpay status unavailable.');
+      setRazorpayChecks(Array.isArray(data.checks)?data.checks:[]);
+    }catch(e){setRazorpayError(e instanceof Error?e.message:'Razorpay status unavailable.');}
+    finally{setRazorpayBusy(false);}
+  };
   const loadPhonePeReadiness = async () => {
     try {
       const token = await getToken();
@@ -338,6 +353,16 @@ export default function AdminPaymentsPage() {
           </div>)}
         </section>}
 
+      <section className="mt-6 rounded-2xl border border-amber-100 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-black">Razorpay TEST failure diagnosis</h2><p className="mt-1 text-xs text-slate-500">Read-only gateway checks; no payments or personal details are exposed.</p></div><button type="button" onClick={()=>void diagnoseRazorpay()} disabled={razorpayBusy} className="rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-black text-white disabled:opacity-50">{razorpayBusy?'Checking…':'Inspect TEST failures'}</button></div>
+        {razorpayError&&<p role="alert" className="mt-3 text-xs text-red-700">{razorpayError}</p>}
+        {razorpayChecks.length>0&&<div className="mt-3 space-y-3">{razorpayChecks.map((c,i)=><div key={i} className="rounded-xl bg-amber-50 p-3 text-xs">
+          <p className="font-black">{new Date(c.created_at).toLocaleString()} · Zeshu: {c.reservation_status} · Razorpay: {c.gateway_order_status||'unknown'}</p>
+          {c.error&&<p className="mt-1 text-red-700">{c.error}</p>}
+          {c.payment_attempts?.length===0&&<p className="mt-1 text-slate-500">No payment attempt visible at Razorpay.</p>}
+          {c.payment_attempts?.map((p,j)=><p key={j} className="mt-1 text-slate-700">Attempt {j+1}: {p.status} · {p.method||'unknown method'} · {p.error_code||'no error code'} · {p.error_reason||'no reason'} · {p.error_step||'no step'}</p>)}
+        </div>)}</div>}
+      </section>
       <section className="mt-6 rounded-2xl bg-white p-5 shadow-[0_4px_16px_rgba(19,32,25,.06)]">
         <h2 className="font-black">Recent routed payment attempts</h2>
         <p className="mt-1 text-xs text-slate-500">This stays empty until the new router is actually used. Existing Razorpay orders are not rewritten into this ledger.</p>

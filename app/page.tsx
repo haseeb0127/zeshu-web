@@ -104,6 +104,8 @@ const CHECKOUT_ERROR_MESSAGES: Record<string, string> = {
   PRODUCT_LOOKUP_FAILED: "We couldn't verify the products in your cart. Please try again.",
   RESERVATION_CREATE_FAILED: "We couldn't prepare your checkout. Please try again.",
   RAZORPAY_CREATE_FAILED: "We couldn't start the payment service. Please try again.",
+  PAYMENT_KEY_CONFIGURATION_INVALID: 'Zeshu test payment keys require attention. Please contact support.',
+  TEST_PAYMENT_KEYS_REQUIRED: 'Only Razorpay sandbox payments are enabled.',
   RESERVATION_BIND_FAILED: 'Unable to bind the checkout reservation. Please try again.',
   CHECKOUT_INTERNAL_ERROR: "We couldn't prepare your checkout. Please try again.",
   OUTSIDE_SERVICE_AREA: 'Fast physical delivery is currently available only in Jagtial. Digital services remain available across India.',
@@ -360,6 +362,7 @@ export default function ZeshuSuperApp() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckoutOpening, setIsCheckoutOpening] = useState(false);
   const [checkoutError, setCheckoutError] = useState<CheckoutErrorState | null>(null);
+  const [testCheckoutReady, setTestCheckoutReady] = useState(false);
   const [isCheckingPaymentStatus, setIsCheckingPaymentStatus] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
   const [brandFilter, setBrandFilter] = useState('ALL');
@@ -2823,9 +2826,12 @@ export default function ZeshuSuperApp() {
 
       let paymentSucceeded = false;
       let paymentAttemptFailed = false;
-      const isTestPayment = String(orderData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '').startsWith('rzp_test_');
+      const isTestPayment = String(orderData.keyId || '').startsWith('rzp_test_');
+      setTestCheckoutReady(isTestPayment);
+      if (isTestPayment) showToast('TEST: Choose Netbanking, then Success on the mock bank page. Do not use a real UPI app.');
       const options = {
-        key: orderData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, amount: Number(orderData.amount), currency: orderData.currency || 'INR', name: "Zeshu Super App", order_id: orderId,
+        key: orderData.keyId, amount: Number(orderData.amount), currency: orderData.currency || 'INR', name: "Zeshu Super App", order_id: orderId,
+        description: isTestPayment ? 'Sandbox only: use Netbanking mock-bank Success, not real UPI.' : 'Zeshu order',
         retry: { enabled: true },
         handler: async function (response: any) {
           paymentSucceeded = true;
@@ -2861,19 +2867,22 @@ export default function ZeshuSuperApp() {
         theme: { color: "#075E45" },
       };
       const rzp = new (window as any).Razorpay(options);
-      rzp.on('payment.failed', () => {
+      rzp.on('payment.failed', (event: any) => {
         paymentAttemptFailed = true;
+        const safe = (value: unknown) => typeof value === 'string' && /^[a-zA-Z0-9_ -]{1,64}$/.test(value) ? value.trim() : '';
+        const code = safe(event?.error?.code), reason = safe(event?.error?.reason), step = safe(event?.error?.step);
         setIsLoading(false);
         setIsCheckoutOpening(false);
         setIsCartOpen(true);
         setCheckoutError({
           code: isTestPayment ? 'RAZORPAY_TEST_PAYMENT_FAILED' : 'RAZORPAY_PAYMENT_FAILED',
+          requestId: typeof orderData.requestId === 'string' ? orderData.requestId : undefined,
           message: isTestPayment
-            ? 'This TEST payment was not completed. No real checkout was confirmed. You can retry using the Razorpay test instructions.'
-            : 'Your payment was not confirmed. If you see a bank debit, check its status with support before attempting another payment.',
+            ? 'Test payment failed. To simulate success, select Netbanking, choose a bank and select Success on the Razorpay mock page. Do not launch a real UPI app.'
+            : 'Payment is not confirmed. If your bank shows a debit, contact support before retrying.',
         });
-        // Suppress overlapping provider failure screens where supported.
-        try { rzp.close(); } catch { /* Razorpay may already have closed. */ }
+        if (code || reason || step) console.info('[Zeshu Razorpay failure]', { code, reason, step });
+        // Do not forcibly close Razorpay while it reports a recoverable failure.
       });
       rzp.open();
     } catch (error) {
@@ -3595,7 +3604,7 @@ export default function ZeshuSuperApp() {
                 {checkoutError.requestId && <p className="mt-2 text-[10px] font-medium text-amber-700">Reference: {checkoutError.requestId}</p>}
               </div>}
               <p className="mb-2 text-center text-[9px] leading-4 text-slate-500 md:text-[10px] md:leading-4">{t("By proceeding, you agree to Zeshu's")} <Link href="/policies#terms" className="font-black text-[#075E45] underline underline-offset-2">{t('Terms')}</Link>, <Link href="/policies#privacy" className="font-black text-[#075E45] underline underline-offset-2">{t('Privacy Policy')}</Link>, {t('and')} <Link href="/policies#cancellation-refunds" className="font-black text-[#075E45] underline underline-offset-2">{t('Cancellation & Refund Policy')}</Link>.</p>
-              {String(process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '').startsWith('rzp_test_') && <div role="note" className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-[11px] font-black text-amber-900">Razorpay TEST MODE · No real money or live order fulfillment</div>}
+              {(testCheckoutReady || String(process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '').startsWith('rzp_test_')) && <div role="note" data-test-checkout-guide="true" className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold leading-5 text-amber-900"><p className="font-black">Razorpay TEST MODE · No real money is collected.</p><p>For a success test: choose Netbanking, select any available bank, then press <strong>Success</strong> on Razorpay&apos;s mock bank page. Do not open Google Pay or another real UPI app.</p></div>
               <button disabled={cart.length === 0 || isLoading || isCheckoutOpening} onClick={() => void handleCartCheckout()} className="flex min-h-14 w-full items-center justify-between rounded-2xl bg-[#075E45] px-5 py-3.5 text-white font-black shadow-[0_8px_20px_rgba(7,94,69,.18)] disabled:bg-[#a7b6ac] md:px-6 md:text-base">
                 <span>{isLoading ? t('Preparing secure checkout…') : t('Proceed to secure payment')}</span><span>₹{finalCartTotal}</span>
               </button>
