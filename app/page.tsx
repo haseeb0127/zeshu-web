@@ -2774,7 +2774,7 @@ export default function ZeshuSuperApp() {
           setIsLoading(false);
           setIsCheckoutOpening(false);
           showCheckoutError(
-            "Secure checkout is temporarily unavailable. Your basket is saved and no new payment was started. Please try again later or contact support.",
+            "We couldn't open secure checkout just now. Your basket is saved. Please try again shortly, or contact support if money was deducted.",
             'CHECKOUT_SAFETY_HOLD',
             typeof orderData?.requestId === 'string' ? orderData.requestId : undefined,
           );
@@ -2924,18 +2924,37 @@ export default function ZeshuSuperApp() {
         paymentAttemptFailed = true;
         const safe = (value: unknown) => typeof value === 'string' && /^[a-zA-Z0-9_ -]{1,64}$/.test(value) ? value.trim() : '';
         const code = safe(event?.error?.code), reason = safe(event?.error?.reason), step = safe(event?.error?.step);
+        if (code || reason || step) console.info('[Zeshu checkout gateway diagnostics]', { code, reason, step });
         setIsLoading(false);
         setIsCheckoutOpening(false);
         setIsCartOpen(true);
-        setCheckoutError({
-          code: isTestPayment ? 'RAZORPAY_TEST_PAYMENT_FAILED' : 'RAZORPAY_PAYMENT_FAILED',
-          requestId: typeof orderData.requestId === 'string' ? orderData.requestId : undefined,
-          message: isTestPayment
-            ? 'Test payment failed. To simulate success, select Netbanking, choose a bank and select Success on the Razorpay mock page. Do not launch a real UPI app.'
-            : 'Payment is not confirmed. If your bank shows a debit, contact support before retrying.',
-        });
-        if (code || reason || step) console.info('[Zeshu Razorpay failure]', { code, reason, step });
-        // Do not forcibly close Razorpay while it reports a recoverable failure.
+        // Never initiate another charge automatically. Check the provider via
+        // our authenticated, read-only backend before allowing the next tap.
+        setIsCheckingPaymentStatus(true);
+        setCheckoutError(null);
+        void (async () => {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) throw new Error('Session unavailable');
+            const result = await fetch('/api/checkout/payment-status', {
+              headers: { Authorization: `Bearer ${session.access_token}` },
+              cache: 'no-store',
+            });
+            const confirmation = await result.json().catch(() => ({}));
+            if (!result.ok || confirmation.safeToRetry !== true) throw new Error('Confirmation unavailable');
+            // Only a provably unpaid order can be retried on a NEW customer tap.
+            setCheckoutError(null);
+          } catch {
+            setCheckoutError({
+              code: 'CHECKOUT_SAFETY_HOLD',
+              message: "We couldn't reopen secure checkout right now. Your basket is saved. If your bank shows a debit, contact support before trying again.",
+            });
+          } finally {
+            setIsCheckingPaymentStatus(false);
+          }
+        })();
+        // Razorpay's own hosted UI may show a declined attempt, which Zeshu
+        // cannot and must not misrepresent as a successful payment.
       });
       rzp.open();
     } catch (error) {
@@ -2948,16 +2967,6 @@ export default function ZeshuSuperApp() {
       setIsCheckoutOpening(false);
     }
     setIsLoading(false);
-  };
-
-  const handleContinueCurrentBasket = async () => {
-    if (isCheckoutOpening || isCheckingPaymentStatus) return;
-    setIsCheckingPaymentStatus(true);
-    try {
-      await handleCartCheckout(true);
-    } finally {
-      setIsCheckingPaymentStatus(false);
-    }
   };
 
   const handleRechargeCheckout = () => {
@@ -3571,7 +3580,6 @@ export default function ZeshuSuperApp() {
       {publicReviewProduct && <div className="fixed inset-0 z-[125] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="public-reviews-title"><div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"><div className="flex shrink-0 items-center justify-between border-b p-5"><div><h2 id="public-reviews-title" className="text-xl font-black">Reviews for {publicReviewProduct.name}</h2><p className="mt-1 text-xs text-slate-500">{t('Verified purchases only')}</p></div><button type="button" aria-label="Close reviews" onClick={() => setPublicReviewProduct(null)} className="rounded-xl bg-slate-100 p-2"><X size={18} /></button></div><div className="min-h-0 flex-1 overflow-y-auto p-5">{publicReviewsLoading ? <p className="py-8 text-center text-sm text-slate-500">{t('Loading reviews…')}</p> : publicReviews.length === 0 ? <p className="py-8 text-center text-sm text-slate-500">{t('No written reviews yet.')}</p> : <div className="space-y-3">{publicReviews.map((review: any, index) => <article key={`${review.updated_at || review.created_at}-${index}`} className="rounded-2xl border border-slate-100 p-4"><p className="text-amber-500">{'★'.repeat(Number(review.rating || 0))}</p><p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{review.comment}</p><div className="mt-3 flex items-center justify-between text-[11px] text-slate-500"><span>{t('Verified purchase')}</span><time>{new Date(review.updated_at || review.created_at).toLocaleDateString()}</time></div></article>)}</div>}</div></div></div>}
 
       {/* --- CART DRAWER WITH SMOOTH EDGES --- */}
-      {checkoutError?.code === 'ABANDONABLE_PAYMENT_CHECKOUT' && isCartOpen && <div role="status" className="fixed bottom-24 left-1/2 z-[115] w-[min(92vw,32rem)] -translate-x-1/2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950 shadow-2xl"><p className="font-black">{t('Previous checkout found')}</p><p className="mt-1 text-xs font-medium leading-5 text-amber-800">{t('Your previous payment attempt belongs to an older basket. We can safely close that checkout before starting this one.')}</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => void handleContinueCurrentBasket()} disabled={isCheckingPaymentStatus || isCheckoutOpening} className="rounded-xl bg-amber-700 px-3 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-60">{isCheckingPaymentStatus ? t('Closing previous checkout...') : t('Continue current basket')}</button><button type="button" onClick={() => setCheckoutError({ message: 'Previous checkout kept. Check its payment status before retrying.', code: 'PAYMENT_RECONCILIATION_REQUIRED' })} disabled={isCheckingPaymentStatus || isCheckoutOpening} className="rounded-xl border border-amber-700 px-3 py-2 text-xs font-black text-amber-800 disabled:opacity-60">{t('Keep previous checkout')}</button></div></div>}
       {isCartOpen && (
         <>
           <div className="fixed inset-0 bg-[#111827]/40 backdrop-blur-sm z-[60]" onClick={() => setIsCartOpen(false)}></div>
@@ -3639,7 +3647,7 @@ export default function ZeshuSuperApp() {
               <div className="mb-2 flex items-center justify-between gap-3"><span className="min-w-0 truncate text-[10px] font-medium text-slate-500 md:text-xs">{t('Stock and price are checked again before payment.')}</span><button type="button" onClick={clearCart} disabled={!cart.length || isCheckoutOpening} className="shrink-0 text-[10px] font-black text-red-600 disabled:text-slate-300 md:text-xs">{t('Clear cart')}</button></div>
               <details className="group mb-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[10px] text-slate-600 md:text-xs"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-black text-emerald-800"><span className="flex items-center gap-2"><ShieldCheck size={15} aria-hidden="true" /> {t('Secure checkout')}</span><ChevronDown size={15} aria-hidden="true" className="text-emerald-700 transition-transform group-open:rotate-180" /></summary><div className="pt-2 leading-5"><p>{t('Your final total and stock are verified before payment, and the order is confirmed only after server-side payment verification.')}</p><p className="mt-1 font-bold text-slate-500">{t('Never share your OTP, card CVV or UPI PIN with Zeshu support.')}</p><button type="button" onClick={() => { setIsCartOpen(false); openAiSupport(); }} className="mt-2 rounded-lg bg-white px-3 py-2 text-[10px] font-black text-emerald-800 shadow-sm md:text-xs">{t('Payment help')}</button></div></details>
               {checkoutError && checkoutError.code !== 'PAYMENT_RECONCILIATION_REQUIRED' && <div role="alert" aria-live="assertive" className="mb-3 rounded-2xl border border-amber-200 bg-[linear-gradient(145deg,#fff,#fff8e7)] px-4 py-4 text-sm text-amber-950 shadow-sm">
-                <p className="font-black">{checkoutError.code === 'CHECKOUT_SAFETY_HOLD' ? 'Your checkout is protected' : checkoutError.code?.startsWith('RAZORPAY_') ? 'Choose another payment option' : 'Please review your checkout'}</p>
+                <p className="font-black">{checkoutError.code === 'CHECKOUT_SAFETY_HOLD' ? 'Checkout is temporarily unavailable' : checkoutError.code?.startsWith('RAZORPAY_') ? 'Try another payment method' : 'Please review your checkout'}</p>
                 <p className="mt-1.5 text-xs font-medium leading-5">{checkoutError.message}</p>
                 {checkoutError.code?.startsWith('RAZORPAY_') && <p className="mt-2 text-xs text-slate-600">Your cart is saved. If a bank debit appears, contact support before retrying. Zeshu cannot confirm a successful payment from this message.</p>}
                 <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => setCheckoutError(null)} className="rounded-xl bg-[#075E45] px-3 py-2 text-xs font-black text-white">Review basket</button><Link href="/help" className="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-black text-[#075E45]">Contact support</Link></div>
@@ -3648,12 +3656,10 @@ export default function ZeshuSuperApp() {
               <p className="mb-2 text-center text-[9px] leading-4 text-slate-500 md:text-[10px] md:leading-4">{t("By proceeding, you agree to Zeshu's")} <Link href="/policies#terms" className="font-black text-[#075E45] underline underline-offset-2">{t('Terms')}</Link>, <Link href="/policies#privacy" className="font-black text-[#075E45] underline underline-offset-2">{t('Privacy Policy')}</Link>, {t('and')} <Link href="/policies#cancellation-refunds" className="font-black text-[#075E45] underline underline-offset-2">{t('Cancellation & Refund Policy')}</Link>.</p>
               {(testCheckoutReady || String(process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '').startsWith('rzp_test_')) && <div role="note" data-test-checkout-guide="true" className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold leading-5 text-amber-900">
                 <p className="font-black">Razorpay TEST MODE · No real money is collected.</p>
-                <p>For a success test: use <strong>Chrome</strong> (not an in-app browser), choose Netbanking and then <strong>Success</strong> on Razorpay&apos;s mock bank page. Never use a real UPI app.</p>
-                <p className="mt-1 text-amber-950">If checkout fails before you choose a bank, open <strong>zeshu.in</strong> directly in Chrome. An order can be created even when no payment attempt reaches Razorpay.</p>
-                <button type="button" onClick={() => {
+                <details className="mt-1"><summary className="cursor-pointer font-semibold underline underline-offset-2">How to complete a test purchase</summary><p className="mt-2">Use Chrome, choose Netbanking, then Success on Razorpay&apos;s mock bank page. Do not use a real UPI app.</p><button type="button" onClick={() => {
                   if (!navigator.clipboard?.writeText) { showToast('Open https://zeshu.in directly in Chrome.'); return; }
-                  void navigator.clipboard.writeText('https://zeshu.in/').then(() => showToast('Zeshu link copied. Paste it into Chrome to test checkout.')).catch(() => showToast('Open https://zeshu.in directly in Chrome.'));
-                }} className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-[11px] font-black text-emerald-800">Copy link to open in Chrome</button>
+                  void navigator.clipboard.writeText('https://zeshu.in/').then(() => showToast('Zeshu link copied. Paste it into Chrome.')).catch(() => showToast('Open https://zeshu.in directly in Chrome.'));
+                }} className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-[11px] font-black text-emerald-800">Copy website link</button></details>
               </div>}
               <button disabled={cart.length === 0 || isLoading || isCheckoutOpening || isCheckingPaymentStatus} onClick={() => void handleCartCheckout()} className="flex min-h-14 w-full items-center justify-between rounded-2xl bg-[#075E45] px-5 py-3.5 text-white font-black shadow-[0_8px_20px_rgba(7,94,69,.18)] disabled:bg-[#a7b6ac] md:px-6 md:text-base">
                 <span>{isCheckingPaymentStatus ? t('Securing your checkout…') : isLoading ? t('Preparing secure checkout…') : t('Proceed to secure payment')}</span><span>₹{finalCartTotal}</span>

@@ -145,6 +145,10 @@ jobs:
               await page.goBack({ waitUntil: 'domcontentloaded', timeout: 25000 });
               await page.locator('nav[aria-label="Explore Zeshu departments"]').waitFor({ state: 'visible', timeout: 15000 });
             }
+            // Checkout flow stays customer-friendly while reconciliation is
+            // server-side; never expose a manual previous-payment status panel.
+            const homepageScript = await page.locator('body').innerText();
+            assert(!homepageScript.includes('Checking previous payment'), 'Checkout status leaked into customer storefront');
             // Tap EVERY premium banner on mobile, navigate and return.
             // Catch black Android/WebView load errors and broken back navigation.
             const bannerRoutes = [

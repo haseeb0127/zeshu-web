@@ -57,10 +57,11 @@ const getProviderDiagnostics = (order: any, payments: any[] | null): ProviderDia
   paymentCount: Array.isArray(payments) ? payments.length : undefined,
 });
 
-// Razorpay lookups are read-only. One bounded retry smooths transient gateway
-// latency without ever retrying a charge or declaring an unknown status unpaid.
+// A customer's next click reconciles prior orders on the server before
+// anything new can be opened. Retry ONLY read-only gateway lookups; payment
+// attempts, captures and database mutations must never be retried blindly.
 const fetchProviderState = async (gateway: Razorpay, orderId: string) => {
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const [order, payments] = await Promise.all([
         gateway.orders.fetch(orderId),
@@ -69,8 +70,8 @@ const fetchProviderState = async (gateway: Razorpay, orderId: string) => {
       if (!Array.isArray((payments as any)?.items)) throw new Error('Provider payment list unavailable');
       return { order, payments };
     } catch (error) {
-      if (attempt === 1) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      if (attempt === 2) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)));
     }
   }
   throw new Error('Provider state unavailable');
