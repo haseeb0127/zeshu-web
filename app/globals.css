@@ -139,3 +139,8 @@ textarea:focus-visible {
   .zeshu-premium-home .zeshu-premium-department,
   .zeshu-premium-home .zeshu-premium-category {transition:none;}
 }
+
+/* Reference screenshot: keep the compact search clean on keyboard focus; the pill provides a ring. */
+input[aria-label="Search Zeshu"]:focus-visible { outline: none; box-shadow: none; }
+/* Blend the owner-approved grocery basket into the white Shop card. */
+.zeshu-premium-shop-card svg[data-reference-art="basket"] { -webkit-mask-image: linear-gradient(to right, transparent, #000 26%); mask-image: linear-gradient(to right, transparent, #000 26%); }

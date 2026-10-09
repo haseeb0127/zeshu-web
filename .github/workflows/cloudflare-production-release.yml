@@ -255,12 +255,19 @@ jobs:
               const response = await page.request.get('https://zeshu.in' + route);
               assert(response.ok(), `Customer service route unavailable: ${route}`);
             }
+            const mobileQuickNav = page.locator('nav[aria-label="Explore Zeshu departments"]');
+            await mobileQuickNav.waitFor({ state: 'visible', timeout: 10000 });
+            for (const item of ['Shop', 'Fashion', 'Pay', 'Move', 'Services']) {
+              assert((await mobileQuickNav.innerText()).includes(item), `Live mobile launch is missing ${item}`);
+            }
+            await page.setViewportSize({ width: 1280, height: 900 });
             const departmentNav = page.locator('[data-customer-department-nav="primary"]');
             await departmentNav.waitFor({ state: 'visible', timeout: 10000 });
             const departmentText = (await departmentNav.innerText()).replace(/\s+/g, ' ');
             for (const department of ['Shop', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Customer Service', 'Sell on Zeshu']) {
               assert(departmentText.includes(department), `Live homepage department navigation is missing ${department}`);
             }
+            await page.setViewportSize({ width: 390, height: 844 });
             const homepageText = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
             assert(!homepageText.includes('+91 95052 11212'), 'Live homepage must not expose the support phone number');
             const categoryText = await categories.innerText();

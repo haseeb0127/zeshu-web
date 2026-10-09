@@ -12,7 +12,7 @@ const REFERENCE = "https://d2ol7oe51mr4n9.cloudfront.net/user_3JEWOqisqN1dgwr4TY
 const slices = {
   logo: "27 86 114 119",
   hero: "303 450 385 434",
-  basket: "458 977 225 196",
+  basket: "486 977 197 196",
   grocery: "18 1188 125 106",
   fruit: "156 1188 128 106",
   dairy: "294 1188 129 106",
