@@ -183,7 +183,7 @@ jobs:
             curl -fsS -D "$headers" -o /dev/null "$base/"
             grep -qi '^server: cloudflare' "$headers" || { echo "$base is not fronted by Cloudflare"; exit 1; }
             grep -qi '^x-opennext: 1' "$headers" || { echo "$base is not serving the OpenNext Worker"; exit 1; }
-            for route in "/" "/policies" "/partners" "/app" "/scanner" "/help" "/move"; do
+            for route in "/" "/policies" "/partners" "/app" "/scanner" "/help" "/move" "/offline.html"; do
               code="$(curl -L -sS -o /tmp/live-body -w '%{http_code}' "$base$route" || true)"
               test "$code" = "200" || { echo "Expected 200 from $base$route, got $code"; exit 1; }
             done
@@ -272,6 +272,16 @@ jobs:
             const firstArt = page.locator('img[data-glossy-image="shop"]');
             await firstArt.waitFor({state:'attached',timeout:10000});
             assert((await firstArt.getAttribute('src'))?.includes('.webp'), 'Production must use optimized glossy 3D WebP images');
+            // Regression: navigate using real mobile taps and return to Home.
+            for (const route of ['/fashion', '/move', '/professional-services']) {
+              const link = page.locator('nav[aria-label="Explore Zeshu departments"] a[href="' + route + '"]');
+              await link.click();
+              await page.waitForURL(url => url.pathname === route, { timeout: 25000 });
+              await page.locator('main').first().waitFor({ state: 'visible', timeout: 15000 });
+              assert(!(await page.locator('body').innerText()).includes('This Zeshu page needs another try'), 'Mobile navigation failed: ' + route);
+              await page.goBack({ waitUntil: 'domcontentloaded', timeout: 25000 });
+              await page.locator('nav[aria-label="Explore Zeshu departments"]').waitFor({ state: 'visible', timeout: 15000 });
+            }
             const homeChat = page.locator('[data-zeshu-home-assistant="true"]');
             await homeChat.waitFor({state:'visible',timeout:10000});
             await homeChat.click();

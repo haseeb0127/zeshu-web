@@ -63,6 +63,10 @@ jobs:
 
             const categories = page.locator('[aria-label="Shop by Category"]');
             await categories.waitFor({ state: 'visible', timeout: 10000 });
+            // A public, pre-cached offline landing page prevents blank mobile failures.
+            const offlineFallback = await page.request.get(base + '/offline.html');
+            assert(offlineFallback.status() === 200, 'Offline recovery page is missing from staging');
+            assert((await offlineFallback.text()).includes('We couldn\'t connect to Zeshu'), 'Offline recovery copy is missing');
             const moveQuick = page.locator('section[aria-labelledby="zeshu-home-hub-title"]');
             await moveQuick.waitFor({ state: 'visible', timeout: 10000 });
             const moveEntry = moveQuick.locator('a[href="/move"]').first();
@@ -104,6 +108,17 @@ jobs:
             await homeChat.click();
             await page.locator('#zeshu-assistant-panel input[aria-label="Ask Zeshu Assistant"]').waitFor({state:'visible',timeout:10000});
             await page.locator('#zeshu-assistant-panel').getByRole('button',{name:'Close Zeshu Assistant'}).click();
+            // Exercise actual taps, not merely HTTP GETs: a mobile webview user
+            // must be able to open a department and return without a blank screen.
+            for (const route of ['/fashion', '/move', '/professional-services']) {
+              const link = moveQuick.locator('nav[aria-label="Explore Zeshu departments"] a[href="' + route + '"]');
+              await link.click();
+              await page.waitForURL(url => url.pathname === route, { timeout: 25000 });
+              await page.locator('main').first().waitFor({ state: 'visible', timeout: 15000 });
+              assert(!(await page.locator('body').innerText()).includes('This Zeshu page needs another try'), 'Department tap triggered the error boundary: ' + route);
+              await page.goBack({ waitUntil: 'domcontentloaded', timeout: 25000 });
+              await page.locator('nav[aria-label="Explore Zeshu departments"]').waitFor({ state: 'visible', timeout: 15000 });
+            }
             const allGlossyImages = moveQuick.locator('img[data-glossy-image]');
             assert(await allGlossyImages.count() === 9, 'All nine glossy 3D marketing artwork images must be configured');
             const referenceArtworkUrl = await allGlossyImages.first().getAttribute('src');
