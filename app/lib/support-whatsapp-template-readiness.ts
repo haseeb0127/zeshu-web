@@ -14,7 +14,7 @@ const safe = (v: unknown): string => typeof v === 'string' ? v.trim() : '';
 
 /** Sender sends parameterless utility templates. A dynamic header/body/button is incompatible. */
 export function requiresTemplateParameters(components: unknown): boolean {
-  if (!Array.isArray(components)) return true;
+  if (!Array.isArray(components) || !components.some(c => String(record(c)?.type || '').toUpperCase() === 'BODY' && safe(record(c)?.text))) return true;
   for (const component of components) {
     const row = record(component);
     if (!row) return true;
