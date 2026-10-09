@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import { createClient } from '@supabase/supabase-js';
 import { getRuntimeEnvValue, getRuntimeSupabaseEnv } from '../../../lib/runtime-env';
+import { reconcileCapturedTestCheckout } from '../../../lib/razorpay-captured-recovery';
 
 export const dynamic = 'force-dynamic';
 
@@ -214,6 +215,32 @@ export async function POST(request: Request) {
     if (consumeError && consumeError.message !== 'reward redemption not found') return NextResponse.json({ success: false, error: 'Reward reconciliation is temporarily unavailable.' }, { status: 503 });
     await safeEventUpdate(serviceClient, eventRecordId, { status: 'PROCESSED', processed_at: new Date().toISOString() });
     return NextResponse.json({ received: true, processed: true });
+  }
+
+  // Razorpay can capture a payment after the browser has closed and after
+  // Zeshu's inventory hold expired. A captured TEST payment cannot be abandoned
+  // or considered safe to retry. Safely recover if exact gateway proof and
+  // stock/fulfillment checks pass; otherwise preserve it for human review.
+  if (reservation.status === 'PAYMENT_PENDING' && new Date(reservation.expires_at).getTime() <= Date.now()) {
+    if (keyId.startsWith('rzp_test_')) {
+      const recovered = await reconcileCapturedTestCheckout({
+        gateway: razorpay,
+        serviceClient,
+        userId: String(reservation.user_id),
+        reservationId: String(reservation.id),
+        razorpayOrderId: orderId,
+        expectedTotalRupees: Number(reservation.expected_total_paid),
+        providerOrder,
+      });
+      if (recovered === 'RECOVERED') {
+        await safeEventUpdate(serviceClient, eventRecordId, {
+          status: 'PROCESSED', processed_at: new Date().toISOString(),
+        });
+        return NextResponse.json({ received: true, processed: true, recovered: true });
+      }
+    }
+    await safeEventUpdate(serviceClient, eventRecordId, { status: 'FAILED_REVIEW' });
+    return NextResponse.json({ received: true, review: true });
   }
 
   if (reservation.status !== 'EXPIRED') {
