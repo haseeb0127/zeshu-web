@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Razorpay from 'razorpay';
+import { isProvablyUnpaidRazorpayOrder } from '../../lib/razorpay-unpaid-order';
 import { randomUUID } from 'node:crypto';
 import { evaluateJagtialServiceArea, isJagtialServiceAreaEnforced } from '../../lib/service-area';
 import { getNationwideCourierQuotes, isNationwideCourierReady } from '../../lib/courier-server';
@@ -75,15 +76,7 @@ const fetchProviderState = async (gateway: Razorpay, orderId: string) => {
   throw new Error('Provider state unavailable');
 };
 
-const isRetryableProviderOrder = (order: any, payments: any[], expectedAmountPaise: number) => {
-  if (!order || Number(order.amount) !== expectedAmountPaise || String(order.currency || '').toUpperCase() !== 'INR') return false;
-  if (Number(order.amount_paid) !== 0 || Number(order.amount_due) !== expectedAmountPaise || order.partial_payment === true) return false;
-  const orderStatus = String(order.status || '').toLowerCase();
-  if (orderStatus === 'created') return payments.length === 0;
-  return orderStatus === 'attempted'
-    && payments.length > 0
-    && payments.every((payment) => String(payment?.status || '').toLowerCase() === 'failed');
-};
+const isRetryableProviderOrder = isProvablyUnpaidRazorpayOrder;
 
 const saveReservationLocationSnapshot = async (
   serviceClient: any,

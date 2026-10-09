@@ -98,8 +98,8 @@ const CHECKOUT_ERROR_MESSAGES: Record<string, string> = {
   MULTI_VENDOR_CART: "Items from different stores can't be combined in one order yet. Please order from one store at a time.",
   PRODUCT_UNAVAILABLE: 'One or more items are currently unavailable.',
   INSUFFICIENT_STOCK: 'Some items are no longer available in the requested quantity.',
-  ACTIVE_PAYMENT_CHECKOUT: 'You already have a payment checkout in progress. Complete it or try again after a few minutes.',
-  PAYMENT_RECONCILIATION_REQUIRED: "We're checking your previous payment. Please wait a moment before retrying.",
+  ACTIVE_PAYMENT_CHECKOUT: 'Secure checkout is being prepared. Please wait a moment.',
+  PAYMENT_RECONCILIATION_REQUIRED: "Secure checkout is being prepared. Please wait a moment.",
   CASH_RESERVATION_FAILED: 'Unable to reserve Zeshu Cash for checkout. Please try again.',
   PRODUCT_LOOKUP_FAILED: "We couldn't verify the products in your cart. Please try again.",
   RESERVATION_CREATE_FAILED: "We couldn't prepare your checkout. Please try again.",
@@ -2738,37 +2738,43 @@ export default function ZeshuSuperApp() {
           return await handleCartCheckout(true, true, true);
         }
         if ((code === 'PAYMENT_RECONCILIATION_REQUIRED' || code === 'ACTIVE_PAYMENT_CHECKOUT') && !automaticRecoveryTried) {
-          // Only a read-only backend Razorpay verification may authorize a second
-          // attempt. Never create another order when status is unknown/captured.
+          // Reconcile silently on the BACKEND. Customers click Pay only once.
+          // A bounded retry smooths transient gateway read errors, never a charge.
           setIsCheckingPaymentStatus(true);
+          let safeForAnotherAttempt = false;
           try {
             if (session?.access_token) {
-              const statusResponse = await fetch('/api/checkout/payment-status', {
-                method: 'GET',
-                cache: 'no-store',
-                headers: { Authorization: `Bearer ${session.access_token}` },
-              });
-              const statusData = await statusResponse.json().catch(() => ({}));
-              if (statusResponse.ok && statusData?.safeToRetry === true) {
-                setIsCheckingPaymentStatus(false);
-                setIsLoading(false);
-                setIsCheckoutOpening(false);
-                // Retry at most ONCE; create-order rechecks the provider and
-                // stock again, without requiring a manual status button.
-                return await handleCartCheckout(false, true, true);
+              for (let check = 0; check < 2; check++) {
+                const statusResponse = await fetch('/api/checkout/payment-status', {
+                  method: 'GET',
+                  cache: 'no-store',
+                  headers: { Authorization: `Bearer ${session.access_token}` },
+                }).catch(() => null);
+                const statusData = await statusResponse?.json().catch(() => ({}));
+                if (statusResponse?.ok && statusData?.safeToRetry === true) {
+                  safeForAnotherAttempt = true;
+                  break;
+                }
+                // A definitive safety hold must never trigger an automatic charge.
+                if (statusResponse?.ok && statusData?.status === 'CANNOT_CONFIRM') break;
+                if (check === 0) await new Promise(resolve => setTimeout(resolve, 650));
               }
             }
-          } catch {
-            // Unknown provider/network state must block, not double-charge.
           } finally {
             setIsCheckingPaymentStatus(false);
+          }
+          if (safeForAnotherAttempt) {
+            setIsLoading(false);
+            setIsCheckoutOpening(false);
+            // New checkout rechecks state and stock again. At most one replay.
+            return await handleCartCheckout(false, true, true);
           }
         }
         if (code === 'PAYMENT_RECONCILIATION_REQUIRED' || code === 'ACTIVE_PAYMENT_CHECKOUT' || code === 'ABANDONABLE_PAYMENT_CHECKOUT') {
           setIsLoading(false);
           setIsCheckoutOpening(false);
           showCheckoutError(
-            "We couldn't safely confirm the earlier attempt, so another payment wasn't started. Your basket is saved. Please try again later or contact support.",
+            "Secure checkout is temporarily unavailable. Your basket is saved and no new payment was started. Please try again later or contact support.",
             'CHECKOUT_SAFETY_HOLD',
             typeof orderData?.requestId === 'string' ? orderData.requestId : undefined,
           );
