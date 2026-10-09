@@ -55,7 +55,15 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
               :s.action==="fashion"?<Link href="/fashion" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>
               :<Link href={s.action==="weddings"?"/professional-services/weddings":s.action==="interiors"?"/professional-services/interiors":"/move"} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>}
             </div>
-          </div><div className="absolute -right-5 bottom-0 grid h-56 w-44 place-items-center opacity-100 md:right-8 md:bottom-1 md:h-72 md:w-64">{i===0?<img src="/zeshu-grocery-hero.svg" alt="" className="h-56 w-48 object-contain drop-shadow-[0_25px_24px_rgba(0,0,0,.48)] md:h-72 md:w-64"/>:<div className="grid h-28 w-28 place-items-center rounded-3xl border border-white/20 bg-white/10 shadow-xl backdrop-blur-sm md:h-40 md:w-40"><s.icon size={62}/></div>}</div>
+          </div><div className="absolute -right-5 bottom-0 grid h-56 w-44 place-items-center opacity-100 md:right-8 md:bottom-1 md:h-72 md:w-64">{i===0?<div className="relative isolate h-full w-full" aria-hidden="true">
+                <div className="absolute right-0 top-2 h-40 w-40 -rotate-6 overflow-hidden rounded-[40%] border-[5px] border-white/30 bg-white shadow-[0_24px_40px_rgba(0,28,15,.4)] md:right-0 md:top-0 md:h-60 md:w-60">
+                  <img src="https://images.pexels.com/photos/4451867/pexels-photo-4451867.jpeg?auto=compress&cs=tinysrgb&w=720" alt="" loading="eager" decoding="async" className="h-full w-full object-cover object-center" />
+                </div>
+                <div className="absolute -bottom-4 -left-8 h-44 w-44 md:-bottom-6 md:-left-5 md:h-64 md:w-64">
+                  <div className="absolute inset-4 rounded-full bg-emerald-300/30 blur-2xl" />
+                  <img src="/zeshu-grocery-hero.svg" alt="" className="relative h-full w-full object-contain drop-shadow-[0_22px_18px_rgba(0,20,12,.58)]" />
+                </div>
+              </div>:<div className="grid h-28 w-28 place-items-center rounded-3xl border border-white/20 bg-white/10 shadow-xl backdrop-blur-sm md:h-40 md:w-40"><s.icon size={62}/></div>}</div>
         </article>)}
       </div>
       <div className="flex items-center justify-between px-1 py-3"><div className="flex gap-1.5">{slides.map((s,i)=><button key={s.title} onClick={()=>go(i)} aria-label={`Promotion ${i+1}`} className={`h-2 rounded-full ${index===i?"w-6 bg-[#075E45]":"w-2 bg-slate-300"}`}/>)}</div><div className="flex gap-2"><button onClick={()=>go(index-1)} aria-label="Previous promotion" className="grid h-9 w-9 place-items-center rounded-full border bg-white"><ChevronLeft size={17}/></button><button onClick={()=>go(index+1)} aria-label="Next promotion" className="grid h-9 w-9 place-items-center rounded-full border bg-white"><ChevronRight size={17}/></button></div></div>
