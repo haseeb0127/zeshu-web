@@ -36,10 +36,17 @@ async function readMetaConfig(){
     'WHATSAPP_GRAPH_API_VERSION','WHATSAPP_META_TOKEN_ENCRYPTION_KEY'] as const;
   const vals=await Promise.all(keys.map(k=>getRuntimeEnvValue(k)));
   const [appId,configId,appSecret,graphVersion,storageKey]=vals;
-  return {appId,configId,appSecret,graphVersion,storageKey,ready:
-    metaIdValid(appId) && metaIdValid(configId) && appSecret.length>=16
-      && graphVersionValid(graphVersion)
-      && Buffer.from(storageKey,'base64').length===32};
+  // A saved Cloudflare secret is not necessarily a binding of the active
+  // deployed Worker version. Distinguish absence from invalid encoding.
+  // Report only an enum to authenticated Zeshu admins, never secret contents.
+  const decodedKeyLength=storageKey ? Buffer.from(storageKey,'base64').length : 0;
+  const keyStatus: 'READY' | 'NOT_VISIBLE_TO_RUNTIME' | 'INVALID_BASE64_KEY' =
+    !storageKey ? 'NOT_VISIBLE_TO_RUNTIME'
+      : /^[A-Za-z0-9+/]{43}=$/.test(storageKey) && decodedKeyLength === 32
+        ? 'READY' : 'INVALID_BASE64_KEY';
+  return {appId,configId,appSecret,graphVersion,storageKey,keyStatus,
+    ready:metaIdValid(appId) && metaIdValid(configId) && appSecret.length>=16
+      && graphVersionValid(graphVersion) && keyStatus === 'READY'};
 }
 function sameOrigin(request:Request):boolean {
   const origin=request.headers.get('origin');
@@ -60,16 +67,17 @@ export async function GET(request:Request){
   if(!metaIdValid(config.configId)) missing.push('WHATSAPP_META_CONFIG_ID');
   if(config.appSecret.length<16) missing.push('WHATSAPP_APP_SECRET');
   if(!graphVersionValid(config.graphVersion)) missing.push('WHATSAPP_GRAPH_API_VERSION');
-  if(Buffer.from(config.storageKey,'base64').length!==32) missing.push('WHATSAPP_META_TOKEN_ENCRYPTION_KEY');
+  if(config.keyStatus !== 'READY') missing.push('WHATSAPP_META_TOKEN_ENCRYPTION_KEY');
   const payload:{
     configured:boolean;missingSetup:string[];appId:string|null;configId:string|null;
     graphVersion:string|null;nonce?:string;
-    connection:object|null; safeToSend:boolean;
+    connection:object|null; safeToSend:boolean;keyDiagnostic:'READY'|'NOT_VISIBLE_TO_RUNTIME'|'INVALID_BASE64_KEY';
   } = {
     configured:config.ready,missingSetup:missing,
     appId:config.ready?config.appId:null,
     configId:config.ready?config.configId:null,
     graphVersion:config.ready?config.graphVersion:null,
+    keyDiagnostic:config.keyStatus,
     connection:connection ? {
       wabaId:connection.waba_id,phoneNumberId:connection.phone_number_id,
       phoneNumber:connection.display_phone_number,verifiedName:connection.verified_name,
