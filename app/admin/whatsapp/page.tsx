@@ -18,6 +18,10 @@ type MetaSetup = {
 type OwnedStatus = {
   status:'VERIFIED'|'MISSING_SETTINGS'|'TOKEN_UNAUTHORIZED'|'PHONE_NOT_IN_ACCOUNT'|
     'META_UNAVAILABLE'|'INVALID_CONFIG';
+  diagnosticReason?:'NETWORK_OR_TIMEOUT'|'GRAPH_RATE_LIMITED'|'GRAPH_UPSTREAM_ERROR'|
+    'GRAPH_ENDPOINT_NOT_FOUND'|'GRAPH_BAD_REQUEST'|'GRAPH_HTTP_ERROR'|
+    'GRAPH_INVALID_RESPONSE'|'GRAPH_PAGINATION_LIMIT'|null;
+  providerHttpStatus?:number|null;providerErrorCode?:number|null;
   missing:string[];verified:boolean;
   phoneNumber:string|null;verifiedName:string|null;
   senderEnabled:false;customerMessagingAuthorized:false;note:string;
@@ -106,7 +110,24 @@ export default function WhatsAppReadinessPage() {
             {owned?.status==='MISSING_SETTINGS' ? <p className="mt-2 break-words font-mono text-xs leading-6 text-amber-950">Cloudflare settings needed: {owned.missing.join(' · ')}</p> : null}
             {owned?.status==='TOKEN_UNAUTHORIZED' ? <p className="mt-2 text-sm text-amber-950">Meta refused account access. Confirm that the System User has access to this Zeshu WhatsApp Business Account and that the token has the necessary WhatsApp permissions.</p> : null}
             {owned?.status==='PHONE_NOT_IN_ACCOUNT' ? <p className="mt-2 text-sm text-amber-950">The configured phone number is not listed under the selected WhatsApp Business Account. Check both IDs in Meta.</p> : null}
-            {owned?.status==='META_UNAVAILABLE' ? <p className="mt-2 text-sm text-amber-950">Meta could not verify the phone right now. Refresh later; do not rotate any secrets just to retry.</p> : null}
+            {owned?.status==='META_UNAVAILABLE' ? <div className="mt-2 text-sm leading-6 text-amber-950">
+              <p>{owned.diagnosticReason==='GRAPH_BAD_REQUEST'||owned.diagnosticReason==='GRAPH_ENDPOINT_NOT_FOUND'
+                ? 'Meta rejected this business account lookup. Check that the WhatsApp Business Account ID belongs to the first Zeshu account with your phone number, and that the Graph API version is supported. Do not replace credentials without checking the error details.'
+                : owned.diagnosticReason==='NETWORK_OR_TIMEOUT'
+                  ? 'The Zeshu server could not reach Meta or the request timed out. This is not evidence that your WhatsApp token is wrong.'
+                  : owned.diagnosticReason==='GRAPH_RATE_LIMITED'
+                    ? 'Meta is rate-limiting this verification request. Wait before retrying; do not generate a new token.'
+                    : owned.diagnosticReason==='GRAPH_UPSTREAM_ERROR'
+                      ? 'Meta returned a server error. Try again later; no changes to your credentials are needed yet.'
+                      : owned.diagnosticReason==='GRAPH_INVALID_RESPONSE'
+                        ? 'Meta returned an unexpected response. The issue may be upstream rather than your account configuration.'
+                        : 'Meta account verification did not complete. Review the diagnostic category below before changing credentials.'}</p>
+              <p className="mt-2 break-words font-mono text-xs">Safe diagnostic: {owned.diagnosticReason||'NOT_CLASSIFIED'}
+                {typeof owned.providerHttpStatus==='number'?' · HTTP '+owned.providerHttpStatus:''}
+                {typeof owned.providerErrorCode==='number'?' · Meta code '+owned.providerErrorCode:''}
+              </p>
+              <p className="mt-1 text-xs">Only the status and numeric error code are shown. Never share your token or App Secret.</p>
+            </div> : null}
             {owned?.status==='INVALID_CONFIG' ? <p className="mt-2 text-sm text-amber-950">One of the Cloudflare values has an invalid format. Please check the names and IDs privately.</p> : null}
             {!owned ? <p className="mt-2 text-sm text-amber-950">Account verification is temporarily unavailable; the existing website is unaffected.</p> : null}
           </div>}
