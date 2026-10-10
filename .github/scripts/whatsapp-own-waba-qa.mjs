@@ -28,5 +28,28 @@ const wrong=await verifyOwnedWhatsappAccount({...params,request:async()=>new Res
 assert.equal(wrong.status,'PHONE_NOT_IN_ACCOUNT');
 const invalid=await verifyOwnedWhatsappAccount({...params,phoneNumberId:'unsafe'});
 assert.equal(invalid.status,'INVALID_CONFIG');
+const rejected=await verifyOwnedWhatsappAccount({...params,request:async()=>new Response(JSON.stringify({
+  error:{code:100,message:'Never display this raw Meta message',fbtrace_id:'Never show trace ID'},
+}),{status:400})});
+assert.equal(rejected.status,'META_UNAVAILABLE');
+assert.equal(rejected.reason,'GRAPH_BAD_REQUEST');
+assert.equal(rejected.httpStatus,400);
+assert.equal(rejected.graphCode,100);
+assert.ok(!JSON.stringify(rejected).includes('Never display'));
+assert.ok(!JSON.stringify(rejected).includes('Never show'));
+const invalidToken=await verifyOwnedWhatsappAccount({...params,request:async()=>new Response(JSON.stringify({
+  error:{code:190,message:'token expired'},
+}),{status:400})});
+assert.equal(invalidToken.status,'TOKEN_UNAUTHORIZED');
+const throttled=await verifyOwnedWhatsappAccount({...params,request:async()=>new Response('{}',{status:429})});
+assert.equal(throttled.reason,'GRAPH_RATE_LIMITED');
+const upstream=await verifyOwnedWhatsappAccount({...params,request:async()=>new Response('{}',{status:503})});
+assert.equal(upstream.reason,'GRAPH_UPSTREAM_ERROR');
+const unreachable=await verifyOwnedWhatsappAccount({...params,request:async()=>{throw Error('secret upstream details');}});
+assert.equal(unreachable.reason,'NETWORK_OR_TIMEOUT');
+assert.ok(!JSON.stringify(unreachable).includes('secret upstream'));
+const invalidPayload=await verifyOwnedWhatsappAccount({...params,request:async()=>new Response(JSON.stringify({success:false}),{status:200})});
+assert.equal(invalidPayload.reason,'GRAPH_INVALID_RESPONSE');
+assert.ok(!JSON.stringify(rejected).includes(params.token));
 assert.ok(!JSON.stringify(result).includes(params.token));
-console.log('PASS: first-party Meta Cloud API read-only verification, restricted Graph endpoint, no leaked token.');
+console.log('PASS: first-party Cloud API verification with safe HTTP/Graph diagnostic enums, no leaked secrets or raw provider errors.');
