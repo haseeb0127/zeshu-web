@@ -1,3 +1,4 @@
+import {getRuntimeEnvValue} from '@/app/lib/runtime-env';
 import {dateISO,dineAdmin,phone,response,safeString,uuid} from '@/app/lib/dine-server';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -61,9 +62,13 @@ export async function PATCH(request:Request){
  try{const v:unknown=await request.json();if(!obj(v))throw Error();x=v;}catch{return no('Invalid update.');}
  if(x.action==='activate'){
   if(!uuid(x.restaurantId)||x.documentsChecked!==true)return no('Document verification confirmation required.');
+  if(await getRuntimeEnvValue('DINE_OPERATIONS_APPROVED')!=='true')return no('Zeshu Dine operations and food-platform compliance must be approved before accepting real reservations.',409);
   const {data,error}=await db.from('dine_tables').select('id').eq('restaurant_id',x.restaurantId).eq('enabled',true).limit(1);
   if(error||!data?.length)return no('Add a real seating table before enabling reservations.',409);
   const {data:restaurant,error:readError}=await db.from('dine_restaurants').select('id,preorder_enabled').eq('id',x.restaurantId).maybeSingle();
+  if(x.preorderEnabled===true){const {data:items,error:menuError}=await db.from('dine_menu_items').select('id').eq('restaurant_id',x.restaurantId).eq('available',true).limit(1);
+   if(menuError||!items?.length)return no('Add real verified menu dishes before enabling meal pre-orders.',409);
+  }
   if(readError||!restaurant)return no('Restaurant unavailable.',404);
   const {error:updateError}=await db.from('dine_restaurants').update({
    fssai_verified:true,booking_enabled:true,preorder_enabled:x.preorderEnabled===true,updated_at:new Date().toISOString(),
