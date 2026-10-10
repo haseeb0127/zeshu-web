@@ -20,7 +20,7 @@ type OwnedStatus = {
     'META_UNAVAILABLE'|'INVALID_CONFIG';
   diagnosticReason?:'NETWORK_OR_TIMEOUT'|'GRAPH_RATE_LIMITED'|'GRAPH_UPSTREAM_ERROR'|
     'GRAPH_ENDPOINT_NOT_FOUND'|'GRAPH_BAD_REQUEST'|'GRAPH_HTTP_ERROR'|
-    'GRAPH_INVALID_RESPONSE'|'GRAPH_PAGINATION_LIMIT'|null;
+    'GRAPH_INVALID_RESPONSE'|'GRAPH_PAGINATION_LIMIT'|'GRAPH_REDIRECT'|null;
   providerHttpStatus?:number|null;providerErrorCode?:number|null;
   networkFailureKind?:'TIMEOUT'|'FETCH_REJECTED'|null;
   metaGraphReachable?:boolean|null;
@@ -28,6 +28,14 @@ type OwnedStatus = {
   missing:string[];verified:boolean;
   phoneNumber:string|null;verifiedName:string|null;
   senderEnabled:false;customerMessagingAuthorized:false;note:string;
+};
+type WebhookHealth={
+  webhookCallbackUrl:string;webhookSecretsPresent:boolean;
+  accountIdentifiersPresent:boolean;
+  observedSignedCallbacks:number;observedMatchingAccountCallbacks:number;
+  observedInboundMessageEvents:number;
+  lastSignedCallbackAt:string|null;lastMatchingAccountCallbackAt:string|null;
+  lastInboundMessageAt:string|null;subscriptionVerified:false;sendingEnabled:false;
 };
 type Audit = {event:string;name:string|null;language:string|null;status:string;category:string|null};
 type Readiness = {
@@ -49,6 +57,7 @@ export default function WhatsAppReadinessPage() {
   const [error,setError]=useState('');
   const [meta,setMeta]=useState<MetaSetup|null>(null);
   const [owned,setOwned]=useState<OwnedStatus|null>(null);
+  const [health,setHealth]=useState<WebhookHealth|null>(null);
   const reload=useCallback(async()=>{
     setBusy(true);setError('');
     try {
@@ -57,20 +66,22 @@ export default function WhatsAppReadinessPage() {
       if (!token) throw new Error('Admin sign-in required.');
 
       const headers={Authorization:`Bearer ${token}`};
-      const [response,metaResponse,ownedResponse]=await Promise.all([
+      const [response,metaResponse,ownedResponse,healthResponse]=await Promise.all([
         fetch('/api/admin/support/whatsapp-readiness',{headers,cache:'no-store'}),
         fetch('/api/admin/whatsapp/connect',{headers,cache:'no-store'}),
         fetch('/api/admin/whatsapp/own-account',{headers,cache:'no-store'}),
+        fetch('/api/admin/whatsapp/webhook-health',{headers,cache:'no-store'}),
       ]);
-      const [payload,metaPayload,ownedPayload]=await Promise.all([
+      const [payload,metaPayload,ownedPayload,healthPayload]=await Promise.all([
         response.json().catch(()=>({})),metaResponse.json().catch(()=>({})),
-        ownedResponse.json().catch(()=>({})),
+        ownedResponse.json().catch(()=>({})),healthResponse.json().catch(()=>({})),
       ]);
       if (!response.ok) throw new Error(payload.error||'Could not inspect WhatsApp readiness.');
       if (!metaResponse.ok) throw new Error(metaPayload.error||'Could not check Meta connection.');
       setData(payload as Readiness);
       setMeta(metaPayload as MetaSetup);
       setOwned(ownedResponse.ok?(ownedPayload as OwnedStatus):null);
+      setHealth(healthResponse.ok?(healthPayload as WebhookHealth):null);
     } catch(e) {setError(e instanceof Error?e.message:'WhatsApp readiness unavailable.');}
     finally {setBusy(false);}
   },[]);
@@ -96,6 +107,27 @@ export default function WhatsAppReadinessPage() {
           <p className="mt-2 text-sm leading-6 text-slate-600">A private, mobile-friendly inbox for genuine incoming Cloud API messages. Currently read-only: customer replies can be saved as unsent drafts, but never transmitted.</p>
           <Link href="/admin/whatsapp/inbox" className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-[#075e45] px-5 py-3 text-sm font-black text-white">Open WhatsApp Inbox →</Link>
         </section>
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-black">Incoming webhook connection</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          The inbox currently has no customer messages. Webhooks must be subscribed in Meta before new messages arrive; the existence of a Cloudflare secret does not confirm that Meta is sending callbacks.
+        </p>
+        {!health?<p className="mt-3 text-sm text-amber-800">Webhook health information is currently unavailable.</p>:
+        <>
+          <div className="mt-3 space-y-2 text-sm">
+            <p>Webhook verification keys: <strong>{health.webhookSecretsPresent?'Configured':'Missing'}</strong></p>
+            <p>Account and phone IDs: <strong>{health.accountIdentifiersPresent?'Configured':'Missing'}</strong></p>
+            <p>Signed Meta callbacks observed: <strong>{health.observedSignedCallbacks}</strong></p>
+            <p>Callbacks for Zeshu account: <strong>{health.observedMatchingAccountCallbacks}</strong></p>
+            <p>Inbound messages observed: <strong>{health.observedInboundMessageEvents}</strong></p>
+          </div>
+          <p className="mt-3 break-all rounded-xl bg-slate-50 p-3 font-mono text-xs">{health.webhookCallbackUrl}</p>
+          {health.lastSignedCallbackAt
+            ? <p className="mt-2 text-xs text-slate-600">Last signed callback: {new Date(health.lastSignedCallbackAt).toLocaleString('en-IN')}</p>
+            : <p className="mt-2 text-sm font-semibold text-amber-800">No authenticated Meta callback has been recorded yet. Check Meta's Webhooks → WhatsApp Business Account → messages subscription. Do not send a test message without approval.</p>}
+          <p className="mt-2 text-xs leading-5 text-slate-500">Subscription itself has not been confirmed through Meta's API. Do not confuse a verified callback with permission to send customer messages.</p>
+        </>}
+      </section>
       {error&&<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm font-bold text-red-700">{error}</p>}
       {data&&<>
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
