@@ -271,7 +271,8 @@ jobs:
               assert(departmentText.includes(department), `Live homepage department navigation is missing ${department}`);
             }
             await page.setViewportSize({ width: 390, height: 844 });
-            assert(await page.locator('[data-glossy-banner]').count() === 9, 'Live site must display nine premium promotional banners');
+            assert(await page.locator('[data-glossy-banner]').count() === 10, 'Live site must display ten premium promotional banners including Zeshu Dine');
+            assert(await page.locator('[data-glossy-banner="dine"] [data-dine-artwork]').count() === 1, 'Dining poster must be present on live homepage');
             const firstArt = page.locator('img[data-glossy-image="shop"]');
             await firstArt.waitFor({state:'attached',timeout:10000});
             assert((await firstArt.getAttribute('src'))?.includes('.webp'), 'Production must use optimized glossy 3D WebP images');
@@ -287,7 +288,7 @@ jobs:
             }
             // Check actual production banner taps and browser Back recovery.
             for (const [poster, route] of [
-              ['fashion','/fashion'], ['weddings','/professional-services/weddings'],
+              ['dine','/dine'], ['fashion','/fashion'], ['weddings','/professional-services/weddings'],
               ['support','/help'], ['app','/app'],
             ]) {
               const link = page.locator('[data-glossy-banner="' + poster + '"] a[aria-label^="Open "]');
