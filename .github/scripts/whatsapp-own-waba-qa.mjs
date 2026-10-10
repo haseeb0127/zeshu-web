@@ -47,6 +47,34 @@ const upstream=await verifyOwnedWhatsappAccount({...params,request:async()=>new 
 assert.equal(upstream.reason,'GRAPH_UPSTREAM_ERROR');
 const unreachable=await verifyOwnedWhatsappAccount({...params,request:async()=>{throw Error('secret upstream details');}});
 assert.equal(unreachable.reason,'NETWORK_OR_TIMEOUT');
+assert.equal(unreachable.networkFailureKind,'FETCH_REJECTED');
+assert.equal(unreachable.metaGraphReachable,false);
+assert.equal(unreachable.attempts,2);
+// Two failing authorized attempts followed by an unauthenticated reachability probe.
+let tries=0;
+const publicProbe=await verifyOwnedWhatsappAccount({...params,request:async(url,options)=>{
+  tries++;
+  if(url==='https://graph.facebook.com/'){
+    assert.equal(options.headers,undefined);
+    return new Response('{}',{status:400});
+  }
+  throw Error('safe simulated egress failure');
+}});
+assert.equal(publicProbe.reason,'NETWORK_OR_TIMEOUT');
+assert.equal(publicProbe.metaGraphReachable,true);
+assert.equal(publicProbe.networkFailureKind,'FETCH_REJECTED');
+assert.equal(tries,3);
+// A transient outbound error should recover on the second read-only GET.
+let recoverCount=0;
+const recovered=await verifyOwnedWhatsappAccount({...params,request:async(url)=>{
+  recoverCount++;
+  if(recoverCount===1)throw Error('first attempt dropped');
+  return new Response(JSON.stringify({
+    data:[{id:params.phoneNumberId,display_phone_number:'+91 95000 00000',verified_name:'Zeshu'}],
+  }),{status:200});
+}});
+assert.equal(recovered.status,'VERIFIED');
+assert.equal(recoverCount,2);
 assert.ok(!JSON.stringify(unreachable).includes('secret upstream'));
 const invalidPayload=await verifyOwnedWhatsappAccount({...params,request:async()=>new Response(JSON.stringify({success:false}),{status:200})});
 assert.equal(invalidPayload.reason,'GRAPH_INVALID_RESPONSE');
