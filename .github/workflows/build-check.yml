@@ -91,6 +91,8 @@ jobs:
         run: node --experimental-strip-types .github/scripts/meta-direct-signup-qa.mjs
       - name: Verify first-party WhatsApp Cloud API read-only connection
         run: node --experimental-strip-types .github/scripts/whatsapp-own-waba-qa.mjs
+      - name: Verify read-only WhatsApp Meta app webhook field diagnostics
+        run: node --experimental-strip-types .github/scripts/whatsapp-app-webhook-qa.mjs
       - name: Verify read-only WhatsApp WABA app subscription checks
         run: node --experimental-strip-types .github/scripts/whatsapp-waba-subscription-qa.mjs
       - name: Verify Zeshu Dine genuine table and food pre-order safety

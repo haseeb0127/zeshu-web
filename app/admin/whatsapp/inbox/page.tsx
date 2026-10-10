@@ -29,6 +29,8 @@ export default function ZeshuWhatsappInbox(){
   const [notice,setNotice]=useState('');
   const [repairBusy,setRepairBusy]=useState(false);
   const [repairOutcome,setRepairOutcome]=useState('');
+  const [fieldBusy,setFieldBusy]=useState(false);
+  const [fieldResult,setFieldResult]=useState('');
   const auth=async()=>{
     const {data}=await supabase.auth.getSession();
     const token=data.session?.access_token;
@@ -71,6 +73,32 @@ export default function ZeshuWhatsappInbox(){
     const timer=window.setInterval(()=>{void refresh(true);},30000);
     return()=>window.clearInterval(timer);
   },[refresh]);
+  const inspectMetaMessagesField=async()=>{
+    if(fieldBusy)return;
+    setFieldBusy(true);setFieldResult('');
+    try{
+      const response=await fetch('/api/admin/whatsapp/app-webhook',{
+        headers:await auth(),cache:'no-store',
+      });
+      const state=await response.json().catch(()=>({}));
+      if(!response.ok)throw Error(state.error||'Meta webhook fields check unavailable.');
+      const explanation:Record<string,string>={
+        READY:'✅ The Meta app-level messages field and Zeshu callback URL match. An actual signed incoming callback is still required to prove delivery.',
+        MESSAGES_NOT_SUBSCRIBED:'⚠️ Meta app-level messages field is not subscribed. In Zeshu Support → WhatsApp → Configuration / Webhooks, subscribe to the messages field.',
+        CALLBACK_MISMATCH:'⚠️ Meta app webhook URL does not match the Zeshu callback. Inspect WhatsApp → Configuration / Webhooks; do not replace it without reviewing any other app integrations.',
+        INACTIVE:'⚠️ Meta app webhook subscription is inactive. Check Zeshu Support → Webhooks.',
+        SUBSCRIPTION_MISSING:'⚠️ Zeshu Support has no WhatsApp Business Account object webhook subscription. Configure it in Meta app Webhooks.',
+        FIELD_DATA_UNAVAILABLE:'Meta did not provide the webhook fields. Check them directly in the Zeshu Support Meta app.',
+        TOKEN_UNAUTHORIZED:'Meta would not authorize the private read-only app configuration check. Review app permissions and credentials in Cloudflare; do not paste secrets here.',
+        META_UNAVAILABLE:'Meta app webhook settings could not be reached. Check Meta directly or try again later.',
+        MISSING_SETTINGS:'Cloudflare is missing an app webhook diagnostic setting.',
+        INVALID_CONFIG:'Meta app diagnostic settings require review in Cloudflare.',
+      };
+      setFieldResult((explanation[state.status]||'Unable to verify the Meta app webhook configuration.')
+       +(state.providerHttpStatus?' · HTTP '+state.providerHttpStatus:''));
+    }catch(e){setFieldResult(e instanceof Error?e.message:'Could not check Meta webhook fields.');}
+    finally{setFieldBusy(false);}
+  };
   const repairInboundSubscription=async()=>{
     if(repairBusy)return;
     const agreed=window.confirm('Check the existing +91 95052 11212 Meta account and, only if not subscribed, connect its inbound webhook to Zeshu Support? This does not send messages, register the number or fix mobile-app OTP. Continue?');
@@ -152,6 +180,15 @@ export default function ZeshuWhatsappInbox(){
               {repairBusy?'Checking Meta securely…':'Check & repair incoming connection'}
             </button>
             {repairOutcome&&<p role="status" className="mt-2 text-xs font-semibold leading-5 text-emerald-950">{repairOutcome}</p>}
+            <div className="mt-4 border-t border-emerald-300 pt-3">
+              <p className="font-bold text-emerald-950">Next: verify Meta's messages webhook field</p>
+              <p className="mt-1 text-xs leading-5 text-emerald-950">Your app-to-WABA subscription may be correct while the separate messages field or callback URL is not. This additional check reads the Meta app's configuration privately without changing it.</p>
+              <button type="button" disabled={fieldBusy} onClick={()=>void inspectMetaMessagesField()}
+               className="mt-2 rounded-xl border border-[#075e45] bg-white px-4 py-3 text-sm font-bold text-[#075e45] disabled:opacity-50">
+                {fieldBusy?'Checking Meta webhook fields…':'Check messages field & callback URL'}
+              </button>
+              {fieldResult&&<p role="status" className="mt-2 text-xs font-semibold leading-5 text-emerald-950">{fieldResult}</p>}
+            </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <a className="rounded-xl bg-[#075e45] px-4 py-3 font-bold text-white" href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">Open Meta Developer apps ↗</a>
