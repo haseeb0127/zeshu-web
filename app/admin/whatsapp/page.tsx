@@ -175,6 +175,8 @@ export default function WhatsAppReadinessPage() {
                   {owned.exactMetaEndpointReachableWithoutAuth===true?' · Exact Graph endpoint without token: REACHABLE':owned.exactMetaEndpointReachableWithoutAuth===false?' · Exact Graph endpoint without token: UNREACHABLE':''}
                   {typeof owned.networkAttempts==='number'?' · Attempts: '+owned.networkAttempts:''}
                 </p>}
+              {owned.diagnosticReason==='NETWORK_OR_TIMEOUT'&&owned.exactMetaEndpointReachableWithoutAuth===true&&
+                <p className="mt-2 text-xs leading-5">The exact Meta API endpoint answered a request without credentials. The rejection affects the authorized request; check for extra token formatting in Cloudflare and review Worker outbound-request rules. Do not rotate secrets just to retry.</p>}
               <p className="mt-1 text-xs">Only the status and numeric error code are shown. Never share your token or App Secret.</p>
             </div> : null}
             {owned?.status==='INVALID_CONFIG' ? <p className="mt-2 text-sm text-amber-950">One of the Cloudflare values has an invalid format. Please check the names and IDs privately.</p> : null}
