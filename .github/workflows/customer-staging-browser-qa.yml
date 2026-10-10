@@ -85,9 +85,9 @@ jobs:
             await moveEntry.waitFor({ state: 'visible', timeout: 10000 });
             assert(await moveEntry.isVisible(), 'Homepage Zeshu Move entry is missing');
             const promoSlides = moveQuick.locator('[data-slide]');
-            assert(await promoSlides.count() === 9, 'Homepage must show the nine distinct glossy 3D Zeshu promotions');
+            assert(await promoSlides.count() === 10, 'Homepage must show all ten Zeshu promotions including Dine');
             const promoText = (await promoSlides.allInnerTexts()).join(' ').replace(/\s+/g, ' ');
-            for (const promo of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move']) {
+            for (const promo of ['Shop in Jagtial', 'Zeshu Dine', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move']) {
               assert(promoText.includes(promo), `Homepage promo carousel is missing ${promo}`);
             }
             const promoScopes = await promoSlides.evaluateAll((slides) =>
@@ -151,8 +151,9 @@ jobs:
             assert(!homepageScript.includes('Checking previous payment'), 'Checkout status leaked into customer storefront');
             // Tap EVERY premium banner on mobile, navigate and return.
             // Catch black Android/WebView load errors and broken back navigation.
+            assert(await page.locator('[data-glossy-banner]').count() === 10, 'Homepage must expose ten honest service and shopping promotions');
             const bannerRoutes = [
-              ['fashion','/fashion'], ['move','/move'],
+              ['dine','/dine'], ['fashion','/fashion'], ['move','/move'],
               ['services','/professional-services'],
               ['weddings','/professional-services/weddings'],
               ['interiors','/professional-services/interiors'],
@@ -172,7 +173,8 @@ jobs:
             }
             await page.waitForLoadState('networkidle', { timeout: 30000 });
             const allGlossyImages = moveQuick.locator('img[data-glossy-image]');
-            assert(await allGlossyImages.count() === 9, 'All nine glossy 3D marketing artwork images must be configured');
+            assert(await allGlossyImages.count() === 9, 'Nine optimized CGI images plus one dedicated dining illustration must remain available');
+            assert(await page.locator('[data-glossy-banner="dine"] [data-dine-artwork]').count() === 1, 'Zeshu Dine needs its distinct premium dining artwork');
             const referenceArtworkUrl = await allGlossyImages.first().getAttribute('src');
             const artworkReady = await page.evaluate(async (url) => {
               if (!url) return false;

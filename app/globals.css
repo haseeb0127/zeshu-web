@@ -234,6 +234,8 @@ input[aria-label="Search Zeshu"]:focus-visible { outline: none; box-shadow: none
 }
 [data-glossy-banner] [data-glossy-image] {filter:saturate(1.13) contrast(1.04); }
 [data-glossy-banner="shop"] {--gloss-tint:#064c34;--gloss-glow:rgba(132,255,162,.35)}
+[data-glossy-banner="dine"] {--gloss-tint:#3b2416;--gloss-glow:rgba(255,197,103,.48)}
+[data-glossy-banner="dine"] [data-dine-artwork] svg {filter:drop-shadow(0 18px 20px rgba(19,9,2,.24));}
 [data-glossy-banner="fashion"] {--gloss-tint:#832f5b;--gloss-glow:rgba(255,131,191,.40)}
 [data-glossy-banner="pay"] {--gloss-tint:#154d93;--gloss-glow:rgba(115,194,255,.40)}
 [data-glossy-banner="move"] {--gloss-tint:#985315;--gloss-glow:rgba(255,192,98,.40)}

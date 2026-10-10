@@ -20,6 +20,9 @@ for (const phrase of [
   'Browse products',
   'Zeshu Weddings',
   'Zeshu Interiors',
+  'Zeshu Dine',
+  'Explore dining',
+  'Kitchen-confirmed serving times.',
 ]) {
   assert(homeHub.includes(phrase), `Homepage business hub missing customer-facing phrase: ${phrase}`);
 }
@@ -32,7 +35,7 @@ for (const href of ['/fashion']) {
   assert(homeHub.includes(`href="${href}"`), `Homepage business hub missing key customer destination: ${href}`);
 }
 
-for (const destination of ['/professional-services/weddings', '/professional-services/interiors']) {
+for (const destination of ['/professional-services/weddings', '/professional-services/interiors', '/dine']) {
   assert(homeHub.includes(destination), `Homepage carousel missing service destination: ${destination}`);
 }
 
@@ -40,6 +43,9 @@ assert(homeHub.includes('"/move"'), 'Homepage carousel must link to Move');
 assert(page.includes('data-category-strip="marketplace"'), 'Mobile homepage must use icon-led marketplace category discovery');
 const productCard = read('app/components/ProductCard.tsx');
 assert(productCard.includes('data-product-card="marketplace"'), 'Product cards must use the professional marketplace card system');
+assert(homeHub.includes('DineBannerArtwork'), 'Dine must have its own dining poster, not unrelated CGI artwork');
+assert(homeHub.includes('action:"dine"') && homeHub.includes('poster:"dine"'), 'Dine must have its own clickable promotional slide');
+assert(!homeHub.includes('Book your table now'), 'Dining promo must not advertise live reservations without verified partners');
 assert(homeHub.includes('snap-mandatory'), 'Homepage must expose the Zeshu self-promotion carousel');
 assert(homeHub.includes('data-slide'), 'Homepage promo carousel must render slide markers');
 assert(homeHub.includes('slides = ['), 'Homepage promo carousel must be driven by the compact customer slide set');
@@ -76,6 +82,8 @@ for (const languageSection of ['te:', 'hi:', 'ur:']) {
   assert(translations.includes(languageSection), `Translation dictionary missing ${languageSection}`);
 }
 for (const phrase of [
+  '"Zeshu Dine"',
+  '"Explore dining"',
   '"Set your address"',
   '"Shop in Jagtial"',
 ]) {

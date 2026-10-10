@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { BadgeCheck, Car, ChevronLeft, ChevronRight, Paintbrush, PartyPopper, Receipt, ShoppingBag, ShoppingBasket, CreditCard, CarFront, Grid2X2, Bot, Sparkles, ArrowUpRight } from "lucide-react";
 import ReferenceArtwork from "@/app/components/ReferenceArtwork";
 import GlossyArtwork from "@/app/components/GlossyArtwork";
+import DineBannerArtwork from "@/app/components/DineBannerArtwork";
 import { useCustomerLanguage } from "@/app/components/CustomerLanguageProvider";
 
 type Readiness = { request_enabled?: boolean; matching_enabled?: boolean; compliance_gate?: boolean };
@@ -28,6 +29,7 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
   const anyMoveReady = [moveServices.AUTO_DRIVER, moveServices.CAB_DRIVER, moveServices.BIKE_COURIER, moveServices.GOODS_DRIVER].some(ready);
   const slides = [
     { scope:"Jagtial", title:t("Shop in Jagtial"), description:t("Groceries and everyday essentials from nearby sellers."), cta:t("Shop now"), action:"shop", poster:"shop", icon:ShoppingBag, theme:"bg-[#044c37]" },
+    { scope:"Jagtial", title:t("Zeshu Dine"), description:t("Table reservations and meal pre-orders after restaurant verification. Kitchen-confirmed serving times."), cta:t("Explore dining"), action:"dine", poster:"dine", icon:ShoppingBag, theme:"bg-[#4a2810]" },
     { scope:"India", title:t("Zeshu Fashion"), description:t("Explore clothing and accessories from independent sellers where stock is available."), cta:t("Explore fashion"), action:"fashion", poster:"fashion", icon:ShoppingBag, theme:"bg-[#074734]" },
     { scope:"India", title:t("Zeshu Pay"), description:t("Explore recharge and bill services supported by available providers."), cta:t("Explore Zeshu Pay"), action:"pay", poster:"pay", icon:Receipt, theme:"bg-[#074734]" },
     { scope:"Telangana", title:t("Zeshu Move"), description:t("Check rides and courier availability for your area."), cta:anyMoveReady?t("Check availability"):t("See services"), action:"move", poster:"move", icon:Car, theme:"bg-[#074734]" },
@@ -65,13 +67,13 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
     <div className="relative mt-0 md:mt-4">
       <div ref={trackRef} onScroll={onScroll} className="flex snap-x snap-mandatory gap-3 overflow-x-auto no-scrollbar scroll-smooth">
         {slides.map((s,i) => <article key={s.title} data-slide data-glossy-banner={s.poster} className={`zeshu-premium-hero relative isolate min-w-full snap-start overflow-hidden rounded-[24px] ${s.theme} h-[245px] min-h-[245px] px-5 py-4 text-white shadow-[0_12px_26px_rgba(0,65,40,.16)] md:min-h-[350px] md:rounded-[30px] md:px-9 md:py-9`}>
-          <GlossyArtwork kind={s.poster as "shop"|"fashion"|"pay"|"move"|"services"|"weddings"|"interiors"|"support"|"app"} loading={i===0?"eager":"lazy"}/>
+          {s.poster==="dine" ? <DineBannerArtwork/> : <GlossyArtwork kind={s.poster as "shop"|"fashion"|"pay"|"move"|"services"|"weddings"|"interiors"|"support"|"app"} loading={i===0?"eager":"lazy"}/>}
           {/* The full glossy promotion is tappable, including the illustration.
               Use document links to avoid the reproduced Next.js Android navigation crash. */}
           {s.action==="shop" || s.action==="pay"
             ? <button type="button" aria-label={s.action==="shop"?"Open Zeshu Shop":"Open Zeshu Pay"} onClick={s.action==="shop"?onShopNearby:onOpenServices}
                 className="absolute inset-0 z-[1] cursor-pointer rounded-[24px] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[-3px] focus-visible:outline-white"/>
-            : <Link href={s.action==="weddings"?"/professional-services/weddings":s.action==="interiors"?"/professional-services/interiors":s.action==="services"?"/professional-services":s.action==="support"?"/help":s.action==="app"?"/app":s.action==="fashion"?"/fashion":"/move"}
+            : <Link href={s.action==="weddings"?"/professional-services/weddings":s.action==="interiors"?"/professional-services/interiors":s.action==="services"?"/professional-services":s.action==="support"?"/help":s.action==="app"?"/app":s.action==="fashion"?"/fashion":s.action==="dine"?"/dine":"/move"}
                 aria-label={`Open ${s.title}`} className="absolute inset-0 z-[1] cursor-pointer rounded-[24px] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[-3px] focus-visible:outline-white"><span className="sr-only">{s.title}</span></Link>}
           <div className="pointer-events-none relative z-10 max-w-[62%] md:max-w-[60%]">
             <span className="inline-flex rounded-full bg-white/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.15em] ring-1 ring-white/10 md:text-[11px]">Zeshu · {s.scope}</span>
@@ -83,7 +85,7 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
               {s.action==="shop" ? <button onClick={onShopNearby} className="pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-[18px] bg-white px-5 text-xs font-black text-[#142034] shadow-[0_8px_16px_rgba(0,0,0,.14)] md:min-h-11 md:text-sm">{s.cta}<ChevronRight size={16}/></button>
                 :s.action==="pay" ? <button onClick={onOpenServices} className="pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></button>
                 :s.action==="fashion" ? <Link href="/fashion" className="pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>
-                :<Link href={s.action==="weddings"?"/professional-services/weddings":s.action==="interiors"?"/professional-services/interiors":s.action==="services"?"/professional-services":s.action==="support"?"/help":s.action==="app"?"/app":"/move"} className="pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>}
+                :<Link href={s.action==="weddings"?"/professional-services/weddings":s.action==="interiors"?"/professional-services/interiors":s.action==="services"?"/professional-services":s.action==="support"?"/help":s.action==="app"?"/app":s.action==="dine"?"/dine":"/move"} className="pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>}
             </div>
           </div>
           <span className="pointer-events-none absolute bottom-1.5 right-2 z-[2] rounded-full bg-[#003b2a]/65 px-2 py-0.5 text-[8px] font-semibold text-white/95 md:text-[10px]">Illustrative artwork</span>

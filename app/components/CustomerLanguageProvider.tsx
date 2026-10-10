@@ -23,6 +23,9 @@ const LANGUAGE_OPTIONS: Array<{ code: CustomerLanguageCode; label: string; short
 const translations: Record<CustomerLanguageCode, Record<string, string>> = {
   en: {},
   te: {
+    "Zeshu Dine": "జెషు డైన్",
+    "Table reservations and meal pre-orders after restaurant verification. Kitchen-confirmed serving times.": "రెస్టారెంట్ ధృవీకరణ తర్వాత టేబుల్ బుకింగ్, భోజనం ముందస్తు ఆర్డర్. వడ్డించే సమయాన్ని కిచెన్ నిర్ధారిస్తుంది.",
+    "Explore dining": "డైనింగ్ వివరాలు చూడండి",
     "Choose language": "భాషను ఎంచుకోండి",
     "Language": "భాష",
     "Everyday, simply": "ప్రతిరోజూ, సులభంగా",
@@ -958,6 +961,9 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Search Contact": "కాంటాక్ట్ వెతకండి",
   },
   hi: {
+    "Zeshu Dine": "ज़ेशु डाइन",
+    "Table reservations and meal pre-orders after restaurant verification. Kitchen-confirmed serving times.": "रेस्तराँ सत्यापन के बाद टेबल बुकिंग और खाने का प्री-ऑर्डर। परोसने का समय किचन तय करेगा।",
+    "Explore dining": "डाइनिंग देखें",
     "Choose language": "भाषा चुनें",
     "Language": "भाषा",
     "Everyday, simply": "हर दिन, आसान",
@@ -1873,6 +1879,9 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Search Contact": "कॉन्टैक्ट खोजें",
   },
   ur: {
+    "Zeshu Dine": "زیشو ڈائن",
+    "Table reservations and meal pre-orders after restaurant verification. Kitchen-confirmed serving times.": "ریستوران کی تصدیق کے بعد ٹیبل بکنگ اور کھانے کا پیشگی آرڈر۔ پیش کرنے کے وقت کی تصدیق کچن کرے گا۔",
+    "Explore dining": "ڈائننگ دیکھیں",
     "Choose language": "زبان منتخب کریں",
     "Language": "زبان",
     "Everyday, simply": "ہر روز، آسانی سے",
