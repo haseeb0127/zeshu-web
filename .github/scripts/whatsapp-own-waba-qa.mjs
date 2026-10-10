@@ -31,6 +31,14 @@ assert.equal(invalid.status,'INVALID_CONFIG');
 const rejected=await verifyOwnedWhatsappAccount({...params,request:async()=>new Response(JSON.stringify({
   error:{code:100,message:'Never display this raw Meta message',fbtrace_id:'Never show trace ID'},
 }),{status:400})});
+const redirect=await verifyOwnedWhatsappAccount({...params,request:async(url,init)=>{
+  assert.equal(init.redirect,'manual');
+  return new Response(null,{status:302,headers:{Location:'https://unsafe.example/redirect'}});
+}});
+assert.equal(redirect.status,'META_UNAVAILABLE');
+assert.equal(redirect.reason,'GRAPH_REDIRECT');
+assert.equal(redirect.httpStatus,302);
+assert.ok(!JSON.stringify(redirect).includes('unsafe.example'));
 assert.equal(rejected.status,'META_UNAVAILABLE');
 assert.equal(rejected.reason,'GRAPH_BAD_REQUEST');
 assert.equal(rejected.httpStatus,400);
