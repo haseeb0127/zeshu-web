@@ -63,6 +63,7 @@ const SITE_SEARCH_SHORTCUTS = [
   { id: 'policies', label: 'Policies & Trust', description: 'Refunds, privacy, terms and service information', href: '/policies', terms: 'policy policies refund cancellation privacy terms trust return' },
   { id: 'help', label: 'Help & Support', description: 'Ask Zeshu Assistant or contact support', href: '/help', terms: 'help support assistant ai chatbot customer care contact order ride courier travel refund payment problem issue' },
   { id: 'partners', label: 'Brands & Partners', description: 'Sponsored campaigns and supplier partnerships', href: '/partners', terms: 'partner partners vendor supplier brand sponsor sponsored advertise advertising campaign' },
+  { id: 'dine', label: 'Zeshu Dine', description: 'Request restaurant tables and pre-order food for an agreed serving time', href: '/dine', terms: 'restaurant restaurants reservation reserve table dining dine food order preorder meal lunch dinner breakfast eat out kitchen prep ready time wait free' },
   { id: 'fashion', label: 'Zeshu Fashion', description: 'Clothing, footwear and accessories from seller-owned inventory', href: '/fashion', terms: 'fashion clothing clothes saree sarees sari kurtis kurti women womens western wear men mens shirts t-shirts tshirts jeans kids kidswear footwear shoes sandals bags accessories jewellery jewelry watches' },
   { id: 'move', label: 'Move & Travel', description: 'Rides, courier, car share and travel', href: '/move', terms: 'move travel ride rides bike taxi auto cab car share carpool courier parcel delivery cargo porter bus train flight flights hotel hotels rental outstation' },
   { id: 'earn', label: 'Drive & Deliver', description: 'Join Zeshu as a rider, driver or fleet partner', href: '/earn', terms: 'earn rider delivery rider driver auto driver cab driver bike courier goods driver mini truck fleet partner join jobs work' },
@@ -3498,6 +3499,7 @@ export default function ZeshuSuperApp() {
             <button type="button" onClick={() => openServices()} className="text-left hover:underline">Zeshu Pay</button>
             <Link href="/move" className="hover:underline">Zeshu Move</Link>
             <Link href="/professional-services" className="hover:underline">{t('Zeshu Services')}</Link>
+            <Link href="/dine" className="hover:underline">Zeshu Dine</Link>
           </nav></div>
           <div className="min-w-0"><h2 className="mb-4 text-sm font-black text-white">{t('Customer Service')}</h2><nav aria-label="Customer Service" className="flex flex-col items-start gap-2.5 text-xs leading-5 sm:text-sm sm:leading-6">
             <Link href="/help" className="hover:underline">{t('Help & Support')}</Link>
