@@ -91,6 +91,8 @@ jobs:
         run: node --experimental-strip-types .github/scripts/meta-direct-signup-qa.mjs
       - name: Verify first-party WhatsApp Cloud API read-only connection
         run: node --experimental-strip-types .github/scripts/whatsapp-own-waba-qa.mjs
+      - name: Verify read-only WhatsApp WABA app subscription checks
+        run: node --experimental-strip-types .github/scripts/whatsapp-waba-subscription-qa.mjs
       - name: Verify inbound WhatsApp safety and WABA account filtering
         run: node --experimental-strip-types .github/scripts/whatsapp-inbox-qa.mjs
       - run: npm run build

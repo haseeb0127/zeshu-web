@@ -30,6 +30,11 @@ type OwnedStatus = {
   phoneNumber:string|null;verifiedName:string|null;
   senderEnabled:false;customerMessagingAuthorized:false;note:string;
 };
+type SubscriptionCheck={
+  status:'SUBSCRIBED'|'NOT_SUBSCRIBED'|'MISSING_SETTINGS'|'INVALID_CONFIG'|'TOKEN_UNAUTHORIZED'|'META_UNAVAILABLE';
+  subscribed:boolean|null;missing?:string[];diagnosticReason?:string|null;
+  providerHttpStatus?:number|null;providerErrorCode?:number|null;messagesFieldVerified:false;sendingEnabled:false;
+};
 type WebhookHealth={
   webhookCallbackUrl:string;webhookSecretsPresent:boolean;
   accountIdentifiersPresent:boolean;
@@ -59,6 +64,9 @@ export default function WhatsAppReadinessPage() {
   const [meta,setMeta]=useState<MetaSetup|null>(null);
   const [owned,setOwned]=useState<OwnedStatus|null>(null);
   const [health,setHealth]=useState<WebhookHealth|null>(null);
+  const [subscription,setSubscription]=useState<SubscriptionCheck|null>(null);
+  const [subscriptionBusy,setSubscriptionBusy]=useState(false);
+  const [subscriptionError,setSubscriptionError]=useState('');
   const reload=useCallback(async()=>{
     setBusy(true);setError('');
     try {
@@ -86,6 +94,23 @@ export default function WhatsAppReadinessPage() {
     } catch(e) {setError(e instanceof Error?e.message:'WhatsApp readiness unavailable.');}
     finally {setBusy(false);}
   },[]);
+  // Separate and optional: do not slow ordinary HQ loading with Meta network probes.
+  const checkSubscription=async()=>{
+    if(subscriptionBusy)return;
+    setSubscriptionBusy(true);setSubscriptionError('');
+    try{
+      const {data:session}=await supabase.auth.getSession();
+      const token=session.session?.access_token;
+      if(!token)throw new Error('Administrator sign-in required.');
+      const response=await fetch('/api/admin/whatsapp/subscription',{
+        headers:{Authorization:'Bearer '+token},cache:'no-store',
+      });
+      const body=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(body.error||'Subscription check unavailable.');
+      setSubscription(body as SubscriptionCheck);
+    }catch(e){setSubscriptionError(e instanceof Error?e.message:'Meta subscription check unavailable.');}
+    finally{setSubscriptionBusy(false);}
+  };
   useEffect(()=>{void reload();},[reload]);
 
   const statuses=[
@@ -128,6 +153,39 @@ export default function WhatsAppReadinessPage() {
             : <p className="mt-2 text-sm font-semibold text-amber-800">No authenticated Meta callback has been recorded yet. Check Meta's Webhooks → WhatsApp Business Account → messages subscription. Do not send a test message without approval.</p>}
           <p className="mt-2 text-xs leading-5 text-slate-500">Subscription itself has not been confirmed through Meta's API. Do not confuse a verified callback with permission to send customer messages.</p>
         </>}
+      </section>
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-label="Meta application subscription">
+        <h2 className="text-lg font-black">Check which Meta app receives Zeshu WhatsApp events</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          This checks the existing WABA's subscribed application IDs directly through Meta's read-only API.
+          It never subscribes an app, sends a message, changes credentials or enables customer messaging.
+        </p>
+        <button type="button" onClick={()=>void checkSubscription()} disabled={subscriptionBusy}
+          className="mt-3 min-h-11 rounded-xl bg-[#075e45] px-4 py-3 text-sm font-bold text-white disabled:opacity-50">
+          {subscriptionBusy?'Checking Meta subscription…':'Check Meta app subscription'}
+        </button>
+        {subscription?.status==='SUBSCRIBED'&&<p className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">
+          Correct Meta app is listed on the configured WABA. Next verify that the app's Webhooks configuration subscribes to the messages field and that real signed callbacks arrive.
+        </p>}
+        {subscription?.status==='NOT_SUBSCRIBED'&&<p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-950">
+          The configured Zeshu Meta app is not listed on this WABA. Check the first Zeshu business account and app before changing any subscription in Meta.
+        </p>}
+        {subscription?.status==='MISSING_SETTINGS'&&<p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-950">
+          Required Cloudflare settings are missing: {(subscription.missing||[]).join(', ')}. Enter secrets only in Cloudflare, never here.
+        </p>}
+        {subscription&&(subscription.status==='META_UNAVAILABLE'||subscription.status==='TOKEN_UNAUTHORIZED'||subscription.status==='INVALID_CONFIG')&&
+          <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-950">
+            Meta subscription lookup was not verified: {subscription.status}
+            {subscription.diagnosticReason?' · '+subscription.diagnosticReason:''}
+            {typeof subscription.providerHttpStatus==='number'?' · HTTP '+subscription.providerHttpStatus:''}
+            {typeof subscription.providerErrorCode==='number'?' · Meta code '+subscription.providerErrorCode:''}.
+            Review account permissions and the full WhatsApp diagnostics before rotating credentials.
+          </p>}
+        {subscriptionError&&<p role="alert" className="mt-3 text-sm font-semibold text-red-700">{subscriptionError}</p>}
+        <p className="mt-2 text-xs leading-5 text-slate-500">
+          An app listed here does not prove the messages webhook field, callback URL, inbound delivery or phone-app Coexistence is active.
+          Customer WhatsApp sending remains OFF.
+        </p>
       </section>
       {error&&<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm font-bold text-red-700">{error}</p>}
       {data&&<>
