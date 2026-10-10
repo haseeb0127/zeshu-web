@@ -28,7 +28,15 @@ jobs:
           const account=process.env.CF_ACCOUNT_ID, token=process.env.CF_API_TOKEN;
           if (!account || !token) throw Error('Cloudflare inspection credentials unavailable in GitHub Actions.');
           const name='zeshu-web-production-candidate';
-          const key='WHATSAPP_META_TOKEN_ENCRYPTION_KEY';
+          const keys=[
+            'WHATSAPP_META_TOKEN_ENCRYPTION_KEY',
+            'WHATSAPP_ACCESS_TOKEN',
+            'WHATSAPP_BUSINESS_ACCOUNT_ID',
+            'WHATSAPP_PHONE_NUMBER_ID',
+            'WHATSAPP_GRAPH_API_VERSION',
+            'WHATSAPP_WEBHOOK_VERIFY_TOKEN',
+            'WHATSAPP_APP_SECRET',
+          ];
           const api='https://api.cloudflare.com/client/v4/accounts/' + encodeURIComponent(account) +
             '/workers/scripts/' + encodeURIComponent(name);
           const read = async (path) => {
@@ -40,10 +48,10 @@ jobs:
             const payload=await response.json();
             return payload?.success === false ? {error:'API_FAILED'} : {data:payload.result};
           };
-          function metadataContainsName(value, depth=0) {
+          function metadataContainsName(value, key, depth=0) {
             if (depth > 5 || value === null || typeof value !== 'object') return false;
             if (value.name === key) return true;
-            return Object.values(value).some(v => metadataContainsName(v,depth+1));
+            return Object.values(value).some(v => metadataContainsName(v,key,depth+1));
           }
           const dep=await read('/deployments');
           const deployments=Array.isArray(dep.data)?dep.data:Array.isArray(dep.data?.deployments)?dep.data.deployments:[];
@@ -55,20 +63,21 @@ jobs:
             {error:'NO_ACTIVE_DEPLOYMENT'};
           const settings=await read('/settings');
           const names=await read('/secrets');
-          let activeBinding = 'UNKNOWN';
-          if (v.data && v.data.resources?.bindings != null)
-            activeBinding = metadataContainsName(v.data.resources.bindings)?'PRESENT':'ABSENT';
-          const scriptBinding = settings.data?.bindings != null
-            ? (metadataContainsName(settings.data.bindings)?'PRESENT':'ABSENT'):'UNKNOWN';
-          const list=Array.isArray(names.data)?names.data:Array.isArray(names.data?.result)?names.data.result:null;
-          const listedSecret=list ? (list.some(x=>x?.name===key)?'PRESENT':'ABSENT'):'UNKNOWN';
+          const listed=Array.isArray(names.data)?names.data:Array.isArray(names.data?.result)?names.data.result:null;
+          const bindingNames=Object.fromEntries(keys.map(key=>[key,{
+            active: v.data?.resources?.bindings!=null
+              ? metadataContainsName(v.data.resources.bindings,key)?'PRESENT':'ABSENT'
+              : 'UNKNOWN',
+            settings: settings.data?.bindings!=null
+              ? metadataContainsName(settings.data.bindings,key)?'PRESENT':'ABSENT'
+              : 'UNKNOWN',
+            secret:listed!=null?listed.some(x=>x?.name===key)?'PRESENT':'ABSENT':'UNKNOWN',
+          }]));
           console.log(JSON.stringify({
             worker:name,
             activeVersion:active?.version_id?.slice(0,12)??'UNAVAILABLE',
             activeTrafficPercentage:active?.percentage??null,
-            activeVersionMetaKeyBinding:activeBinding,
-            scriptSettingsMetaKeyBinding:scriptBinding,
-            secretDeclaredForScript:listedSecret,
+            keyBindingMetadataOnly:bindingNames,
             metadataReadErrors:{
               deployments:dep.error??null,
               version:v.error??null,
