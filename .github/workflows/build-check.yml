@@ -97,6 +97,8 @@ jobs:
         run: node .github/scripts/dine-booking-qa.mjs
       - name: Verify diner arrival signals and agreed kitchen delay protections
         run: node .github/scripts/dine-arrival-qa.mjs
+      - name: Verify safe admin-only WhatsApp webhook subscription repair
+        run: node --experimental-strip-types .github/scripts/whatsapp-waba-repair-qa.mjs
       - name: Verify inbound WhatsApp safety and WABA account filtering
         run: node --experimental-strip-types .github/scripts/whatsapp-inbox-qa.mjs
       - run: npm run build

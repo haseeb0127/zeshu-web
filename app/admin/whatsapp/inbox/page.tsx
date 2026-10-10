@@ -27,6 +27,8 @@ export default function ZeshuWhatsappInbox(){
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState('');
   const [notice,setNotice]=useState('');
+  const [repairBusy,setRepairBusy]=useState(false);
+  const [repairOutcome,setRepairOutcome]=useState('');
   const auth=async()=>{
     const {data}=await supabase.auth.getSession();
     const token=data.session?.access_token;
@@ -69,6 +71,31 @@ export default function ZeshuWhatsappInbox(){
     const timer=window.setInterval(()=>{void refresh(true);},30000);
     return()=>window.clearInterval(timer);
   },[refresh]);
+  const repairInboundSubscription=async()=>{
+    if(repairBusy)return;
+    const agreed=window.confirm('Check the existing +91 95052 11212 Meta account and, only if not subscribed, connect its inbound webhook to Zeshu Support? This does not send messages, register the number or fix mobile-app OTP. Continue?');
+    if(!agreed)return;
+    setRepairBusy(true);setRepairOutcome('');setError('');
+    try{
+      const response=await fetch('/api/admin/whatsapp/repair-subscription',{
+        method:'POST',cache:'no-store',
+        headers:{...(await auth()),'Content-Type':'application/json'},
+        body:JSON.stringify({action:'subscribe_existing_waba',allowInboundWebhooks:true,expectedPhoneLast4:'1212'}),
+      });
+      const body=await response.json().catch(()=>({}));
+      if(body.status==='SUBSCRIBED'||body.status==='ALREADY_SUBSCRIBED'){
+        setRepairOutcome('✅ '+(body.note||'WABA subscription verified.')+' Check Meta → WhatsApp → Configuration → messages field if signed callbacks remain at zero.');
+      }else{
+        setRepairOutcome('Not connected yet: '+(body.status||'UNAVAILABLE')
+          +(body.diagnosticReason?' · '+body.diagnosticReason:'')
+          +(body.providerHttpStatus?' · HTTP '+body.providerHttpStatus:'')
+          +'. Your phone and credentials have not been changed.');
+      }
+      await refresh(true);
+    }catch{
+      setRepairOutcome('The private connection check could not complete. No message or phone registration was initiated.');
+    }finally{setRepairBusy(false);}
+  };
   const saveDraft=async()=>{
     if(!selected||!draft.trim()||saving)return;
     setSaving(true);setError('');setNotice('');
@@ -117,6 +144,15 @@ export default function ZeshuWhatsappInbox(){
           </ol>
           <p className="mt-3 break-all rounded-xl bg-slate-50 p-3 font-mono text-xs">{webhook.webhookCallbackUrl}</p>
           <p className="mt-2 text-xs text-slate-600">Webhook secrets: {webhook.webhookSecretsPresent?'detected':'not detected'} · Phone/account IDs: {webhook.accountIdentifiersPresent?'detected':'not detected'}</p>
+          <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-4">
+            <p className="font-black text-emerald-900">Simpler option: verify or repair the existing Meta WABA subscription</p>
+            <p className="mt-1 text-xs leading-5 text-emerald-950">Zeshu first checks your exact registered phone and Meta application. Only if the WABA is not subscribed can it request an inbound-only subscription. This does not send WhatsApp messages or make the mobile app receive OTPs.</p>
+            <button type="button" disabled={repairBusy} onClick={()=>void repairInboundSubscription()}
+              className="mt-3 min-h-12 rounded-xl bg-[#075e45] px-4 py-3 text-sm font-black text-white disabled:opacity-50">
+              {repairBusy?'Checking Meta securely…':'Check & repair incoming connection'}
+            </button>
+            {repairOutcome&&<p role="status" className="mt-2 text-xs font-semibold leading-5 text-emerald-950">{repairOutcome}</p>}
+          </div>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <a className="rounded-xl bg-[#075e45] px-4 py-3 font-bold text-white" href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">Open Meta Developer apps ↗</a>
             <Link className="font-bold text-emerald-900 underline" href="/admin/whatsapp">View full Zeshu WhatsApp diagnostics</Link>
