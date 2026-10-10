@@ -71,6 +71,8 @@ export default function DinePage(){
   finally{setLoading(false);}
  },[refreshMine]);
  useEffect(()=>{setArrival(todayInput());void refresh();},[refresh]);
+ // In-page status refresh only; no WhatsApp, SMS or customer notification sends.
+ useEffect(()=>{const timer=window.setInterval(()=>void refreshMine().catch(()=>{}),30_000);return()=>window.clearInterval(timer);},[refreshMine]);
 
  async function reserve(event:React.FormEvent){
   event.preventDefault();
