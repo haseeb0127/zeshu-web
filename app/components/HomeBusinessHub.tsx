@@ -29,7 +29,7 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
   const anyMoveReady = [moveServices.AUTO_DRIVER, moveServices.CAB_DRIVER, moveServices.BIKE_COURIER, moveServices.GOODS_DRIVER].some(ready);
   const slides = [
     { scope:"Jagtial", title:t("Shop in Jagtial"), description:t("Groceries and everyday essentials from nearby sellers."), cta:t("Shop now"), action:"shop", poster:"shop", icon:ShoppingBag, theme:"bg-[#044c37]" },
-    { scope:"Jagtial", title:t("Zeshu Dine"), description:t("Reserve a table and pre-order food when verified restaurants join. Kitchen-confirmed serving times."), cta:t("Explore dining"), action:"dine", poster:"dine", icon:ShoppingBag, theme:"bg-[#4a2810]" },
+    { scope:"Jagtial", title:t("Zeshu Dine"), description:t("Table reservations and meal pre-orders after restaurant verification. Kitchen-confirmed serving times."), cta:t("Explore dining"), action:"dine", poster:"dine", icon:ShoppingBag, theme:"bg-[#4a2810]" },
     { scope:"India", title:t("Zeshu Fashion"), description:t("Explore clothing and accessories from independent sellers where stock is available."), cta:t("Explore fashion"), action:"fashion", poster:"fashion", icon:ShoppingBag, theme:"bg-[#074734]" },
     { scope:"India", title:t("Zeshu Pay"), description:t("Explore recharge and bill services supported by available providers."), cta:t("Explore Zeshu Pay"), action:"pay", poster:"pay", icon:Receipt, theme:"bg-[#074734]" },
     { scope:"Telangana", title:t("Zeshu Move"), description:t("Check rides and courier availability for your area."), cta:anyMoveReady?t("Check availability"):t("See services"), action:"move", poster:"move", icon:Car, theme:"bg-[#074734]" },
