@@ -101,6 +101,7 @@ export async function PATCH(request:Request){
  }
  // A restaurant must correct a delay transparently. Never silently promise the original time.
  if(x.action==='servingEstimate'){
+  if(x.guestAgreed!==true)return no('Confirm that the guest has agreed directly to the revised serving time.');
   if(!uuid(x.bookingId)||!dateISO(x.serveAt))return no('Choose a valid revised serving time.');
   const serveAt=new Date(String(x.serveAt));
   const {data:booking,error:readError}=await db.from('dine_bookings')
