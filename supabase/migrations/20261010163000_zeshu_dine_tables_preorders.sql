@@ -66,6 +66,9 @@ create table if not exists public.dine_bookings(
  constraint dine_confirmed_has_time check(status not in ('CONFIRMED','COMPLETED','NO_SHOW') or confirmed_serve_at is not null)
 );
 create index if not exists dine_booking_customer on public.dine_bookings(customer_id,created_at desc);
+-- Retries must not create two active reservations for the same customer, venue and arrival.
+create unique index if not exists dine_active_request_unique on public.dine_bookings(customer_id,restaurant_id,arrival_at)
+ where status in ('REQUESTED','CONFIRMED');
 create index if not exists dine_booking_restaurant on public.dine_bookings(restaurant_id,arrival_at,status);
 create table if not exists public.dine_partner_leads(
  id uuid primary key default gen_random_uuid(),
