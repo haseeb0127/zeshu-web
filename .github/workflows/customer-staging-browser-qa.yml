@@ -85,9 +85,9 @@ jobs:
             await moveEntry.waitFor({ state: 'visible', timeout: 10000 });
             assert(await moveEntry.isVisible(), 'Homepage Zeshu Move entry is missing');
             const promoSlides = moveQuick.locator('[data-slide]');
-            assert(await promoSlides.count() === 9, 'Homepage must show the nine distinct glossy 3D Zeshu promotions');
+            assert(await promoSlides.count() === 10, 'Homepage must show all ten Zeshu promotions including Dine');
             const promoText = (await promoSlides.allInnerTexts()).join(' ').replace(/\s+/g, ' ');
-            for (const promo of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move']) {
+            for (const promo of ['Shop in Jagtial', 'Zeshu Dine', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move']) {
               assert(promoText.includes(promo), `Homepage promo carousel is missing ${promo}`);
             }
             const promoScopes = await promoSlides.evaluateAll((slides) =>
