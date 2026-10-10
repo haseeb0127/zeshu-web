@@ -17,7 +17,7 @@ export type SafeMetaDiagnostic = {
   // body, token, URL with credentials, phone IDs, or provider trace IDs.
   reason?: 'NETWORK_OR_TIMEOUT' | 'GRAPH_RATE_LIMITED' | 'GRAPH_UPSTREAM_ERROR' |
     'GRAPH_ENDPOINT_NOT_FOUND' | 'GRAPH_BAD_REQUEST' | 'GRAPH_HTTP_ERROR' |
-    'GRAPH_INVALID_RESPONSE' | 'GRAPH_PAGINATION_LIMIT';
+    'GRAPH_INVALID_RESPONSE' | 'GRAPH_PAGINATION_LIMIT' | 'GRAPH_REDIRECT';
   httpStatus?: number;
   graphCode?: number;
   networkFailureKind?: 'TIMEOUT' | 'FETCH_REJECTED';
@@ -63,7 +63,8 @@ export async function verifyOwnedWhatsappAccount(args:{
       try{
         response=await request(url.toString(),{
           method:'GET',headers:{Authorization:'Bearer '+token},
-          cache:'no-store',redirect:'error',signal:AbortSignal.timeout(timeoutMs),
+          // Do not follow redirects with Bearer credentials: report an HTTP redirect instead.
+          cache:'no-store',redirect:'manual',signal:AbortSignal.timeout(timeoutMs),
         });
         break;
       }catch(error){
@@ -89,6 +90,9 @@ export async function verifyOwnedWhatsappAccount(args:{
         reason:'NETWORK_OR_TIMEOUT',networkFailureKind:kind,
         metaGraphReachable,attempts,
       });
+    }
+    if(response.status>=300&&response.status<400){
+      return failed('META_UNAVAILABLE',{reason:'GRAPH_REDIRECT',httpStatus:response.status});
     }
     if(!response.ok) {
       let code:number|undefined;
