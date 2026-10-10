@@ -20,6 +20,9 @@ export type SafeMetaDiagnostic = {
     'GRAPH_INVALID_RESPONSE' | 'GRAPH_PAGINATION_LIMIT';
   httpStatus?: number;
   graphCode?: number;
+  networkFailureKind?: 'TIMEOUT' | 'FETCH_REJECTED';
+  metaGraphReachable?: boolean | null;
+  attempts?: number;
 };
 export type OwnedWabaCheck =
   | {status:'VERIFIED'; displayPhoneNumber:string|null; verifiedName:string|null;
@@ -50,13 +53,43 @@ export async function verifyOwnedWhatsappAccount(args:{
     url.searchParams.set('fields','id,display_phone_number,verified_name');
     url.searchParams.set('limit','100');
     if(nextCursor)url.searchParams.set('after',nextCursor);
-    let response:Response;
-    try {
-      response=await request(url.toString(),{
-        method:'GET',headers:{Authorization:'Bearer '+token},
-        cache:'no-store',redirect:'error',signal:AbortSignal.timeout(10000),
+    // GET-only verification can be safely retried once after an outbound
+    // transport failure. Never retry auth/permissions/validation HTTP errors.
+    let response:Response|null=null;
+    let lastFailure:unknown;
+    let attempts=0;
+    for(const timeoutMs of [8_000,12_000]){
+      attempts++;
+      try{
+        response=await request(url.toString(),{
+          method:'GET',headers:{Authorization:'Bearer '+token},
+          cache:'no-store',redirect:'error',signal:AbortSignal.timeout(timeoutMs),
+        });
+        break;
+      }catch(error){
+        lastFailure=error;
+      }
+    }
+    if(!response){
+      const kind=(lastFailure instanceof Error
+        && (lastFailure.name==='TimeoutError'||lastFailure.name==='AbortError'))
+        ? 'TIMEOUT' : 'FETCH_REJECTED';
+      // Separate general Graph API reachability from a failure specifically
+      // involving the authorized request. Probe has no token or identifiers.
+      let metaGraphReachable:boolean|null=null;
+      try{
+        const probe=await request('https://graph.facebook.com/',{
+          method:'GET',cache:'no-store',redirect:'manual',
+          signal:AbortSignal.timeout(4000),
+        });
+        // Even 400/401/403 is a valid HTTP response proving transport works.
+        metaGraphReachable=probe.status>=100&&probe.status<=599;
+      }catch{metaGraphReachable=false;}
+      return failed('META_UNAVAILABLE',{
+        reason:'NETWORK_OR_TIMEOUT',networkFailureKind:kind,
+        metaGraphReachable,attempts,
       });
-     }catch{return failed('META_UNAVAILABLE',{reason:'NETWORK_OR_TIMEOUT'});}
+    }
     if(!response.ok) {
       let code:number|undefined;
       try {
