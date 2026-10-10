@@ -23,11 +23,12 @@ export type SafeMetaDiagnostic = {
   networkFailureKind?: 'TIMEOUT' | 'FETCH_REJECTED';
   metaGraphReachable?: boolean | null;
   attempts?: number;
+  exactMetaEndpointReachableWithoutAuth?: boolean | null;
 };
 export type OwnedWabaCheck =
   | {status:'VERIFIED'; displayPhoneNumber:string|null; verifiedName:string|null;
      wabaId:string;phoneNumberId:string} & SafeMetaDiagnostic
-  | {status:'MISSING_SETTINGS'|'TOKEN_UNAUTHORIZED'|'PHONE_NOT_IN_ACCOUNT'|'META_UNAVAILABLE'|
+  | {status:'MISSING_SETTINGS'|'TOKEN_UNAUTHORIZED'|'TOKEN_FORMAT_INVALID'|'PHONE_NOT_IN_ACCOUNT'|'META_UNAVAILABLE'|
     'INVALID_CONFIG'; displayPhoneNumber:null; verifiedName:null;
     wabaId:string|null;phoneNumberId:string|null} & SafeMetaDiagnostic;
 
@@ -43,6 +44,10 @@ export async function verifyOwnedWhatsappAccount(args:{
   if(!token||!wabaId||!phoneNumberId||!graphVersion)return failed('MISSING_SETTINGS');
   if(token.length<20||token.length>10000||!META_ID.test(wabaId)||
     !META_ID.test(phoneNumberId)||!VERSION.test(graphVersion))return failed('INVALID_CONFIG');
+  // Prevent malformed copy/pastes from being misclassified as network errors:
+  // whitespace, quotes, control characters and app-id|secret are not valid
+  // system-user access-token header values. No token bytes are returned.
+  if(!/^[a-zA-Z0-9._~-]+$/.test(token))return failed('TOKEN_FORMAT_INVALID');
 
   // Meta accepts either a System User token or short-lived test token.
   // Server-only Authorization header, HTTPS, no customer messages or writes.
@@ -86,9 +91,20 @@ export async function verifyOwnedWhatsappAccount(args:{
         // Even 400/401/403 is a valid HTTP response proving transport works.
         metaGraphReachable=probe.status>=100&&probe.status<=599;
       }catch{metaGraphReachable=false;}
+      // Probe the exact same read-only Graph URL WITHOUT any credentials.
+      // A Graph 400 OAuth error still proves the endpoint is reachable.
+      // This narrows a header-specific reject vs. a path-specific failure.
+      let exactMetaEndpointReachableWithoutAuth:boolean|null=null;
+      try{
+        const unauthed=await request(url.toString(),{
+          method:'GET',cache:'no-store',redirect:'manual',
+          signal:AbortSignal.timeout(4000),
+        });
+        exactMetaEndpointReachableWithoutAuth=unauthed.status>=100&&unauthed.status<=599;
+      }catch{exactMetaEndpointReachableWithoutAuth=false;}
       return failed('META_UNAVAILABLE',{
         reason:'NETWORK_OR_TIMEOUT',networkFailureKind:kind,
-        metaGraphReachable,attempts,
+        metaGraphReachable,exactMetaEndpointReachableWithoutAuth,attempts,
       });
     }
     if(response.status>=300&&response.status<400){
