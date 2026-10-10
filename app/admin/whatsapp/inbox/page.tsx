@@ -9,10 +9,17 @@ const supabase=adminSupabase();
 type Thread={id:string;customer_wa_id:string;display_name:string;last_message_preview:string;last_message_at:string|null;status:string};
 type Message={id:string;direction:'INBOUND';message_type:string;body:string;sent_at:string};
 type Detail={thread:Thread;messages:Message[];draft:{body:string;updated_at:string}|null;canSend:false};
+type WebhookReadiness={
+  webhookCallbackUrl:string;webhookSecretsPresent:boolean;accountIdentifiersPresent:boolean;
+  observedSignedCallbacks:number;observedMatchingAccountCallbacks:number;
+  observedInboundMessageEvents:number;lastSignedCallbackAt:string|null;
+  subscriptionVerified:false;sendingEnabled:false;
+};
 const date=(value:string|null)=>value?new Date(value).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}):'';
 const digits=(v:string)=>v.length>4?'••••'+v.slice(-4):'••••';
 export default function ZeshuWhatsappInbox(){
   const [threads,setThreads]=useState<Thread[]>([]);
+  const [webhook,setWebhook]=useState<WebhookReadiness|null>(null);
   const [selected,setSelected]=useState<string|null>(null);
   const [detail,setDetail]=useState<Detail|null>(null);
   const [draft,setDraft]=useState('');
@@ -29,10 +36,18 @@ export default function ZeshuWhatsappInbox(){
   const refresh=useCallback(async(silent=false)=>{
     if(!silent)setLoading(true);
     try{
-      const response=await fetch('/api/admin/whatsapp/inbox',{headers:await auth(),cache:'no-store'});
-      const payload=await response.json().catch(()=>({}));
+      const headers=await auth();
+      const [response,healthResponse]=await Promise.all([
+        fetch('/api/admin/whatsapp/inbox',{headers,cache:'no-store'}),
+        fetch('/api/admin/whatsapp/webhook-health',{headers,cache:'no-store'}),
+      ]);
+      const [payload,healthPayload]=await Promise.all([
+        response.json().catch(()=>({})),
+        healthResponse.json().catch(()=>({})),
+      ]);
       if(!response.ok)throw new Error(payload.error||'Inbox is temporarily unavailable.');
       setThreads(Array.isArray(payload.conversations)?payload.conversations:[]);
+      setWebhook(healthResponse.ok?healthPayload as WebhookReadiness:null);
       setError('');
     }catch(e){setError(e instanceof Error?e.message:'Inbox could not be loaded.');}
     finally{setLoading(false);}
@@ -88,6 +103,32 @@ export default function ZeshuWhatsappInbox(){
         <p className="flex items-center gap-2 font-black"><ShieldCheck size={18}/>Customer messaging is OFF</p>
         <p className="mt-1 leading-5">Only messages actually received via your verified Meta webhook appear here. Replies are saved as drafts and are <strong>never sent</strong>. Do not expect mobile-app chats to sync without approved Coexistence.</p>
       </div>
+      {!loading&&webhook?.observedSignedCallbacks===0&&
+        <section aria-label="WhatsApp connection status" className="mb-4 rounded-2xl border border-amber-200 bg-white p-4 text-sm text-slate-800">
+          <p className="font-black text-amber-900">WhatsApp inbox is waiting for Meta callbacks</p>
+          <p className="mt-2 leading-6">Zeshu has not recorded an authenticated callback from Meta.
+            This does not prove your phone is disconnected: a connected number and a configured API token do not confirm webhook subscription.</p>
+          <p className="mt-2 font-semibold">Next: confirm the webhook in the existing Zeshu Support Meta app.</p>
+          <ol className="mt-2 list-inside list-decimal space-y-2 leading-6">
+            <li>Open Meta for Developers → Zeshu Support → WhatsApp → Configuration / Webhooks.</li>
+            <li>Use the callback URL shown below and the <strong>existing private Cloudflare webhook verification token</strong>. Never paste that token here.</li>
+            <li>Subscribe to the WhatsApp Business Account <code>messages</code> field and verify the application is subscribed to the correct Zeshu WABA.</li>
+            <li>Return here and tap Refresh to check for new signed callbacks. No customer messaging will be enabled by this check.</li>
+          </ol>
+          <p className="mt-3 break-all rounded-xl bg-slate-50 p-3 font-mono text-xs">{webhook.webhookCallbackUrl}</p>
+          <p className="mt-2 text-xs text-slate-600">Webhook secrets: {webhook.webhookSecretsPresent?'detected':'not detected'} · Phone/account IDs: {webhook.accountIdentifiersPresent?'detected':'not detected'}</p>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <a className="rounded-xl bg-[#075e45] px-4 py-3 font-bold text-white" href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">Open Meta Developer apps ↗</a>
+            <Link className="font-bold text-emerald-900 underline" href="/admin/whatsapp">View full Zeshu WhatsApp diagnostics</Link>
+          </div>
+        </section>}
+      {!loading&&webhook&&webhook.observedSignedCallbacks>0&&
+        <div className="mb-4 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm">
+          <p className="font-bold text-emerald-900">{webhook.observedSignedCallbacks} signed Meta callbacks observed.</p>
+          <p className="mt-1 text-slate-700">{webhook.observedMatchingAccountCallbacks} matched Zeshu's account. {webhook.observedInboundMessageEvents} inbound messages recorded.</p>
+          <p className="mt-1 text-xs text-slate-500">Receipt of a signed callback does not by itself prove full subscription, Cloud API sending or phone app coexistence.</p>
+        </div>}
+      {!loading&&!webhook&&<p className="mb-4 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700">Webhook health is not available right now. The inbox is still private; check <Link href="/admin/whatsapp" className="font-bold underline">WhatsApp HQ</Link> for diagnostics.</p>}
       {error&&<p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-800">{error}</p>}
       {notice&&<p role="status" className="mb-3 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">{notice}</p>}
       <div className="grid min-h-[480px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:grid-cols-[300px_minmax(0,1fr)]">
