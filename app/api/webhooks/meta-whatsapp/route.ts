@@ -1,3 +1,5 @@
+import {getRuntimeEnvValue} from '@/app/lib/runtime-env';
+import {parseInboundWhatsAppMessages,ingestInboundWhatsAppMessages} from '@/app/lib/whatsapp-inbox-webhook';
 import {
   extractSupportWhatsappDeliveryEvents,
   hasValidMetaSignature,
@@ -33,6 +35,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const rawBody = await request.text();
+  if(rawBody.length>524288) return textResponse('Request too large.',413);
   const appSecret = process.env.WHATSAPP_APP_SECRET?.trim();
   if (!appSecret) return textResponse('Service unavailable.', 503);
 
@@ -47,10 +50,22 @@ export async function POST(request: Request) {
   }
 
   const events = extractSupportWhatsappDeliveryEvents(payload);
-  if (events.length === 0) return Response.json({ received: true });
-
-  const result = await ingestSupportWhatsappDeliveryEvents(events);
-  if (result === 'unavailable') return textResponse('Service unavailable.', 503);
-  if (result === 'failed') return textResponse('Request could not be processed.', 500);
-  return Response.json({ received: true });
+  // Inbound messages are received only after Meta signs the webhook. Never
+  // send an automatic reply, register phones, or turn on a customer toggle.
+  const [wabaId,phoneId]=await Promise.all([
+    getRuntimeEnvValue('WHATSAPP_BUSINESS_ACCOUNT_ID'),
+    getRuntimeEnvValue('WHATSAPP_PHONE_NUMBER_ID'),
+  ]);
+  const incoming=parseInboundWhatsAppMessages(payload,wabaId,phoneId);
+  if(events.length){
+    const outcome=await ingestSupportWhatsappDeliveryEvents(events);
+    if(outcome==='unavailable')return textResponse('Service unavailable.',503);
+    if(outcome==='failed')return textResponse('Request could not be processed.',500);
+  }
+  if(incoming.length){
+    const outcome=await ingestInboundWhatsAppMessages(incoming);
+    if(outcome==='unavailable')return textResponse('Service unavailable.',503);
+    if(outcome==='failed')return textResponse('Request could not be processed.',500);
+  }
+  return Response.json({received:true});
 }

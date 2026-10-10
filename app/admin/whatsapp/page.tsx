@@ -91,6 +91,11 @@ export default function WhatsAppReadinessPage() {
       </div>
     </header>
     <div className="mx-auto max-w-4xl space-y-5 p-4 md:p-6">
+      <section className="rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm">
+          <h2 className="flex items-center gap-2 text-lg font-black"><MessageCircle size={20}/>Zeshu WhatsApp Support Inbox</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">A private, mobile-friendly inbox for genuine incoming Cloud API messages. Currently read-only: customer replies can be saved as unsent drafts, but never transmitted.</p>
+          <Link href="/admin/whatsapp/inbox" className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-[#075e45] px-5 py-3 text-sm font-black text-white">Open WhatsApp Inbox →</Link>
+        </section>
       {error&&<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm font-bold text-red-700">{error}</p>}
       {data&&<>
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
