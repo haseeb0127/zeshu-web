@@ -60,6 +60,16 @@ export async function PATCH(request:Request){
  const db=await dineAdmin(request);if(!db)return no('Admin access required.',403);
  let x:Record<string,unknown>;
  try{const v:unknown=await request.json();if(!obj(v))throw Error();x=v;}catch{return no('Invalid update.');}
+ if(x.action==='menuAvailability'){
+  if(!uuid(x.menuItemId)||typeof x.available!=='boolean')return no('Invalid menu update.');
+  const {data,error}=await db.from('dine_menu_items').update({available:x.available}).eq('id',x.menuItemId).select('id').maybeSingle();
+  return error?no('Unable to update menu.',503):data?response({ok:true,note:'Menu availability updated. Existing accepted pre-orders still require handling.'}):no('Menu item not found.',404);
+ }
+ if(x.action==='tableAvailability'){
+  if(!uuid(x.tableId)||typeof x.enabled!=='boolean')return no('Invalid table update.');
+  const {data,error}=await db.from('dine_tables').update({enabled:x.enabled}).eq('id',x.tableId).select('id').maybeSingle();
+  return error?no('Unable to update table.',503):data?response({ok:true,note:'Future table confirmation availability updated. Existing reservations remain in place.'}):no('Table not found.',404);
+ }
  if(x.action==='activate'){
   if(!uuid(x.restaurantId)||x.documentsChecked!==true)return no('Document verification confirmation required.');
   if(await getRuntimeEnvValue('DINE_OPERATIONS_APPROVED')!=='true')return no('Zeshu Dine operations and food-platform compliance must be approved before accepting real reservations.',409);
