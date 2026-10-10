@@ -12,19 +12,28 @@ const object = (value: unknown): Record<string,unknown>|null =>
     ? value as Record<string,unknown> : null;
 const string = (value:unknown):string => typeof value==='string'?value:'';
 
+export type SafeMetaDiagnostic = {
+  // Only public numeric API error codes / HTTP status; never Meta's raw error
+  // body, token, URL with credentials, phone IDs, or provider trace IDs.
+  reason?: 'NETWORK_OR_TIMEOUT' | 'GRAPH_RATE_LIMITED' | 'GRAPH_UPSTREAM_ERROR' |
+    'GRAPH_ENDPOINT_NOT_FOUND' | 'GRAPH_BAD_REQUEST' | 'GRAPH_HTTP_ERROR' |
+    'GRAPH_INVALID_RESPONSE' | 'GRAPH_PAGINATION_LIMIT';
+  httpStatus?: number;
+  graphCode?: number;
+};
 export type OwnedWabaCheck =
   | {status:'VERIFIED'; displayPhoneNumber:string|null; verifiedName:string|null;
-     wabaId:string;phoneNumberId:string}
+     wabaId:string;phoneNumberId:string} & SafeMetaDiagnostic
   | {status:'MISSING_SETTINGS'|'TOKEN_UNAUTHORIZED'|'PHONE_NOT_IN_ACCOUNT'|'META_UNAVAILABLE'|
     'INVALID_CONFIG'; displayPhoneNumber:null; verifiedName:null;
-    wabaId:string|null;phoneNumberId:string|null};
+    wabaId:string|null;phoneNumberId:string|null} & SafeMetaDiagnostic;
 
 export async function verifyOwnedWhatsappAccount(args:{
   token:string;wabaId:string;phoneNumberId:string;graphVersion:string;request?:typeof fetch;
 }):Promise<OwnedWabaCheck> {
   const {token,wabaId,phoneNumberId,graphVersion}=args;
-  const failed=(status:Exclude<OwnedWabaCheck['status'],'VERIFIED'>):OwnedWabaCheck=>({
-    status,displayPhoneNumber:null,verifiedName:null,
+  const failed=(status:Exclude<OwnedWabaCheck['status'],'VERIFIED'>, detail:SafeMetaDiagnostic={}):OwnedWabaCheck=>({
+    status, ...detail,displayPhoneNumber:null,verifiedName:null,
     wabaId:META_ID.test(wabaId)?wabaId:null,
     phoneNumberId:META_ID.test(phoneNumberId)?phoneNumberId:null,
   });
@@ -47,14 +56,30 @@ export async function verifyOwnedWhatsappAccount(args:{
         method:'GET',headers:{Authorization:'Bearer '+token},
         cache:'no-store',redirect:'error',signal:AbortSignal.timeout(10000),
       });
-    }catch{return failed('META_UNAVAILABLE');}
-    if(response.status===400||response.status===401||response.status===403)
-      return failed('TOKEN_UNAUTHORIZED');
-    if(!response.ok)return failed('META_UNAVAILABLE');
+     }catch{return failed('META_UNAVAILABLE',{reason:'NETWORK_OR_TIMEOUT'});}
+    if(!response.ok) {
+      let code:number|undefined;
+      try {
+        const body=object(await response.json());
+        const error=object(body?.error);
+        const parsed=error?.code;
+        if(typeof parsed==='number' && Number.isInteger(parsed) && parsed>=0 && parsed<=100000)
+          code=parsed;
+      }catch{/* No raw Meta error bodies are returned or logged. */}
+      const detail:SafeMetaDiagnostic={httpStatus:response.status,...(code!==undefined?{graphCode:code}:{})};
+      if(response.status===401||response.status===403||code===190||code===10||code===200)
+        return failed('TOKEN_UNAUTHORIZED',detail);
+      if(response.status===429||code===4||code===17||code===613)
+        return failed('META_UNAVAILABLE',{...detail,reason:'GRAPH_RATE_LIMITED'});
+      if(response.status===400)return failed('META_UNAVAILABLE',{...detail,reason:'GRAPH_BAD_REQUEST'});
+      if(response.status===404)return failed('META_UNAVAILABLE',{...detail,reason:'GRAPH_ENDPOINT_NOT_FOUND'});
+      if(response.status>=500)return failed('META_UNAVAILABLE',{...detail,reason:'GRAPH_UPSTREAM_ERROR'});
+      return failed('META_UNAVAILABLE',{...detail,reason:'GRAPH_HTTP_ERROR'});
+    }
     let result:Record<string,unknown>|null;
-    try{result=object(await response.json());}catch{return failed('META_UNAVAILABLE');}
+    try{result=object(await response.json());}catch{return failed('META_UNAVAILABLE',{reason:'GRAPH_INVALID_RESPONSE'});}
     const rows=(result as MetaPhoneList|null)?.data;
-    if(!Array.isArray(rows))return failed('META_UNAVAILABLE');
+    if(!Array.isArray(rows))return failed('META_UNAVAILABLE',{reason:'GRAPH_INVALID_RESPONSE'});
     const match=rows.map(object).find(phone=>phone?.id===phoneNumberId) as MetaPhone|undefined;
     if(match)return {
       status:'VERIFIED',wabaId,phoneNumberId,
@@ -67,5 +92,5 @@ export async function verifyOwnedWhatsappAccount(args:{
     if(!paging?.next||!cursor) return failed('PHONE_NOT_IN_ACCOUNT');
     nextCursor=cursor;
   }
-  return failed('META_UNAVAILABLE');
+  return failed('META_UNAVAILABLE',{reason:'GRAPH_PAGINATION_LIMIT'});
 }
