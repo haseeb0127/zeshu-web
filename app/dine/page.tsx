@@ -9,7 +9,7 @@ type Restaurant={id:string;name:string;city:string;area:string;address:string;fs
  opens_at:string;closes_at:string;min_notice_minutes:number;preorder_enabled:boolean;max_party_size:number};
 type Dish={id:string;restaurant_id:string;name:string;category:string;price_paise:number;prep_minutes:number;available:boolean};
 type Booking={id:string;restaurant_id:string;arrival_at:string;requested_serve_at:string;confirmed_serve_at:string|null;prep_start_at:string|null;
- party_size:number;status:string;kitchen_status:string;preordered_items:Array<{name:string;quantity:number}>;
+ party_size:number;status:string;kitchen_status:string;guest_journey_status:string;guest_eta_at:string|null;guest_arrived_at:string|null;preordered_items:Array<{name:string;quantity:number}>;
  estimated_total_paise:number};
 const rupees=(paise:number)=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:2}).format(paise/100);
 const when=(iso:string)=>new Date(iso).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',dateStyle:'medium',timeStyle:'short'});
@@ -32,6 +32,7 @@ export default function DinePage(){
  const [contactPhone,setContactPhone]=useState('');
  const [notes,setNotes]=useState('');
  const [bookings,setBookings]=useState<Booking[]>([]);
+ const [travelEtas,setTravelEtas]=useState<Record<string,number>>({});
  const [loading,setLoading]=useState(true);
  const [busy,setBusy]=useState(false);
  const [message,setMessage]=useState('');
@@ -93,6 +94,20 @@ export default function DinePage(){
    setMessage('Your request has been received—not confirmed yet. The restaurant must confirm the table and estimated serving time. No payment was taken.');
    await refreshMine();
   }catch(e){setError(e instanceof Error?e.message:'Unable to submit your dining request.');}
+  finally{setBusy(false);}
+ }
+ async function journey(id:string,action:'on_the_way'|'arrived'){
+  const token=await auth();
+  if(!token){setError('Sign in to update your table arrival.');return;}
+  setBusy(true);setError('');setMessage('');
+  try{
+   const r=await fetch('/api/dine/bookings',{method:'PATCH',
+    headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
+    body:JSON.stringify({action,bookingId:id,...(action==='on_the_way'?{etaMinutes:travelEtas[id]||20}:{})})});
+   const p=await r.json().catch(()=>({}));
+   if(!r.ok)throw Error(p.error||'Arrival update not saved.');
+   setMessage(p.note||'Travel status updated.');await refreshMine();
+  }catch(e){setError(e instanceof Error?e.message:'Arrival update unavailable.');}
   finally{setBusy(false);}
  }
  async function cancelBooking(id:string){
@@ -199,6 +214,27 @@ export default function DinePage(){
         <p className="mt-1 text-sm font-bold text-emerald-800">Table confirmed · Estimated meal service {when(b.confirmed_serve_at)} · Kitchen: {b.kitchen_status.replaceAll('_',' ').toLowerCase()}</p>:
         <p className="mt-1 text-sm font-semibold text-amber-900">{b.status==='REQUESTED'?'Waiting for restaurant confirmation. Do not assume your table is booked.':'Restaurant booking is not currently active.'}</p>}
        {b.status==='CONFIRMED'&&b.preordered_items?.length>0&&<p className="mt-1 text-xs text-slate-500">Pay at restaurant: {rupees(b.estimated_total_paise)}. Food is prepared only when staff mark its kitchen stage.</p>}
+       {b.status==='CONFIRMED'&&<div className="mt-2 rounded-xl border border-emerald-200 bg-white p-3 text-sm">
+        <p className="font-bold text-emerald-950">
+         {b.guest_journey_status==='ARRIVED'?'✅ You have checked in with Zeshu':
+          b.guest_journey_status==='ON_THE_WAY'&&b.guest_eta_at?'🛵 On the way · Your shared ETA: '+when(b.guest_eta_at):
+          'Keep the restaurant informed of your arrival'}
+        </p>
+        <p className="mt-1 text-xs text-slate-600">Sharing your ETA is optional, not live GPS tracking. The restaurant controls when cooking starts. Please check in with the host when you arrive.</p>
+        {b.guest_journey_status!=='ARRIVED'&&Math.abs(new Date(b.arrival_at).getTime()-Date.now())<2*60*60*1000&&
+         <div className="mt-2 flex flex-wrap items-end gap-2">
+          <label className="text-xs font-bold">I expect to arrive in
+           <select className="ml-2 rounded-lg border bg-white p-2" value={travelEtas[b.id]||20}
+            onChange={e=>setTravelEtas(old=>({...old,[b.id]:Number(e.target.value)}))}>
+            {[5,10,15,20,30,45,60,90,120].map(m=><option key={m} value={m}>{m} minutes</option>)}
+           </select>
+          </label>
+          <button type="button" disabled={busy} onClick={()=>void journey(b.id,'on_the_way')}
+           className="rounded-lg bg-[#075E45] px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Share my ETA</button>
+          <button type="button" disabled={busy} onClick={()=>void journey(b.id,'arrived')}
+           className="rounded-lg border border-emerald-500 px-3 py-2 text-xs font-bold text-emerald-900 disabled:opacity-50">I've arrived</button>
+         </div>}
+       </div>}
        {['REQUESTED','CONFIRMED'].includes(b.status)&&new Date(b.arrival_at).getTime()>Date.now()&&
         <button type="button" disabled={busy} onClick={()=>void cancelBooking(b.id)} className="mt-3 rounded-xl border border-red-200 px-4 py-2 text-xs font-black text-red-800">Cancel request</button>}
       </article>)}</div>}

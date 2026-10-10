@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=p=>readFileSync(p,'utf8');
+const migration=read('supabase/migrations/20261010182000_dine_guest_arrival_signals.sql');
+const customer=read('app/api/dine/bookings/route.ts');
+const admin=read('app/api/admin/dine/route.ts');
+const page=read('app/dine/page.tsx');
+const dashboard=read('app/admin/dine/page.tsx');
+for(const field of ['guest_journey_status','guest_eta_at','guest_arrived_at']){
+ assert(migration.includes(field),'Missing private guest travel metadata column '+field);
+ assert(customer.includes(field),'Customer cannot safely read or update '+field);
+ assert(admin.includes(field),'Restaurant cannot see guest travel update '+field);
+}
+assert(migration.includes('dine_guest_journey_status_check'),'Travel state must be constrained.');
+assert(!migration.includes('grant select on table')&&!migration.includes('grant update on table'),'Guest travel metadata cannot make bookings publicly readable.');
+assert(customer.includes("x.action==='on_the_way'"),'On-the-way update required');
+assert(customer.includes("x.action==='arrived'"),'Arrival check-in required');
+assert(customer.includes(".eq('customer_id',user.id)"),'Travel updates must be scoped to signed-in customer');
+assert(customer.includes(".eq('status','CONFIRMED')"),'Guests must not check in to unconfirmed reservations');
+assert(customer.includes("Number(x.etaMinutes)"),'ETA must be bounded by server-controlled minutes');
+assert(customer.includes("!integer(x.etaMinutes,5,120)"),'Reject unvalidated arrival intervals');
+assert(!customer.includes('navigator.geolocation'),'No covert GPS tracking');
+assert(!customer.includes('razorpay'),'Do not charge for dining arrival signals');
+assert(admin.includes("x.action==='servingEstimate'"),'Kitchen must be able to correct realistic delays');
+assert(admin.includes('x.guestAgreed!==true'),'Guest agreement must be recorded by operator before changing estimate');
+assert(admin.includes("booking.status!=='CONFIRMED'"),'Do not reschedule unconfirmed visits');
+assert(admin.includes("booking.kitchen_status==='NOT_STARTED'"),'Kitchen start recomputation only before food preparation');
+assert(dashboard.includes('guest_eta_at'),'Restaurant staff must see customer-reported ETA');
+assert(dashboard.includes('guestAgreed:true'),'Admin must acknowledge guest approval for delay');
+assert(page.includes("journey(b.id,'on_the_way')"),'Customer should be able to share ETA');
+assert(page.includes("journey(b.id,'arrived')"),'Customer should be able to check in');
+assert(page.includes('not live GPS tracking'),'Set honest tracking expectations');
+console.log('PASS: Zeshu Dine guest ETA sharing, check-in, no GPS/charge, and agreed kitchen delay updates.');

@@ -11,7 +11,7 @@ type Dish={id:string;restaurant_id:string;name:string;price_paise:number;prep_mi
 type Lead={id:string;restaurant_name:string;city:string;contact_name:string;contact_phone:string;fssai_registration:string;status:string;created_at:string};
 type Booking={id:string;restaurant_id:string;contact_name:string;contact_phone:string;party_size:number;arrival_at:string;
  requested_serve_at:string;confirmed_serve_at:string|null;preordered_items:Array<{name:string;quantity:number}>;
- estimated_total_paise:number;status:string;kitchen_status:string;notes:string;created_at:string};
+ estimated_total_paise:number;status:string;kitchen_status:string;guest_journey_status:string;guest_eta_at:string|null;guest_arrived_at:string|null;prep_start_at:string|null;notes:string;created_at:string};
 type Snapshot={restaurants:Restaurant[];tables:Table[];menus:Dish[];bookings:Booking[];leads:Lead[]};
 const empty:Snapshot={restaurants:[],tables:[],menus:[],bookings:[],leads:[]};
 const when=(iso:string)=>new Date(iso).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Kolkata'});
@@ -25,6 +25,7 @@ export default function AdminDine(){
  const [reviewed,setReviewed]=useState<Record<string,boolean>>({});
  const [preorders,setPreorders]=useState<Record<string,boolean>>({});
  const [serveTimes,setServeTimes]=useState<Record<string,string>>({});
+ const [guestAgreed,setGuestAgreed]=useState<Record<string,boolean>>({});
  const session=async()=>{
   const {data:{session}}=await supabase.auth.getSession();
   if(!session?.access_token)throw Error('Sign in to Zeshu Admin first.');
@@ -152,6 +153,12 @@ export default function AdminDine(){
       <p className="mt-1 text-sm">{b.contact_name} · {b.contact_phone} · {b.party_size} guests</p>
       <p className="text-sm">Arrival {when(b.arrival_at)} · Requested serve {when(b.requested_serve_at)} · {b.confirmed_serve_at?'Confirmed serve '+when(b.confirmed_serve_at):'Not confirmed'}</p>
       <p className="mt-2 text-sm">{b.preordered_items?.length?b.preordered_items.map(d=>d.name+' ×'+d.quantity).join(', '):'Table only, no food pre-order'}</p>
+      {b.status==='CONFIRMED'&&<div className="mt-2 rounded-xl border border-emerald-200 bg-white p-3 text-xs leading-6">
+       <p className="font-bold">Guest travel: {b.guest_journey_status==='ARRIVED'?'Arrived at restaurant (guest-reported)':
+        b.guest_journey_status==='ON_THE_WAY'?'On the way — ETA '+(b.guest_eta_at?when(b.guest_eta_at):'not available'):'No travel update yet'}</p>
+       {b.preordered_items?.length>0&&<p>Suggested kitchen preparation start: {b.prep_start_at?when(b.prep_start_at):'Needs kitchen review'}. Do not start cooking solely because a customer shared an ETA.</p>}
+       <p>Confirm arrival with the host. Estimated serving time is not a guaranteed ready time.</p>
+      </div>}
       {b.notes&&<p className="mt-2 rounded-lg bg-amber-50 p-2 text-xs">Customer notes/allergies: {b.notes} — reconfirm with kitchen</p>}
       {b.status==='REQUESTED'&&<div className="mt-3 flex flex-wrap items-end gap-2">
        <label className="text-xs font-bold">Estimated serve time (IST)
@@ -163,6 +170,22 @@ export default function AdminDine(){
        <button type="button" disabled={busy} className="rounded-xl border border-red-200 px-4 py-3 text-sm font-bold text-red-800"
         onClick={()=>void send('PATCH',{action:'decline',bookingId:b.id})}>Decline</button>
       </div>}
+      {b.status==='CONFIRMED'&&['NOT_STARTED','PREPARING'].includes(b.kitchen_status)&&
+       <div className="mt-3 flex flex-wrap items-end gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+        <label className="text-xs font-bold">Revised meal serving estimate (IST)
+         <input className={input} type="datetime-local" value={serveTimes[b.id]??''}
+          onChange={e=>setServeTimes(old=>({...old,[b.id]:e.target.value}))}/>
+        </label>
+        <label className="flex max-w-sm items-start gap-2 text-xs leading-5 text-amber-950">
+         <input type="checkbox" checked={Boolean(guestAgreed[b.id])} onChange={e=>setGuestAgreed(old=>({...old,[b.id]:e.target.checked}))}/>
+         Guest was contacted, understands the delay and agreed to this revised estimate.
+        </label>
+        <button type="button" disabled={busy||!serveTimes[b.id]||!guestAgreed[b.id]} className="rounded-xl border border-amber-400 bg-white px-4 py-2 text-xs font-bold text-amber-950 disabled:opacity-50"
+         onClick={()=>void send('PATCH',{action:'servingEstimate',bookingId:b.id,guestAgreed:true,serveAt:new Date(serveTimes[b.id]).toISOString()})}>
+          Save agreed serving estimate
+        </button>
+        <p className="basis-full text-xs text-amber-950">Agree the revised time directly with the customer before saving. The customer can see the updated estimate on refresh; no automatic message is sent.</p>
+       </div>}
       {b.status==='CONFIRMED'&&<div className="mt-3 flex flex-wrap gap-2">
        {(b.kitchen_status==='NOT_STARTED'&&b.preordered_items?.length>0?['PREPARING']:
         b.kitchen_status==='PREPARING'?['READY']:b.kitchen_status==='READY'?['SERVED']:[]).map(s=>

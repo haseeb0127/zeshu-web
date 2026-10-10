@@ -13,7 +13,7 @@ export async function GET(request:Request){
  const db=await dineService();
  if(!db)return response({error:'Dining service unavailable.'},503);
  const {data,error}=await db.from('dine_bookings')
-  .select('id,restaurant_id,arrival_at,requested_serve_at,confirmed_serve_at,prep_start_at,party_size,status,kitchen_status,preordered_items,estimated_total_paise,created_at')
+  .select('id,restaurant_id,arrival_at,requested_serve_at,confirmed_serve_at,prep_start_at,party_size,status,kitchen_status,preordered_items,estimated_total_paise,guest_journey_status,guest_eta_at,guest_arrived_at,created_at')
   .eq('customer_id',user.id).order('created_at',{ascending:false}).limit(30);
  return error?response({error:'Unable to load your requests.'},503):response({bookings:data||[]});
 }
@@ -103,6 +103,48 @@ export async function PATCH(request:Request){
  if(!user)return response({error:'Sign in to cancel your request.'},401);
  let x:Record<string,unknown>;
  try{const v:unknown=await request.json();if(!isObj(v))throw Error();x=v;}catch{return response({error:'Invalid cancellation request.'},400);}
+ // Advisory travel signals make the restaurant aware of guests without tracking location.
+ // Neither signal auto-confirms a table nor auto-starts food preparation.
+ if(x.action==='on_the_way'||x.action==='arrived'){
+  if(!uuid(x.bookingId))return response({error:'Invalid dining booking.'},400);
+  const db=await dineService();
+  if(!db)return response({error:'Dining service unavailable.'},503);
+  const {data:booking,error:lookupError}=await db.from('dine_bookings')
+   .select('id,arrival_at,status,guest_journey_status')
+   .eq('id',x.bookingId).eq('customer_id',user.id).maybeSingle();
+  if(lookupError)return response({error:'Unable to check the confirmed visit.'},503);
+  if(!booking||booking.status!=='CONFIRMED')
+   return response({error:'Travel updates require a restaurant-confirmed table.'},409);
+  const now=Date.now(),arrival=new Date(booking.arrival_at).getTime();
+  if(now<arrival-2*60*MS||now>arrival+2*60*60*MS)
+   return response({error:'Travel updates open only close to your confirmed arrival time.'},409);
+  if(booking.guest_journey_status==='ARRIVED')
+   return response({ok:true,note:'You have already checked in.'});
+  if(x.action==='on_the_way'){
+   if(!integer(x.etaMinutes,5,120)||![5,10,15,20,30,45,60,90,120].includes(Number(x.etaMinutes)))
+    return response({error:'Choose an approximate arrival in 5 to 120 minutes.'},400);
+   const eta=new Date(now+Number(x.etaMinutes)*MS);
+   if(eta.getTime()<arrival-60*MS||eta.getTime()>arrival+90*MS)
+    return response({error:'Your new ETA is too far from the booked time. Please contact the restaurant to reschedule.'},409);
+   const {data,error}=await db.from('dine_bookings').update({
+    guest_journey_status:'ON_THE_WAY',guest_eta_at:eta.toISOString(),updated_at:new Date().toISOString(),
+   }).eq('id',booking.id).eq('customer_id',user.id).eq('status','CONFIRMED')
+     .neq('guest_journey_status','ARRIVED').select('id').maybeSingle();
+   return error?response({error:'Could not share your approximate arrival time.'},503)
+    :!data?response({error:'Your booking changed. Refresh your dining requests.'},409)
+    :response({ok:true,note:'Your approximate ETA is shared with Zeshu dining staff. It is not live GPS tracking or a new serving-time guarantee.'});
+  }
+  if(now<arrival-45*MS||now>arrival+2*60*MS)
+   return response({error:'Please check in when you actually reach the restaurant, close to your reservation.'},409);
+  const {data,error}=await db.from('dine_bookings').update({
+   guest_journey_status:'ARRIVED',guest_arrived_at:new Date().toISOString(),guest_eta_at:null,
+   updated_at:new Date().toISOString(),
+  }).eq('id',booking.id).eq('customer_id',user.id).eq('status','CONFIRMED')
+    .neq('guest_journey_status','ARRIVED').select('id').maybeSingle();
+  return error?response({error:'Could not record your arrival.'},503)
+   :!data?response({error:'Your booking changed. Refresh your dining requests.'},409)
+   :response({ok:true,note:'Arrival recorded. Please check in with the restaurant host; kitchen timing remains an estimate.'});
+ }
  if(x.action!=='cancel'||!uuid(x.bookingId))return response({error:'Invalid cancellation request.'},400);
  const db=await dineService();
  if(!db)return response({error:'Dining service unavailable.'},503);
