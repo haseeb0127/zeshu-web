@@ -41,7 +41,7 @@ try {
     assert.equal(init.method,'POST');
     assert.equal(init.headers.Authorization,'Bearer '+args.token);
     assert.equal(init.redirect,'manual');
-    assert.equal(init.body,'{}');
+    assert.equal(init.body,undefined);
     if(failWrite)return response({error:{code:200,message:'PRIVATE PERMISSION ERROR'}},403);
     subscribed=true;
     return response({success:true});
