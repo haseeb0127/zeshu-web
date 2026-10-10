@@ -1,0 +1,46 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=path=>readFileSync(path,'utf8');
+const schema=read('supabase/migrations/20261010163000_zeshu_dine_tables_preorders.sql');
+const customer=read('app/api/dine/bookings/route.ts');
+const directory=read('app/api/dine/route.ts');
+const owner=read('app/api/admin/dine/route.ts');
+const partner=read('app/api/dine/partner/route.ts');
+const page=read('app/dine/page.tsx');
+const adminPage=read('app/admin/dine/page.tsx');
+const service=read('app/professional-services/page.tsx');
+const home=read('app/page.tsx');
+
+for(const table of ['dine_restaurants','dine_tables','dine_menu_items','dine_bookings','dine_partner_leads']){
+ assert(schema.includes('create table if not exists public.'+table),'Missing private table '+table);
+ assert(schema.includes("'"+table+"'"),'Missing table from RLS/deny access block: '+table);
+}
+assert(schema.includes('dine_active_request_unique'),'Active retry must not duplicate reservation');
+assert(schema.includes('for update'),'Table confirmation must serialize restaurant updates');
+assert(schema.includes("other.status='CONFIRMED'"),'Confirmed bookings must block overlapping tables');
+assert(schema.includes('prep_start_at'),'Confirmed meals must schedule kitchen start');
+assert(schema.includes('grant execute on function public.confirm_dine_booking(uuid,timestamptz) to service_role;'),'Confirmation must be backend-only');
+assert(schema.includes('revoke all on function public.confirm_dine_booking(uuid,timestamptz) from public,anon,authenticated;'),'No public table confirmation');
+assert(directory.includes(".eq('fssai_verified',true)"),'Only verified restaurants can be public');
+assert(directory.includes(".eq('booking_enabled',true)"),'Only booking-enabled restaurants can be public');
+assert(directory.includes(".eq('enabled',true)"),'A restaurant needs real tables before listing');
+assert(customer.includes('dineUser(request)'),'Bookings must require signed-in customer');
+assert(customer.includes("'REQUESTED'"),'Requests should never automatically confirm');
+assert(customer.includes(".eq('customer_id',user.id)"),'Customer listing/cancellation must be owner-scoped');
+assert(customer.includes('min_notice_minutes'),'Kitchen and table lead time must be checked');
+assert(customer.includes('kitchenMinutes'),'Meal pre-orders must check fresh prep lead');
+assert(customer.includes('estimated_total_paise'),'Menu price must be snapshotted server-side');
+assert(!customer.includes('razorpay'),'Dine must not collect or simulate payment');
+assert(owner.includes("getRuntimeEnvValue('DINE_OPERATIONS_APPROVED')"),'Restaurant activation must require operational compliance approval');
+assert(owner.includes("db.rpc('confirm_dine_booking'"),'Confirmation must use transactionally locked RPC');
+assert(owner.includes("dineAdmin(request)"),'Restaurant inventory and kitchen ops must be admin-only');
+assert(owner.includes("case" )||owner.includes("action==='kitchen'"),'Kitchen stages must require explicit updates');
+assert(partner.includes('x.consent!==true'),'Restaurant owners must consent to contact');
+assert(partner.includes('fssai_registration'),'Restaurant lead must carry declared FSSAI number');
+assert(page.includes('Waiting for restaurant confirmation'),'Status must be clear');
+assert(page.includes('No restaurant has an active'),'No phantom partners');
+assert(page.includes('Pay at restaurant'),'No fake online payment');
+assert(adminPage.includes('Confirm actual free table'),'Admin must explicitly confirm');
+assert(service.includes('href:"/dine"'),'Dining must be findable under services');
+assert(home.includes("id: 'dine'"),'Dining must be searchable from home');
+console.log('PASS: Zeshu Dine request vs confirmation, real tables, kitchen lead, payment safety, partner compliance and privacy guards.');
