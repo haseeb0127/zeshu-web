@@ -65,8 +65,8 @@ export async function repairZeshuWabaSubscription(input:{
  let reply:Response;
  try{
   reply=await fetcher(url,{
-   method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
-   body:'{}',cache:'no-store',redirect:'manual',signal:AbortSignal.timeout(10000),
+   method:'POST',headers:{Authorization:'Bearer '+token},
+   cache:'no-store',redirect:'manual',signal:AbortSignal.timeout(10000),
   });
  }catch{return fail('META_UNAVAILABLE',{reason:'NETWORK_OR_TIMEOUT'});}
  if(!reply.ok){
