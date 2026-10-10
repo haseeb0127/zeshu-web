@@ -46,6 +46,9 @@ export async function GET(request:Request) {
   });
   return json({
     status:result.status,missing:[],verified:result.status==='VERIFIED',
+    diagnosticReason:result.reason??null,
+    providerHttpStatus:result.httpStatus??null,
+    providerErrorCode:result.graphCode??null,
     phoneNumber:result.displayPhoneNumber,verifiedName:result.verifiedName,
     senderEnabled:false,customerMessagingAuthorized:false,
     note:'Read-only Meta ownership check only. No registration, app subscriptions, customer message or payment.',
