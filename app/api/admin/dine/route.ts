@@ -13,7 +13,7 @@ export async function GET(request:Request){
   db.from('dine_restaurants').select('*').order('created_at',{ascending:false}).limit(100),
   db.from('dine_menu_items').select('id,restaurant_id,name,category,price_paise,prep_minutes,available').limit(500),
   db.from('dine_tables').select('id,restaurant_id,label,seats,enabled').limit(500),
-  db.from('dine_bookings').select('id,restaurant_id,contact_name,contact_phone,party_size,arrival_at,requested_serve_at,confirmed_serve_at,prep_start_at,preordered_items,estimated_total_paise,status,kitchen_status,notes,created_at').order('created_at',{ascending:false}).limit(200),
+  db.from('dine_bookings').select('id,restaurant_id,contact_name,contact_phone,party_size,arrival_at,requested_serve_at,confirmed_serve_at,prep_start_at,preordered_items,estimated_total_paise,status,kitchen_status,guest_journey_status,guest_eta_at,guest_arrived_at,notes,created_at').order('created_at',{ascending:false}).limit(200),
   db.from('dine_partner_leads').select('id,restaurant_name,city,contact_name,contact_phone,fssai_registration,enquiry_notes,status,created_at').order('created_at',{ascending:false}).limit(100),
  ]);
  if([restaurants,menus,tables,bookings,leads].some(r=>r.error))return no('Unable to load dining management data.',503);
@@ -98,6 +98,37 @@ export async function PATCH(request:Request){
   return error?no('Unable to verify table and kitchen availability.',503)
    :data===true?response({ok:true,note:'Real table assigned. Scheduled serving time is an estimate; notify the customer promptly through approved channels.'})
    :no('Cannot confirm: time, kitchen lead, table capacity, or request status does not allow it.',409);
+ }
+ // A restaurant must correct a delay transparently. Never silently promise the original time.
+ if(x.action==='servingEstimate'){
+  if(!uuid(x.bookingId)||!dateISO(x.serveAt))return no('Choose a valid revised serving time.');
+  const serveAt=new Date(String(x.serveAt));
+  const {data:booking,error:readError}=await db.from('dine_bookings')
+   .select('id,restaurant_id,arrival_at,prep_minutes,kitchen_status,status,confirmed_serve_at')
+   .eq('id',x.bookingId).maybeSingle();
+  if(readError)return no('Could not check this dining booking.',503);
+  if(!booking||booking.status!=='CONFIRMED'||!['NOT_STARTED','PREPARING'].includes(booking.kitchen_status))
+   return no('Only an active confirmed visit awaiting food can change the estimated serving time.',409);
+  const arrival=new Date(booking.arrival_at).getTime(),updated=serveAt.getTime();
+  if(updated<arrival||updated>arrival+120*60_000||updated<Date.now()+5*60_000)
+   return no('Choose a future estimate no earlier than arrival and within two hours of the reserved time.',409);
+  const {data:restaurant,error:venueError}=await db.from('dine_restaurants')
+   .select('prep_buffer_minutes').eq('id',booking.restaurant_id).maybeSingle();
+  if(venueError||!restaurant)return no('Could not check kitchen timing.',503);
+  const newPrepStart=booking.prep_minutes>0
+   ?new Date(updated-(booking.prep_minutes+restaurant.prep_buffer_minutes)*60_000):null;
+  if(booking.kitchen_status==='NOT_STARTED'&&newPrepStart&&newPrepStart.getTime()<Date.now())
+   return no('The kitchen needs more notice for these dishes. Choose a later estimated serving time.',409);
+  const {data,error}=await db.from('dine_bookings').update({
+   confirmed_serve_at:serveAt.toISOString(),
+   ...(booking.kitchen_status==='NOT_STARTED'?
+    {prep_start_at:newPrepStart?.toISOString()??null}:{}),
+   updated_at:new Date().toISOString(),
+  }).eq('id',booking.id).eq('status','CONFIRMED').eq('kitchen_status',booking.kitchen_status)
+   .eq('confirmed_serve_at',booking.confirmed_serve_at).select('id').maybeSingle();
+  return error?no('Could not update the serving estimate.',503)
+   :!data?no('Booking was updated elsewhere. Refresh and review current kitchen status.',409)
+   :response({ok:true,note:'Revised serving estimate saved for customer status refresh. Staff must explain material delays directly; no automatic message was sent.'});
  }
  if(x.action==='decline'){
   if(!uuid(x.bookingId))return no('Invalid booking.');
