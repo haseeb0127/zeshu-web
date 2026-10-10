@@ -106,6 +106,26 @@ export default function AdminDine(){
      <button disabled={busy||!dish.restaurantId} className="mt-4 rounded-xl bg-[#075e45] px-4 py-3 text-sm font-black text-white disabled:opacity-50">Add actual dish</button>
     </form>
    </section>
+   <section className="grid gap-4 md:grid-cols-2">
+    <div className="rounded-2xl border bg-white p-5">
+      <h2 className="text-lg font-black">Live kitchen menu availability</h2>
+      <p className="mt-1 text-xs text-slate-600">Remove unavailable dishes from new pre-orders. Do not silently cancel existing pre-orders.</p>
+      <div className="mt-3 space-y-2">{data.menus.map(m=><div key={m.id} className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 p-3 text-sm">
+        <div><p className="font-bold">{m.name}</p><p className="text-xs text-slate-500">{venue(m.restaurant_id)} · ₹{(m.price_paise/100).toFixed(2)} · {m.available?'Available':'Unavailable'}</p></div>
+        <button type="button" disabled={busy} onClick={()=>void send('PATCH',{action:'menuAvailability',menuItemId:m.id,available:!m.available})}
+          className="rounded-lg border border-emerald-200 px-3 py-2 text-xs font-bold text-[#075e45]">{m.available?'Mark sold out':'Make available'}</button>
+      </div>)}</div>
+    </div>
+    <div className="rounded-2xl border bg-white p-5">
+      <h2 className="text-lg font-black">Real table inventory</h2>
+      <p className="mt-1 text-xs text-slate-600">Disable an out-of-service table without pretending existing reservations are cancelled.</p>
+      <div className="mt-3 space-y-2">{data.tables.map(t=><div key={t.id} className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 p-3 text-sm">
+        <div><p className="font-bold">{t.label} · {t.seats} seats</p><p className="text-xs text-slate-500">{venue(t.restaurant_id)} · {t.enabled?'Enabled':'Disabled'}</p></div>
+        <button type="button" disabled={busy} onClick={()=>void send('PATCH',{action:'tableAvailability',tableId:t.id,enabled:!t.enabled})}
+          className="rounded-lg border border-emerald-200 px-3 py-2 text-xs font-bold text-[#075e45]">{t.enabled?'Disable':'Enable'}</button>
+      </div>)}</div>
+    </div>
+   </section>
    <section className="rounded-2xl border bg-white p-5">
     <h2 className="flex items-center gap-2 text-xl font-black"><ShieldCheck size={21}/>Verified restaurant switches ({data.restaurants.length})</h2>
     <div className="mt-3 grid gap-3 md:grid-cols-2">{data.restaurants.map(r=><div key={r.id} className="rounded-xl border bg-slate-50 p-4 text-sm">
