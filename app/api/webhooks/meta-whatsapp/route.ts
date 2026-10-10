@@ -1,3 +1,4 @@
+import {recordVerifiedWhatsappWebhook} from '@/app/lib/whatsapp-webhook-health';
 import {getRuntimeEnvValue} from '@/app/lib/runtime-env';
 import {parseInboundWhatsAppMessages,ingestInboundWhatsAppMessages} from '@/app/lib/whatsapp-inbox-webhook';
 import {
@@ -67,5 +68,17 @@ export async function POST(request: Request) {
     if(outcome==='unavailable')return textResponse('Service unavailable.',503);
     if(outcome==='failed')return textResponse('Request could not be processed.',500);
   }
+  // Counters prove that signed Meta callbacks reached this Worker; mere
+  // presence of secrets does not prove Meta subscribed the app.
+  const envelope=payload&&typeof payload==='object'&&!Array.isArray(payload)
+    ? payload as Record<string,unknown> : null;
+  const entries=Array.isArray(envelope?.entry)?envelope.entry:[];
+  const matchingAccount=Boolean(wabaId&&entries.some(entry=>{
+    if(!entry||typeof entry!=='object'||Array.isArray(entry))return false;
+    return (entry as Record<string,unknown>).id===wabaId;
+  }));
+  // Best effort only: telemetry failure must never discard a legitimate Meta
+  // callback after messages have already been ingested.
+  await recordVerifiedWhatsappWebhook(matchingAccount,incoming.length);
   return Response.json({received:true});
 }
