@@ -22,6 +22,9 @@ type OwnedStatus = {
     'GRAPH_ENDPOINT_NOT_FOUND'|'GRAPH_BAD_REQUEST'|'GRAPH_HTTP_ERROR'|
     'GRAPH_INVALID_RESPONSE'|'GRAPH_PAGINATION_LIMIT'|null;
   providerHttpStatus?:number|null;providerErrorCode?:number|null;
+  networkFailureKind?:'TIMEOUT'|'FETCH_REJECTED'|null;
+  metaGraphReachable?:boolean|null;
+  networkAttempts?:number|null;
   missing:string[];verified:boolean;
   phoneNumber:string|null;verifiedName:string|null;
   senderEnabled:false;customerMessagingAuthorized:false;note:string;
@@ -126,6 +129,12 @@ export default function WhatsAppReadinessPage() {
                 {typeof owned.providerHttpStatus==='number'?' · HTTP '+owned.providerHttpStatus:''}
                 {typeof owned.providerErrorCode==='number'?' · Meta code '+owned.providerErrorCode:''}
               </p>
+              {owned.diagnosticReason==='NETWORK_OR_TIMEOUT'&&
+                <p className="mt-2 font-mono text-xs leading-5">
+                  Cloudflare request: {owned.networkFailureKind==='TIMEOUT'?'TIMED OUT':owned.networkFailureKind==='FETCH_REJECTED'?'FETCH REJECTED':'UNKNOWN'}
+                  {' · '}Meta public endpoint: {owned.metaGraphReachable===true?'REACHABLE':owned.metaGraphReachable===false?'UNREACHABLE':'NOT CHECKED'}
+                  {typeof owned.networkAttempts==='number'?' · Attempts: '+owned.networkAttempts:''}
+                </p>}
               <p className="mt-1 text-xs">Only the status and numeric error code are shown. Never share your token or App Secret.</p>
             </div> : null}
             {owned?.status==='INVALID_CONFIG' ? <p className="mt-2 text-sm text-amber-950">One of the Cloudflare values has an invalid format. Please check the names and IDs privately.</p> : null}
