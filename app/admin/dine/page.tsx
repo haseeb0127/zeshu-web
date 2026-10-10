@@ -25,6 +25,7 @@ export default function AdminDine(){
  const [reviewed,setReviewed]=useState<Record<string,boolean>>({});
  const [preorders,setPreorders]=useState<Record<string,boolean>>({});
  const [serveTimes,setServeTimes]=useState<Record<string,string>>({});
+ const [guestAgreed,setGuestAgreed]=useState<Record<string,boolean>>({});
  const session=async()=>{
   const {data:{session}}=await supabase.auth.getSession();
   if(!session?.access_token)throw Error('Sign in to Zeshu Admin first.');
@@ -175,11 +176,15 @@ export default function AdminDine(){
          <input className={input} type="datetime-local" value={serveTimes[b.id]??''}
           onChange={e=>setServeTimes(old=>({...old,[b.id]:e.target.value}))}/>
         </label>
-        <button type="button" disabled={busy||!serveTimes[b.id]} className="rounded-xl border border-amber-400 bg-white px-4 py-2 text-xs font-bold text-amber-950 disabled:opacity-50"
-         onClick={()=>void send('PATCH',{action:'servingEstimate',bookingId:b.id,serveAt:new Date(serveTimes[b.id]).toISOString()})}>
-          Update estimated serving time
+        <label className="flex max-w-sm items-start gap-2 text-xs leading-5 text-amber-950">
+         <input type="checkbox" checked={Boolean(guestAgreed[b.id])} onChange={e=>setGuestAgreed(old=>({...old,[b.id]:e.target.checked}))}/>
+         Guest was contacted, understands the delay and agreed to this revised estimate.
+        </label>
+        <button type="button" disabled={busy||!serveTimes[b.id]||!guestAgreed[b.id]} className="rounded-xl border border-amber-400 bg-white px-4 py-2 text-xs font-bold text-amber-950 disabled:opacity-50"
+         onClick={()=>void send('PATCH',{action:'servingEstimate',bookingId:b.id,guestAgreed:true,serveAt:new Date(serveTimes[b.id]).toISOString()})}>
+          Save agreed serving estimate
         </button>
-        <p className="basis-full text-xs text-amber-950">Use only after checking actual kitchen capacity. Customer sees the revised time on refresh; contact them directly about significant delays.</p>
+        <p className="basis-full text-xs text-amber-950">Agree the revised time directly with the customer before saving. The customer can see the updated estimate on refresh; no automatic message is sent.</p>
        </div>}
       {b.status==='CONFIRMED'&&<div className="mt-3 flex flex-wrap gap-2">
        {(b.kitchen_status==='NOT_STARTED'&&b.preordered_items?.length>0?['PREPARING']:
