@@ -26,6 +26,9 @@ const wrong=await verifyOwnedWhatsappAccount({...params,request:async()=>new Res
   data:[{id:'9876543210000'}],
 }),{status:200})});
 assert.equal(wrong.status,'PHONE_NOT_IN_ACCOUNT');
+const malformedToken=await verifyOwnedWhatsappAccount({...params,token:'EAAValidPartButInjected\nNewline',request:async()=>{throw Error('must not fetch');}});
+assert.equal(malformedToken.status,'TOKEN_FORMAT_INVALID');
+assert.ok(!JSON.stringify(malformedToken).includes('Injected'));
 const invalid=await verifyOwnedWhatsappAccount({...params,phoneNumberId:'unsafe'});
 assert.equal(invalid.status,'INVALID_CONFIG');
 const rejected=await verifyOwnedWhatsappAccount({...params,request:async()=>new Response(JSON.stringify({
@@ -58,7 +61,7 @@ assert.equal(unreachable.reason,'NETWORK_OR_TIMEOUT');
 assert.equal(unreachable.networkFailureKind,'FETCH_REJECTED');
 assert.equal(unreachable.metaGraphReachable,false);
 assert.equal(unreachable.attempts,2);
-// Two failing authorized attempts followed by an unauthenticated reachability probe.
+// Two failing authorized attempts followed by unauthenticated public + exact-endpoint probes.
 let tries=0;
 const publicProbe=await verifyOwnedWhatsappAccount({...params,request:async(url,options)=>{
   tries++;
@@ -66,12 +69,19 @@ const publicProbe=await verifyOwnedWhatsappAccount({...params,request:async(url,
     assert.equal(options.headers,undefined);
     return new Response('{}',{status:400});
   }
+  // Any exact Graph API path without an Authorization header is also
+  // permitted as a credential-free transport probe.
+  if(!options.headers){
+    assert.ok(url.includes('/phone_numbers'));
+    return new Response(JSON.stringify({error:{code:190}}),{status:400});
+  }
   throw Error('safe simulated egress failure');
 }});
 assert.equal(publicProbe.reason,'NETWORK_OR_TIMEOUT');
 assert.equal(publicProbe.metaGraphReachable,true);
 assert.equal(publicProbe.networkFailureKind,'FETCH_REJECTED');
-assert.equal(tries,3);
+assert.equal(publicProbe.exactMetaEndpointReachableWithoutAuth,true);
+assert.equal(tries,4);
 // A transient outbound error should recover on the second read-only GET.
 let recoverCount=0;
 const recovered=await verifyOwnedWhatsappAccount({...params,request:async(url)=>{

@@ -16,7 +16,7 @@ type MetaSetup = {
   encryptionKeyStatus:'NOT_VISIBLE_IN_ACTIVE_WORKER'|'FILTERED_BY_RUNTIME_ENV'|'INVALID_BASE64_OR_LENGTH'|'VALID_IN_ACTIVE_WORKER';
 };
 type OwnedStatus = {
-  status:'VERIFIED'|'MISSING_SETTINGS'|'TOKEN_UNAUTHORIZED'|'PHONE_NOT_IN_ACCOUNT'|
+  status:'VERIFIED'|'MISSING_SETTINGS'|'TOKEN_UNAUTHORIZED'|'TOKEN_FORMAT_INVALID'|'PHONE_NOT_IN_ACCOUNT'|
     'META_UNAVAILABLE'|'INVALID_CONFIG';
   diagnosticReason?:'NETWORK_OR_TIMEOUT'|'GRAPH_RATE_LIMITED'|'GRAPH_UPSTREAM_ERROR'|
     'GRAPH_ENDPOINT_NOT_FOUND'|'GRAPH_BAD_REQUEST'|'GRAPH_HTTP_ERROR'|
@@ -25,6 +25,7 @@ type OwnedStatus = {
   networkFailureKind?:'TIMEOUT'|'FETCH_REJECTED'|null;
   metaGraphReachable?:boolean|null;
   networkAttempts?:number|null;
+  exactMetaEndpointReachableWithoutAuth?:boolean|null;
   missing:string[];verified:boolean;
   phoneNumber:string|null;verifiedName:string|null;
   senderEnabled:false;customerMessagingAuthorized:false;note:string;
@@ -148,6 +149,7 @@ export default function WhatsAppReadinessPage() {
           </div> : <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
             <p className="font-black text-amber-950">Direct Cloud API connection {owned?.status==='MISSING_SETTINGS'?'needs setup':'not yet verified'}</p>
             {owned?.status==='MISSING_SETTINGS' ? <p className="mt-2 break-words font-mono text-xs leading-6 text-amber-950">Cloudflare settings needed: {owned.missing.join(' · ')}</p> : null}
+            {owned?.status==='TOKEN_FORMAT_INVALID' ? <p className="mt-2 text-sm text-amber-950">The saved Meta access token has an invalid character or includes extra formatting (such as spaces, quotes, a line break or the wrong token type). Check the original system-user token privately in Cloudflare; no token content is shown here. Do not generate a new number.</p> : null}
             {owned?.status==='TOKEN_UNAUTHORIZED' ? <p className="mt-2 text-sm text-amber-950">Meta refused account access. Confirm that the System User has access to this Zeshu WhatsApp Business Account and that the token has the necessary WhatsApp permissions.</p> : null}
             {owned?.status==='PHONE_NOT_IN_ACCOUNT' ? <p className="mt-2 text-sm text-amber-950">The configured phone number is not listed under the selected WhatsApp Business Account. Check both IDs in Meta.</p> : null}
             {owned?.status==='META_UNAVAILABLE' ? <div className="mt-2 text-sm leading-6 text-amber-950">
@@ -170,8 +172,11 @@ export default function WhatsAppReadinessPage() {
                 <p className="mt-2 font-mono text-xs leading-5">
                   Cloudflare request: {owned.networkFailureKind==='TIMEOUT'?'TIMED OUT':owned.networkFailureKind==='FETCH_REJECTED'?'FETCH REJECTED':'UNKNOWN'}
                   {' · '}Meta public endpoint: {owned.metaGraphReachable===true?'REACHABLE':owned.metaGraphReachable===false?'UNREACHABLE':'NOT CHECKED'}
+                  {owned.exactMetaEndpointReachableWithoutAuth===true?' · Exact Graph endpoint without token: REACHABLE':owned.exactMetaEndpointReachableWithoutAuth===false?' · Exact Graph endpoint without token: UNREACHABLE':''}
                   {typeof owned.networkAttempts==='number'?' · Attempts: '+owned.networkAttempts:''}
                 </p>}
+              {owned.diagnosticReason==='NETWORK_OR_TIMEOUT'&&owned.exactMetaEndpointReachableWithoutAuth===true&&
+                <p className="mt-2 text-xs leading-5">The exact Meta API endpoint answered a request without credentials. The rejection affects the authorized request; check for extra token formatting in Cloudflare and review Worker outbound-request rules. Do not rotate secrets just to retry.</p>}
               <p className="mt-1 text-xs">Only the status and numeric error code are shown. Never share your token or App Secret.</p>
             </div> : null}
             {owned?.status==='INVALID_CONFIG' ? <p className="mt-2 text-sm text-amber-950">One of the Cloudflare values has an invalid format. Please check the names and IDs privately.</p> : null}
