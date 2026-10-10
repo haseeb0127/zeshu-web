@@ -52,6 +52,7 @@ export async function GET(request:Request) {
     networkFailureKind:result.networkFailureKind??null,
     metaGraphReachable:result.metaGraphReachable??null,
     networkAttempts:result.attempts??null,
+    exactMetaEndpointReachableWithoutAuth:result.exactMetaEndpointReachableWithoutAuth??null,
     phoneNumber:result.displayPhoneNumber,verifiedName:result.verifiedName,
     senderEnabled:false,customerMessagingAuthorized:false,
     note:'Read-only Meta ownership check only. No registration, app subscriptions, customer message or payment.',
