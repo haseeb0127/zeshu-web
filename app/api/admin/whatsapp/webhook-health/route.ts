@@ -14,7 +14,7 @@ export async function GET(request:Request){
   const values=await Promise.all(names.map(x=>getRuntimeEnvValue(x)));
   const [verifyToken,appSecret,wabaId,phoneId]=values;
   const {data:health,error}=await admin.service.from('whatsapp_webhook_health')
-    .select('signed_callbacks,matching_account_callbacks,inbound_message_events,last_signed_at,last_matching_account_at,last_inbound_at')
+    .select('signed_callbacks,matching_account_callbacks,inbound_message_events,last_signed_at,last_matching_account_at,last_inbound_at,messages_field_callbacks,phone_messages_callbacks,candidate_message_events,ignored_message_events,last_messages_field_at,last_phone_messages_at')
     .eq('singleton_id',1).maybeSingle();
   if(error)return out({error:'Webhook health check is temporarily unavailable.'},503);
   return out({
@@ -27,8 +27,15 @@ export async function GET(request:Request){
     observedSignedCallbacks:Number(health?.signed_callbacks||0),
     observedMatchingAccountCallbacks:Number(health?.matching_account_callbacks||0),
     observedInboundMessageEvents:Number(health?.inbound_message_events||0),
+    observedMessagesFieldCallbacks:Number(health?.messages_field_callbacks||0),
+    observedPhoneMessagesCallbacks:Number(health?.phone_messages_callbacks||0),
+    observedCandidateMessageEvents:Number(health?.candidate_message_events||0),
+    observedIgnoredMessageEvents:Number(health?.ignored_message_events||0),
+    lastMessagesFieldCallbackAt:health?.last_messages_field_at??null,
+    lastPhoneMessagesCallbackAt:health?.last_phone_messages_at??null,
+    messageShapeTelemetrySince:'2026-10-11',
     subscriptionVerified:false,
     sendingEnabled:false,
-    note:'No signed callbacks seen does not prove Meta is disconnected. To verify actual subscription, inspect Meta app WhatsApp configuration. Customer sends remain OFF.',
+    note:'Signed callbacks alone do not prove customer messages were received. Message-field shape counts start only after the October 11 instrumentation; past callbacks cannot be classified retroactively. Customer sends remain OFF.',
   });
 }
