@@ -1,4 +1,5 @@
-import {recordVerifiedWhatsappWebhook} from '@/app/lib/whatsapp-webhook-health';
+import {recordVerifiedWhatsappWebhook,recordVerifiedWhatsAppMessageShape} from '@/app/lib/whatsapp-webhook-health';
+import {summarizeVerifiedWhatsAppShape} from '@/app/lib/whatsapp-webhook-shape';
 import {getRuntimeEnvValue} from '@/app/lib/runtime-env';
 import {parseInboundWhatsAppMessages,ingestInboundWhatsAppMessages} from '@/app/lib/whatsapp-inbox-webhook';
 import {
@@ -79,6 +80,11 @@ export async function POST(request: Request) {
   }));
   // Best effort only: telemetry failure must never discard a legitimate Meta
   // callback after messages have already been ingested.
-  await recordVerifiedWhatsappWebhook(matchingAccount,incoming.length);
+  const shape=summarizeVerifiedWhatsAppShape(payload,wabaId,phoneId);
+  await Promise.all([
+    recordVerifiedWhatsappWebhook(matchingAccount,incoming.length),
+    recordVerifiedWhatsAppMessageShape(shape.messagesField,shape.phoneMessages,
+      shape.candidateMessages,incoming.length),
+  ]);
   return Response.json({received:true});
 }

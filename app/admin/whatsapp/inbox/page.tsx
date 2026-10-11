@@ -13,6 +13,9 @@ type WebhookReadiness={
   webhookCallbackUrl:string;webhookSecretsPresent:boolean;accountIdentifiersPresent:boolean;
   observedSignedCallbacks:number;observedMatchingAccountCallbacks:number;
   observedInboundMessageEvents:number;lastSignedCallbackAt:string|null;
+  observedMessagesFieldCallbacks:number;observedPhoneMessagesCallbacks:number;
+  observedCandidateMessageEvents:number;observedIgnoredMessageEvents:number;
+  lastMessagesFieldCallbackAt:string|null;lastPhoneMessagesCallbackAt:string|null;
   subscriptionVerified:false;sendingEnabled:false;
 };
 const date=(value:string|null)=>value?new Date(value).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}):'';
@@ -31,6 +34,8 @@ export default function ZeshuWhatsappInbox(){
   const [repairOutcome,setRepairOutcome]=useState('');
   const [fieldBusy,setFieldBusy]=useState(false);
   const [fieldResult,setFieldResult]=useState('');
+  const [messagesRepairBusy,setMessagesRepairBusy]=useState(false);
+  const [messagesRepairResult,setMessagesRepairResult]=useState('');
   const [mobileBusy,setMobileBusy]=useState(false);
   const [mobileResult,setMobileResult]=useState('');
   const auth=async()=>{
@@ -76,6 +81,45 @@ export default function ZeshuWhatsappInbox(){
     return()=>window.clearInterval(timer);
   },[refresh]);
   // Read only. This never triggers a WhatsApp OTP or registers/deregisters the phone.
+  const repairMessagesField=async()=>{
+    if(messagesRepairBusy)return;
+    const agreed=window.confirm('Repair ONLY the incoming WhatsApp messages webhook field on the EXISTING Zeshu Meta app for +91 95052 11212? Zeshu will first verify the phone, WABA, app, callback and existing fields. It will never send messages, change your number, request an OTP or overwrite a different callback.');
+    if(!agreed)return;
+    setMessagesRepairBusy(true);setMessagesRepairResult('');
+    try{
+      const reply=await fetch('/api/admin/whatsapp/repair-messages-field',{
+        method:'POST',cache:'no-store',
+        headers:{...(await auth()),'Content-Type':'application/json'},
+        body:JSON.stringify({action:'repair_existing_messages_field',
+          confirmInboundOnly:true,expectedPhoneLast4:'1212'}),
+      });
+      const data=await reply.json().catch(()=>({}));
+      const statuses:Record<string,string>={
+        REPAIRED:'✅ Meta accepted the incoming messages field and a read-back confirmed it. Next, verify a genuine customer message reaches the Inbox.',
+        ALREADY_READY:'✅ The incoming messages field is already subscribed to the verified Zeshu app callback. No change was needed. A real incoming customer message is still required to confirm end-to-end delivery.',
+        CALLBACK_MISMATCH:'⚠️ Meta app has a different callback URL. No change was made to avoid disrupting other integrations. Review this app in Meta for Developers.',
+        APP_SUBSCRIPTION_MISSING:'⚠️ Meta has no app-level WABA object subscription. This repair will not create a new one automatically. Configure it in the Zeshu Support Meta app.',
+        APP_INACTIVE:'⚠️ The app-level subscription is inactive. Review Meta dashboard without deleting any existing settings.',
+        WABA_UNVERIFIED:'⚠️ WABA subscription could not be verified. Try the account subscription read-only check first.',
+        WABA_NOT_SUBSCRIBED:'⚠️ Existing WABA app subscription is missing. Use Check & repair incoming connection first.',
+        WRONG_PHONE:'⚠️ The configured phone does not match Zeshu’s existing +91 95052 11212. No changes were made.',
+        TOKEN_UNAUTHORIZED:'Meta did not authorize the existing app-level configuration. Check credentials privately in Cloudflare.',
+        META_REFUSED:'Meta rejected this incoming webhook field request. Do not retry repeatedly. Review Meta app configuration.',
+        FIELD_DATA_UNAVAILABLE:'Meta did not return a safe field list. No changes were made to preserve existing subscriptions.',
+        MULTIPLE_SUBSCRIPTIONS:'Meta returned ambiguous app configurations. No changes were made.',
+        OWNERSHIP_UNVERIFIED:'Meta could not verify the number belongs to the configured Zeshu WABA.',
+        MISSING_SETTINGS:'Required Meta settings are missing in Cloudflare.',
+        INVALID_CONFIG:'Existing Meta configuration requires review. No phone changes were made.',
+        META_UNAVAILABLE:'Meta could not be reached. No confirmed change was made.',
+        NOT_CONFIRMED:'Meta webhook field change could not be confirmed by a read-back. Check again after the provider recovers.',
+      };
+      setMessagesRepairResult((statuses[data.status]||'The incoming webhook setting was not verified.')
+        +(data.providerHttpStatus?' · Meta HTTP '+data.providerHttpStatus:''));
+      await refresh(true);
+    }catch{
+      setMessagesRepairResult('Unable to check the remote Meta setting. No WhatsApp message or phone registration action was initiated.');
+    }finally{setMessagesRepairBusy(false);}
+  };
   const inspectMobileRegistration=async()=>{
     if(mobileBusy)return;
     setMobileBusy(true);setMobileResult('');
@@ -230,6 +274,12 @@ export default function ZeshuWhatsappInbox(){
                 {fieldBusy?'Checking Meta webhook fields…':'Check messages field & callback URL'}
               </button>
               {fieldResult&&<p role="status" className="mt-2 text-xs font-semibold leading-5 text-emerald-950">{fieldResult}</p>}
+              <p className="mt-3 text-xs leading-5 text-emerald-950">If the messages field is missing, Zeshu can safely add it only when the existing app and callback are confirmed. Existing fields are preserved; different callback URLs are never overwritten.</p>
+              <button type="button" disabled={messagesRepairBusy} onClick={()=>void repairMessagesField()}
+               className="mt-2 min-h-12 rounded-xl bg-[#075e45] px-4 py-3 text-sm font-bold text-white disabled:opacity-50">
+                {messagesRepairBusy?'Verifying current Meta fields…':'Verify & repair incoming messages field'}
+              </button>
+              {messagesRepairResult&&<p role="status" className="mt-2 text-xs font-semibold leading-5 text-emerald-950">{messagesRepairResult}</p>}
             </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -241,7 +291,10 @@ export default function ZeshuWhatsappInbox(){
         <div className="mb-4 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm">
           <p className="font-bold text-emerald-900">{webhook.observedSignedCallbacks} signed Meta callbacks observed.</p>
           <p className="mt-1 text-slate-700">{webhook.observedMatchingAccountCallbacks} matched Zeshu's account. {webhook.observedInboundMessageEvents} inbound messages recorded.</p>
-          <p className="mt-1 text-xs text-slate-500">Receipt of a signed callback does not by itself prove full subscription, Cloud API sending or phone app coexistence.</p>
+          <p className="mt-2 text-slate-700">Since additional message-field diagnostics launched: {webhook.observedMessagesFieldCallbacks??0} callbacks with the <code>messages</code> field; {webhook.observedPhoneMessagesCallbacks??0} contained messages for the correct Zeshu phone; {webhook.observedCandidateMessageEvents??0} candidate messages; {webhook.observedIgnoredMessageEvents??0} candidate messages filtered by strict inbox validation.</p>
+          {(webhook.observedMessagesFieldCallbacks??0)===0&&<p className="mt-1 text-xs font-semibold text-amber-900">No <code>messages</code> field callbacks have been observed since these counters were installed. A previous signed callback may have concerned a different event.</p>}
+          {(webhook.observedIgnoredMessageEvents??0)>0&&<p className="mt-1 text-xs font-semibold text-amber-900">Some signed message candidates were filtered. Review webhook parsing and correct account metadata before assuming the Meta subscription is broken.</p>}
+          <p className="mt-1 text-xs text-slate-500">These detailed counters begin on 11 October; old callbacks cannot be classified retroactively. Receipt of a signed callback does not prove Cloud API sending, mobile app coexistence, or actual customer-message delivery.</p>
         </div>}
       {!loading&&!webhook&&<p className="mb-4 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700">Webhook health is not available right now. The inbox is still private; check <Link href="/admin/whatsapp" className="font-bold underline">WhatsApp HQ</Link> for diagnostics.</p>}
       {error&&<p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-800">{error}</p>}
