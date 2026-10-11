@@ -279,7 +279,7 @@ export default function ZeshuWhatsappInbox(){
                className="mt-2 min-h-12 rounded-xl bg-[#075e45] px-4 py-3 text-sm font-bold text-white disabled:opacity-50">
                 {messagesRepairBusy?'Verifying current Meta fields…':'Verify & repair incoming messages field'}
               </button>
-              {messagesRepairResult&&<p role="status" className="mt-2 text-xs font-semibold leading-5 text-emerald-950">{messagesRepairResult}</p>
+              {messagesRepairResult&&<p role="status" className="mt-2 text-xs font-semibold leading-5 text-emerald-950">{messagesRepairResult}</p>}
             </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3">
