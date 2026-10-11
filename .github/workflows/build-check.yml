@@ -93,6 +93,8 @@ jobs:
         run: node --experimental-strip-types .github/scripts/whatsapp-mobile-registration-qa.mjs
       - name: Verify first-party WhatsApp Cloud API read-only connection
         run: node --experimental-strip-types .github/scripts/whatsapp-own-waba-qa.mjs
+      - name: Verify safe inbound WhatsApp field repair and aggregate webhook health
+        run: node --experimental-strip-types .github/scripts/whatsapp-messages-inbound-qa.mjs
       - name: Verify read-only WhatsApp Meta app webhook field diagnostics
         run: node --experimental-strip-types .github/scripts/whatsapp-app-webhook-qa.mjs
       - name: Verify read-only WhatsApp WABA app subscription checks
