@@ -13,6 +13,9 @@ type WebhookReadiness={
   webhookCallbackUrl:string;webhookSecretsPresent:boolean;accountIdentifiersPresent:boolean;
   observedSignedCallbacks:number;observedMatchingAccountCallbacks:number;
   observedInboundMessageEvents:number;lastSignedCallbackAt:string|null;
+  observedMessagesFieldCallbacks:number;observedPhoneMessagesCallbacks:number;
+  observedCandidateMessageEvents:number;observedIgnoredMessageEvents:number;
+  lastMessagesFieldCallbackAt:string|null;lastPhoneMessagesCallbackAt:string|null;
   subscriptionVerified:false;sendingEnabled:false;
 };
 const date=(value:string|null)=>value?new Date(value).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}):'';
@@ -288,7 +291,10 @@ export default function ZeshuWhatsappInbox(){
         <div className="mb-4 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm">
           <p className="font-bold text-emerald-900">{webhook.observedSignedCallbacks} signed Meta callbacks observed.</p>
           <p className="mt-1 text-slate-700">{webhook.observedMatchingAccountCallbacks} matched Zeshu's account. {webhook.observedInboundMessageEvents} inbound messages recorded.</p>
-          <p className="mt-1 text-xs text-slate-500">Receipt of a signed callback does not by itself prove full subscription, Cloud API sending or phone app coexistence.</p>
+          <p className="mt-2 text-slate-700">Since additional message-field diagnostics launched: {webhook.observedMessagesFieldCallbacks??0} callbacks with the <code>messages</code> field; {webhook.observedPhoneMessagesCallbacks??0} contained messages for the correct Zeshu phone; {webhook.observedCandidateMessageEvents??0} candidate messages; {webhook.observedIgnoredMessageEvents??0} candidate messages filtered by strict inbox validation.</p>
+          {(webhook.observedMessagesFieldCallbacks??0)===0&&<p className="mt-1 text-xs font-semibold text-amber-900">No <code>messages</code> field callbacks have been observed since these counters were installed. A previous signed callback may have concerned a different event.</p>}
+          {(webhook.observedIgnoredMessageEvents??0)>0&&<p className="mt-1 text-xs font-semibold text-amber-900">Some signed message candidates were filtered. Review webhook parsing and correct account metadata before assuming the Meta subscription is broken.</p>}
+          <p className="mt-1 text-xs text-slate-500">These detailed counters begin on 11 October; old callbacks cannot be classified retroactively. Receipt of a signed callback does not prove Cloud API sending, mobile app coexistence, or actual customer-message delivery.</p>
         </div>}
       {!loading&&!webhook&&<p className="mb-4 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700">Webhook health is not available right now. The inbox is still private; check <Link href="/admin/whatsapp" className="font-bold underline">WhatsApp HQ</Link> for diagnostics.</p>}
       {error&&<p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-800">{error}</p>}
