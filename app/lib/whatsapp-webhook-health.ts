@@ -20,3 +20,26 @@ export async function recordVerifiedWhatsappWebhook(matchingAccount:boolean,inbo
     return !error&&data===true;
   }catch{return false;}
 }
+
+
+/** Aggregate-only post-ingestion telemetry from an already HMAC-verified event.
+ * Failures never block legitimate customer event deliveries.
+ */
+export async function recordVerifiedWhatsAppMessageShape(
+ messagesField:boolean,phoneMessages:boolean,candidateCount:number,parsedCount:number,
+):Promise<boolean>{
+ if(!Number.isInteger(candidateCount)||candidateCount<0||candidateCount>50||
+   !Number.isInteger(parsedCount)||parsedCount<0||parsedCount>candidateCount)return false;
+ const env=await getRuntimeSupabaseEnv();
+ if(!env.url||!env.serviceRoleKey)return false;
+ try{
+  const service=createClient(env.url,env.serviceRoleKey,{
+   auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},
+  });
+  const {data,error}=await service.rpc('record_verified_whatsapp_message_shape',{
+   p_messages_field:messagesField,p_phone_messages:phoneMessages,
+   p_candidate_count:candidateCount,p_parsed_count:parsedCount,
+  });
+  return !error&&data===true;
+ }catch{return false;}
+}
