@@ -31,6 +31,8 @@ export default function ZeshuWhatsappInbox(){
   const [repairOutcome,setRepairOutcome]=useState('');
   const [fieldBusy,setFieldBusy]=useState(false);
   const [fieldResult,setFieldResult]=useState('');
+  const [mobileBusy,setMobileBusy]=useState(false);
+  const [mobileResult,setMobileResult]=useState('');
   const auth=async()=>{
     const {data}=await supabase.auth.getSession();
     const token=data.session?.access_token;
@@ -73,6 +75,35 @@ export default function ZeshuWhatsappInbox(){
     const timer=window.setInterval(()=>{void refresh(true);},30000);
     return()=>window.clearInterval(timer);
   },[refresh]);
+  // Read only. This never triggers a WhatsApp OTP or registers/deregisters the phone.
+  const inspectMobileRegistration=async()=>{
+    if(mobileBusy)return;
+    setMobileBusy(true);setMobileResult('');
+    try{
+      const response=await fetch('/api/admin/whatsapp/mobile-registration',{
+        headers:await auth(),cache:'no-store',
+      });
+      const result=await response.json().catch(()=>({}));
+      if(!response.ok)throw Error(result.error||'Could not check the Meta phone status.');
+      const messages:Record<string,string>={
+        COEXISTENCE_ACTIVE:'✅ Meta reports that this number is on Cloud API and also linked to the WhatsApp Business mobile app. The SMS OTP issue requires separate WhatsApp verification support; do not request repeated codes.',
+        CLOUD_API_ONLY:'⚠️ Meta reports that this number is on Cloud API but NOT linked to WhatsApp Business mobile app. A standard mobile-app login is not the same as approved Coexistence. Do not deregister Cloud API or retry OTP repeatedly. A number migration or alternative number needs a deliberate decision.',
+        APP_INDICATED:'Meta reports a Business app connection, but the API platform is not CLOUD_API. Review the account with Meta before any registration change.',
+        NOT_CONFIRMED:'Meta did not confirm mobile-app registration or Cloud API coexistence. Review the phone in WhatsApp Manager.',
+        OWNERSHIP_UNVERIFIED:'Meta could not verify the phone belongs to the configured Zeshu WABA. No registration was changed.',
+        WRONG_NUMBER:'The configured WABA phone does not match Zeshu’s expected number. Do not make any changes.',
+        MISSING_SETTINGS:'A required server-side setting is missing. Do not paste tokens or secrets here.',
+        INVALID_CONFIG:'Cloudflare Meta credentials or IDs appear malformed; inspect their names without exposing their values.',
+        META_UNAVAILABLE:'Meta did not return a verified phone platform status. No conclusion about mobile-app eligibility can be drawn.',
+        UNSUPPORTED_FIELDS:'Meta does not support this read-only phone field combination for the current API version or permissions. No registration change was made.',
+        TOKEN_UNAUTHORIZED:'Meta did not authorize the phone status check. Inspect app permissions privately, not by rotating the token without evidence.',
+      };
+      setMobileResult((messages[result.status]||'Could not determine phone registration status.')
+       +(result.providerHttpStatus?' · Meta HTTP '+result.providerHttpStatus:'')
+       +'. This check cannot unblock or request a WhatsApp OTP.');
+    }catch(e){setMobileResult(e instanceof Error?e.message:'Phone check unavailable.');}
+    finally{setMobileBusy(false);}
+  };
   const inspectMetaMessagesField=async()=>{
     if(fieldBusy)return;
     setFieldBusy(true);setFieldResult('');
@@ -158,12 +189,14 @@ export default function ZeshuWhatsappInbox(){
         <p className="flex items-center gap-2 font-black"><ShieldCheck size={18}/>Customer messaging is OFF</p>
         <p className="mt-1 leading-5">Only messages actually received via your verified Meta webhook appear here. Replies are saved as drafts and are <strong>never sent</strong>. Do not expect mobile-app chats to sync without approved Coexistence.</p>
       </div>
-      {!loading&&webhook?.observedSignedCallbacks===0&&
+      {!loading&&webhook&&
         <section aria-label="WhatsApp connection status" className="mb-4 rounded-2xl border border-amber-200 bg-white p-4 text-sm text-slate-800">
-          <p className="font-black text-amber-900">WhatsApp inbox is waiting for Meta callbacks</p>
-          <p className="mt-2 leading-6">Zeshu has not recorded an authenticated callback from Meta.
-            This does not prove your phone is disconnected: a connected number and a configured API token do not confirm webhook subscription.</p>
-          <p className="mt-2 font-semibold">Next: confirm the webhook in the existing Zeshu Support Meta app.</p>
+          <p className="font-black text-amber-900">{webhook.observedSignedCallbacks>0?
+            'Signed Meta callbacks received · customer inbox not yet verified':'WhatsApp inbox is waiting for Meta callbacks'}</p>
+          <p className="mt-2 leading-6">{webhook.observedSignedCallbacks>0
+            ?'Meta has sent '+webhook.observedSignedCallbacks+' signed callback(s) to Zeshu, including '+webhook.observedMatchingAccountCallbacks+' for the configured account. '+webhook.observedInboundMessageEvents+' customer messages have been recorded. This does not prove mobile app coexistence or real customer-message delivery.'
+            :'Zeshu has not recorded an authenticated callback from Meta. This does not prove your phone is disconnected: a connected number and a configured API token do not confirm webhook subscription.'}</p>
+          <p className="mt-2 font-semibold">Next: verify the messages field and the mobile-app registration status without requesting any OTP.</p>
           <ol className="mt-2 list-inside list-decimal space-y-2 leading-6">
             <li>Open Meta for Developers → Zeshu Support → WhatsApp → Configuration / Webhooks.</li>
             <li>Use the callback URL shown below and the <strong>existing private Cloudflare webhook verification token</strong>. Never paste that token here.</li>
@@ -180,6 +213,15 @@ export default function ZeshuWhatsappInbox(){
               {repairBusy?'Checking Meta securely…':'Check & repair incoming connection'}
             </button>
             {repairOutcome&&<p role="status" className="mt-2 text-xs font-semibold leading-5 text-emerald-950">{repairOutcome}</p>}
+            <div className="mt-4 border-t border-emerald-300 pt-3">
+              <p className="font-bold text-emerald-950">Why does the Zeshu number fail to log into WhatsApp Business?</p>
+              <p className="mt-1 text-xs leading-5 text-emerald-950">Check Meta's existing phone status: Cloud API-only or linked to the WhatsApp Business app. No Meta account password, OTP, additional sign-in or number re-registration is required for this read-only check.</p>
+              <button type="button" disabled={mobileBusy} onClick={()=>void inspectMobileRegistration()}
+               className="mt-2 rounded-xl border border-[#075e45] bg-white px-4 py-3 text-sm font-bold text-[#075e45] disabled:opacity-50">
+                {mobileBusy?'Checking phone registration…':'Check WhatsApp mobile login & Cloud API status'}
+              </button>
+              {mobileResult&&<p role="status" className="mt-2 text-xs font-semibold leading-5 text-emerald-950">{mobileResult}</p>}
+            </div>
             <div className="mt-4 border-t border-emerald-300 pt-3">
               <p className="font-bold text-emerald-950">Next: verify Meta's messages webhook field</p>
               <p className="mt-1 text-xs leading-5 text-emerald-950">Your app-to-WABA subscription may be correct while the separate messages field or callback URL is not. This additional check reads the Meta app's configuration privately without changing it.</p>
