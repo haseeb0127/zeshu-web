@@ -29,6 +29,7 @@ assert(inbox.includes('attachment not retrieved')&&inbox.includes("m.message_typ
  'Explain the non-text placeholder instead of pretending to show the media.');
 assert(inbox.includes('Reply drafts are saved privately and never sent.'),
  'No user should mistake drafts for real WhatsApp replies.');
-assert(parser.includes('messageType===\'text\''),'Parser must continue classifying text safely.');
+assert(parser.includes("m.type==='text'") && parser.includes("const messageType=userText?'text':'unsupported'"),
+ 'Parser must continue classifying genuine customer text and rejecting empty input safely.');
 assert(!health.includes("select('*')"),'Diagnostic cannot fetch all private message fields.');
 console.log('PASS: verified inbound status, privacy-safe non-text counts, mobile admin usability and draft-only messaging.');
