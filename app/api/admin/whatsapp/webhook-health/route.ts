@@ -17,6 +17,14 @@ export async function GET(request:Request){
     .select('signed_callbacks,matching_account_callbacks,inbound_message_events,last_signed_at,last_matching_account_at,last_inbound_at,messages_field_callbacks,phone_messages_callbacks,candidate_message_events,ignored_message_events,last_messages_field_at,last_phone_messages_at')
     .eq('singleton_id',1).maybeSingle();
   if(error)return out({error:'Webhook health check is temporarily unavailable.'},503);
+  // Only aggregate the latest 50 incoming message TYPES: do not retrieve
+  // customer phone numbers, message bodies, media IDs or private payloads.
+  const {data:recentMessages,error:recentError}=await admin.service
+    .from('whatsapp_inbox_messages').select('message_type')
+    .eq('direction','INBOUND').order('received_at',{ascending:false}).limit(50);
+  const sample=recentError?[]:recentMessages??[];
+  const textCount=sample.filter(message=>message.message_type==='text').length;
+  const otherCount=sample.length-textCount;
   return out({
     webhookCallbackUrl:'https://zeshu.in/api/webhooks/meta-whatsapp',
     webhookSecretsPresent:Boolean(verifyToken&&appSecret),
@@ -27,6 +35,10 @@ export async function GET(request:Request){
     observedSignedCallbacks:Number(health?.signed_callbacks||0),
     observedMatchingAccountCallbacks:Number(health?.matching_account_callbacks||0),
     observedInboundMessageEvents:Number(health?.inbound_message_events||0),
+    recentInboundTypesAvailable:!recentError,
+    recentInboundSampleSize:sample.length,
+    recentInboundTextMessages:textCount,
+    recentInboundNonTextMessages:otherCount,
     observedMessagesFieldCallbacks:Number(health?.messages_field_callbacks||0),
     observedPhoneMessagesCallbacks:Number(health?.phone_messages_callbacks||0),
     observedCandidateMessageEvents:Number(health?.candidate_message_events||0),
