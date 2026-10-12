@@ -105,6 +105,8 @@ jobs:
         run: node .github/scripts/dine-arrival-qa.mjs
       - name: Verify safe admin-only WhatsApp webhook subscription repair
         run: node --experimental-strip-types .github/scripts/whatsapp-waba-repair-qa.mjs
+      - name: Verify real inbound WhatsApp status, private message types and admin UX
+        run: node .github/scripts/whatsapp-inbound-readiness-qa.mjs
       - name: Verify inbound WhatsApp safety and WABA account filtering
         run: node --experimental-strip-types .github/scripts/whatsapp-inbox-qa.mjs
       - run: npm run build
