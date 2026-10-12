@@ -13,6 +13,8 @@ type WebhookReadiness={
   webhookCallbackUrl:string;webhookSecretsPresent:boolean;accountIdentifiersPresent:boolean;
   observedSignedCallbacks:number;observedMatchingAccountCallbacks:number;
   observedInboundMessageEvents:number;lastSignedCallbackAt:string|null;
+  recentInboundTypesAvailable?:boolean;recentInboundSampleSize?:number;
+  recentInboundTextMessages?:number;recentInboundNonTextMessages?:number;
   observedMessagesFieldCallbacks:number;observedPhoneMessagesCallbacks:number;
   observedCandidateMessageEvents:number;observedIgnoredMessageEvents:number;
   lastMessagesFieldCallbackAt:string|null;lastPhoneMessagesCallbackAt:string|null;
@@ -234,19 +236,53 @@ export default function ZeshuWhatsappInbox(){
         <p className="mt-1 leading-5">Only messages actually received via your verified Meta webhook appear here. Replies are saved as drafts and are <strong>never sent</strong>. Do not expect mobile-app chats to sync without approved Coexistence.</p>
       </div>
       {!loading&&webhook&&
-        <section aria-label="WhatsApp connection status" className="mb-4 rounded-2xl border border-amber-200 bg-white p-4 text-sm text-slate-800">
-          <p className="font-black text-amber-900">{webhook.observedSignedCallbacks>0?
-            'Signed Meta callbacks received · customer inbox not yet verified':'WhatsApp inbox is waiting for Meta callbacks'}</p>
-          <p className="mt-2 leading-6">{webhook.observedSignedCallbacks>0
-            ?'Meta has sent '+webhook.observedSignedCallbacks+' signed callback(s) to Zeshu, including '+webhook.observedMatchingAccountCallbacks+' for the configured account. '+webhook.observedInboundMessageEvents+' customer messages have been recorded. This does not prove mobile app coexistence or real customer-message delivery.'
-            :'Zeshu has not recorded an authenticated callback from Meta. This does not prove your phone is disconnected: a connected number and a configured API token do not confirm webhook subscription.'}</p>
-          <p className="mt-2 font-semibold">Next: verify the messages field and the mobile-app registration status without requesting any OTP.</p>
-          <ol className="mt-2 list-inside list-decimal space-y-2 leading-6">
+        <section aria-label="WhatsApp connection status"
+          className={`mb-4 rounded-2xl border bg-white p-4 text-sm text-slate-800 ${webhook.observedInboundMessageEvents>0&&threads.length>0?'border-emerald-300':'border-amber-200'}`}>
+          <p className={`font-black ${webhook.observedInboundMessageEvents>0&&threads.length>0?'text-emerald-900':'text-amber-900'}`}>
+            {webhook.observedInboundMessageEvents>0&&threads.length>0
+              ?'✅ Incoming WhatsApp webhook and Inbox are receiving messages'
+              :webhook.observedSignedCallbacks>0
+                ?'Signed Meta callbacks received · waiting for a stored message'
+                :'WhatsApp inbox is waiting for Meta callbacks'}
+          </p>
+          {webhook.observedInboundMessageEvents>0&&threads.length>0?
+            <>
+              <p className="mt-2 leading-6">
+                Meta delivered {webhook.observedInboundMessageEvents} authenticated inbound message event(s) for Zeshu.
+                The private Inbox currently contains {threads.length} recent conversation(s).
+                This confirms inbound receipt and storage, not outbound sending or mobile-app Coexistence.
+              </p>
+              {webhook.recentInboundTypesAvailable&&webhook.recentInboundSampleSize!==undefined&&
+                <p className="mt-2 rounded-xl bg-emerald-50 p-3 text-xs leading-5 text-emerald-950">
+                  Last {webhook.recentInboundSampleSize} stored inbound message(s):
+                  {' '}{webhook.recentInboundTextMessages??0} text,
+                  {' '}{webhook.recentInboundNonTextMessages??0} non-text.
+                  {(webhook.recentInboundNonTextMessages??0)>0
+                    ?' Non-text events appear as safe placeholders; Zeshu does not download or expose attached media.'
+                    :' No attached media was retrieved.'}
+                </p>}
+              <p className="mt-2 text-xs text-slate-600">
+                Use the conversation list below to inspect recorded messages. Reply drafts are saved privately and never sent.
+              </p>
+            </>
+            :<p className="mt-2 leading-6">
+              {webhook.observedSignedCallbacks>0
+                ?'Meta has delivered '+webhook.observedSignedCallbacks+' signed callback(s), including '+webhook.observedMatchingAccountCallbacks+' for the Zeshu account. No inbound customer message has been confirmed in the Inbox yet.'
+                :'Zeshu has not recorded an authenticated callback from Meta. A connected number alone does not confirm message delivery.'}
+            </p>}
+          <details className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3"
+            key={webhook.observedInboundMessageEvents>0?'incoming-ready':'incoming-waiting'}
+            open={webhook.observedInboundMessageEvents===0}>
+            <summary className="cursor-pointer font-bold text-emerald-950">
+              Advanced Meta webhook and phone diagnostics (no registration changes)
+            </summary>
+            <p className="mt-3 font-semibold">Verify the messages field and mobile-app registration only if something stops working; don't repeat setup when incoming messages already arrive.</p>
+          {webhook.observedInboundMessageEvents===0&&<ol className="mt-2 list-inside list-decimal space-y-2 leading-6">
             <li>Open Meta for Developers → Zeshu Support → WhatsApp → Configuration / Webhooks.</li>
             <li>Use the callback URL shown below and the <strong>existing private Cloudflare webhook verification token</strong>. Never paste that token here.</li>
             <li>Subscribe to the WhatsApp Business Account <code>messages</code> field and verify the application is subscribed to the correct Zeshu WABA.</li>
             <li>Return here and tap Refresh to check for new signed callbacks. No customer messaging will be enabled by this check.</li>
-          </ol>
+          </ol>}
           <p className="mt-3 break-all rounded-xl bg-slate-50 p-3 font-mono text-xs">{webhook.webhookCallbackUrl}</p>
           <p className="mt-2 text-xs text-slate-600">Webhook secrets: {webhook.webhookSecretsPresent?'detected':'not detected'} · Phone/account IDs: {webhook.accountIdentifiersPresent?'detected':'not detected'}</p>
           <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-4">
@@ -286,6 +322,7 @@ export default function ZeshuWhatsappInbox(){
             <a className="rounded-xl bg-[#075e45] px-4 py-3 font-bold text-white" href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">Open Meta Developer apps ↗</a>
             <Link className="font-bold text-emerald-900 underline" href="/admin/whatsapp">View full Zeshu WhatsApp diagnostics</Link>
           </div>
+          </details>
         </section>}
       {!loading&&webhook&&webhook.observedSignedCallbacks>0&&
         <div className="mb-4 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm">
@@ -294,7 +331,8 @@ export default function ZeshuWhatsappInbox(){
           <p className="mt-2 text-slate-700">Since additional message-field diagnostics launched: {webhook.observedMessagesFieldCallbacks??0} callbacks with the <code>messages</code> field; {webhook.observedPhoneMessagesCallbacks??0} contained messages for the correct Zeshu phone; {webhook.observedCandidateMessageEvents??0} candidate messages; {webhook.observedIgnoredMessageEvents??0} candidate messages filtered by strict inbox validation.</p>
           {(webhook.observedMessagesFieldCallbacks??0)===0&&<p className="mt-1 text-xs font-semibold text-amber-900">No <code>messages</code> field callbacks have been observed since these counters were installed. A previous signed callback may have concerned a different event.</p>}
           {(webhook.observedIgnoredMessageEvents??0)>0&&<p className="mt-1 text-xs font-semibold text-amber-900">Some signed message candidates were filtered. Review webhook parsing and correct account metadata before assuming the Meta subscription is broken.</p>}
-          <p className="mt-1 text-xs text-slate-500">These detailed counters begin on 11 October; old callbacks cannot be classified retroactively. Receipt of a signed callback does not prove Cloud API sending, mobile app coexistence, or actual customer-message delivery.</p>
+          <p className="mt-1 text-xs text-slate-500">These detailed counters begin on 11 October; old callbacks cannot be classified retroactively.
+          A signed matching callback with a stored inbound message proves inbound delivery to Zeshu, but not Cloud API sending, media retrieval, or mobile-app Coexistence.</p>
         </div>}
       {!loading&&!webhook&&<p className="mb-4 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700">Webhook health is not available right now. The inbox is still private; check <Link href="/admin/whatsapp" className="font-bold underline">WhatsApp HQ</Link> for diagnostics.</p>}
       {error&&<p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-800">{error}</p>}
@@ -328,6 +366,7 @@ export default function ZeshuWhatsappInbox(){
               <div className="flex-1 space-y-3 overflow-y-auto bg-[#edf5ed] p-3 md:p-5">
                 {detail.messages.length===0?<p className="text-sm text-slate-600">No messages in this conversation.</p>:
                   detail.messages.map(m=><div key={m.id} className="max-w-[95%] rounded-2xl bg-white p-3 shadow-sm sm:max-w-[85%]">
+                    {m.message_type!=='text'&&<p className="mb-1 text-xs font-bold text-amber-900">Non-text WhatsApp event · attachment not retrieved</p>}
                     <p className="whitespace-pre-wrap break-words text-sm leading-6">{m.body}</p>
                     <p className="mt-1 text-right text-[10px] text-slate-500">{date(m.sent_at)} · Received</p>
                   </div>)}
