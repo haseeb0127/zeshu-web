@@ -8,8 +8,20 @@ const str=(x:unknown)=>typeof x==='string'?x:'';
 const id=(x:unknown)=>/^[1-9][0-9]{6,14}$/.test(str(x));
 const metaId=(x:unknown)=>/^[0-9]{5,32}$/.test(str(x));
 const phoneMessage=(x:unknown)=>typeof x==='string'&&x.length>=5&&x.length<=512;
+// Customer-visible reply labels are genuine inbound text, not API identifiers.
+// Never display raw structured interactive payloads, checkout forms or media handles.
+const visibleReplyText=(m:Record<string,unknown>):string=>{
+  if(m.type==='text')return str(rec(m.text)?.body).trim().slice(0,4000);
+  if(m.type==='button')return str(rec(m.button)?.text).trim().slice(0,4000);
+  if(m.type==='interactive'){
+    const interactive=rec(m.interactive);
+    if(interactive?.type==='button_reply')return str(rec(interactive.button_reply)?.title).trim().slice(0,4000);
+    if(interactive?.type==='list_reply')return str(rec(interactive.list_reply)?.title).trim().slice(0,4000);
+  }
+  return '';
+};
 
-/** Parse only incoming WhatsApp text or safe placeholders; never store media URLs or raw payloads. */
+/** Parse incoming text, customer-visible button/list replies and safe media placeholders. Never store media URLs, internal reply IDs or raw payloads. */
 export function parseInboundWhatsAppMessages(payload:unknown,wabaId:string,phoneNumberId:string):Item[]{
   if(!metaId(wabaId)||!metaId(phoneNumberId))return [];
   const obj=rec(payload);
@@ -38,9 +50,9 @@ export function parseInboundWhatsAppMessages(payload:unknown,wabaId:string,phone
         if(!/^\d{10}$/.test(stamp))continue;
         const time=Number(stamp)*1000;
         if(!Number.isFinite(time)||time<Date.UTC(2020,0,1)||time>Date.now()+86400000)continue;
-        const messageType=m.type==='text'?'text':'unsupported';
-        const body=messageType==='text' ? str(rec(m.text)?.body).trim().slice(0,4000)
-          : '[WhatsApp '+str(m.type||'media').replace(/[^a-z0-9_-]/gi,'').slice(0,24)+' message — not displayed]';
+        const userText=visibleReplyText(m);
+        const messageType=userText?'text':'unsupported';
+        const body=userText || '[WhatsApp '+str(m.type||'media').replace(/[^a-z0-9_-]/gi,'').slice(0,24)+' message — not displayed]';
         if(!body)continue;
         items.push({
           customerWaId:str(m.from),displayName:contactNames.get(str(m.from))||'',
