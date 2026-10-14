@@ -1,6 +1,7 @@
 import {NextResponse} from 'next/server';
 import {authorizeWhatsAppInboxAdmin,inboxNoStore} from '@/app/lib/whatsapp-inbox-auth';
 import {getRuntimeEnvValue} from '@/app/lib/runtime-env';
+import {greenBatchProgress} from '@/app/lib/zeshu-green-batch';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -50,6 +51,9 @@ export async function GET(request:Request){
     fundedTreeQuota:quota,
     reserved,
     remainingTreeCapacity:Math.max(0,quota-reserved),
+    plantingBatch:greenBatchProgress(reserved),
+    bulkPlantingAuthorized:false,
+    plantingBatchPolicy:'Milestone only: 10,000 funded, eligible delivered-order commitments before a separately approved coordinated planting campaign. Bulk planting is not automatic and may require several planting days, suitable seasonal conditions, land permissions and aftercare.',
     treeUnitBudgetPaise:unitCost,
     totalAllocatedBudgetPaise:unitCost!==null?quota*unitCost:null,
     counts:{pledged:pledged.count||0,reported:reported.count||0,verified:verified.count||0,voided:voided.count||0},
