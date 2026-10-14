@@ -77,6 +77,14 @@ declare
   cfg public.zeshu_green_program%rowtype;
   reserved integer;
 begin
+  -- Cancelled after delivery? Void only an unplanted pledge. Trees already
+  -- planted need manual review rather than erasing real planting evidence.
+  if new.status='CANCELLED' and old.status='DELIVERED' then
+    update public.zeshu_green_tree_commitments
+      set status='VOID',updated_at=now()
+      where order_id=new.id and status='PLEDGED';
+    return new;
+  end if;
   -- Only a new transition to DELIVERED, never checkout, order creation,
   -- canceled/pending orders or re-saving an already delivered order.
   if new.status <> 'DELIVERED' or old.status = 'DELIVERED' then
