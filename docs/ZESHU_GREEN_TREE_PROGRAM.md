@@ -76,6 +76,73 @@ substantiated environmental claims and clear disclosures.
 - No app UI exists to switch the programme to ACTIVE. Activation must remain
   a separately approved, evidence-backed operation.
 
+## Partner leads to verify (research, NOT signed suppliers)
+
+These are **prospects for quotation**, not active Zeshu partners.
+No trees have been ordered or paid for. Do not show their names to customers
+as Zeshu partners until a real agreement is checked and approved.
+
+1. **SankalpTaru Foundation / Telangana Project Pachadhanam**:
+   https://sankalptaru.org/project-pachadhanam/ — public project advertises
+   Telangana planting sites, tree photographs/GPS coordinates and a displayed
+   individual contribution amount starting at ₹149 (at time of research).
+   This is **not** a verified corporate wholesale quote. Its public project
+   describes fruit trees on farmer lands; check which species and programme
+   actually fit Zeshu's local native-tree commitment.
+2. **VATA Foundation / Hyderabad**:
+   https://vatafoundation.org/plantation-drive/ — offers partnerships,
+   community planting/site sponsorship and states that care/monitoring need
+   dedicated funding. Request a Jagtial/Telangana native-species pilot quote.
+3. **Telangana Haritha Haram / District Forest Officer**:
+   https://www.myscheme.gov.in/schemes/haritha-haram — Telangana tree initiative;
+   discuss suitable land, native species, site permissions and local registered
+   organizations with the Jagtial Forest Department. Government affiliation
+   or a nursery is not proof Zeshu has commissioned any trees.
+
+### Ask every candidate before choosing a partner
+
+- Written **₹ cost per successfully planted and cared-for native tree**,
+  including site permission, protection, watering, annual follow-up,
+  replacement of saplings that fail to establish, and taxes/fees.
+- **Do you support a 50–100 tree funded pilot without a subscription?**
+  Is there an approved site in/near Jagtial and how is ecological suitability
+  validated? Are species locally indigenous?
+- Are payments genuinely for *additional* Zeshu-funded planting, not trees
+  already financed by other sponsors or programmes? How do you prevent
+  duplicate counting across donors?
+- Are species, GPS/site, partner tree ID, planting dates, photos and later
+  survival/replacement updates available for customer impact reports?
+- What planting season, lead time after a delivered order, maintenance window
+  and dispute/shortfall process are contractually guaranteed? What happens if
+  the partner cannot plant due to weather or access issues?
+- Is a sponsor or matching grant available **without a recurring fee**?
+  Do not enter banking/payment information before Zeshu owner approval.
+
+Suggested inquiry (send manually only after reviewing partner details):
+
+> Zeshu.in is a new online marketplace in Jagtial, Telangana. We are planning
+> a transparent, independently verifiable pilot of 50–100 locally appropriate
+> trees, with potential future growth tied to genuinely fulfilled customer
+> orders. Please quote a fully inclusive per-tree price for planting, aftercare,
+> replacement, proof (native species, site/date, GPS/photo and unique
+> references), monitoring reports and any tax or administration charges.
+> Please confirm site permission, minimum pilot size, availability in Telangana
+> and whether the evidence can be linked in a public impact report. We are
+> gathering quotes only, not authorizing an order or payment yet.
+
+## Green HQ for Zeshu owner
+
+- `/admin/green` is private and **read-only**. It shows each launch prerequisite,
+  checked payout/partner metadata, quota totals and real VERIFIED counts.
+- The **LIVE checkout** gate reflects the configured Razorpay key mode; a
+  manually checked programme flag must not silently substitute for real live
+  payments, so payment readiness is displayed independently.
+- The dashboard cannot activate the programme, spend, change existing partner
+  details, backfill history or fabricate verification proof.
+- Evidence guard hardening prevents SQL NULLs from bypassing verified-photo
+  evidence rules, and requires partner-reported trees to carry a real
+  species/site/date/reference before they enter public reported counts.
+
 ## Future work after approval
 
 - Staff dashboard with signed proof uploads, multi-person verification,
