@@ -3,6 +3,10 @@ import {readFileSync} from 'node:fs';
 const read=(p)=>readFileSync(p,'utf8');
 const migration=read('supabase/migrations/20261014130000_zeshu_green_verified_tree_campaign.sql');
 const nullGuard=read('supabase/migrations/20261014132000_zeshu_green_active_guard_null_safe.sql');
+const guard=read('supabase/migrations/20261014235500_zeshu_green_evidence_guards.sql');
+const ownerApi=read('app/api/admin/green/route.ts');
+const ownerPage=read('app/admin/green/page.tsx');
+const adminNav=read('app/admin/dashboard/page.tsx');
 const impact=read('app/api/green/impact/route.ts');
 const green=read('app/green/page.tsx');
 const hub=read('app/components/HomeBusinessHub.tsx');
@@ -52,4 +56,21 @@ for(const token of ['"Zeshu Green"','"See the plan"','"Our goal: one tree for ev
 }
 assert(docs.includes('Razorpay remains in TEST mode'),'Do not start in payment test mode');
 assert(docs.includes('No app UI exists to switch'),'Activation requires explicit business approval');
+assert(guard.includes("coalesce(proof_url,'')"),'SQL NULL proof must not bypass VERIFIED tree evidence');
+assert(guard.includes("status not in ('PLANTED','VERIFIED')"),'Reported planting requires basic partner evidence');
+assert(guard.includes("verified_at >= planted_at"),'Verification cannot predate planting');
+assert(guard.includes("coalesce(native_species,'')"),'Require actual tree species before claiming planted');
+assert(guard.includes("coalesce(partner_reference,'')"),'Require partner report ID before claiming planted');
+assert(ownerApi.includes('authorizeWhatsAppInboxAdmin(request)'),'Private HQ must require owner role');
+assert(ownerApi.includes("getRuntimeEnvValue('RAZORPAY_KEY_ID')"),'Show live vs test gateway truth to owner');
+assert(ownerApi.includes("razorpayId.startsWith('rzp_test_')"),'TEST mode must be obvious to owner');
+assert(ownerApi.includes('paymentGatewayLive'),'Block per-order marketing until real payment readiness');
+assert(ownerApi.includes('canAnnouncePerOrderPromise:Object.values(gates).every(Boolean)&&reserved<quota'),
+  'No funded capacity must prevent per-order marketing');
+assert(!ownerApi.includes('export async function POST')&&!ownerApi.includes('export async function PATCH'),
+  'Owner HQ must be read-only: no program activation or spending');
+assert(ownerPage.includes("fundedTreeQuota")&&ownerPage.includes("counts.verified"),'Show real budget/capacity and proof-backed planting counts');
+assert(ownerPage.includes("No customer tree fee"),'Owner must not quietly charge customers');
+assert(ownerPage.includes("no activation control"),'Green HQ must not activate by button');
+assert(adminNav.includes('href="/admin/green"'),'Green HQ must be discoverable from Zeshu Admin');
 console.log('PASS: honest Zeshu Green programme, verified tree accounting, privacy and safely disabled live pledge');
