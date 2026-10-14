@@ -23,6 +23,10 @@ const LANGUAGE_OPTIONS: Array<{ code: CustomerLanguageCode; label: string; short
 const translations: Record<CustomerLanguageCode, Record<string, string>> = {
   en: {},
   te: {
+    "Zeshu Green": "జెషు గ్రీన్",
+    "Our goal: one tree for every eligible delivered order.": "మా లక్ష్యం: అర్హత గల ప్రతి డెలివరీ ఆర్డర్‌కు ఒక చెట్టు.",
+    "Planting starts after partner verification and funded capacity.": "భాగస్వామి ధృవీకరణ, నిధుల ఏర్పాటు తర్వాత చెట్లు నాటడం మొదలవుతుంది.",
+    "See the plan": "కార్యక్రమం వివరాలు",
     "Zeshu Dine": "జెషు డైన్",
     "Table reservations and meal pre-orders after restaurant verification. Kitchen-confirmed serving times.": "రెస్టారెంట్ ధృవీకరణ తర్వాత టేబుల్ బుకింగ్, భోజనం ముందస్తు ఆర్డర్. వడ్డించే సమయాన్ని కిచెన్ నిర్ధారిస్తుంది.",
     "Explore dining": "డైనింగ్ వివరాలు చూడండి",
@@ -961,6 +965,10 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Search Contact": "కాంటాక్ట్ వెతకండి",
   },
   hi: {
+    "Zeshu Green": "ज़ेशु ग्रीन",
+    "Our goal: one tree for every eligible delivered order.": "हमारा लक्ष्य: हर पात्र डिलीवर हुए ऑर्डर पर एक पेड़।",
+    "Planting starts after partner verification and funded capacity.": "साझेदार सत्यापन और फंड मिलने के बाद ही वृक्षारोपण शुरू होगा।",
+    "See the plan": "कार्यक्रम देखें",
     "Zeshu Dine": "ज़ेशु डाइन",
     "Table reservations and meal pre-orders after restaurant verification. Kitchen-confirmed serving times.": "रेस्तराँ सत्यापन के बाद टेबल बुकिंग और खाने का प्री-ऑर्डर। परोसने का समय किचन तय करेगा।",
     "Explore dining": "डाइनिंग देखें",
@@ -1879,6 +1887,10 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Search Contact": "कॉन्टैक्ट खोजें",
   },
   ur: {
+    "Zeshu Green": "زیشو گرین",
+    "Our goal: one tree for every eligible delivered order.": "ہمارا ہدف: ہر اہل ڈیلیور شدہ آرڈر پر ایک درخت۔",
+    "Planting starts after partner verification and funded capacity.": "پارٹنر کی تصدیق اور فنڈ دستیاب ہونے کے بعد شجرکاری شروع ہوگی۔",
+    "See the plan": "پروگرام دیکھیں",
     "Zeshu Dine": "زیشو ڈائن",
     "Table reservations and meal pre-orders after restaurant verification. Kitchen-confirmed serving times.": "ریستوران کی تصدیق کے بعد ٹیبل بکنگ اور کھانے کا پیشگی آرڈر۔ پیش کرنے کے وقت کی تصدیق کچن کرے گا۔",
     "Explore dining": "ڈائننگ دیکھیں",
