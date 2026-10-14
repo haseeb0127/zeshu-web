@@ -2,7 +2,7 @@
 
 import Link from "@/app/components/DocumentLink";
 import { useEffect, useRef, useState } from "react";
-import { BadgeCheck, Car, ChevronLeft, ChevronRight, Paintbrush, PartyPopper, Receipt, ShoppingBag, ShoppingBasket, CreditCard, CarFront, Grid2X2, Bot, Sparkles, ArrowUpRight } from "lucide-react";
+import { BadgeCheck, Car, ChevronLeft, ChevronRight, Leaf, Paintbrush, PartyPopper, Receipt, ShoppingBag, ShoppingBasket, CreditCard, CarFront, Grid2X2, Bot, Sparkles, ArrowUpRight } from "lucide-react";
 import ReferenceArtwork from "@/app/components/ReferenceArtwork";
 import GlossyArtwork from "@/app/components/GlossyArtwork";
 import DineBannerArtwork from "@/app/components/DineBannerArtwork";
@@ -121,6 +121,16 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
         <span className="mt-1 block min-h-[28px] text-[10px] font-extrabold leading-[1.25] text-[#1c2537] md:text-sm">{t(item.label)}</span>
       </button>)}
     </div>
+    <Link href="/green" data-zeshu-green-home="planning" className="mt-3 flex min-h-[100px] items-center gap-3 overflow-hidden rounded-[24px] border border-emerald-200 bg-[linear-gradient(100deg,#eef8ed,#fffef4)] px-4 py-3 shadow-[0_5px_18px_rgba(6,68,37,.09)] md:mt-5 md:px-6 md:py-5">
+      <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[#075e45] text-[#deffc5]"><Leaf size={30} aria-hidden="true"/></span>
+      <span className="min-w-0 flex-1">
+       <span className="block text-base font-black text-[#075e45]">{t("Zeshu Green")}</span>
+       <span className="mt-0.5 block text-xs font-bold text-[#1b4431] md:text-sm">{t("Our goal: one tree for every eligible delivered order.")}</span>
+       <span className="mt-1 block text-[10px] leading-4 text-slate-600 md:text-xs">{t("Planting starts after partner verification and funded capacity.")}</span>
+      </span>
+      <span className="hidden whitespace-nowrap text-xs font-extrabold text-[#075e45] md:block">{t("See the plan")}</span>
+      <ArrowUpRight size={20} className="shrink-0 text-[#075e45]" aria-hidden="true"/>
+    </Link>
     <button type="button" data-zeshu-home-assistant="true" onClick={()=>window.dispatchEvent(new Event("zeshu:open-assistant"))}
      className="zeshu-gloss-card group mt-3 flex w-full items-center gap-3 rounded-[22px] border border-emerald-100 bg-white px-3.5 py-3 text-left shadow-md md:mt-5 md:px-5 md:py-4">
       <span className="zeshu-gloss-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-white"><Bot size={25}/></span>
