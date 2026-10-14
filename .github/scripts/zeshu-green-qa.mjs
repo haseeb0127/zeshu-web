@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=(p)=>readFileSync(p,'utf8');
 const migration=read('supabase/migrations/20261014130000_zeshu_green_verified_tree_campaign.sql');
+const nullGuard=read('supabase/migrations/20261014132000_zeshu_green_active_guard_null_safe.sql');
 const impact=read('app/api/green/impact/route.ts');
 const green=read('app/green/page.tsx');
 const hub=read('app/components/HomeBusinessHub.tsx');
@@ -11,6 +12,8 @@ const docs=read('docs/ZESHU_GREEN_TREE_PROGRAM.md');
 // No false environmental promises, no retroactive claims and no checkout changes.
 assert(migration.includes("mode text not null default 'PLANNING'"),'Tree planting must start disabled');
 assert(migration.includes("mode <> 'ACTIVE'"),'Activation must be database-guarded');
+assert(nullGuard.includes("coalesce(partner_public_website,'')"),'Missing partner URL must fail ACTIVE guard');
+assert(nullGuard.includes('coalesce(tree_unit_budget_paise,0)'),'Missing funded unit budget must fail ACTIVE guard');
 for(const gate of ['verified_partner_agreement','live_order_payments_verified','funded_tree_quota > 0','tree_unit_budget_paise']){
  assert(migration.includes(gate),'Missing planting funding/verification guard: '+gate);
 }
