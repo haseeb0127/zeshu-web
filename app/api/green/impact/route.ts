@@ -1,6 +1,7 @@
 import {NextResponse} from 'next/server';
 import {createClient} from '@supabase/supabase-js';
 import {getRuntimeSupabaseEnv} from '@/app/lib/runtime-env';
+import {greenBatchProgress} from '@/app/lib/zeshu-green-batch';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -30,6 +31,8 @@ export async function GET(){
     partner:active&&program.data.planting_partner?program.data.planting_partner:null,
     partnerWebsite:active&&program.data.partner_public_website?program.data.partner_public_website:null,
     treeCommitments:committed.count||0,
+    plantingBatch:greenBatchProgress(committed.count||0),
+    plantingPolicy:'The 10,000-order milestone is a target for a coordinated seasonal planting campaign, not proof of 10,000 trees planted or a guarantee of one planting day. Actual planting requires a vetted partner, approved land, available funding and documented evidence.',
     plantingReported:planted.count||0,
     verifiedPlanted:verified.count||0,
     isPlantingLive:active,

@@ -15,6 +15,39 @@ are independently verified.
 
 > Our goal: one native tree for each eligible delivered Zeshu order.
 
+## Approved planning direction: 10,000-order planting batches
+
+Zeshu's owner prefers **one coordinated mass tree-planting drive after every
+10,000 genuinely eligible delivered orders**, rather than physically planting
+one tree on the day of every delivery. The **target** remains one tree per
+qualifying order: at the first completed 10,000-order milestone, plan to plant
+10,000 locally suitable trees. Planting may be scheduled across several days or
+sites in one appropriate planting season; never imply the entire campaign can
+be completed in a single day without partner capacity evidence.
+
+This is **a planning target, not a funded/live planting promise**. A future
+qualified order can reserve one funded commitment only once the existing
+STRICT budget + verified partner + live fulfilment activation gates have been
+met. Customer progress shows the number of non-void funded commitments
+toward the next 10,000-order milestone. While still PLANNING, the counter stays
+at zero regardless of prior historical/TEST orders. Voided commitments are
+excluded. Earlier commitments must not be retroactively manufactured.
+
+Before promoting any "10,000 orders = 10,000 planted trees" guarantee:
+- Confirm a vetted partner, land-owner permission and sufficient nursery stock,
+  native species suitability, seasonal planting schedule and **multi-year
+  aftercare** for 10,000 individual trees.
+- Secure the **entire campaign funding or a legally committed sponsorship**
+  without relying on unearned customer order volume, future margins or unverified
+  income. Budget for lost saplings and replacements.
+- Decide how refunds and returns affect unplanted commitments, confirm no
+  duplicative counting, and record partner tree IDs/site/date/evidence.
+- Commission a smaller capacity test **only if separately approved and funded**;
+  it should never be represented as planting from pending Zeshu orders.
+- Bulk planting is human-organized and separately approved: the order counter
+  does **not** move money, plant trees, or move commitment records to VERIFIED.
+  The existing manual VERIFIED evidence controls still apply.
+
 The on-site `/green` page distinguishes:
 - **Reserved tree slots:** future qualifying order commitments, NOT trees planted.
 - **Reported plantings:** physically planted as reported by the partner, not yet
@@ -70,7 +103,10 @@ substantiated environmental claims and clear disclosures.
   prices or partner internal details. Does not count unverified trees as planted.
 - `/green`: mobile-friendly multilingual customer programme page, clearly
   labeling planning status and the difference between a pledge and a planted
-  tree. The homepage shows the *goal*, not a planting claim.
+  tree. Displays the aspirational 10,000-order planting-drive milestone, using
+  **only recorded post-activation non-void commitments**, and explains that
+  planting might occur across several seasonal days. The homepage shows the
+  *goal*, not a planting claim.
 - Neither API nor trigger invokes payment, makes charitable donations, sends
   WhatsApp messages or activates the programme.
 - No app UI exists to switch the programme to ACTIVE. Activation must remain

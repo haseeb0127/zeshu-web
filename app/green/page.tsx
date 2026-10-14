@@ -8,10 +8,17 @@ import {useCustomerLanguage,type CustomerLanguageCode} from "@/app/components/Cu
 type Impact={
  programmeStatus:"PLANNING"|"ACTIVE"|"PAUSED";treeCommitments:number;
  plantingReported:number;verifiedPlanted:number;isPlantingLive:boolean;
+ plantingBatch?:{milestoneOrders:number;qualifyingOrdersTracked:number;completeBatches:number;progressInCurrentBatch:number;ordersUntilNextMilestone:number;milestoneReached:boolean};
  partner:string|null;partnerWebsite:string|null;
 };
 const dictionaries={
  en:{
+  batchTitle:"10,000 eligible orders → one coordinated tree-planting campaign",
+  batchDescription:"Our proposed milestone is to reserve one native-tree commitment per eligible delivered order, then arrange a 10,000-tree planting drive after 10,000 qualifying orders. Planting may take multiple days in the right season—not necessarily one day.",
+  batchProgress:"Funded qualifying order commitments toward the 10,000-order goal",
+  batchPlanned:"PLANNING ONLY: Zeshu is not yet reserving trees. This counter does not include past, cancelled, refunded or TEST orders.",
+  batchLive:"Funded tree slots are being recorded for eligible completed orders. This is not a count of trees already planted.",
+  batchProof:"Reaching the milestone does not trigger an automatic planting or payment. A vetted partner, approved land, funding, aftercare and independent evidence are required.",
   program:"Zeshu Green",badge:"A transparent tree-planting initiative",
   mission:"Our goal: one tree for every eligible delivered order.",
   intro:"Shop for what you need. Help us grow a greener future—once verified planting partners and funding are in place.",
@@ -31,6 +38,12 @@ const dictionaries={
   seePartner:"View partner website",
  },
  te:{
+  batchTitle:"10,000 అర్హత గల ఆర్డర్లు → సమన్వయంతో చెట్ల నాటే కార్యక్రమం",
+  batchDescription:"మా ప్రతిపాదిత లక్ష్యం: ప్రతి అర్హమైన డెలివరీ ఆర్డర్‌కు ఒక స్థానిక చెట్టు కోసం నిధులు కేటాయించి, 10,000 అర్హమైన ఆర్డర్లు పూర్తయ్యాక 10,000 చెట్లు నాటే కార్యక్రమం నిర్వహించడం. అనువైన కాలంలో దీనికి అనేక రోజులు పట్టవచ్చు.",
+  batchProgress:"10,000 ఆర్డర్ల లక్ష్యానికి నిధులు కేటాయించిన అర్హత గల ఆర్డర్లు",
+  batchPlanned:"ప్రస్తుతం ప్రణాళిక మాత్రమే: జెషు ఇంకా చెట్లకు నిధులు కేటాయించడం లేదు. పాత, రద్దైన, రీఫండ్ చేసిన లేదా టెస్ట్ ఆర్డర్లు లెక్కలోకి రావు.",
+  batchLive:"అర్హమైన డెలివరీ ఆర్డర్లకు నిధులు ఉన్న చెట్టు స్థానాలు నమోదు అవుతున్నాయి. ఇవి ఇప్పటికే నాటిన చెట్ల సంఖ్య కాదు.",
+  batchProof:"లక్ష్యం చేరుకున్నంత మాత్రాన చెట్లు ఆటోమేటిక్‌గా నాటరు. భాగస్వామి, అనుమతి ఉన్న స్థలం, నిధులు, సంరక్షణ మరియు ధృవీకరణ అవసరం.",
   program:"జెషు గ్రీన్",badge:"పారదర్శక చెట్ల పెంపకం కార్యక్రమం",
   mission:"మా లక్ష్యం: అర్హత గల ప్రతి డెలివరీ ఆర్డర్‌కు ఒక చెట్టు.",
   intro:"భాగస్వామి ధృవీకరణ మరియు నిధులు సిద్ధమైన తర్వాత చెట్ల నాటడం ప్రారంభమవుతుంది.",
@@ -49,6 +62,12 @@ const dictionaries={
   seePartner:"భాగస్వామి వెబ్‌సైట్",
  },
  hi:{
+  batchTitle:"10,000 पात्र ऑर्डर → एक समन्वित वृक्षारोपण अभियान",
+  batchDescription:"हमारा प्रस्तावित लक्ष्य है कि हर पात्र डिलीवर हुए ऑर्डर के लिए एक देशी पेड़ की व्यवस्था हो। 10,000 पात्र ऑर्डर पूरे होने पर 10,000 पेड़ों का अभियान चलाएं। सही मौसम में इसे कई दिनों में करना पड़ सकता है।",
+  batchProgress:"10,000 ऑर्डर लक्ष्य के लिए वित्तपोषित पात्र ऑर्डर प्रतिबद्धताएँ",
+  batchPlanned:"अभी केवल योजना: ज़ेशु ने पेड़ों के लिए आरक्षण शुरू नहीं किया है। पुराने, रद्द, रिफंड या टेस्ट ऑर्डर नहीं गिने जाते।",
+  batchLive:"पात्र डिलीवर हुए ऑर्डर के लिए वित्तपोषित पेड़ की प्रतिबद्धताएँ दर्ज हो रही हैं। ये पहले से लगाए गए पेड़ नहीं हैं।",
+  batchProof:"लक्ष्य पूरा होते ही अपने-आप पेड़ नहीं लगाए जाएंगे। सत्यापित साझेदार, भूमि अनुमति, धन, देखभाल और प्रमाण जरूरी हैं।",
   program:"ज़ेशु ग्रीन",badge:"पारदर्शी वृक्षारोपण पहल",
   mission:"हमारा लक्ष्य: हर पात्र डिलीवर हुए ऑर्डर पर एक पेड़।",
   intro:"सत्यापित पौधरोपण साझेदार और पर्याप्त फंड मिलने के बाद ही कार्यक्रम शुरू होगा।",
@@ -67,6 +86,12 @@ const dictionaries={
   seePartner:"साझेदार वेबसाइट",
  },
  ur:{
+  batchTitle:"10,000 اہل آرڈرز → ایک مشترکہ شجرکاری مہم",
+  batchDescription:"ہمارا مجوزہ ہدف ہے کہ ہر اہل ڈیلیور شدہ آرڈر کے لیے ایک مقامی درخت کی مالی ذمہ داری محفوظ ہو۔ 10,000 اہل آرڈرز مکمل ہونے کے بعد 10,000 درختوں کی مہم منعقد کی جائے۔ مناسب موسم میں یہ کئی دنوں تک جاری رہ سکتی ہے۔",
+  batchProgress:"10,000 آرڈرز کے ہدف کی طرف مالی طور پر مختص اہل آرڈرز",
+  batchPlanned:"فی الحال صرف منصوبہ ہے: زیشو نے درخت مختص کرنا شروع نہیں کیے۔ پرانے، منسوخ، ریفنڈ یا ٹیسٹ آرڈرز شامل نہیں ہیں۔",
+  batchLive:"اہل مکمل آرڈرز کے لیے فنڈ شدہ درختوں کی ذمہ داریاں درج ہو رہی ہیں۔ یہ پہلے سے لگائے گئے درخت نہیں ہیں۔",
+  batchProof:"ہدف پورا ہونے پر خود بخود شجرکاری نہیں ہوگی۔ تصدیق شدہ ادارہ، زمین کی اجازت، فنڈز، نگہداشت اور ثبوت ضروری ہیں۔",
   program:"زیشو گرین",badge:"شفاف شجرکاری پروگرام",
   mission:"ہمارا ہدف: ہر اہل مکمل ڈیلیور شدہ آرڈر پر ایک درخت۔",
   intro:"تصدیق شدہ شجرکاری پارٹنر اور فنڈز دستیاب ہونے کے بعد پروگرام شروع ہوگا۔",
@@ -130,6 +155,23 @@ export default function ZeshuGreenPage(){
      </div>)}
    </div>
    <p className="mt-3 flex items-center gap-2 text-xs text-slate-600"><ShieldCheck size={15}/>{text.disclosure}</p>
+   <section className="mt-7 rounded-[26px] border border-emerald-200 bg-white p-6 shadow-sm" aria-label="10,000-order tree planting milestone">
+    <p className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-extrabold text-emerald-900"><Sprout size={16}/>{impact?.programmeStatus==='ACTIVE'?text.statusLive:text.statusPreparing}</p>
+    <h2 className="mt-3 text-xl font-black text-[#075e45] md:text-2xl">{text.batchTitle}</h2>
+    <p className="mt-2 text-sm leading-7 text-slate-700">{text.batchDescription}</p>
+    <div className="mt-5 flex flex-wrap items-end gap-2">
+     <strong className="text-4xl font-black tabular-nums text-[#075e45]">{impact?Number(impact.plantingBatch?.progressInCurrentBatch??0).toLocaleString('en-IN'):'—'}</strong>
+     <span className="pb-1 text-sm font-bold text-slate-600">/ 10,000</span>
+    </div>
+    <p className="mt-1 text-xs font-semibold text-slate-700">{text.batchProgress}</p>
+    <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-emerald-100" role="progressbar"
+     aria-label={text.batchProgress} aria-valuemin={0} aria-valuemax={10000}
+     aria-valuenow={Math.max(0,Math.min(10000,impact?.plantingBatch?.progressInCurrentBatch??0))}>
+     <div className="h-full rounded-full bg-[#15803d] transition-[width]" style={{width:`${Math.max(0,Math.min(100,(impact?.plantingBatch?.progressInCurrentBatch??0)/100))}%`}}/>
+    </div>
+    <p className="mt-4 rounded-xl bg-amber-50 p-3 text-xs leading-6 text-amber-950">{active?text.batchLive:text.batchPlanned}</p>
+    <p className="mt-3 text-xs leading-6 text-slate-600">{text.batchProof}</p>
+   </section>
    <section className="mt-11">
     <h2 className="text-2xl font-black text-[#074c34] md:text-3xl">{text.how}</h2>
     <div className="mt-5 grid gap-4 md:grid-cols-3">

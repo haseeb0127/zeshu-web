@@ -11,6 +11,8 @@ type Readiness={
  gates:{verifiedPlantingAgreement:boolean;publicPartnerWebsite:boolean;actualPerTreeCost:boolean;
  realFundedQuota:boolean;operatorVerifiedLiveOrders:boolean;paymentGatewayLive:boolean;explicitActivation:boolean};
  fundedTreeQuota:number;reserved:number;remainingTreeCapacity:number;treeUnitBudgetPaise:number|null;
+ plantingBatch:{milestoneOrders:number;qualifyingOrdersTracked:number;completeBatches:number;progressInCurrentBatch:number;ordersUntilNextMilestone:number;milestoneReached:boolean};
+ bulkPlantingAuthorized:false;plantingBatchPolicy:string;
  totalAllocatedBudgetPaise:number|null;counts:{pledged:number;reported:number;verified:number;voided:number};
  lastConfigurationUpdate:string;canAnnouncePerOrderPromise:boolean;
  communicationPolicy:string;changesMade:false;sendingEnabled:false;
@@ -82,6 +84,14 @@ export default function AdminGreen(){
       <p className="mt-3 text-3xl font-black tabular-nums text-[#075e45]">{num.toLocaleString('en-IN')}</p>
       <h3 className="mt-1 text-xs font-bold text-slate-600">{label}</h3>
      </article>)}
+    </section>
+    <section className="mt-5 rounded-2xl border border-teal-200 bg-white p-5 md:p-7" aria-label="Ten thousand order planting milestone">
+      <h2 className="text-xl font-black text-emerald-950">Target: 10,000 qualifying orders → 10,000 tree planting drive</h2>
+      <p className="mt-2 text-sm leading-6 text-slate-600">One tree slot for each genuinely fulfilled, eligible order after activation. Planting is coordinated after a funded 10,000-order milestone, potentially across multiple days during the appropriate planting season.</p>
+      <div className="mt-4 flex items-baseline gap-2"><strong className="text-3xl font-black tabular-nums text-[#075e45]">{info.plantingBatch.progressInCurrentBatch.toLocaleString('en-IN')}</strong><span className="text-sm font-bold text-slate-700">/ 10,000 funded qualifying commitments in the current batch</span></div>
+      <div className="mt-2 h-3 overflow-hidden rounded-full bg-emerald-100"><div className="h-full rounded-full bg-emerald-600" style={{width:`${Math.min(100,info.plantingBatch.progressInCurrentBatch/100)}%`}}/></div>
+      <p className="mt-3 text-xs font-semibold text-emerald-900">Completed order-milestone batches: {info.plantingBatch.completeBatches}. Verified planted trees remain separately reported above.</p>
+      <p className="mt-2 rounded-lg bg-amber-50 p-3 text-xs leading-6 text-amber-950">Planning only until actual funding, signed partner agreement, approved land, seasonal planting, care and evidence are arranged. Reaching 10,000 never spends money or starts planting automatically.</p>
     </section>
     <section className="mt-5 grid gap-4 rounded-2xl border border-emerald-100 bg-white p-5 md:grid-cols-2 md:p-7">
      <div>
