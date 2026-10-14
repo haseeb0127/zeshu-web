@@ -12,6 +12,7 @@ const green=read('app/green/page.tsx');
 const hub=read('app/components/HomeBusinessHub.tsx');
 const lang=read('app/components/CustomerLanguageProvider.tsx');
 const docs=read('docs/ZESHU_GREEN_TREE_PROGRAM.md');
+const batches=read('app/lib/zeshu-green-batch.ts');
 
 // No false environmental promises, no retroactive claims and no checkout changes.
 assert(migration.includes("mode text not null default 'PLANNING'"),'Tree planting must start disabled');
@@ -73,4 +74,15 @@ assert(ownerPage.includes("fundedTreeQuota")&&ownerPage.includes("counts.verifie
 assert(ownerPage.includes("No customer tree fee"),'Owner must not quietly charge customers');
 assert(ownerPage.includes("no activation control"),'Green HQ must not activate by button');
 assert(adminNav.includes('href="/admin/green"'),'Green HQ must be discoverable from Zeshu Admin');
+// Bulk drives are planned milestones, not actual planting or a checkout charge.
+assert(batches.includes('ZESHU_GREEN_BATCH_ORDERS = 10_000'),'Use 10,000 eligible orders as one planning batch');
+assert(batches.includes('total%ZESHU_GREEN_BATCH_ORDERS'),'Track remaining funded commitments without overstating old/test orders');
+assert(impact.includes('plantingBatch:greenBatchProgress(committed.count||0)'),'Customer milestone must derive only from recorded private non-void tree commitments');
+assert(ownerApi.includes('plantingBatch:greenBatchProgress(reserved)'),'Admin milestone must match funded commitments');
+assert(ownerApi.includes('bulkPlantingAuthorized:false'),'Do not activate a planting drive just by reaching 10,000');
+assert(green.includes('impact?.plantingBatch?.progressInCurrentBatch'),'Render real recorded milestone progress');
+assert(green.includes('batchPlanned'),'Disclose that planning mode has no live counted orders');
+assert(green.includes('batchProof'),'Explain independent proof, funding and seasonal planting');
+assert(docs.includes('10,000-order planting batches'),'Document human-led batch process');
+assert(docs.includes('does **not** move money, plant trees'),'The milestone must not cause unauthorized spending');
 console.log('PASS: honest Zeshu Green programme, verified tree accounting, privacy and safely disabled live pledge');
