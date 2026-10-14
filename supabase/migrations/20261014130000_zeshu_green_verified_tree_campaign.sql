@@ -79,8 +79,7 @@ declare
 begin
   -- Only a new transition to DELIVERED, never checkout, order creation,
   -- canceled/pending orders or re-saving an already delivered order.
-  if new.status <> 'DELIVERED' or
-     (tg_op='UPDATE' and old.status = 'DELIVERED') then
+  if new.status <> 'DELIVERED' or old.status = 'DELIVERED' then
     return new;
   end if;
   -- The row lock atomically protects the prepaid campaign quota.
@@ -114,7 +113,7 @@ revoke all on function public.record_zeshu_green_delivery() from public,anon,aut
 grant execute on function public.record_zeshu_green_delivery() to service_role;
 drop trigger if exists zeshu_green_on_delivered on public.orders;
 create trigger zeshu_green_on_delivered
-after insert or update of status on public.orders
+after update of status on public.orders
 for each row execute function public.record_zeshu_green_delivery();
 
 comment on table public.zeshu_green_tree_commitments is
