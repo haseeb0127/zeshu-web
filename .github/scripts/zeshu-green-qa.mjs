@@ -13,6 +13,9 @@ const hub=read('app/components/HomeBusinessHub.tsx');
 const lang=read('app/components/CustomerLanguageProvider.tsx');
 const docs=read('docs/ZESHU_GREEN_TREE_PROGRAM.md');
 const batches=read('app/lib/zeshu-green-batch.ts');
+const perOrderApi=read('app/api/green/order/route.ts');
+const greenReceipt=read('app/components/GreenOrderImpact.tsx');
+const storefront=read('app/page.tsx');
 
 // No false environmental promises, no retroactive claims and no checkout changes.
 assert(migration.includes("mode text not null default 'PLANNING'"),'Tree planting must start disabled');
@@ -85,4 +88,44 @@ assert(green.includes('batchPlanned'),'Disclose that planning mode has no live c
 assert(green.includes('batchProof'),'Explain independent proof, funding and seasonal planting');
 assert(docs.includes('10,000-order planting batches'),'Document human-led batch process');
 assert(docs.includes('does **not** move money, plant trees'),'The milestone must not cause unauthorized spending');
+// The cart and receipt carry a truthful contribution story, NOT an unsupported claim of a planted tree.
+assert(storefront.includes('GreenCartNotice')&&storefront.includes('GreenOrderReceipt orderId={String(trackedOrder.id)}'),
+ 'Green impact should be visible in the actual cart and tracked order bill, not just a detached campaign page.');
+assert(greenReceipt.includes('10,000 orders, 10,000 trees goal'),
+ 'The 10k order milestone must appear before checkout.');
+assert(greenReceipt.includes('One per order, not per product. No extra charge.'),
+ 'One tree is per eligible order, never per cart item and never a checkout charge.');
+assert(greenReceipt.includes('Planting has not started yet.'),
+ 'Planning mode must not claim an actual tree was planted.');
+assert(greenReceipt.includes("status==='VERIFIED'&&impact?.treeCount===1"),
+ 'Only verified per-order evidence may unlock a tree-planted message.');
+assert(greenReceipt.includes("status==='PLEDGED'"),
+ 'A reserved, funded tree slot must be called pending, not planted.');
+assert(greenReceipt.includes("status==='PLANTED'"),
+ 'Partner reported planting must still be labelled unverified.');
+assert(greenReceipt.includes("status==='VOID'"),
+ 'Voided or cancelled orders must never receive a planted-tree certificate.');
+assert(greenReceipt.includes('One tree per eligible delivered order, not per item. Paying alone does not plant a tree.'),
+ 'Order receipt must not imply payment automatically plants a tree.');
+assert(greenReceipt.includes("cache:'no-store'"),
+ 'Customer-specific statuses cannot be shared via caching.');
+assert(perOrderApi.includes("authorization.startsWith('Bearer ')")&&perOrderApi.includes('auth.auth.getUser(token)'),
+ 'Order impact requires a verified authenticated customer.');
+assert(perOrderApi.includes(".eq('id',id).eq('user_id',user.id)"),
+ 'No customer may request planting details for another customer order.');
+assert(perOrderApi.includes(".eq('order_id',order.id).maybeSingle()"),
+ 'One private order-linked commitment, never guessed from a generic impact total.');
+assert(perOrderApi.includes("verified=status==='VERIFIED'"),
+ 'Evidence link and planted tree counter must be gated by VERIFIED status.');
+assert(perOrderApi.includes("treeCount:verified?1:0"),
+ 'Never derive verified trees from items, order count or payment.');
+assert(perOrderApi.includes("treeEvidence:verified?{"),
+ 'No private unverified partner or site data may be exposed as a certificate.');
+assert(!perOrderApi.includes('export async function POST')&&!perOrderApi.includes('export async function PATCH'),
+ 'Customer must never be able to create or update planting commitments.');
+assert(!perOrderApi.includes("payment")||perOrderApi.includes('No tree is planted merely on payment'),
+ 'Order impact is not payment manipulation.');
+for(const key of ['"Zeshu Green · Your order impact"','"How tree planting works"','"One per order, not per product. No extra charge. A tree is not planted when you pay."']){
+ assert(lang.split(key).length>=4,'Zeshu Green customer messages must be translated into Telugu, Hindi and Urdu: '+key);
+}
 console.log('PASS: honest Zeshu Green programme, verified tree accounting, privacy and safely disabled live pledge');
