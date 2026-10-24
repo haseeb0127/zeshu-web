@@ -34,7 +34,7 @@ assert(!ownerApi.includes('export async function POST'));
 assert(!ownerApi.includes('export async function PATCH'));
 assert(ownerPage.includes('First goal: 1,000 eligible deliveries → aim for 1–2 trees'));
 assert(!ownerPage.includes('10,000 tree planting drive'));
-assert(ownerPage.includes('legacy commitment counter does not track'));
+assert(ownerPage.includes('legacy commitment counter does not track')||ownerPage.includes('Legacy commitment counter does not track'));
 assert(green.includes('1–2 trees')&&green.includes('1,000'));
 assert(green.includes('verifiedPlanted')&&green.includes('No tree is claimed'));
 assert(green.includes('This is not a carbon-offset'));
