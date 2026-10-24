@@ -1,5 +1,31 @@
 # Zeshu Green — honest one-tree-per-delivered-order rollout
 
+## Customer-friendly communication (25 October 2026)
+
+Keep the owner milestone at **10,000 eligible live delivered orders**, with a
+planting campaign planned only after the required financial and planting checks.
+The number and progress bar do **not** need to appear on the shopping cart or
+receipt. Keep full programme terms accessible on the optional public `/green`
+page, and show the exact batch milestones in private `/admin/green` for the
+owner. Never conceal the fact that planting is deferred.
+
+The customer should get a short, warm and precise status, in all four storefront
+languages, without operational detail overload:
+
+- `PLANNING`: Zeshu is preparing tree planting; nothing has been funded,
+  reserved or planted for this order. Do not imply actual contribution.
+- `ACTIVE` + eligible successful delivery with a `PLEDGED` record: the
+  order has helped reserve **one** tree for future planting. Explicitly
+  distinguish a reserved commitment from a tree already planted.
+- `REPORTED`: planting reported by the partner, pending evidence review.
+- `VERIFIED`: one tree planted, with independent proof available by link.
+- `PAUSED`, `VOID`, ineligible and unavailable: no unverified benefit claim.
+
+A tree contribution is funded by Zeshu or a sponsor, never charged as a
+secret customer surcharge. Do not print fake tree totals or count historical,
+cancelled, refunded or Razorpay TEST orders. No activation, payment, partner
+outreach or large planting order is authorized by simplifying UI copy.
+
 ## Current position (14 October 2026)
 
 **PLANNING, not a live tree promise.** The production website may publish the
