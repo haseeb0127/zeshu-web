@@ -9,6 +9,7 @@ import ProductCard from './components/ProductCard';
 import ReviewForm, { ReviewProduct } from './components/ReviewForm';
 import LocationSelector, { type LocationSelection } from './components/LocationSelector';
 import HomeBusinessHub from './components/HomeBusinessHub';
+import {GreenCartNotice,GreenOrderReceipt} from './components/GreenOrderImpact';
 import ReferenceArtwork from './components/ReferenceArtwork';
 import { LanguageSwitcher, useCustomerLanguage } from './components/CustomerLanguageProvider';
 import { 
@@ -3591,6 +3592,7 @@ export default function ZeshuSuperApp() {
               {trackedOrder.payment_id && <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500"><span><span className="font-black">{t('Payment reference:')}</span> {String(trackedOrder.payment_id).slice(0, 8)}…</span><button type="button" onClick={() => void copyPaymentReference(trackedOrder.payment_id)} className="rounded-lg bg-slate-100 px-2.5 py-1.5 font-black text-slate-700">{t('Copy')}</button></div>}
               {trackedOrder.created_at && <p className="mt-2 text-[11px] font-medium text-slate-500">{t('Placed')} {new Date(trackedOrder.created_at).toLocaleString()}</p>}
             </div>
+            <GreenOrderReceipt orderId={String(trackedOrder.id)}/>
             <OrderStatusTimeline status={trackedOrder.status} />
             {trackedOrder.status === 'DELIVERED' && <><ReviewForm overall={reviewOverall} delivery={reviewDelivery} store={reviewStore} comment={reviewComment} products={reviewProducts} existingReview={reviewExisting} loading={reviewLoading} error={reviewError} success={reviewSuccess} onOverallChange={setReviewOverall} onDeliveryChange={setReviewDelivery} onStoreChange={setReviewStore} onCommentChange={setReviewComment} onProductChange={(id, value) => setReviewProducts((current) => current.map((item) => item.id === id ? { ...item, rating: value } : item))} onProductCommentChange={(id, value) => setReviewProducts((current) => current.map((item) => item.id === id ? { ...item, comment: value } : item))} onSubmit={() => void submitReview()} /><div className="mt-6 flex flex-wrap gap-2"><button type="button" disabled={reorderingId === trackedOrder.id} onClick={() => void reorder(trackedOrder)} className="rounded-xl bg-[#075E45] px-4 py-3 text-sm font-black text-white disabled:opacity-60">{reorderingId === trackedOrder.id ? t('Adding…') : t('Buy again')}</button><button type="button" onClick={() => { setIsTrackingOpen(false); setActiveTab('home'); }} className="rounded-xl border border-[#075E45] px-4 py-3 text-sm font-black text-[#075E45]">{t('Continue shopping')}</button></div></>}
           </div>
@@ -3640,6 +3642,7 @@ export default function ZeshuSuperApp() {
                 </div>
               </section>}
               {cart.length > 0 && smartAddOns.length > 0 && <div className="rounded-2xl border border-[#dce8df] bg-white p-4"><div className="flex items-center justify-between"><h3 className="text-sm font-black text-slate-900">{t('Complete your basket')}</h3><span className="text-[11px] font-bold text-slate-500">{t('Current stock only')}</span></div><div className="mt-3 grid grid-cols-2 gap-2">{smartAddOns.map((product) => <div key={product.id} className="rounded-xl border border-slate-100 p-2"><img src={product.image_url} alt={product.name} className="h-16 w-full object-contain" /><p className="mt-1 line-clamp-2 text-xs font-bold">{product.name}</p><div className="mt-2 flex items-center justify-between"><span className="text-xs font-black">₹{product.price}</span><button type="button" onClick={() => addToCart(product)} className="rounded-lg bg-[#F1F8DC] px-2 py-1 text-[10px] font-black text-[#064936]">{t('ADD')}</button></div></div>)}</div></div>}
+              {cart.length > 0 && <GreenCartNotice/>}
               {cart.length > 0 && <section className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
                 <button type="button" aria-expanded={expandedCartSection === 'CASH'} aria-controls="cart-cash-details" onClick={() => setExpandedCartSection((current) => current === 'CASH' ? null : 'CASH')} className="flex w-full items-center justify-between gap-3 p-4 text-left">
                   <span className="flex min-w-0 items-center gap-3"><Ticket size={20} className="shrink-0 text-emerald-700" aria-hidden="true" /><span className="min-w-0"><span className="block text-sm font-black text-emerald-900">{t('ZESHU CASH')}</span><span className="mt-1 block truncate text-xs font-bold text-emerald-700">₹{rewardBalance.toFixed(2)} {t('available')}{requestedZeshuCash > 0 ? ` · ₹${requestedZeshuCash} ${t('applied')}` : ''}</span></span></span>
