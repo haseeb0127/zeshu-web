@@ -35,8 +35,8 @@ export async function GET(request:Request){
  const status=pledge.data?.status;
  // Never treat a cancelled/voided or test/historical order as a planted tree.
  const verified=status==='VERIFIED'&&typeof pledge.data?.proof_url==='string'
-   &&/^https:\/\/[^\s]+$/i.test(pledge.data.proof_url)
-   &&!!pledge.data.verified_at;
+   &&/^https:\/\/[^\s]+$/i.test(pledge.data?.proof_url)
+   &&!!pledge.data?.verified_at;
  return json({
   programmeStatus:program.data.mode,
   orderStatus:order.status,
@@ -44,9 +44,9 @@ export async function GET(request:Request){
   treeCount:verified?1:0,
   treeEvidence:verified?{
     evidenceUrl:pledge.data.proof_url,
-    nativeSpecies:pledge.data.native_species,
-    plantingArea:pledge.data.planting_area,
-    plantedAt:pledge.data.planted_at,
+    nativeSpecies:pledge.data?.native_species,
+    plantingArea:pledge.data?.planting_area,
+    plantedAt:pledge.data?.planted_at,
     verifiedAt:pledge.data.verified_at,
   }:null,
   programmeLink:'/green',
