@@ -30,7 +30,7 @@ for(const code of ['en','te','hi','ur']){
 }
 assert(lang.split('"Payment receipt and order summary"').length>=4,
   'Customer receipt title must be translated into Telugu/Hindi/Urdu');
-assert(impact.includes("impact.status==='VERIFIED'&&impact.proofUrl"),
+assert(impact.includes("impact?.status==='VERIFIED'&&impact.proofUrl"),
   'Only a verified commitment may display a planting evidence link');
 assert(impact.includes('Planting has not happened yet.'),
   'A customer cannot be told a tree is already planted when only a slot is reserved');
