@@ -19,8 +19,12 @@ assert(impact.includes("customerSupabase().auth.getSession()"),
 assert(impact.includes("'Authorization:'")===false,'Do not interpolate raw access credentials into presentation');
 assert(impact.includes("Authorization:'Bearer '+session.access_token"),
   'Send a customer bearer token to the protected per-order endpoint');
-assert(impact.includes("role=\"progressbar\""),'Show actual 10,000-order campaign progress');
-assert(impact.includes('10,000'),'Show approved 10,000-order plan');
+assert(!impact.includes('role="progressbar"'),
+  'Checkout and receipt should remain simple instead of showing the private 10,000-order internal progress bar');
+assert(!impact.includes('{w.milestone}')&&!impact.includes('{w.explain}'),
+  'Do not overload the customer checkout with the owner campaign milestone and operational details');
+assert(impact.includes('The 10,000-order planting milestone is tracked in Green HQ'),
+  'Document why the milestone is hidden from checkout but retained in the owner Green dashboard');
 assert(impact.includes('One tree per order—not per item'),
   'Do not accidentally promise one tree for each item in a cart');
 assert(impact.includes('No extra tree fee'),'No surcharge should be introduced');
@@ -32,12 +36,18 @@ assert(lang.split('"Payment receipt and order summary"').length>=4,
   'Customer receipt title must be translated into Telugu/Hindi/Urdu');
 assert(impact.includes("impact?.status==='VERIFIED'&&impact.proofUrl"),
   'Only a verified commitment may display a planting evidence link');
-assert(impact.includes('Planting has not happened yet.'),
-  'A customer cannot be told a tree is already planted when only a slot is reserved');
-assert(impact.includes('programme in planning')||impact.includes('Programme in planning'),
-  'Do not pretend that the programme is active while planning');
-assert(impact.includes('This purchase does not plant or reserve a tree today.'),
-  'Planning mode must disclose zero actual tree impact');
+assert(impact.includes('It has not been planted yet.'),
+  'A reserved tree cannot be advertised as already planted');
+assert(!/pledged:.*10,000/.test(impact),
+  'Customer pledge copy in any language should not expose campaign batch logistics');
+assert(impact.includes('We’re preparing tree planting.'),
+  'Do not pretend a funded planting program is already active in planning mode');
+assert(impact.includes('No tree is reserved or planted yet.'),
+  'Planning mode must disclose zero actual tree impact in the cart');
+assert(impact.includes('No tree has been reserved for this order yet.'),
+  'Receipt cannot claim one tree was reserved before the programme is funded and activated');
+assert(impact.includes('One tree planted, thanks to your order!'),
+  'Only verified tree plantings may use the planted confirmation message');
 
 assert(orderApi.includes('customer.auth.getUser(access)'),'Authenticate the actual customer');
 assert(orderApi.includes(".eq('id',id).eq('user_id',user.id)"),
@@ -58,4 +68,4 @@ assert(!orderApi.includes('insert(')&&!orderApi.includes('update('),
 
 assert(policies.includes('10,000-order planting batches'),
  'Respect Zeshu-approved 10,000 qualifying order campaign plan');
-console.log('PASS: cart and order details display honest 10,000-order tree progress, private proof-gated impact, four languages, no payments or false planting.');
+console.log('PASS: simple customer Zeshu Green card, owner-only checkout milestone, private verified-tree evidence and four-language honest statuses.');

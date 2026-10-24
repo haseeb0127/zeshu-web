@@ -25,18 +25,18 @@ type Words={
 };
 const lang:Record<"en"|"te"|"hi"|"ur",Words>={
  en:{
-  name:"Zeshu Green",cartTitle:"Your order, a greener goal",goal:"Our goal: 1 native tree per eligible delivered order",
-  cartPlanning:"Tree planting is still being planned. This purchase does not plant or reserve a tree today.",
-  cartActive:"After an eligible order is delivered, one funded tree slot can be reserved for a future planting drive.",
-  cartPaused:"New tree reservations are currently paused. No tree is promised for this order.",
+  name:"Zeshu Green",cartTitle:"A greener future with Zeshu",goal:"Our goal: 1 native tree per eligible delivered order",
+  cartPlanning:"We’re preparing our tree-planting programme. No tree is reserved or planted yet.",
+  cartActive:"After an eligible delivery, your order can help reserve one tree for future planting.",
+  cartPaused:"The tree programme is paused. No tree is promised for this order.",
   explain:"Planting is planned in batches of 10,000 qualifying orders, with proof and aftercare. One tree per order—not per item. No carbon-offset claim.",
   zeroFee:"No extra tree fee",milestone:"Funded order commitments toward the next 10,000-tree drive",
-  statusHeading:"Tree impact for this order",planning:"Programme in planning. No tree reserved or planted for this order.",
+  statusHeading:"Tree impact for this order",planning:"We’re preparing tree planting. No tree has been reserved for this order yet.",
   paused:"New reservations paused. No tree is recorded for this order.",
   awaiting:"Order confirmed. A tree slot is only reserved after eligible delivery—never on payment alone.",
-  pledged:"You helped reserve one funded tree slot for our planned 10,000-tree planting drive. Planting has not happened yet.",
-  reported:"Our partner reported planting for this order. Independent evidence verification is pending.",
-  verified:"Thank you! One tree associated with this order has verified planting evidence.",
+  pledged:"🌱 Your order has helped reserve one tree for future planting. It has not been planted yet.",
+  reported:"🌱 One tree was reported planted for your order. Verification is pending.",
+  verified:"🌳 One tree planted, thanks to your order! Planting evidence is verified.",
   voided:"Tree reservation voided; this order has no active tree commitment.",
   notRecorded:"No funded tree reservation is recorded for this order. We cannot claim planting.",
   ineligible:"This order does not qualify for the tree programme.",
@@ -44,7 +44,7 @@ const lang:Record<"en"|"te"|"hi"|"ur",Words>={
   proof:"View planting evidence",about:"See Zeshu Green plan",oneOrder:"One eligible order supports a maximum of one funded tree slot.",
  },
  te:{
-  name:"జెషు గ్రీన్",cartTitle:"మీ ఆర్డర్, పచ్చని లక్ష్యం",goal:"మా లక్ష్యం: అర్హమైన డెలివరీ ఆర్డర్‌కు ఒక స్థానిక చెట్టు",
+  name:"జెషు గ్రీన్",cartTitle:"జెషుతో పచ్చని భవిష్యత్తు",goal:"మా లక్ష్యం: అర్హమైన డెలివరీ ఆర్డర్‌కు ఒక స్థానిక చెట్టు",
   cartPlanning:"చెట్ల నాటకం ప్రస్తుతం ప్రణాళిక దశలో ఉంది. ఈ కొనుగోలుకు ఇంకా చెట్టు కేటాయించలేదు, నాటలేదు.",
   cartActive:"అర్హమైన ఆర్డర్ డెలివరీ పూర్తయ్యాక భవిష్యత్ నాటకానికి ఒక చెట్టు కోసం నిధులు కేటాయించవచ్చు.",
   cartPaused:"కొత్త చెట్టు కేటాయింపులు ప్రస్తుతం నిలిపివేశారు. ఈ ఆర్డర్‌కు చెట్టు హామీ లేదు.",
@@ -53,9 +53,9 @@ const lang:Record<"en"|"te"|"hi"|"ur",Words>={
   statusHeading:"ఈ ఆర్డర్ చెట్టు స్థితి",planning:"కార్యక్రమం ప్రణాళికలో ఉంది. ఈ ఆర్డర్‌కు చెట్టు కేటాయించలేదు, నాటలేదు.",
   paused:"కొత్త కేటాయింపులు నిలిచాయి. ఈ ఆర్డర్‌కు చెట్టు నమోదు కాలేదు.",
   awaiting:"ఆర్డర్ నిర్ధారితమైంది. అర్హమైన డెలివరీ తర్వాత మాత్రమే చెట్టు కేటాయింపు జరుగుతుంది; చెల్లింపుతో కాదు.",
-  pledged:"భవిష్యత్ 10,000 చెట్ల కార్యక్రమంలో ఒక చెట్టు స్థానం కేటాయించడానికి మీరు సహకరించారు. ఇంకా చెట్టు నాటలేదు.",
+  pledged:"🌱 మీ ఆర్డర్‌తో భవిష్యత్తులో నాటేందుకు ఒక చెట్టును కేటాయించారు. ఇంకా నాటలేదు.",
   reported:"ఈ ఆర్డర్‌కు చెట్టు నాటినట్లు భాగస్వామి తెలిపాడు. ఆధారాల తనిఖీ పెండింగ్‌లో ఉంది.",
-  verified:"ధన్యవాదాలు! ఈ ఆర్డర్‌కు సంబంధించిన ఒక చెట్టు నాటిన ఆధారాలు ధృవీకరించబడ్డాయి.",
+  verified:"🌳 మీ ఆర్డర్ సహాయంతో ఒక చెట్టు నాటబడింది! ఆధారాలు ధృవీకరించబడ్డాయి.",
   voided:"చెట్టు కేటాయింపు రద్దయింది. ప్రస్తుతం ఈ ఆర్డర్‌కు చెట్టు లేదు.",
   notRecorded:"ఈ ఆర్డర్‌కు చెట్టు కేటాయింపు నమోదు కాలేదు. నాటినట్లు చెప్పలేం.",
   ineligible:"ఈ ఆర్డర్ చెట్ల కార్యక్రమానికి అర్హం కాదు.",
@@ -63,7 +63,7 @@ const lang:Record<"en"|"te"|"hi"|"ur",Words>={
   proof:"నాటిన ఆధారాలు చూడండి",about:"జెషు గ్రీన్ ప్రణాళిక",oneOrder:"ఒక అర్హమైన ఆర్డర్‌కు గరిష్ఠంగా ఒక చెట్టు మాత్రమే.",
  },
  hi:{
-  name:"ज़ेशु ग्रीन",cartTitle:"आपका ऑर्डर, हरियाली का लक्ष्य",goal:"हमारा लक्ष्य: हर पात्र डिलीवर ऑर्डर पर एक देशी पेड़",
+  name:"ज़ेशु ग्रीन",cartTitle:"ज़ेशु के साथ हरियाली की ओर",goal:"हमारा लक्ष्य: हर पात्र डिलीवर ऑर्डर पर एक देशी पेड़",
   cartPlanning:"पेड़ लगाने की योजना अभी तैयार हो रही है। आज इस खरीद से कोई पेड़ न तो आरक्षित हुआ है, न लगाया गया है।",
   cartActive:"पात्र ऑर्डर डिलीवर होने पर भविष्य के अभियान के लिए एक वित्तपोषित पेड़ का स्थान आरक्षित हो सकता है।",
   cartPaused:"नए पेड़ आरक्षण फिलहाल रुके हैं। इस ऑर्डर पर पेड़ का वादा नहीं है।",
@@ -72,9 +72,9 @@ const lang:Record<"en"|"te"|"hi"|"ur",Words>={
   statusHeading:"इस ऑर्डर का पेड़ योगदान",planning:"कार्यक्रम अभी योजना में है। इस ऑर्डर के लिए न पेड़ आरक्षित है, न लगाया गया है।",
   paused:"नए आरक्षण रुके हैं। इस ऑर्डर पर पेड़ दर्ज नहीं है।",
   awaiting:"ऑर्डर की पुष्टि हुई। पात्र डिलीवरी के बाद ही पेड़ आरक्षित होगा, सिर्फ भुगतान से नहीं।",
-  pledged:"आपने भविष्य के 10,000 पेड़ों के अभियान के लिए एक वित्तपोषित स्थान आरक्षित करने में मदद की। पेड़ अभी नहीं लगाया गया है।",
+  pledged:"🌱 आपके ऑर्डर से भविष्य में लगाने के लिए एक पेड़ आरक्षित हुआ है। इसे अभी लगाया नहीं गया है।",
   reported:"साझेदार ने इस ऑर्डर से संबंधित वृक्षारोपण की सूचना दी है। प्रमाण की पुष्टि बाकी है।",
-  verified:"धन्यवाद! इस ऑर्डर से जुड़े एक पेड़ के रोपण का प्रमाण सत्यापित है।",
+  verified:"🌳 आपके ऑर्डर की मदद से एक पेड़ लगाया गया है! रोपण का प्रमाण सत्यापित है।",
   voided:"पेड़ का आरक्षण रद्द है। इस ऑर्डर पर सक्रिय योगदान नहीं है।",
   notRecorded:"इस ऑर्डर पर वित्तपोषित पेड़ दर्ज नहीं है। रोपण का दावा नहीं किया जा सकता।",
   ineligible:"यह ऑर्डर कार्यक्रम के लिए पात्र नहीं है।",
@@ -82,7 +82,7 @@ const lang:Record<"en"|"te"|"hi"|"ur",Words>={
   proof:"रोपण का प्रमाण देखें",about:"ज़ेशु ग्रीन योजना देखें",oneOrder:"एक पात्र ऑर्डर पर अधिकतम एक पेड़ का स्थान।",
  },
  ur:{
-  name:"زیشو گرین",cartTitle:"آپ کا آرڈر، سبز مستقبل کا ہدف",goal:"ہمارا ہدف: ہر اہل ڈیلیور شدہ آرڈر پر ایک مقامی درخت",
+  name:"زیشو گرین",cartTitle:"زیشو کے ساتھ سرسبز مستقبل",goal:"ہمارا ہدف: ہر اہل ڈیلیور شدہ آرڈر پر ایک مقامی درخت",
   cartPlanning:"درخت لگانے کا منصوبہ ابھی تیار ہو رہا ہے۔ اس خریداری پر آج کوئی درخت مختص یا لگایا نہیں گیا۔",
   cartActive:"اہل آرڈر ڈیلیور ہونے کے بعد مستقبل کی مہم کے لیے ایک فنڈ شدہ درخت کی جگہ مختص ہو سکتی ہے۔",
   cartPaused:"نئے درختوں کی بکنگ فی الحال رکی ہوئی ہے۔ اس آرڈر پر درخت کا وعدہ نہیں۔",
@@ -91,9 +91,9 @@ const lang:Record<"en"|"te"|"hi"|"ur",Words>={
   statusHeading:"اس آرڈر کا درختی حصہ",planning:"منصوبہ تیاری میں ہے۔ اس آرڈر پر کوئی درخت مختص یا لگایا نہیں گیا۔",
   paused:"نئی بکنگ رکی ہوئی ہے۔ اس آرڈر پر درخت درج نہیں۔",
   awaiting:"آرڈر کی تصدیق ہوئی ہے۔ اہل ڈیلیوری کے بعد ہی درخت مختص ہوگا، صرف ادائیگی پر نہیں۔",
-  pledged:"آپ نے مستقبل کی 10,000 درختوں کی مہم میں ایک فنڈ شدہ جگہ مختص کرنے میں مدد دی۔ درخت ابھی نہیں لگایا گیا۔",
+  pledged:"🌱 آپ کے آرڈر سے مستقبل میں لگانے کے لیے ایک درخت مختص ہوا ہے۔ ابھی لگایا نہیں گیا۔",
   reported:"پارٹنر نے اس آرڈر کے لیے درخت لگانے کی اطلاع دی ہے۔ ثبوت کی جانچ باقی ہے۔",
-  verified:"شکریہ! اس آرڈر سے متعلق ایک درخت لگانے کے ثبوت کی تصدیق ہو گئی ہے۔",
+  verified:"🌳 آپ کے آرڈر کی مدد سے ایک درخت لگایا گیا ہے! ثبوت کی تصدیق ہو چکی ہے۔",
   voided:"درخت کی بکنگ منسوخ ہو گئی ہے۔ اس آرڈر پر فعال حصہ نہیں۔",
   notRecorded:"اس آرڈر پر کوئی فنڈ شدہ درخت درج نہیں۔ لگانے کا دعویٰ نہیں کر سکتے۔",
   ineligible:"یہ آرڈر درختوں کے پروگرام کے لیے اہل نہیں۔",
@@ -141,6 +141,8 @@ export default function GreenOrderImpact({orderId,orderStatus}:{
   return()=>{alive=false};
  },[orderId,orderStatus]);
  const stage=publicImpact?.programmeStatus;
+ // Present the pledge briefly. The 10,000-order planting milestone is tracked in Green HQ
+ // and explained on the optional Green details page, not as checkout progress.
  const heading=orderId?w.statusHeading:w.cartTitle;
  const statusMessage=(()=>{
   if(!orderId)return stage==='ACTIVE'?w.cartActive:stage==='PAUSED'?w.cartPaused:w.cartPlanning;
@@ -152,7 +154,6 @@ export default function GreenOrderImpact({orderId,orderStatus}:{
   };
   return messages[impact.status]||w.unavailable;
  })();
- const progress=publicImpact?.plantingBatch?.progressInCurrentBatch;
  return <section data-green-impact={orderId?'order':'cart'}
    className="rounded-2xl border border-emerald-200 bg-[#f3faf5] p-4 text-left shadow-sm"
    aria-label={heading}>
@@ -171,19 +172,6 @@ export default function GreenOrderImpact({orderId,orderStatus}:{
        className="mt-3 inline-flex gap-1.5 text-sm font-bold text-[#006745] underline underline-offset-2">
        <ShieldCheck size={16} aria-hidden="true"/>{w.proof}
     </a>}
-   {typeof progress==='number'&&
-    <div className="mt-3 rounded-xl bg-white/80 p-3">
-     <div className="flex items-baseline justify-between gap-3 text-xs font-bold text-[#28543b]">
-      <span>{w.milestone}</span><span className="shrink-0 tabular-nums">{Math.max(0,progress).toLocaleString('en-IN')} / 10,000</span>
-     </div>
-     <div className="mt-2 h-2 overflow-hidden rounded-full bg-emerald-100" role="progressbar"
-       aria-label={w.milestone} aria-valuenow={Math.max(0,Math.min(progress,10000))}
-       aria-valuemin={0} aria-valuemax={10000}>
-       <div className="h-full rounded-full bg-[#1b8b59]"
-         style={{width:Math.min(100,Math.max(0,progress/100))+'%'}}/>
-     </div>
-    </div>}
-   <p className="mt-3 text-[11px] leading-4 text-[#48685a]">{w.explain}</p>
    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#37624b]">
        <Leaf size={13} aria-hidden="true"/>{w.zeroFee}
