@@ -11,6 +11,14 @@ delivered TEST activity. **Do not backfill** any old delivered orders, and do
 not turn the programme ACTIVE before real paid fulfilment and planting capacity
 are independently verified.
 
+## Storefront, bill and order-tracking customer experience (25 October 2026)
+
+- **Cart:** a compact `Zeshu Green · 10,000 orders, 10,000 trees goal` card near the actual price breakdown, not a fake environmental discount or item-by-item tree multiplier. A cart of 1, 5 or 50 products remains **one order**, and does not create a tree during checkout.
+- **After checkout/order tracking:** customer-owned order bill displays a clear planting status pulled from private, authenticated per-order records. In PLANNING without a commitment the text says planning only (zero trees); PLEDGED means a real funded slot is reserved for a future tree; PLANTED is partner-reported but awaiting proof review; VERIFIED unlocks a one-tree verified message and evidence URL; VOID means no current commitment.
+- **10,000 order milestone:** every funded, eligible, delivered order after explicit programme activation adds one tree commitment toward a coordinated future 10,000-tree planting campaign. A batch can take multiple days and must be scheduled appropriately; reaching 10,000 is **not** a trigger for automatic purchasing/planting or a survival guarantee.
+- **Security:** `GET /api/green/order?orderId=...` confirms the customer's auth session and checks `orders.user_id` before fetching any order-linked tree record using a server-only key. The public aggregate `/api/green/impact` must not disclose individual customers. No TEST order, historic order, cancelled/refunded order or payment event alone counts as a tree. No checkout price/tax changes and no additional customer charge.
+- These words appear in the cart, order tracking bill and supported customer languages. Avoid `You planted one tree` until the status is genuinely VERIFIED and independent evidence is recorded.
+
 ## Customer proposition
 
 > Our goal: one native tree for each eligible delivered Zeshu order.
