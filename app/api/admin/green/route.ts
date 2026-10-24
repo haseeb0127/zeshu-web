@@ -53,13 +53,13 @@ export async function GET(request:Request){
     remainingTreeCapacity:Math.max(0,quota-reserved),
     plantingBatch:greenBatchProgress(reserved),
     bulkPlantingAuthorized:false,
-    plantingBatchPolicy:'Milestone only: 10,000 funded, eligible delivered-order commitments before a separately approved coordinated planting campaign. Bulk planting is not automatic and may require several planting days, suitable seasonal conditions, land permissions and aftercare.',
+    plantingBatchPolicy:'New PLANNING goal: consider planting 1–2 trees after the first 1,000 eligible real delivered orders. No eligible live order counter or partner arrangement has been activated. The legacy internal commitment counter is NOT an order counter and must not be used to claim the milestone. Planting, payment and activation remain separate manual decisions.',
     treeUnitBudgetPaise:unitCost,
     totalAllocatedBudgetPaise:unitCost!==null?quota*unitCost:null,
     counts:{pledged:pledged.count||0,reported:reported.count||0,verified:verified.count||0,voided:voided.count||0},
     lastConfigurationUpdate:p.updated_at,
-    canAnnouncePerOrderPromise:Object.values(gates).every(Boolean)&&reserved<quota,
-    communicationPolicy:'Goal only until a vetted partner, approved and funded live quota, real live transactions and explicit approval. Planted trees require third-party evidence. No estimated carbon offsets.',
+    canAnnouncePerOrderPromise:false, // Old one-tree-per-order infrastructure is NOT the new 1–2-tree pilot.
+    communicationPolicy:'Customer copy may explain the planned first 1,000 eligible deliveries and 1–2 possible trees. Do not say every order funds, reserves or plants a tree. Old per-order trigger must be redesigned and explicitly approved before any activation. No payments or carbon-offset claims.',
     changesMade:false,sendingEnabled:false,
   });
 }
