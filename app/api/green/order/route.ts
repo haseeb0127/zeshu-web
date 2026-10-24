@@ -43,11 +43,11 @@ export async function GET(request:Request){
   commitmentStatus:status==='PLEDGED'||status==='PLANTED'||status==='VERIFIED'||status==='VOID'?status:'NONE',
   treeCount:verified?1:0,
   treeEvidence:verified?{
-    evidenceUrl:pledge.data.proof_url,
+    evidenceUrl:pledge.data?.proof_url,
     nativeSpecies:pledge.data?.native_species,
     plantingArea:pledge.data?.planting_area,
     plantedAt:pledge.data?.planted_at,
-    verifiedAt:pledge.data.verified_at,
+    verifiedAt:pledge.data?.verified_at,
   }:null,
   programmeLink:'/green',
   policy:'One eligible delivered order may reserve one funded tree slot after launch; it is not one tree per item. No tree is planted merely on payment. Only independently evidenced trees are called verified planted. Historical/TEST/refunded orders do not count.',
