@@ -25,7 +25,8 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
   te: {
     "Payment receipt and order summary": "చెల్లింపు రసీదు మరియు ఆర్డర్ వివరాలు",
     "Zeshu Green": "జెషు గ్రీన్",
-    "Our goal: one tree for every eligible delivered order.": "మా లక్ష్యం: అర్హత గల ప్రతి డెలివరీ ఆర్డర్‌కు ఒక చెట్టు.",
+    "Our first goal: 1–2 trees after 1,000 eligible deliveries.": "మొదటి లక్ష్యం: 1,000 అర్హమైన డెలివరీల తర్వాత 1–2 చెట్లు.",
+    "Still planning — no trees planted for orders yet.": "ఇంకా ప్రణాళికలో ఉంది — ఆర్డర్ల కోసం చెట్లు నాటలేదు.",
     "Planting starts after partner verification and funded capacity.": "భాగస్వామి ధృవీకరణ, నిధుల ఏర్పాటు తర్వాత చెట్లు నాటడం మొదలవుతుంది.",
     "See the plan": "కార్యక్రమం వివరాలు",
     "Zeshu Dine": "జెషు డైన్",
@@ -968,7 +969,8 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
   hi: {
     "Payment receipt and order summary": "भुगतान रसीद और ऑर्डर विवरण",
     "Zeshu Green": "ज़ेशु ग्रीन",
-    "Our goal: one tree for every eligible delivered order.": "हमारा लक्ष्य: हर पात्र डिलीवर हुए ऑर्डर पर एक पेड़।",
+    "Our first goal: 1–2 trees after 1,000 eligible deliveries.": "पहला लक्ष्य: 1,000 पात्र डिलीवरी के बाद 1–2 पेड़।",
+    "Still planning — no trees planted for orders yet.": "अभी योजना बन रही है — ऑर्डरों के लिए पेड़ नहीं लगाए गए।",
     "Planting starts after partner verification and funded capacity.": "साझेदार सत्यापन और फंड मिलने के बाद ही वृक्षारोपण शुरू होगा।",
     "See the plan": "कार्यक्रम देखें",
     "Zeshu Dine": "ज़ेशु डाइन",
@@ -1891,7 +1893,8 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
   ur: {
     "Payment receipt and order summary": "ادائیگی کی رسید اور آرڈر کی تفصیلات",
     "Zeshu Green": "زیشو گرین",
-    "Our goal: one tree for every eligible delivered order.": "ہمارا ہدف: ہر اہل ڈیلیور شدہ آرڈر پر ایک درخت۔",
+    "Our first goal: 1–2 trees after 1,000 eligible deliveries.": "پہلا ہدف: 1,000 اہل ڈیلیوریوں کے بعد 1–2 درخت۔",
+    "Still planning — no trees planted for orders yet.": "ابھی منصوبہ بندی ہے — آرڈرز کے لیے درخت نہیں لگائے گئے۔",
     "Planting starts after partner verification and funded capacity.": "پارٹنر کی تصدیق اور فنڈ دستیاب ہونے کے بعد شجرکاری شروع ہوگی۔",
     "See the plan": "پروگرام دیکھیں",
     "Zeshu Dine": "زیشو ڈائن",
