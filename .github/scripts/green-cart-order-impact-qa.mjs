@@ -42,8 +42,19 @@ assert(!/pledged:.*10,000/.test(impact),
   'Customer pledge copy in any language should not expose campaign batch logistics');
 assert(impact.includes('We’re preparing tree planting.'),
   'Do not pretend a funded planting program is already active in planning mode');
-assert(impact.includes('No tree is reserved or planted yet.'),
-  'Planning mode must disclose zero actual tree impact in the cart');
+assert(impact.includes('Our goal: 1 tree per eligible delivered order. Coming soon.'),
+  'The cart must show one clear, short, future goal rather than falsely claim contribution');
+assert(impact.includes('if(!orderId)return <section data-green-impact="cart"'),
+  'Cart must render a separate compact Zeshu Green strip');
+assert(impact.includes('flex items-center gap-2.5 rounded-xl') && impact.includes('px-3 py-2.5'),
+  'Cart impact should be compact, not a large promotional card');
+const compact=impact.split('if(!orderId)return <section data-green-impact="cart"')[1]?.split('return <section data-green-impact={orderId?')[0]||'';
+assert(compact.includes('{w.name}')&&compact.includes('{statusMessage}'),
+  'Compact cart must show the programme name and accurate real-time state');
+assert(!compact.includes('{w.goal}')&&!compact.includes('href="/green"')&&!compact.includes('{w.zeroFee}'),
+  'Do not clutter cart with repeated goals, fees or long details links');
+assert(!compact.includes('one tree planted')&&!compact.includes('contributed to planting'),
+  'A cart before checkout must never claim a tree was planted');
 assert(impact.includes('No tree has been reserved for this order yet.'),
   'Receipt cannot claim one tree was reserved before the programme is funded and activated');
 assert(impact.includes('One tree planted, thanks to your order!'),

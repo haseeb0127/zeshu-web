@@ -26,9 +26,9 @@ type Words={
 const lang:Record<"en"|"te"|"hi"|"ur",Words>={
  en:{
   name:"Zeshu Green",cartTitle:"A greener future with Zeshu",goal:"Our goal: 1 native tree per eligible delivered order",
-  cartPlanning:"We’re preparing our tree-planting programme. No tree is reserved or planted yet.",
-  cartActive:"After an eligible delivery, your order can help reserve one tree for future planting.",
-  cartPaused:"The tree programme is paused. No tree is promised for this order.",
+  cartPlanning:"Our goal: 1 tree per eligible delivered order. Coming soon.",
+  cartActive:"Eligible delivered orders can help fund one future tree.",
+  cartPaused:"Tree-planting programme temporarily paused.",
   explain:"Planting is planned in batches of 10,000 qualifying orders, with proof and aftercare. One tree per order—not per item. No carbon-offset claim.",
   zeroFee:"No extra tree fee",milestone:"Funded order commitments toward the next 10,000-tree drive",
   statusHeading:"Tree impact for this order",planning:"We’re preparing tree planting. No tree has been reserved for this order yet.",
@@ -45,9 +45,9 @@ const lang:Record<"en"|"te"|"hi"|"ur",Words>={
  },
  te:{
   name:"జెషు గ్రీన్",cartTitle:"జెషుతో పచ్చని భవిష్యత్తు",goal:"మా లక్ష్యం: అర్హమైన డెలివరీ ఆర్డర్‌కు ఒక స్థానిక చెట్టు",
-  cartPlanning:"చెట్ల నాటకం ప్రస్తుతం ప్రణాళిక దశలో ఉంది. ఈ కొనుగోలుకు ఇంకా చెట్టు కేటాయించలేదు, నాటలేదు.",
-  cartActive:"అర్హమైన ఆర్డర్ డెలివరీ పూర్తయ్యాక భవిష్యత్ నాటకానికి ఒక చెట్టు కోసం నిధులు కేటాయించవచ్చు.",
-  cartPaused:"కొత్త చెట్టు కేటాయింపులు ప్రస్తుతం నిలిపివేశారు. ఈ ఆర్డర్‌కు చెట్టు హామీ లేదు.",
+  cartPlanning:"మా లక్ష్యం: అర్హమైన డెలివరీ ఆర్డర్‌కు ఒక చెట్టు. త్వరలో.",
+  cartActive:"అర్హమైన డెలివరీ ఆర్డర్లు భవిష్యత్తులో ఒక చెట్టుకు సహాయపడవచ్చు.",
+  cartPaused:"చెట్ల కార్యక్రమం తాత్కాలికంగా నిలిపివేశారు.",
   explain:"10,000 అర్హమైన ఆర్డర్లకు ఒక నాటక కార్యక్రమం మా ప్రణాళిక. ఒక ఆర్డర్‌కు ఒక చెట్టు మాత్రమే; ఒక్కో వస్తువుకు కాదు. ధృవీకరణ అవసరం.",
   zeroFee:"చెట్టుకు అదనపు రుసుము లేదు",milestone:"తదుపరి 10,000 చెట్ల లక్ష్యానికి నిధులు ఉన్న ఆర్డర్లు",
   statusHeading:"ఈ ఆర్డర్ చెట్టు స్థితి",planning:"కార్యక్రమం ప్రణాళికలో ఉంది. ఈ ఆర్డర్‌కు చెట్టు కేటాయించలేదు, నాటలేదు.",
@@ -64,9 +64,9 @@ const lang:Record<"en"|"te"|"hi"|"ur",Words>={
  },
  hi:{
   name:"ज़ेशु ग्रीन",cartTitle:"ज़ेशु के साथ हरियाली की ओर",goal:"हमारा लक्ष्य: हर पात्र डिलीवर ऑर्डर पर एक देशी पेड़",
-  cartPlanning:"पेड़ लगाने की योजना अभी तैयार हो रही है। आज इस खरीद से कोई पेड़ न तो आरक्षित हुआ है, न लगाया गया है।",
-  cartActive:"पात्र ऑर्डर डिलीवर होने पर भविष्य के अभियान के लिए एक वित्तपोषित पेड़ का स्थान आरक्षित हो सकता है।",
-  cartPaused:"नए पेड़ आरक्षण फिलहाल रुके हैं। इस ऑर्डर पर पेड़ का वादा नहीं है।",
+  cartPlanning:"हमारा लक्ष्य: हर पात्र डिलीवर ऑर्डर पर एक पेड़। जल्द आ रहा है।",
+  cartActive:"पात्र डिलीवर ऑर्डर भविष्य में एक पेड़ लगाने में मदद कर सकते हैं।",
+  cartPaused:"वृक्षारोपण कार्यक्रम फिलहाल रुका है।",
   explain:"10,000 पात्र ऑर्डर पूरे होने पर वृक्षारोपण अभियान की योजना है, सबूत और देखभाल सहित। एक ऑर्डर पर एक पेड़, हर सामान पर नहीं।",
   zeroFee:"पेड़ के लिए कोई अतिरिक्त शुल्क नहीं",milestone:"अगले 10,000 पेड़ों के लक्ष्य तक वित्तपोषित ऑर्डर",
   statusHeading:"इस ऑर्डर का पेड़ योगदान",planning:"कार्यक्रम अभी योजना में है। इस ऑर्डर के लिए न पेड़ आरक्षित है, न लगाया गया है।",
@@ -83,9 +83,9 @@ const lang:Record<"en"|"te"|"hi"|"ur",Words>={
  },
  ur:{
   name:"زیشو گرین",cartTitle:"زیشو کے ساتھ سرسبز مستقبل",goal:"ہمارا ہدف: ہر اہل ڈیلیور شدہ آرڈر پر ایک مقامی درخت",
-  cartPlanning:"درخت لگانے کا منصوبہ ابھی تیار ہو رہا ہے۔ اس خریداری پر آج کوئی درخت مختص یا لگایا نہیں گیا۔",
-  cartActive:"اہل آرڈر ڈیلیور ہونے کے بعد مستقبل کی مہم کے لیے ایک فنڈ شدہ درخت کی جگہ مختص ہو سکتی ہے۔",
-  cartPaused:"نئے درختوں کی بکنگ فی الحال رکی ہوئی ہے۔ اس آرڈر پر درخت کا وعدہ نہیں۔",
+  cartPlanning:"ہمارا ہدف: ہر اہل ڈیلیور آرڈر پر ایک درخت۔ جلد آ رہا ہے۔",
+  cartActive:"اہل ڈیلیور آرڈر مستقبل میں ایک درخت کی مدد کر سکتے ہیں۔",
+  cartPaused:"درخت لگانے کا پروگرام فی الحال رکا ہوا ہے۔",
   explain:"منصوبہ ہر 10,000 اہل آرڈرز پر درخت لگانے کی مہم ہے، ثبوت اور دیکھ بھال کے ساتھ۔ ہر آرڈر پر ایک درخت، ہر پروڈکٹ پر نہیں۔",
   zeroFee:"درخت کی کوئی اضافی فیس نہیں",milestone:"اگلی 10,000 درختوں کی مہم کے لیے فنڈ شدہ آرڈرز",
   statusHeading:"اس آرڈر کا درختی حصہ",planning:"منصوبہ تیاری میں ہے۔ اس آرڈر پر کوئی درخت مختص یا لگایا نہیں گیا۔",
@@ -154,6 +154,17 @@ export default function GreenOrderImpact({orderId,orderStatus}:{
   };
   return messages[impact.status]||w.unavailable;
  })();
+ if(!orderId)return <section data-green-impact="cart"
+   className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-[#f3faf5] px-3 py-2.5 text-left"
+   aria-label={w.name}>
+    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-[#08784b]">
+      <TreePine size={19} aria-hidden="true"/>
+    </span>
+    <div className="min-w-0">
+      <p className="text-xs font-extrabold leading-4 text-[#075e45]">{w.name} <span aria-hidden="true">🌱</span></p>
+      <p className="mt-0.5 text-xs leading-4 text-[#37624b]" role="status">{statusMessage}</p>
+    </div>
+  </section>;
  return <section data-green-impact={orderId?'order':'cart'}
    className="rounded-2xl border border-emerald-200 bg-[#f3faf5] p-4 text-left shadow-sm"
    aria-label={heading}>
