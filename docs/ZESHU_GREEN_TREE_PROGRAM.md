@@ -7,7 +7,7 @@ Updated 25 October 2026. This supersedes the earlier, unaffordable 1-tree-per-or
 - **First milestone:** after 1,000 genuinely eligible delivered live orders, explore planting **1–2** locally suitable trees. Start with an owner's garden only if location, species, permissions, space, watering and long-term care are appropriate, or obtain a small local planter/nursery quote.
 - **Planning only, not guaranteed:** owner has not funded or arranged the planting. This is neither an order-linked donation nor an individual tree for each customer.
 - **No extra fee** or unapproved business spend. Plant only when money is genuinely available after vendor settlements, refunds, logistics and maintenance.
-- Show customers a very small honest message in cart: *“🌱 Zeshu Green — Growing a greener future together. Tree planting is planned.”* Do not clutter checkout with finances, tree counters, progress bars or links.
+- Show customers a very small honest message in cart: *“🌱 Zeshu Green — Your shopping helps Zeshu move toward planting trees.”* Do not clutter checkout with finances, tree counters, progress bars or links.
 - Optional /green page explains a future goal of 1–2 trees following the first 1,000 qualifying deliveries, subject to actual arrangements. **Never imply a tree has already been funded, reserved, planted or dedicated to one purchase.**
 - When planting actually occurs, publish planting date, real location, native/suitable species, photograph/evidence and a care plan. Only then show verified planting counts.
 - Never claim an order offset CO₂ or is carbon neutral, or that each order plants one tree.
