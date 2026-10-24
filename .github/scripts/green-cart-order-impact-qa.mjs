@@ -21,7 +21,7 @@ const compact=impact.split('if(!orderId)return <section data-green-impact="cart"
 assert(compact.includes('{words.name}')&&compact.includes('{description}'));
 assert(!compact.includes('href="/green"')&&!compact.includes('words.goal'));
 assert(!compact.includes('one tree planted')&&!compact.includes('contributed to planting'));
-assert(impact.includes('Growing a greener future together. Tree planting is planned.'));
+assert(impact.includes('Your shopping helps Zeshu move toward planting trees.'));
 assert(impact.includes('No tree is planted or reserved for this order.'));
 assert(!impact.includes('Our goal: 1 tree per eligible delivered order.'));
 assert(!impact.includes('One tree planted, thanks to your order!'));
