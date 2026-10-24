@@ -24,6 +24,7 @@ import { catalogSearchScore, getCatalogSearchRecommendations, isCatalogSearchMat
 import { CUSTOMER_CATEGORY_DEFINITIONS, campaignMatchesCustomerCategory, categoryDefinition, productMatchesCustomerCategory } from './lib/catalog-categories';
 import { isFreshThirtyMinuteCandidate, isIndiaReadyProduct } from './lib/fulfillment';
 import { groupCartByFulfillment, marketplaceRecommendedScore, type MarketplaceSeller } from './lib/marketplace';
+import GreenOrderImpact from './components/GreenOrderImpact';
 import { classifySupportCategory } from './lib/support-category';
 
 const supabase = customerSupabase();
@@ -3580,7 +3581,8 @@ export default function ZeshuSuperApp() {
             {trackedOrder.status === 'READY_FOR_PICKUP' && <p className="mx-auto mt-5 max-w-sm rounded-2xl border border-slate-200 bg-white p-4 text-sm font-bold text-slate-600">{t('A rider is assigned. Live tracking starts after pickup.')}</p>}
           </div>
           <div className="bg-white p-6 md:p-8">
-            <div className="mb-6 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-left">
+            <div className="mb-6 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-left" aria-label="Customer order receipt and payment summary">
+              <p className="mb-2 text-[11px] font-extrabold uppercase tracking-widest text-slate-500">{t('Payment receipt and order summary')}</p>
               <div className="flex items-center justify-between gap-4"><span className="text-xs font-black uppercase tracking-wider text-slate-500">{t('Order total')}</span><span className="text-lg font-black text-slate-900">₹{Number(trackedOrder.total_paid || 0).toFixed(0)}</span></div>
               {Array.isArray(trackedOrder.items) && trackedOrder.items.length > 0 && <div className="mt-3 space-y-2 text-left">{trackedOrder.items.map((entry: any, index: number) => { const qty = Number(entry.qty ?? entry.quantity ?? 1); const price = Number(entry.item?.price ?? entry.item_snapshot?.price ?? entry.unit_price ?? entry.price ?? 0); return <div key={index} className="flex justify-between gap-3 text-xs text-slate-600"><span>{qty}× {entry.item?.name || entry.item_snapshot?.name || entry.name || 'Item'}</span><span className="font-black text-slate-800">₹{price.toFixed(0)}</span></div>; })}</div>}
               {trackedOrder.delivery_fee != null && <div className="mt-3 flex justify-between text-xs text-slate-600"><span>{t('Delivery fee')}</span><span className="font-black">₹{Number(trackedOrder.delivery_fee).toFixed(0)}</span></div>}
@@ -3591,6 +3593,7 @@ export default function ZeshuSuperApp() {
               {trackedOrder.payment_id && <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500"><span><span className="font-black">{t('Payment reference:')}</span> {String(trackedOrder.payment_id).slice(0, 8)}…</span><button type="button" onClick={() => void copyPaymentReference(trackedOrder.payment_id)} className="rounded-lg bg-slate-100 px-2.5 py-1.5 font-black text-slate-700">{t('Copy')}</button></div>}
               {trackedOrder.created_at && <p className="mt-2 text-[11px] font-medium text-slate-500">{t('Placed')} {new Date(trackedOrder.created_at).toLocaleString()}</p>}
             </div>
+            <div className="mb-5"><GreenOrderImpact orderId={trackedOrder.id} orderStatus={trackedOrder.status} /></div>
             <OrderStatusTimeline status={trackedOrder.status} />
             {trackedOrder.status === 'DELIVERED' && <><ReviewForm overall={reviewOverall} delivery={reviewDelivery} store={reviewStore} comment={reviewComment} products={reviewProducts} existingReview={reviewExisting} loading={reviewLoading} error={reviewError} success={reviewSuccess} onOverallChange={setReviewOverall} onDeliveryChange={setReviewDelivery} onStoreChange={setReviewStore} onCommentChange={setReviewComment} onProductChange={(id, value) => setReviewProducts((current) => current.map((item) => item.id === id ? { ...item, rating: value } : item))} onProductCommentChange={(id, value) => setReviewProducts((current) => current.map((item) => item.id === id ? { ...item, comment: value } : item))} onSubmit={() => void submitReview()} /><div className="mt-6 flex flex-wrap gap-2"><button type="button" disabled={reorderingId === trackedOrder.id} onClick={() => void reorder(trackedOrder)} className="rounded-xl bg-[#075E45] px-4 py-3 text-sm font-black text-white disabled:opacity-60">{reorderingId === trackedOrder.id ? t('Adding…') : t('Buy again')}</button><button type="button" onClick={() => { setIsTrackingOpen(false); setActiveTab('home'); }} className="rounded-xl border border-[#075E45] px-4 py-3 text-sm font-black text-[#075E45]">{t('Continue shopping')}</button></div></>}
           </div>
@@ -3633,6 +3636,7 @@ export default function ZeshuSuperApp() {
                   </div>
                 </section>
               ))}
+              {cart.length > 0 && <GreenOrderImpact />}
               {cart.length > 0 && <section className="rounded-2xl border border-[#dce8df] bg-white">
                 <div className="flex items-center justify-between gap-4 p-4 md:p-5">
                   <span className="flex min-w-0 items-center gap-3"><MapPin size={22} className="shrink-0 text-[#075E45]" aria-hidden="true" /><span className="min-w-0"><span className="block text-sm font-black text-slate-900 md:text-base">{t('Delivery Address')}</span><span className="mt-1 block truncate text-xs font-medium text-slate-500 md:text-sm">{deliveryAddressSummary || t('Add delivery address')}</span></span></span>

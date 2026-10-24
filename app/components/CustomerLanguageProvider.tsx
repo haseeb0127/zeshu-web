@@ -23,6 +23,7 @@ const LANGUAGE_OPTIONS: Array<{ code: CustomerLanguageCode; label: string; short
 const translations: Record<CustomerLanguageCode, Record<string, string>> = {
   en: {},
   te: {
+    "Payment receipt and order summary": "చెల్లింపు రసీదు మరియు ఆర్డర్ వివరాలు",
     "Zeshu Green": "జెషు గ్రీన్",
     "Our goal: one tree for every eligible delivered order.": "మా లక్ష్యం: అర్హత గల ప్రతి డెలివరీ ఆర్డర్‌కు ఒక చెట్టు.",
     "Planting starts after partner verification and funded capacity.": "భాగస్వామి ధృవీకరణ, నిధుల ఏర్పాటు తర్వాత చెట్లు నాటడం మొదలవుతుంది.",
@@ -965,6 +966,7 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Search Contact": "కాంటాక్ట్ వెతకండి",
   },
   hi: {
+    "Payment receipt and order summary": "भुगतान रसीद और ऑर्डर विवरण",
     "Zeshu Green": "ज़ेशु ग्रीन",
     "Our goal: one tree for every eligible delivered order.": "हमारा लक्ष्य: हर पात्र डिलीवर हुए ऑर्डर पर एक पेड़।",
     "Planting starts after partner verification and funded capacity.": "साझेदार सत्यापन और फंड मिलने के बाद ही वृक्षारोपण शुरू होगा।",
@@ -1887,6 +1889,7 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Search Contact": "कॉन्टैक्ट खोजें",
   },
   ur: {
+    "Payment receipt and order summary": "ادائیگی کی رسید اور آرڈر کی تفصیلات",
     "Zeshu Green": "زیشو گرین",
     "Our goal: one tree for every eligible delivered order.": "ہمارا ہدف: ہر اہل ڈیلیور شدہ آرڈر پر ایک درخت۔",
     "Planting starts after partner verification and funded capacity.": "پارٹنر کی تصدیق اور فنڈ دستیاب ہونے کے بعد شجرکاری شروع ہوگی۔",
