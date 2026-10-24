@@ -60,7 +60,7 @@ export default function AdminGreen(){
    </div>
    <header className="mt-4 rounded-[28px] bg-[linear-gradient(110deg,#064c37,#0f633f)] px-5 py-7 text-white md:px-8">
     <h1 className="flex items-center gap-2 text-2xl font-black md:text-3xl"><Leaf size={30}/> Zeshu Green HQ</h1>
-    <p className="mt-2 max-w-3xl text-sm leading-6 text-emerald-50">Keep the one-tree-per-delivered-order programme financially responsible and evidence-backed. This is a private planning dashboard: it never spends money, plants a tree, enables payments or activates the campaign.</p>
+    <p className="mt-2 max-w-3xl text-sm leading-6 text-emerald-50">Keep Zeshu's small first milestone financially responsible: consider planting 1–2 trees after 1,000 eligible delivered orders. This is a planning dashboard. This is a private planning dashboard: it never spends money, plants a tree, enables payments or activates the campaign.</p>
     <button type="button" disabled={loading} onClick={()=>void reload()} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/40 bg-white/10 px-4 py-2 text-sm font-extrabold disabled:opacity-50"><RefreshCw size={17}/> Refresh readiness</button>
    </header>
    {error&&<p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800">{error}</p>}
@@ -69,8 +69,8 @@ export default function AdminGreen(){
     <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5" role="status">
      <h2 className="flex items-center gap-2 text-lg font-black text-amber-950"><ShieldCheck size={22}/> Programme: {info.mode}</h2>
      <p className="mt-2 text-sm leading-6 text-amber-900">{info.canAnnouncePerOrderPromise?
-      'All required launch gates currently appear satisfied. Continue checking tree capacity and planting evidence as orders complete.':
-      'Do not announce “a tree is planted with each order”. This is still a planned commitment until the real partner, funded quota, live orders and owner approval are verified.'}</p>
+      'No one-tree-per-order customer promise is authorized by this new small pilot.':
+      'The first 1,000 eligible deliveries → 1–2 trees is a plan, not a pledge or a planted-tree claim. The old one-tree-per-order system is disabled and must be redesigned before activation.'}</p>
      <p className="mt-2 text-xs font-semibold text-amber-950">Payment gateway: {info.paymentGatewayMode}. No customer tree fee. No false carbon-offset or survival guarantee.</p>
     </section>
     <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Verified tree operation counts">
@@ -85,13 +85,12 @@ export default function AdminGreen(){
       <h3 className="mt-1 text-xs font-bold text-slate-600">{label}</h3>
      </article>)}
     </section>
-    <section className="mt-5 rounded-2xl border border-teal-200 bg-white p-5 md:p-7" aria-label="Ten thousand order planting milestone">
-      <h2 className="text-xl font-black text-emerald-950">Target: 10,000 qualifying orders → 10,000 tree planting drive</h2>
-      <p className="mt-2 text-sm leading-6 text-slate-600">One tree slot for each genuinely fulfilled, eligible order after activation. Planting is coordinated after a funded 10,000-order milestone, potentially across multiple days during the appropriate planting season.</p>
-      <div className="mt-4 flex items-baseline gap-2"><strong className="text-3xl font-black tabular-nums text-[#075e45]">{info.plantingBatch.progressInCurrentBatch.toLocaleString('en-IN')}</strong><span className="text-sm font-bold text-slate-700">/ 10,000 funded qualifying commitments in the current batch</span></div>
-      <div className="mt-2 h-3 overflow-hidden rounded-full bg-emerald-100"><div className="h-full rounded-full bg-emerald-600" style={{width:`${Math.min(100,info.plantingBatch.progressInCurrentBatch/100)}%`}}/></div>
-      <p className="mt-3 text-xs font-semibold text-emerald-900">Completed order-milestone batches: {info.plantingBatch.completeBatches}. Verified planted trees remain separately reported above.</p>
-      <p className="mt-2 rounded-lg bg-amber-50 p-3 text-xs leading-6 text-amber-950">Planning only until actual funding, signed partner agreement, approved land, seasonal planting, care and evidence are arranged. Reaching 10,000 never spends money or starts planting automatically.</p>
+    <section className="mt-5 rounded-2xl border border-teal-200 bg-white p-5 md:p-7" aria-label="Planned first thousand eligible deliveries tree milestone">
+      <h2 className="text-xl font-black text-emerald-950">First goal: 1,000 eligible deliveries → aim for 1–2 trees</h2>
+      <p className="mt-2 text-sm leading-6 text-slate-600">Planning only: once 1,000 genuinely eligible delivered orders have been completed after an approved start, arrange a modest planting of 1–2 suitable trees, subject to permission, care, funding and evidence. This is not one tree per order.</p>
+      <p className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-xs leading-6 text-emerald-950">Real qualifying delivery progress is not yet tracked for the new pilot. Current legacy funded commitments: {info.reserved.toLocaleString('en-IN')}; verified planted trees: {info.counts.verified.toLocaleString('en-IN')}.</p>
+      <p className="mt-3 text-xs font-semibold text-emerald-900">The legacy commitment counter does not track the new 1,000-order pilot. Do not use it as an order-count progress indicator.</p>
+      <p className="mt-2 rounded-lg bg-amber-50 p-3 text-xs leading-6 text-amber-950">Planning only. Real eligible deliveries must be counted separately in the redesigned campaign. No payment, automatic planting, or per-order pledge.</p>
     </section>
     <section className="mt-5 grid gap-4 rounded-2xl border border-emerald-100 bg-white p-5 md:grid-cols-2 md:p-7">
      <div>
@@ -121,8 +120,8 @@ export default function AdminGreen(){
      <p className="mt-4 text-xs leading-6 text-slate-600">Planning is not a tree plantation. Partner-reported trees and independently verified plantings are separate records. Refunds and survival monitoring need human reconciliation before publishing environmental impact claims.</p>
     </section>
     <section className="mt-5 rounded-2xl border border-emerald-200 bg-[#eaf6ea] p-5">
-     <h2 className="text-lg font-black">Suggested first pilot: 50–100 trees</h2>
-     <p className="mt-2 text-sm leading-6">Start only after obtaining written per-tree quotations that include locally appropriate native species, care and replacement. Fund the fixed pilot from a sponsor or confirmed available platform margin, without adding a customer checkout charge. Keep delivery, vendor settlements, refunds and platform maintenance fully funded first.</p>
+     <h2 className="text-lg font-black">Suggested first pilot: 1–2 local trees</h2>
+     <p className="mt-2 text-sm leading-6">Choose a locally suitable species and planting site with permission, watering and aftercare. You may plant 1–2 trees in your own garden if suitable; otherwise ask a local nursery or planting partner for a small quote. Fund the activity only when affordable; no hidden customer fee. Never say a tree was planted before it actually is.</p>
      <p className="mt-2 text-sm font-semibold">Owner approval and live payment verification are separate requirements. This page deliberately cannot turn the campaign on.</p>
     </section>
    </>}

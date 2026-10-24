@@ -2,103 +2,78 @@
 
 import {useEffect,useState} from "react";
 import Link from "@/app/components/DocumentLink";
-import {Leaf,ShieldCheck,TreePine} from "lucide-react";
+import {TreePine,ShieldCheck} from "lucide-react";
 import {customerSupabase} from "@/app/lib/browser-supabase";
 import {useCustomerLanguage} from "@/app/components/CustomerLanguageProvider";
 
-type PublicImpact={
- programmeStatus:"PLANNING"|"ACTIVE"|"PAUSED";
- plantingBatch?:{milestoneOrders:number;progressInCurrentBatch:number;ordersUntilNextMilestone:number};
- verifiedPlanted?:number;
-};
-type OrderStatus="PLEDGED"|"REPORTED"|"VERIFIED"|"VOID"|"INELIGIBLE"|"NOT_RECORDED"|"AWAITING_DELIVERY"|"PAUSED"|"PLANNING";
-type OrderImpact={
- status:OrderStatus;treeCount:number;verifiedTreeCount:number;
- proofUrl:string|null;nativeSpecies:string|null;plantingArea:string|null;
-};
+type PublicImpact={programmeStatus:"PLANNING"|"ACTIVE"|"PAUSED"};
+type Status="PLEDGED"|"REPORTED"|"VERIFIED"|"VOID"|"INELIGIBLE"|"NOT_RECORDED"|"AWAITING_DELIVERY"|"PAUSED"|"PLANNING";
+type OrderImpact={status:Status;proofUrl:string|null};
 type Words={
- name:string;cartTitle:string;goal:string;cartPlanning:string;cartActive:string;cartPaused:string;
- explain:string;zeroFee:string;milestone:string;statusHeading:string;
- planning:string;paused:string;awaiting:string;pledged:string;reported:string;verified:string;
- voided:string;notRecorded:string;ineligible:string;unavailable:string;
- proof:string;about:string;oneOrder:string;
+ name:string;cart:string;title:string;planning:string;paused:string;awaiting:string;
+ pledged:string;reported:string;verified:string;voided:string;notRecorded:string;
+ ineligible:string;unavailable:string;proof:string;details:string;noFee:string;
 };
 const lang:Record<"en"|"te"|"hi"|"ur",Words>={
  en:{
-  name:"Zeshu Green",cartTitle:"A greener future with Zeshu",goal:"Our goal: 1 native tree per eligible delivered order",
-  cartPlanning:"Our goal: 1 tree per eligible delivered order. Coming soon.",
-  cartActive:"Eligible delivered orders can help fund one future tree.",
-  cartPaused:"Tree-planting programme temporarily paused.",
-  explain:"Planting is planned in batches of 10,000 qualifying orders, with proof and aftercare. One tree per order—not per item. No carbon-offset claim.",
-  zeroFee:"No extra tree fee",milestone:"Funded order commitments toward the next 10,000-tree drive",
-  statusHeading:"Tree impact for this order",planning:"We’re preparing tree planting. No tree has been reserved for this order yet.",
-  paused:"New reservations paused. No tree is recorded for this order.",
-  awaiting:"Order confirmed. A tree slot is only reserved after eligible delivery—never on payment alone.",
-  pledged:"🌱 Your order has helped reserve one tree for future planting. It has not been planted yet.",
-  reported:"🌱 One tree was reported planted for your order. Verification is pending.",
-  verified:"🌳 One tree planted, thanks to your order! Planting evidence is verified.",
-  voided:"Tree reservation voided; this order has no active tree commitment.",
-  notRecorded:"No funded tree reservation is recorded for this order. We cannot claim planting.",
-  ineligible:"This order does not qualify for the tree programme.",
-  unavailable:"Your tree status cannot be verified now. We won't claim a tree was planted.",
-  proof:"View planting evidence",about:"See Zeshu Green plan",oneOrder:"One eligible order supports a maximum of one funded tree slot.",
+  name:"Zeshu Green",cart:"Growing a greener future together. Tree planting is planned.",
+  title:"Your order & Zeshu Green",
+  planning:"We're planning a small tree-planting drive after our first 1,000 eligible delivered orders. No tree is planted or reserved for this order.",
+  paused:"Tree-planting plans are paused. No tree is claimed for this order.",
+  awaiting:"Thanks for shopping with Zeshu. Our tree-planting initiative is being planned; no tree has been planted for this order.",
+  pledged:"A funded future tree commitment is recorded for this order; planting has not happened yet.",
+  reported:"A planting was reported by a partner; evidence verification is still pending.",
+  verified:"A tree has been planted and independently verified. See the planting evidence.",
+  voided:"This order has no active tree commitment.",
+  notRecorded:"No verified tree planting or funded reservation is recorded for this order.",
+  ineligible:"This order is not eligible for a tree commitment.",
+  unavailable:"Tree-planting status cannot be verified right now. No planting is claimed.",
+  proof:"See verified planting evidence",details:"Our planting plan",noFee:"No extra fee",
  },
  te:{
-  name:"జెషు గ్రీన్",cartTitle:"జెషుతో పచ్చని భవిష్యత్తు",goal:"మా లక్ష్యం: అర్హమైన డెలివరీ ఆర్డర్‌కు ఒక స్థానిక చెట్టు",
-  cartPlanning:"మా లక్ష్యం: అర్హమైన డెలివరీ ఆర్డర్‌కు ఒక చెట్టు. త్వరలో.",
-  cartActive:"అర్హమైన డెలివరీ ఆర్డర్లు భవిష్యత్తులో ఒక చెట్టుకు సహాయపడవచ్చు.",
-  cartPaused:"చెట్ల కార్యక్రమం తాత్కాలికంగా నిలిపివేశారు.",
-  explain:"10,000 అర్హమైన ఆర్డర్లకు ఒక నాటక కార్యక్రమం మా ప్రణాళిక. ఒక ఆర్డర్‌కు ఒక చెట్టు మాత్రమే; ఒక్కో వస్తువుకు కాదు. ధృవీకరణ అవసరం.",
-  zeroFee:"చెట్టుకు అదనపు రుసుము లేదు",milestone:"తదుపరి 10,000 చెట్ల లక్ష్యానికి నిధులు ఉన్న ఆర్డర్లు",
-  statusHeading:"ఈ ఆర్డర్ చెట్టు స్థితి",planning:"కార్యక్రమం ప్రణాళికలో ఉంది. ఈ ఆర్డర్‌కు చెట్టు కేటాయించలేదు, నాటలేదు.",
-  paused:"కొత్త కేటాయింపులు నిలిచాయి. ఈ ఆర్డర్‌కు చెట్టు నమోదు కాలేదు.",
-  awaiting:"ఆర్డర్ నిర్ధారితమైంది. అర్హమైన డెలివరీ తర్వాత మాత్రమే చెట్టు కేటాయింపు జరుగుతుంది; చెల్లింపుతో కాదు.",
-  pledged:"🌱 మీ ఆర్డర్‌తో భవిష్యత్తులో నాటేందుకు ఒక చెట్టును కేటాయించారు. ఇంకా నాటలేదు.",
-  reported:"ఈ ఆర్డర్‌కు చెట్టు నాటినట్లు భాగస్వామి తెలిపాడు. ఆధారాల తనిఖీ పెండింగ్‌లో ఉంది.",
-  verified:"🌳 మీ ఆర్డర్ సహాయంతో ఒక చెట్టు నాటబడింది! ఆధారాలు ధృవీకరించబడ్డాయి.",
-  voided:"చెట్టు కేటాయింపు రద్దయింది. ప్రస్తుతం ఈ ఆర్డర్‌కు చెట్టు లేదు.",
-  notRecorded:"ఈ ఆర్డర్‌కు చెట్టు కేటాయింపు నమోదు కాలేదు. నాటినట్లు చెప్పలేం.",
-  ineligible:"ఈ ఆర్డర్ చెట్ల కార్యక్రమానికి అర్హం కాదు.",
-  unavailable:"చెట్టు స్థితిని ప్రస్తుతం ధృవీకరించలేకపోతున్నాం. నాటినట్లు చెప్పము.",
-  proof:"నాటిన ఆధారాలు చూడండి",about:"జెషు గ్రీన్ ప్రణాళిక",oneOrder:"ఒక అర్హమైన ఆర్డర్‌కు గరిష్ఠంగా ఒక చెట్టు మాత్రమే.",
+  name:"జెషు గ్రీన్",cart:"కలిసి పచ్చని భవిష్యత్తుకు తోడ్పడదాం. మొక్కలు నాటడం ప్రణాళికలో ఉంది.",
+  title:"మీ ఆర్డర్ మరియు జెషు గ్రీన్",
+  planning:"మొదటి 1,000 అర్హమైన డెలివరీ ఆర్డర్ల తర్వాత కొన్ని మొక్కలు నాటాలని ప్రణాళిక. ఈ ఆర్డర్‌కు ఏ చెట్టూ కేటాయించలేదు లేదా నాటలేదు.",
+  paused:"మొక్కలు నాటే ప్రణాళిక నిలిపివేయబడింది. ఈ ఆర్డర్‌కు చెట్టు నాటినట్లు చెప్పడం లేదు.",
+  awaiting:"జెషులో షాపింగ్ చేసినందుకు ధన్యవాదాలు. చెట్లు నాటే కార్యక్రమం ప్రణాళికలో ఉంది; ఈ ఆర్డర్‌కు చెట్టు నాటలేదు.",
+  pledged:"ఈ ఆర్డర్‌కు భవిష్యత్తు కోసం చెట్టు నిధుల కేటాయింపు ఉంది; ఇంకా నాటలేదు.",
+  reported:"మొక్క నాటినట్లు భాగస్వామి తెలిపాడు; ఆధారాల ధృవీకరణ పెండింగ్‌లో ఉంది.",
+  verified:"ఒక చెట్టు నాటబడినట్లు ఆధారాలతో ధృవీకరించారు. వివరాలు చూడండి.",
+  voided:"ఈ ఆర్డర్‌కు క్రియాశీల చెట్టు కేటాయింపు లేదు.",
+  notRecorded:"ఈ ఆర్డర్‌కు ధృవీకరించిన మొక్క నాటడం లేదా నిధుల కేటాయింపు నమోదు కాలేదు.",
+  ineligible:"ఈ ఆర్డర్ చెట్టు కార్యక్రమానికి అర్హం కాదు.",
+  unavailable:"చెట్టు సమాచారం ప్రస్తుతం ధృవీకరించలేము; నాటినట్లు చెప్పడం లేదు.",
+  proof:"ధృవీకరించిన ఆధారాలు",details:"మొక్కల ప్రణాళిక",noFee:"అదనపు రుసుము లేదు",
  },
  hi:{
-  name:"ज़ेशु ग्रीन",cartTitle:"ज़ेशु के साथ हरियाली की ओर",goal:"हमारा लक्ष्य: हर पात्र डिलीवर ऑर्डर पर एक देशी पेड़",
-  cartPlanning:"हमारा लक्ष्य: हर पात्र डिलीवर ऑर्डर पर एक पेड़। जल्द आ रहा है।",
-  cartActive:"पात्र डिलीवर ऑर्डर भविष्य में एक पेड़ लगाने में मदद कर सकते हैं।",
-  cartPaused:"वृक्षारोपण कार्यक्रम फिलहाल रुका है।",
-  explain:"10,000 पात्र ऑर्डर पूरे होने पर वृक्षारोपण अभियान की योजना है, सबूत और देखभाल सहित। एक ऑर्डर पर एक पेड़, हर सामान पर नहीं।",
-  zeroFee:"पेड़ के लिए कोई अतिरिक्त शुल्क नहीं",milestone:"अगले 10,000 पेड़ों के लक्ष्य तक वित्तपोषित ऑर्डर",
-  statusHeading:"इस ऑर्डर का पेड़ योगदान",planning:"कार्यक्रम अभी योजना में है। इस ऑर्डर के लिए न पेड़ आरक्षित है, न लगाया गया है।",
-  paused:"नए आरक्षण रुके हैं। इस ऑर्डर पर पेड़ दर्ज नहीं है।",
-  awaiting:"ऑर्डर की पुष्टि हुई। पात्र डिलीवरी के बाद ही पेड़ आरक्षित होगा, सिर्फ भुगतान से नहीं।",
-  pledged:"🌱 आपके ऑर्डर से भविष्य में लगाने के लिए एक पेड़ आरक्षित हुआ है। इसे अभी लगाया नहीं गया है।",
-  reported:"साझेदार ने इस ऑर्डर से संबंधित वृक्षारोपण की सूचना दी है। प्रमाण की पुष्टि बाकी है।",
-  verified:"🌳 आपके ऑर्डर की मदद से एक पेड़ लगाया गया है! रोपण का प्रमाण सत्यापित है।",
-  voided:"पेड़ का आरक्षण रद्द है। इस ऑर्डर पर सक्रिय योगदान नहीं है।",
-  notRecorded:"इस ऑर्डर पर वित्तपोषित पेड़ दर्ज नहीं है। रोपण का दावा नहीं किया जा सकता।",
-  ineligible:"यह ऑर्डर कार्यक्रम के लिए पात्र नहीं है।",
-  unavailable:"पेड़ की स्थिति की पुष्टि अभी नहीं हो सकती। हम गलत दावा नहीं करेंगे।",
-  proof:"रोपण का प्रमाण देखें",about:"ज़ेशु ग्रीन योजना देखें",oneOrder:"एक पात्र ऑर्डर पर अधिकतम एक पेड़ का स्थान।",
+  name:"ज़ेशु ग्रीन",cart:"मिलकर हरियाली बढ़ाएँ। वृक्षारोपण की योजना बन रही है.",
+  title:"आपका ऑर्डर और ज़ेशु ग्रीन",
+  planning:"पहले 1,000 पात्र डिलीवर ऑर्डरों के बाद थोड़े पेड़ लगाने की योजना है। इस ऑर्डर के लिए अभी कोई पेड़ आरक्षित या लगाया नहीं गया है.",
+  paused:"वृक्षारोपण योजना रुकी हुई है। इस ऑर्डर पर कोई पेड़ लगाने का दावा नहीं है.",
+  awaiting:"ज़ेशु से खरीदारी के लिए धन्यवाद। वृक्षारोपण अभी योजना में है; इस ऑर्डर पर पेड़ नहीं लगाया गया है.",
+  pledged:"इस ऑर्डर के लिए भविष्य का वित्तपोषित वृक्ष संकल्प दर्ज है; पेड़ अभी नहीं लगा है.",
+  reported:"साझेदार ने पौधा लगाने की सूचना दी है; प्रमाण की जाँच बाकी है.",
+  verified:"एक पेड़ लगाए जाने का स्वतंत्र सत्यापन हुआ है। प्रमाण देखें.",
+  voided:"इस ऑर्डर पर कोई सक्रिय वृक्ष संकल्प नहीं है.",
+  notRecorded:"इस ऑर्डर के लिए कोई सत्यापित वृक्षारोपण या वित्तपोषित आरक्षण दर्ज नहीं है.",
+  ineligible:"यह ऑर्डर वृक्ष कार्यक्रम के लिए पात्र नहीं है.",
+  unavailable:"अभी वृक्षारोपण की स्थिति की पुष्टि नहीं हो सकती; कोई दावा नहीं किया जा रहा है.",
+  proof:"सत्यापित रोपण प्रमाण",details:"हमारी वृक्ष योजना",noFee:"कोई अतिरिक्त शुल्क नहीं",
  },
  ur:{
-  name:"زیشو گرین",cartTitle:"زیشو کے ساتھ سرسبز مستقبل",goal:"ہمارا ہدف: ہر اہل ڈیلیور شدہ آرڈر پر ایک مقامی درخت",
-  cartPlanning:"ہمارا ہدف: ہر اہل ڈیلیور آرڈر پر ایک درخت۔ جلد آ رہا ہے۔",
-  cartActive:"اہل ڈیلیور آرڈر مستقبل میں ایک درخت کی مدد کر سکتے ہیں۔",
-  cartPaused:"درخت لگانے کا پروگرام فی الحال رکا ہوا ہے۔",
-  explain:"منصوبہ ہر 10,000 اہل آرڈرز پر درخت لگانے کی مہم ہے، ثبوت اور دیکھ بھال کے ساتھ۔ ہر آرڈر پر ایک درخت، ہر پروڈکٹ پر نہیں۔",
-  zeroFee:"درخت کی کوئی اضافی فیس نہیں",milestone:"اگلی 10,000 درختوں کی مہم کے لیے فنڈ شدہ آرڈرز",
-  statusHeading:"اس آرڈر کا درختی حصہ",planning:"منصوبہ تیاری میں ہے۔ اس آرڈر پر کوئی درخت مختص یا لگایا نہیں گیا۔",
-  paused:"نئی بکنگ رکی ہوئی ہے۔ اس آرڈر پر درخت درج نہیں۔",
-  awaiting:"آرڈر کی تصدیق ہوئی ہے۔ اہل ڈیلیوری کے بعد ہی درخت مختص ہوگا، صرف ادائیگی پر نہیں۔",
-  pledged:"🌱 آپ کے آرڈر سے مستقبل میں لگانے کے لیے ایک درخت مختص ہوا ہے۔ ابھی لگایا نہیں گیا۔",
-  reported:"پارٹنر نے اس آرڈر کے لیے درخت لگانے کی اطلاع دی ہے۔ ثبوت کی جانچ باقی ہے۔",
-  verified:"🌳 آپ کے آرڈر کی مدد سے ایک درخت لگایا گیا ہے! ثبوت کی تصدیق ہو چکی ہے۔",
-  voided:"درخت کی بکنگ منسوخ ہو گئی ہے۔ اس آرڈر پر فعال حصہ نہیں۔",
-  notRecorded:"اس آرڈر پر کوئی فنڈ شدہ درخت درج نہیں۔ لگانے کا دعویٰ نہیں کر سکتے۔",
-  ineligible:"یہ آرڈر درختوں کے پروگرام کے لیے اہل نہیں۔",
-  unavailable:"اس وقت درخت کی حالت کی تصدیق نہیں ہو سکتی۔ ہم غلط دعویٰ نہیں کریں گے۔",
-  proof:"درخت لگانے کا ثبوت",about:"زیشو گرین منصوبہ",oneOrder:"ہر اہل آرڈر پر زیادہ سے زیادہ ایک درخت۔",
+  name:"زیشو گرین",cart:"مل کر سرسبز مستقبل بنائیں۔ شجرکاری ابھی منصوبہ بندی میں ہے۔",
+  title:"آپ کا آرڈر اور زیشو گرین",
+  planning:"پہلے 1,000 اہل ڈیلیور آرڈرز کے بعد چند درخت لگانے کا منصوبہ ہے۔ اس آرڈر کے لیے کوئی درخت مختص یا لگایا نہیں گیا۔",
+  paused:"شجرکاری کا منصوبہ رکا ہوا ہے۔ اس آرڈر کے لیے درخت لگنے کا دعویٰ نہیں۔",
+  awaiting:"زیشو سے خریداری کا شکریہ۔ شجرکاری ابھی منصوبے میں ہے، اس آرڈر پر درخت نہیں لگایا گیا۔",
+  pledged:"اس آرڈر کے لیے مستقبل میں شجرکاری کی فنڈڈ ذمہ داری درج ہے؛ ابھی درخت نہیں لگایا گیا۔",
+  reported:"پارٹنر نے شجرکاری کی اطلاع دی ہے؛ ثبوت کی تصدیق باقی ہے۔",
+  verified:"ایک درخت لگنے کا ثبوت تصدیق شدہ ہے۔ تفصیلات دیکھیں۔",
+  voided:"اس آرڈر کے لیے کوئی فعال شجرکاری ذمہ داری نہیں۔",
+  notRecorded:"اس آرڈر کے لیے تصدیق شدہ شجرکاری یا فنڈڈ بکنگ درج نہیں۔",
+  ineligible:"یہ آرڈر شجرکاری پروگرام کے لیے اہل نہیں۔",
+  unavailable:"شجرکاری کی حالت فی الحال تصدیق نہیں ہو سکتی؛ کوئی دعویٰ نہیں۔",
+  proof:"تصدیق شدہ شجرکاری کا ثبوت",details:"شجرکاری منصوبہ",noFee:"کوئی اضافی فیس نہیں",
  },
 };
 
@@ -106,88 +81,62 @@ export default function GreenOrderImpact({orderId,orderStatus}:{
  orderId?:string;orderStatus?:string;
 }){
  const {language}=useCustomerLanguage();
- const w=lang[language]||lang.en;
- const [publicImpact,setPublicImpact]=useState<PublicImpact|null>(null);
+ const words=lang[language]||lang.en;
+ const [mode,setMode]=useState<PublicImpact["programmeStatus"]>("PLANNING");
  const [impact,setImpact]=useState<OrderImpact|null>(null);
  const [loading,setLoading]=useState(Boolean(orderId));
- const [failed,setFailed]=useState(false);
  useEffect(()=>{
-  let alive=true;
-  fetch('/api/green/impact',{cache:'no-store'})
-   .then(r=>r.ok?r.json():null)
-   .then(body=>{if(alive&&body?.programmeStatus)setPublicImpact(body);})
-   .catch(()=>{});
-  return()=>{alive=false};
+  let live=true;
+  void fetch('/api/green/impact',{cache:'no-store'})
+   .then(r=>r.ok?r.json():null).then(data=>{
+    if(live && (data?.programmeStatus==='ACTIVE'||data?.programmeStatus==='PAUSED'))
+     setMode(data.programmeStatus);
+   }).catch(()=>{});
+  return()=>{live=false;};
  },[]);
  useEffect(()=>{
-  if(!orderId){setLoading(false);setImpact(null);return;}
-  let alive=true;
-  setLoading(true);setFailed(false);setImpact(null);
-  const load=async()=>{
+  if(!orderId){setImpact(null);setLoading(false);return;}
+  let live=true;
+  setLoading(true);setImpact(null);
+  const read=async()=>{
    try{
     const {data:{session}}=await customerSupabase().auth.getSession();
-    if(!session?.access_token)throw new Error('NO_CUSTOMER_SESSION');
-    const r=await fetch('/api/green/orders/'+encodeURIComponent(orderId),{
-      headers:{Authorization:'Bearer '+session.access_token},
-      cache:'no-store',
+    if(!session?.access_token)return;
+    const response=await fetch('/api/green/orders/'+encodeURIComponent(orderId),{
+      cache:'no-store',headers:{Authorization:'Bearer '+session.access_token},
     });
-    if(!r.ok)throw new Error('IMPACT_UNAVAILABLE');
-    const body=await r.json();
-    if(alive)setImpact(body);
-   }catch{if(alive)setFailed(true);}
-   finally{if(alive)setLoading(false);}
+    if(response.ok && live)setImpact(await response.json());
+   }catch{}finally{if(live)setLoading(false);}
   };
-  void load();
-  return()=>{alive=false};
+  void read();return()=>{live=false;};
  },[orderId,orderStatus]);
- const stage=publicImpact?.programmeStatus;
- // Present the pledge briefly. The 10,000-order planting milestone is tracked in Green HQ
- // and explained on the optional Green details page, not as checkout progress.
- const heading=orderId?w.statusHeading:w.cartTitle;
- const statusMessage=(()=>{
-  if(!orderId)return stage==='ACTIVE'?w.cartActive:stage==='PAUSED'?w.cartPaused:w.cartPlanning;
-  if(loading||failed||!impact)return w.unavailable;
-  const messages:Record<OrderStatus,string>={
-   PLANNING:w.planning,PAUSED:w.paused,AWAITING_DELIVERY:w.awaiting,PLEDGED:w.pledged,
-   REPORTED:w.reported,VERIFIED:w.verified,VOID:w.voided,NOT_RECORDED:w.notRecorded,
-   INELIGIBLE:w.ineligible,
-  };
-  return messages[impact.status]||w.unavailable;
+ const description=(()=>{
+  if(!orderId)return mode==='PAUSED'?words.paused:words.cart;
+  if(loading||!impact)return words.unavailable;
+  return ({
+   PLANNING:words.planning,PAUSED:words.paused,AWAITING_DELIVERY:words.awaiting,
+   PLEDGED:words.pledged,REPORTED:words.reported,VERIFIED:words.verified,
+   VOID:words.voided,NOT_RECORDED:words.notRecorded,INELIGIBLE:words.ineligible,
+  } as Record<Status,string>)[impact.status]||words.unavailable;
  })();
- if(!orderId)return <section data-green-impact="cart"
-   className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-[#f3faf5] px-3 py-2.5 text-left"
-   aria-label={w.name}>
-    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-[#08784b]">
-      <TreePine size={19} aria-hidden="true"/>
-    </span>
-    <div className="min-w-0">
-      <p className="text-xs font-extrabold leading-4 text-[#075e45]">{w.name} <span aria-hidden="true">🌱</span></p>
-      <p className="mt-0.5 text-xs leading-4 text-[#37624b]" role="status">{statusMessage}</p>
-    </div>
+ if(!orderId)return <section data-green-impact="cart" aria-label={words.name}
+  className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-[#f3faf5] px-3 py-2.5 text-left">
+   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-[#08784b]"><TreePine size={19} aria-hidden="true"/></span>
+   <div className="min-w-0">
+    <p className="text-xs font-extrabold leading-4 text-[#075e45]">{words.name} 🌱</p>
+    <p className="mt-0.5 text-xs leading-4 text-[#37624b]" role="status">{description}</p>
+   </div>
   </section>;
- return <section data-green-impact={orderId?'order':'cart'}
-   className="rounded-2xl border border-emerald-200 bg-[#f3faf5] p-4 text-left shadow-sm"
-   aria-label={heading}>
-   <div className="flex items-start gap-3">
-    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-100 text-[#08784b]">
-      <TreePine size={23} aria-hidden="true"/>
-    </div>
-    <div className="min-w-0 flex-1">
-      <p className="text-sm font-black text-[#16402b]">{heading} <span className="font-semibold text-[#347155]">· {w.name}</span></p>
-      <p className="mt-1 text-sm font-extrabold leading-5 text-[#075e45]">{w.goal}</p>
-      <p className="mt-2 text-xs leading-5 text-[#335444]" role="status">{statusMessage}</p>
-    </div>
-   </div>
-   {orderId&&impact?.status==='VERIFIED'&&impact.proofUrl&&
+ return <section data-green-impact="order" aria-label={words.title}
+  className="rounded-xl border border-emerald-200 bg-[#f3faf5] px-3 py-3 text-left">
+  <p className="text-sm font-extrabold text-[#075e45]">🌱 {words.name}</p>
+  <p className="mt-1 text-xs leading-5 text-[#335444]" role="status">{description}</p>
+  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#37624b]">
+   <span>{words.noFee}</span>
+   {impact?.status==='VERIFIED'&&impact.proofUrl?
     <a href={impact.proofUrl} target="_blank" rel="noopener noreferrer"
-       className="mt-3 inline-flex gap-1.5 text-sm font-bold text-[#006745] underline underline-offset-2">
-       <ShieldCheck size={16} aria-hidden="true"/>{w.proof}
-    </a>}
-   <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-     <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#37624b]">
-       <Leaf size={13} aria-hidden="true"/>{w.zeroFee}
-     </span>
-     <Link href="/green" className="text-[11px] font-bold text-[#075e45] underline underline-offset-2">{w.about}</Link>
-   </div>
+       className="inline-flex items-center gap-1 font-bold underline"><ShieldCheck size={13}/>{words.proof}</a>
+    :<Link href="/green" className="font-bold underline underline-offset-2">{words.details}</Link>}
+  </div>
  </section>;
 }

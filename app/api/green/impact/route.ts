@@ -32,13 +32,13 @@ export async function GET(){
     partnerWebsite:active&&program.data.partner_public_website?program.data.partner_public_website:null,
     treeCommitments:committed.count||0,
     plantingBatch:greenBatchProgress(committed.count||0),
-    plantingPolicy:'The 10,000-order milestone is a target for a coordinated seasonal planting campaign, not proof of 10,000 trees planted or a guarantee of one planting day. Actual planting requires a vetted partner, approved land, available funding and documented evidence.',
+    plantingPolicy:'The new planned first milestone is 1,000 genuinely eligible delivered orders followed by consideration of 1–2 trees, subject to funding, a suitable planting site, care and evidence. No planted or reserved tree is attributed to each order. Legacy pledge counters are not counts of qualifying orders.',
     plantingReported:planted.count||0,
     verifiedPlanted:verified.count||0,
     isPlantingLive:active,
     countPolicy:'Only evidence-backed VERIFIED records are reported as verified planted. No historical or TEST orders are counted.',
     message:active
-      ?'A verified planting partner and funded tree quota are on file. One tree slot is reserved for each newly eligible delivered order while the funded quota lasts. Planting is verified separately.'
-      :'Zeshu Green is being prepared or paused. No one-tree-per-order promise is active. Past/test orders do not count as planted trees.',
+      ?'An older funded commitment programme is active but must not be represented as the new 1–2-tree pilot. Planting is verified separately.'
+      :'Zeshu Green is planning a small first milestone: explore 1–2 trees after 1,000 eligible future live delivered orders. No tree is currently reserved or planted for any new checkout, and past/TEST orders do not count.',
   });
 }
