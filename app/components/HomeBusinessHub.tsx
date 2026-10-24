@@ -125,8 +125,8 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
       <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[#075e45] text-[#deffc5]"><Leaf size={30} aria-hidden="true"/></span>
       <span className="min-w-0 flex-1">
        <span className="block text-base font-black text-[#075e45]">{t("Zeshu Green")}</span>
-       <span className="mt-0.5 block text-xs font-bold text-[#1b4431] md:text-sm">{t("Our goal: one tree for every eligible delivered order.")}</span>
-       <span className="mt-1 block text-[10px] leading-4 text-slate-600 md:text-xs">{t("Planting starts after partner verification and funded capacity.")}</span>
+       <span className="mt-0.5 block text-xs font-bold text-[#1b4431] md:text-sm">{t("Our first goal: 1–2 trees after 1,000 eligible deliveries.")}</span>
+       <span className="mt-1 block text-[10px] leading-4 text-slate-600 md:text-xs">{t("Still planning — no trees planted for orders yet.")}</span>
       </span>
       <span className="hidden whitespace-nowrap text-xs font-extrabold text-[#075e45] md:block">{t("See the plan")}</span>
       <ArrowUpRight size={20} className="shrink-0 text-[#075e45]" aria-hidden="true"/>
