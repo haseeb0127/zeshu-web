@@ -36,10 +36,10 @@ export function GreenCartNotice(){
    <div className="flex items-start gap-3">
     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#dcefdc]"><TreePine size={22} aria-hidden="true"/></span>
     <div className="min-w-0 flex-1">
-     <h3 className="text-sm font-black">{t('Zeshu Green · 1 order, 1 tree goal')}</h3>
+     <h3 className="text-sm font-black">{t('Zeshu Green · 10,000 orders, 10,000 trees goal')}</h3>
      <p className="mt-1 text-xs font-semibold leading-5">
-      {active?t('One funded tree slot may be reserved after an eligible order is delivered.')
-       :t('Our goal: one tree per eligible delivered order. Planting has not started yet.')}
+      {active?t('After an eligible order is delivered, one funded tree slot may count toward our 10,000-tree campaign.')
+       :t('Help us reach 10,000 eligible orders for a planned 10,000-tree planting campaign. Planting has not started yet.')}
      </p>
      <p className="mt-1 text-[11px] leading-4 text-[#4b6b57]">
       {t('One per order, not per product. No extra charge. A tree is not planted when you pay.')}
@@ -82,15 +82,15 @@ export function GreenOrderReceipt({orderId}:{orderId:string}){
   {state==='loading'&&<p className="mt-2 text-xs text-slate-600">{t('Checking your tree status…')}</p>}
   {state==='unavailable'&&<p className="mt-2 text-xs text-slate-600">{t('Tree status is temporarily unavailable. Your payment and order are not affected.')}</p>}
   {state==='ready'&&impact&&<>
-   {verified?<><p className="mt-2 text-sm font-black text-emerald-900">{t('1 tree planted and verified for this order')}</p>
+   {verified?<><p className="mt-2 text-sm font-black text-emerald-900">{t('You helped plant 1 verified tree!')}</p>
      <p className="mt-1 text-xs text-emerald-950">{impact.treeEvidence?.nativeSpecies} · {impact.treeEvidence?.plantingArea}</p>
      {impact.treeEvidence?.evidenceUrl&&<a href={impact.treeEvidence.evidenceUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-black text-[#075e45] underline">{t('View planting evidence')} <ExternalLink size={13}/></a>}
-    </>:status==='PLANTED'?<p className="mt-2 text-sm font-bold text-emerald-950">{t('1 tree reported planted · awaiting evidence verification')}</p>
-    :status==='PLEDGED'?<p className="mt-2 text-sm font-bold text-emerald-950">{t('1 funded tree slot reserved · planting pending')}</p>
+    </>:status==='PLANTED'?<p className="mt-2 text-sm font-bold text-emerald-950">{t('Your 1 tree was reported planted · verification pending')}</p>
+    :status==='PLEDGED'?<p className="mt-2 text-sm font-bold text-emerald-950">{t('Your order contributed 1 funded tree slot toward 10,000 trees · planting pending')}</p>
     :status==='VOID'?<p className="mt-2 text-xs text-slate-700">{t('This order has no active tree commitment.')}</p>
     :<p className="mt-2 text-xs font-semibold leading-5 text-slate-700">{live
       ?t('No tree commitment is linked to this order yet. Only qualifying delivered orders after launch can count.')
-      :t('Tree initiative is in planning. No tree has been planted or reserved for this order.')}</p>}
+      :t('Thanks for shopping! Our 10,000-order tree campaign is in planning; this order has not reserved or planted a tree.')}</p>}
    <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-4 text-[#526d59]"><ShieldCheck className="mt-0.5 shrink-0" size={13}/>{t('One tree per eligible delivered order, not per item. Paying alone does not plant a tree.')}</p>
   </>}
   <Link href="/green" className="mt-2 inline-flex items-center gap-1 text-xs font-black text-[#075e45] underline underline-offset-2">{t('View Zeshu Green progress')} <ExternalLink size={12}/></Link>
