@@ -16,7 +16,7 @@ type Words={
 };
 const lang:Record<"en"|"te"|"hi"|"ur",Words>={
  en:{
-  name:"Zeshu Green",cart:"Growing a greener future together. Tree planting is planned.",
+  name:"Zeshu Green",cart:"Your shopping helps Zeshu move toward planting trees.",
   title:"Your order & Zeshu Green",
   planning:"We're planning a small tree-planting drive after our first 1,000 eligible delivered orders. No tree is planted or reserved for this order.",
   paused:"Tree-planting plans are paused. No tree is claimed for this order.",
@@ -31,7 +31,7 @@ const lang:Record<"en"|"te"|"hi"|"ur",Words>={
   proof:"See verified planting evidence",details:"Our planting plan",noFee:"No extra fee",
  },
  te:{
-  name:"జెషు గ్రీన్",cart:"కలిసి పచ్చని భవిష్యత్తుకు తోడ్పడదాం. మొక్కలు నాటడం ప్రణాళికలో ఉంది.",
+  name:"జెషు గ్రీన్",cart:"మీ షాపింగ్‌తో భవిష్యత్తులో మొక్కలు నాటే లక్ష్యం వైపు జెషు అడుగు వేస్తుంది.",
   title:"మీ ఆర్డర్ మరియు జెషు గ్రీన్",
   planning:"మొదటి 1,000 అర్హమైన డెలివరీ ఆర్డర్ల తర్వాత కొన్ని మొక్కలు నాటాలని ప్రణాళిక. ఈ ఆర్డర్‌కు ఏ చెట్టూ కేటాయించలేదు లేదా నాటలేదు.",
   paused:"మొక్కలు నాటే ప్రణాళిక నిలిపివేయబడింది. ఈ ఆర్డర్‌కు చెట్టు నాటినట్లు చెప్పడం లేదు.",
@@ -46,7 +46,7 @@ const lang:Record<"en"|"te"|"hi"|"ur",Words>={
   proof:"ధృవీకరించిన ఆధారాలు",details:"మొక్కల ప్రణాళిక",noFee:"అదనపు రుసుము లేదు",
  },
  hi:{
-  name:"ज़ेशु ग्रीन",cart:"मिलकर हरियाली बढ़ाएँ। वृक्षारोपण की योजना बन रही है.",
+  name:"ज़ेशु ग्रीन",cart:"आपकी खरीदारी ज़ेशु को भविष्य में पेड़ लगाने के लक्ष्य की ओर बढ़ने में मदद करती है.",
   title:"आपका ऑर्डर और ज़ेशु ग्रीन",
   planning:"पहले 1,000 पात्र डिलीवर ऑर्डरों के बाद थोड़े पेड़ लगाने की योजना है। इस ऑर्डर के लिए अभी कोई पेड़ आरक्षित या लगाया नहीं गया है.",
   paused:"वृक्षारोपण योजना रुकी हुई है। इस ऑर्डर पर कोई पेड़ लगाने का दावा नहीं है.",
@@ -61,7 +61,7 @@ const lang:Record<"en"|"te"|"hi"|"ur",Words>={
   proof:"सत्यापित रोपण प्रमाण",details:"हमारी वृक्ष योजना",noFee:"कोई अतिरिक्त शुल्क नहीं",
  },
  ur:{
-  name:"زیشو گرین",cart:"مل کر سرسبز مستقبل بنائیں۔ شجرکاری ابھی منصوبہ بندی میں ہے۔",
+  name:"زیشو گرین",cart:"آپ کی خریداری زیشو کو مستقبل میں درخت لگانے کے مقصد کی طرف بڑھنے میں مدد دیتی ہے۔",
   title:"آپ کا آرڈر اور زیشو گرین",
   planning:"پہلے 1,000 اہل ڈیلیور آرڈرز کے بعد چند درخت لگانے کا منصوبہ ہے۔ اس آرڈر کے لیے کوئی درخت مختص یا لگایا نہیں گیا۔",
   paused:"شجرکاری کا منصوبہ رکا ہوا ہے۔ اس آرڈر کے لیے درخت لگنے کا دعویٰ نہیں۔",
