@@ -8,7 +8,7 @@ type Props = { supabaseClient: any };
 async function showSupportNotification(subject = "") {
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
   const priority = classifySupportPriority(subject);
-  const urgent = priority.label === "URGENT";
+  const urgent = priority.label === "P0";
   const title = urgent ? "URGENT Zeshu safety support" : "Zeshu customer needs support";
   const body = urgent ? "Open Support in ZESHU HQ now and review the safety escalation." : "Open Support in ZESHU HQ to reply.";
   try {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getRuntimeSupabaseEnv } from '@/app/lib/runtime-env';
+import { classifySupportCase } from '@/app/lib/support-taxonomy';
 
 async function getUser(request: Request) {
   const { url, anonKey } = await getRuntimeSupabaseEnv();
@@ -30,13 +31,35 @@ export async function POST(request: Request) {
   const subject = typeof body?.subject === 'string' && body.subject.trim() ? body.subject.trim().slice(0, 160) : 'Customer support';
   const message = typeof body?.message === 'string' ? body.message.trim() : '';
   const orderId = typeof body?.order_id === 'string' && body.order_id.trim() ? body.order_id.trim() : null;
+  const taxonomy = classifySupportCase(typeof body?.intent === 'string' ? body.intent : '', message);
+  const providerReference = typeof body?.provider_reference === 'string' ? body.provider_reference.trim().slice(0, 160) || null : null;
+  const serviceReference = typeof body?.service_reference === 'string' ? body.service_reference.trim().slice(0, 160) || null : orderId;
+  const conversationSummary = typeof body?.conversation_summary === 'string' ? body.conversation_summary.trim().slice(0, 1200) || null : message.slice(0, 1200);
   if (!message || message.length > 4000) return NextResponse.json({ error: 'Enter a support message.' }, { status: 400 });
   const service = createClient(url, serviceRoleKey);
   if (orderId) {
     const { data: ownedOrder } = await service.from('orders').select('id').eq('id', orderId).eq('user_id', user.id).maybeSingle();
     if (!ownedOrder) return NextResponse.json({ error: 'The selected order is not available.' }, { status: 400 });
   }
-  const { data: conversation, error: conversationError } = await service.from('support_conversations').insert({ user_id: user.id, order_id: orderId, subject, status: 'OPEN', resolved_at: null }).select('id,status,subject,order_id,created_at,updated_at').single();
+  const { data: conversation, error: conversationError } = await service.from('support_conversations').insert({
+    user_id: user.id,
+    order_id: orderId,
+    subject,
+    status: 'OPEN',
+    resolved_at: null,
+    support_service: taxonomy.service,
+    issue_type: taxonomy.issueType,
+    severity: taxonomy.severity,
+    priority: taxonomy.priority,
+    provider_reference: providerReference,
+    service_reference: serviceReference,
+    conversation_summary: conversationSummary,
+    ai_attempted: Boolean(body?.ai_attempted),
+    ai_resolved: typeof body?.ai_resolved === 'boolean' ? body.ai_resolved : null,
+    escalation_reason: typeof body?.escalation_reason === 'string'
+      ? body.escalation_reason.trim().slice(0, 500) || null
+      : taxonomy.escalationReason || null,
+  }).select('id,status,subject,order_id,support_service,issue_type,severity,priority,created_at,updated_at').single();
   if (conversationError || !conversation) return NextResponse.json({ error: 'Support is temporarily unavailable.' }, { status: 503 });
   const { error: messageError } = await service.from('support_messages').insert({ conversation_id: conversation.id, sender_user_id: user.id, sender_role: 'CUSTOMER', body: message });
   if (messageError) return NextResponse.json({ error: 'Your conversation could not be saved.' }, { status: 503 });

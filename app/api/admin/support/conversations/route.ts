@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   const service = createClient(url, serviceRoleKey);
   const { data: admin } = await service.from('admin_roles').select('user_id').eq('user_id', authData.user.id).eq('role', 'admin').maybeSingle();
   if (!admin) return NextResponse.json({ error: 'Admin access required.' }, { status: 403 });
-  const { data, error } = await service.from('support_conversations').select('id,user_id,status,subject,order_id,created_at,updated_at').order('updated_at', { ascending: false });
+  const { data, error } = await service.from('support_conversations').select('id,user_id,status,subject,order_id,support_service,issue_type,severity,priority,provider_reference,service_reference,conversation_summary,ai_attempted,ai_resolved,escalation_reason,created_at,updated_at').order('updated_at', { ascending: false });
   if (error) return NextResponse.json({ error: 'Support inbox is temporarily unavailable.' }, { status: 503 });
   const conversations = data || [];
   const ids = conversations.map((conversation) => conversation.id);
@@ -34,8 +34,10 @@ export async function GET(request: Request) {
   }
   const enriched = conversations.map((conversation) => {
     const lastMessage = latestByConversation.get(conversation.id) || null;
-    const priority = classifySupportPriority(String(conversation.subject || ''), String(lastMessage?.body || ''));
-    return { ...conversation, last_message: lastMessage, support_priority: priority.label, support_priority_rank: priority.rank };
+    const fallbackPriority = classifySupportPriority(String(conversation.subject || ''), String(lastMessage?.body || ''));
+    const supportPriority = conversation.severity || fallbackPriority.label;
+    const supportPriorityRank = Number.isInteger(conversation.priority) ? conversation.priority : fallbackPriority.rank;
+    return { ...conversation, last_message: lastMessage, support_priority: supportPriority, support_priority_rank: supportPriorityRank };
   }).sort((a, b) => {
     const resolvedDelta = Number(a.status === 'RESOLVED') - Number(b.status === 'RESOLVED');
     if (resolvedDelta !== 0) return resolvedDelta;
