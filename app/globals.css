@@ -156,8 +156,8 @@ input[aria-label="Search Zeshu"]:focus-visible { outline: none; box-shadow: none
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
     opacity: 1; pointer-events: none;
-    transition: opacity 300ms ease;
-    animation: zeshu-splash-safety-exit 500ms 5s forwards;
+    transition: opacity 180ms ease;
+    animation: zeshu-splash-safety-exit 250ms 1.5s forwards;
   }
   .zeshu-installed-app-splash img {
     width: min(56vw, 256px);

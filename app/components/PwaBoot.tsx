@@ -4,8 +4,8 @@ import { useEffect } from 'react';
 
 /**
  * Installed-PWA-only ivory launch screen with the owner's actual ZESHU logo.
- * Regular browser visits do not display the overlay. Do not wait forever:
- * a CSS fallback and JS timer always release the storefront.
+ * Regular browser visits do not display the overlay. Never wait for the load
+ * event of remote images to show the already-hydrated storefront.
  */
 export default function PwaBoot() {
   useEffect(() => {
@@ -24,29 +24,20 @@ export default function PwaBoot() {
       return;
     }
 
-    const startedAt = performance.now();
-    let fadeTimer = 0;
-    let removalTimer = 0;
-    const dismiss = () => {
-      const remaining = Math.max(0, 850 - (performance.now() - startedAt));
-      fadeTimer = window.setTimeout(() => {
-        overlay.classList.add('is-leaving');
-        removalTimer = window.setTimeout(() => overlay.remove(), 350);
-      }, remaining);
-    };
+    // This component runs after hydration. Do not wait for window.load:
+    // slow or stalled offscreen banner images shouldn't hold the entire app
+    // behind the splash screen. The browser has already painted the shell.
+    const fadeTimer = window.setTimeout(() => {
+      overlay.classList.add('is-leaving');
+    }, 120);
+    const removalTimer = window.setTimeout(() => overlay.remove(), 340);
 
-    if (document.readyState === 'complete') {
-      dismiss();
-    } else {
-      window.addEventListener('load', dismiss, { once: true });
-    }
-
-    const failsafe = window.setTimeout(() => overlay.remove(), 5500);
+    // Separate bounded safety fallback in case the fade callback stalls.
+    const failsafe = window.setTimeout(() => overlay.remove(), 1600);
     return () => {
-      window.clearTimeout(failsafe);
       window.clearTimeout(fadeTimer);
       window.clearTimeout(removalTimer);
-      window.removeEventListener('load', dismiss);
+      window.clearTimeout(failsafe);
     };
   }, []);
 
