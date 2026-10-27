@@ -231,9 +231,22 @@ export default function ZeshuWhatsappInbox(){
       </div>
     </header>
     <div className="mx-auto max-w-5xl px-3 py-4 md:px-5">
-      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-        <p className="flex items-center gap-2 font-black"><ShieldCheck size={18}/>Customer messaging is OFF</p>
-        <p className="mt-1 leading-5">Only messages actually received via your verified Meta webhook appear here. Replies are saved as drafts and are <strong>never sent</strong>. Do not expect mobile-app chats to sync without approved Coexistence.</p>
+      <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
+        <p className="flex items-center gap-2 font-black"><ShieldCheck size={18}/>Incoming messages ON · Paid sending OFF</p>
+        <p className="mt-1 leading-5">Customer messages arrive through Zeshu's verified Meta webhook at no Meta messaging charge. You can privately save reply drafts here; drafts are <strong>never sent</strong>. Mobile WhatsApp Business chats do not sync without approved Coexistence.</p>
+        <details className="mt-3 rounded-lg border border-emerald-200 bg-white p-3 text-xs leading-5">
+          <summary className="cursor-pointer font-bold">WhatsApp messaging costs and Zeshu's zero-spend policy</summary>
+          <p className="mt-2">India rates effective 1 October 2026, before GST and any provider fees:</p>
+          <ul className="mt-1 list-inside list-disc space-y-1">
+            <li>Customer-to-Zeshu incoming messages: free.</li>
+            <li>Non-template service replies within 24 hours: first 1,000 each month per number free; then ₹0.115 per delivered message.</li>
+            <li>Order/utility and authentication templates: ₹0.115 per delivered message.</li>
+            <li>Marketing/promotional templates: ₹0.8631 per delivered message; paid campaigns require separate approval.</li>
+          </ul>
+          <p className="mt-2 font-semibold">This Inbox cannot verify how much of Meta's number-wide monthly free allowance remains. To prevent unexpected charges, outbound customer sends and paid templates remain disabled. No reply, campaign, or recurring subscription will be enabled by this screen.</p>
+          <a href="https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing"
+            target="_blank" rel="noopener noreferrer" className="mt-2 inline-block font-bold underline underline-offset-2">Meta's official pricing and current rate card</a>
+        </details>
       </div>
       {!loading&&webhook&&
         <section aria-label="WhatsApp connection status"
