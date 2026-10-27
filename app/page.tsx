@@ -5,9 +5,11 @@ import Script from 'next/script';
 import dynamic from 'next/dynamic';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from './components/DocumentLink';
-import OrderStatusTimeline from './components/OrderStatusTimeline';
+// Order tracking and reviews should not be downloaded during storefront startup.
+const OrderStatusTimeline = dynamic(() => import('./components/OrderStatusTimeline'));
 import ProductCard from './components/ProductCard';
-import ReviewForm, { ReviewProduct } from './components/ReviewForm';
+import type { ReviewProduct } from './components/ReviewForm';
+const ReviewForm = dynamic(() => import('./components/ReviewForm'));
 import type { LocationSelection } from './components/LocationSelector';
 // Location maps are not needed to view the storefront. Load this sizeable
 // picker only after the customer explicitly opens the address dialog.
@@ -31,7 +33,7 @@ import { catalogSearchScore, getCatalogSearchRecommendations, isCatalogSearchMat
 import { CUSTOMER_CATEGORY_DEFINITIONS, campaignMatchesCustomerCategory, categoryDefinition, productMatchesCustomerCategory } from './lib/catalog-categories';
 import { isFreshThirtyMinuteCandidate, isIndiaReadyProduct } from './lib/fulfillment';
 import { groupCartByFulfillment, marketplaceRecommendedScore, type MarketplaceSeller } from './lib/marketplace';
-import GreenOrderImpact from './components/GreenOrderImpact';
+const GreenOrderImpact = dynamic(() => import('./components/GreenOrderImpact'));
 import { classifySupportCategory } from './lib/support-category';
 
 const supabase = customerSupabase();
@@ -939,23 +941,41 @@ export default function ZeshuSuperApp() {
       }
       // Product and seller requests are independent. Do not make shoppers wait
       // for one response before the other starts on a mobile connection.
-      const sellerPromise = fetch('/api/marketplace/sellers', { cache: 'no-store' })
-        .then(async response => response.json().catch(() => ({})))
-        .catch(() => ({}));
-      const productsResult = await supabase.from('products').select('*');
-      const pData = productsResult.data;
-      const productsError = productsResult.error;
-      if (pData) { setProducts(pData); localStorage.setItem('zeshu_products', JSON.stringify(pData)); }
-      if (productsError) setContentError(true);
-
+      // Seller metadata enhances product cards but is NOT required before we
+      // can show the verified product catalogue. A slow seller endpoint must not
+      // keep six skeleton cards on screen indefinitely.
+      void fetch('/api/marketplace/sellers', { cache: 'no-store' })
+        .then(async response => response.ok ? response.json().catch(() => ({})) : ({}))
+        .then(sellerPayload => {
+          const sellerRows = Array.isArray(sellerPayload?.sellers) ? sellerPayload.sellers as MarketplaceSeller[] : [];
+          setMarketplaceSellers(Object.fromEntries(sellerRows.map((seller) => [String(seller.id), seller])));
+        }).catch(() => setMarketplaceSellers({}));
       try {
-        const sellerPayload = await sellerPromise;
-        const sellerRows = Array.isArray(sellerPayload?.sellers) ? sellerPayload.sellers as MarketplaceSeller[] : [];
-        setMarketplaceSellers(Object.fromEntries(sellerRows.map((seller) => [String(seller.id), seller])));
+        const { data: freshProducts, error: productsError } = await supabase.from('products').select('*');
+        if (productsError || !freshProducts) {
+          // A cached product image/price must never be mistaken for current
+          // inventory after a failed live refresh.
+          setContentError(true);
+        } else {
+          setProducts(freshProducts);
+          setContentError(false);
+          // Synchronous storage serialization can block entry-level Android
+          // devices. Defer this optional cache write until after paint.
+          const saveProducts = () => {
+            try { localStorage.setItem('zeshu_products', JSON.stringify(freshProducts)); }
+            catch { /* Storage full or disabled: live products still display. */ }
+          };
+          if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(saveProducts, { timeout: 2000 });
+          } else {
+            window.setTimeout(saveProducts, 0);
+          }
+        }
       } catch {
-        setMarketplaceSellers({});
+        setContentError(true);
+      } finally {
+        setProductsLoading(false);
       }
-      setProductsLoading(false);
     };
     
     void fetchAppContent();
