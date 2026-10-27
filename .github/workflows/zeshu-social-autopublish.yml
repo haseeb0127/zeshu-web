@@ -1,0 +1,45 @@
+name: Zeshu social autopublisher (isolated)
+
+on:
+  push:
+    branches:
+      - automation/buffer-social-publisher-20261027
+    paths:
+      - "social-queue/*.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: zeshu-social-publisher-20261027
+  cancel-in-progress: false
+
+jobs:
+  submit-to-buffer:
+    name: Submit approved videos to three Buffer channels
+    if: github.repository == 'haseeb0127/zeshu-web' && github.ref == 'refs/heads/automation/buffer-social-publisher-20261027'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout isolated automation branch
+        uses: actions/checkout@v4
+        with:
+          ref: automation/buffer-social-publisher-20261027
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Require Buffer API key in GitHub Actions Secrets
+        env:
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+        run: |
+          if [ -z "$BUFFER_API_KEY" ]; then
+            echo 'BUFFER_API_KEY is not configured. No network publishing attempted.'
+            exit 1
+          fi
+      - name: Submit each approved video exactly once per channel
+        env:
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+        run: node scripts/zeshu-buffer-social.mjs social-queue
