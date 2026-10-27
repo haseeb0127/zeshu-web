@@ -2854,10 +2854,10 @@ export function CustomerLanguageProvider({ children }: { children: React.ReactNo
     setLanguageState(next);
   }, []);
 
-  useEffect(() => {
-    applyDocumentLanguage(language);
-  }, [language]);
-
+  // Initialization above and the explicit language selector below are the only
+  // paths that change the language. Do not run a second initial effect using
+  // language='en': it can overwrite the saved Urdu RTL direction before the
+  // persisted-language state update commits on slower mobile devices.
   const setLanguage = useCallback((next: CustomerLanguageCode) => {
     // Make language selection visually immediate, especially for Urdu RTL.
     applyDocumentLanguage(next);

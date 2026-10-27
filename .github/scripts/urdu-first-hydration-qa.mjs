@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const content=readFileSync('app/components/CustomerLanguageProvider.tsx','utf8');
+assert(content.includes('const STORAGE_KEY = "zeshu.customer.language";'),'Customer persisted-language key must stay stable');
+assert(content.includes('applyDocumentLanguage(next);'),'Saved language must update document direction before rerender');
+assert(content.includes('setLanguageState(next);'),'Saved locale must update translation context');
+assert(content.includes('applyDocumentLanguage(next);\n    setLanguageState(next);'),'Saved locale order must preserve correct RTL direction');
+assert(!content.includes('applyDocumentLanguage(language);\n  }, [language]);'),'Initial default English useEffect can overwrite saved Urdu RTL while hydration is pending');
+assert(content.includes('const setLanguage = useCallback')&&content.includes('applyDocumentLanguage(next);\n    setLanguageState(next);'),'Language selector must update document and state together');
+assert(content.includes('document.documentElement.dir = direction;'),'RTL direction must be applied to html root');
+assert(content.includes('document.body.dir = direction;'),'RTL direction must be applied to body');
+assert(content.includes('const direction = language === "ur" ? "rtl" : "ltr";'),'Urdu must be RTL');
+console.log('PASS: persisted Urdu language wins initial mount without being overwritten by stale English effect');
