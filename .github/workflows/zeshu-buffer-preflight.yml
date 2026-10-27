@@ -1,0 +1,26 @@
+name: Zeshu Buffer connection (read only)
+on:
+  push:
+    branches:
+      - automation/buffer-social-publisher-20261027
+    paths:
+      - "scripts/zeshu-buffer-preflight.mjs"
+      - ".github/workflows/zeshu-buffer-preflight.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    if: github.repository == 'haseeb0127/zeshu-web'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: automation/buffer-social-publisher-20261027
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify Buffer key and the three connected Zeshu channels, read only
+        env:
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+        run: node scripts/zeshu-buffer-preflight.mjs
