@@ -6,7 +6,7 @@ const impact=file('app/components/GreenOrderImpact.tsx');
 const orderApi=file('app/api/green/orders/[id]/route.ts');
 const green=file('app/green/page.tsx');
 const docs=file('docs/ZESHU_GREEN_TREE_PROGRAM.md');
-const translations=file('app/components/CustomerLanguageProvider.tsx');
+const translations=['te','hi','ur'].map(locale=>file('app/components/customer-translations/'+locale+'.ts')).join('\\n');
 
 assert(page.includes('<GreenOrderImpact />'));
 assert(page.includes('<GreenOrderImpact orderId={trackedOrder.id} orderStatus={trackedOrder.status} />'));
