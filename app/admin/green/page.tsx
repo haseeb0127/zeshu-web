@@ -11,7 +11,7 @@ type Readiness={
  gates:{verifiedPlantingAgreement:boolean;publicPartnerWebsite:boolean;actualPerTreeCost:boolean;
  realFundedQuota:boolean;operatorVerifiedLiveOrders:boolean;paymentGatewayLive:boolean;explicitActivation:boolean};
  fundedTreeQuota:number;reserved:number;remainingTreeCapacity:number;treeUnitBudgetPaise:number|null;
- plantingBatch:{milestoneOrders:number;qualifyingOrdersTracked:number;completeBatches:number;progressInCurrentBatch:number;ordersUntilNextMilestone:number;milestoneReached:boolean};
+ pilotGoal:{eligibleDeliveredOrdersMilestone:number;plannedTreesMin:number;plannedTreesMax:number;eligibleDeliveredOrdersTracked:null;trackingEnabled:false;note:string};
  bulkPlantingAuthorized:false;plantingBatchPolicy:string;
  totalAllocatedBudgetPaise:number|null;counts:{pledged:number;reported:number;verified:number;voided:number};
  lastConfigurationUpdate:string;canAnnouncePerOrderPromise:boolean;
