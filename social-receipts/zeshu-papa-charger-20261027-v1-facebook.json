@@ -1,7 +1,11 @@
 {
   "id": "zeshu-papa-charger-20261027-v1",
   "platform": "facebook",
-  "status": "submitting",
-  "at": "2026-10-27T16:22:54.003Z",
-  "note": "Check Buffer before any retry."
+  "status": "buffer_accepted",
+  "buffer_post_id": "6ae0cfe0b256432e5417662b",
+  "buffer_status": "sent",
+  "due_at": "2026-10-27T16:22:56.499Z",
+  "external_link": "https://facebook.com/1248332155039500_122116533315503379",
+  "at": "2026-10-27T16:23:06.778Z",
+  "note": "Buffer accepted the submission. Verify public platform publication separately."
 }
