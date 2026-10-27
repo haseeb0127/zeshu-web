@@ -1,7 +1,6 @@
 import {NextResponse} from 'next/server';
 import {createClient} from '@supabase/supabase-js';
 import {getRuntimeSupabaseEnv} from '@/app/lib/runtime-env';
-import {greenBatchProgress} from '@/app/lib/zeshu-green-batch';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -31,7 +30,14 @@ export async function GET(){
     partner:active&&program.data.planting_partner?program.data.planting_partner:null,
     partnerWebsite:active&&program.data.partner_public_website?program.data.partner_public_website:null,
     treeCommitments:committed.count||0,
-    plantingBatch:greenBatchProgress(committed.count||0),
+    pilotGoal:{
+      eligibleDeliveredOrdersMilestone:1000,
+      plannedTreesMin:1,
+      plannedTreesMax:2,
+      eligibleDeliveredOrdersTracked:null,
+      trackingEnabled:false,
+      note:'The 1,000-order pilot has no approved live qualifying-order tracker yet. Old tree commitments are not customer orders.',
+    },
     plantingPolicy:'The new planned first milestone is 1,000 genuinely eligible delivered orders followed by consideration of 1–2 trees, subject to funding, a suitable planting site, care and evidence. No planted or reserved tree is attributed to each order. Legacy pledge counters are not counts of qualifying orders.',
     plantingReported:planted.count||0,
     verifiedPlanted:verified.count||0,
