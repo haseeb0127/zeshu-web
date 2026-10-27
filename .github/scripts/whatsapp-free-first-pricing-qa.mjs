@@ -9,7 +9,7 @@ assert(inbox.includes('Incoming messages ON · Paid sending OFF'));
 assert(inbox.includes('first 1,000 each month per number free; then ₹0.115'));
 assert(inbox.includes('Marketing/promotional templates: ₹0.8631'));
 assert(inbox.includes('outbound customer sends and paid templates remain disabled.'));
-assert(inbox.includes('remaining'));
+assert(inbox.includes('cannot verify how much of Meta\'s number-wide monthly free allowance remains'));
 assert(inbox.includes('Meta\'s official pricing and current rate card'));
 assert(api.includes("payload.action!=='save_draft'"),'Inbox must refuse all sending actions');
 assert(api.includes('canSend:false'),'Inbox may not advertise enabled sending');
