@@ -188,11 +188,11 @@ class MainActivity : AppCompatActivity() {
     private fun revealFirstPage() {
         if (firstPageVisible || loadingFailed) return
         firstPageVisible = true
-        val minimumDisplay = maxOf(0L, 850L - (SystemClock.uptimeMillis() - splashStartedAt))
+        val minimumDisplay = maxOf(0L, 250L - (SystemClock.uptimeMillis() - splashStartedAt))
         splashHandler.postDelayed({
             if (!isFinishing && !isDestroyed) {
                 webView.visibility = View.VISIBLE
-                startupOverlay.animate().alpha(0f).setDuration(240L).withEndAction {
+                startupOverlay.animate().alpha(0f).setDuration(160L).withEndAction {
                     startupOverlay.visibility = View.GONE
                 }.start()
             }
