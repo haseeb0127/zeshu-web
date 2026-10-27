@@ -78,8 +78,9 @@ assert(page.includes('Based in Jagtial, Telangana'), 'Homepage footer must state
 assert(layout.includes('Telangana Move & Courier'), 'Site metadata must describe broader Zeshu service scope');
 assert(layout.includes('India-wide digital services'), 'Site metadata must describe digital-service scope');
 
-for (const languageSection of ['te:', 'hi:', 'ur:']) {
-  assert(translations.includes(languageSection), `Translation dictionary missing ${languageSection}`);
+for (const locale of ['te','hi','ur']) {
+  assert(read('app/components/customer-translations/'+locale+'.ts').includes('export default {'),
+    `Deferred translation dictionary missing ${locale}`);
 }
 for (const phrase of [
   '"Zeshu Dine"',
