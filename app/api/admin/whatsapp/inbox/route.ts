@@ -13,7 +13,8 @@ export async function GET(request:Request){
   if(error)return NextResponse.json({error:'WhatsApp inbox is temporarily unavailable.'},{status:503,headers:inboxNoStore});
   return NextResponse.json({
     conversations:data||[],
-    outboundEnabled:false,
-    note:'Inbound messages only. WhatsApp sending is disabled until explicit approval.',
+    manualSupportRepliesAvailable:true,
+    campaignsEnabled:false,templatesEnabled:false,automationEnabled:false,
+    note:'Human-confirmed non-template support replies only within eligible 24h customer windows, capped to 500 reservations in any rolling 35 days. Sending is disabled outside these safety checks.',
   },{headers:inboxNoStore});
 }
