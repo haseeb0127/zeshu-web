@@ -1,0 +1,12 @@
+{
+  "id": "zeshu-example-DO-NOT-QUEUE",
+  "video_url": "https://media.example.com/zeshu-video.mp4",
+  "caption": "Original Zeshu Indian family comedy 😂\nNeed it? Zeshu it. https://zeshu.in\n#Zeshu #HindiComedy #FamilyComedy",
+  "youtube_title": "Zeshu Family Comedy 😂 | #Shorts",
+  "platforms": [
+    "instagram",
+    "facebook",
+    "youtube"
+  ],
+  "mode": "addToQueue"
+}
