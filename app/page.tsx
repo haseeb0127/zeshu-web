@@ -2,12 +2,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import Script from 'next/script';
+import dynamic from 'next/dynamic';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from './components/DocumentLink';
 import OrderStatusTimeline from './components/OrderStatusTimeline';
 import ProductCard from './components/ProductCard';
 import ReviewForm, { ReviewProduct } from './components/ReviewForm';
-import LocationSelector, { type LocationSelection } from './components/LocationSelector';
+import type { LocationSelection } from './components/LocationSelector';
+// Location maps are not needed to view the storefront. Load this sizeable
+// picker only after the customer explicitly opens the address dialog.
+const LocationSelector = dynamic(() => import('./components/LocationSelector'), {
+  ssr: false,
+  loading: () => <div role="status" className="fixed inset-0 z-[120] grid place-items-center bg-white/95 text-sm font-semibold text-[#075e45]">Opening location picker…</div>,
+});
 import HomeBusinessHub from './components/HomeBusinessHub';
 import ReferenceArtwork from './components/ReferenceArtwork';
 import { LanguageSwitcher, useCustomerLanguage } from './components/CustomerLanguageProvider';
@@ -930,6 +937,11 @@ export default function ZeshuSuperApp() {
       if (cachedProducts) {
         try { setProducts(JSON.parse(cachedProducts)); } catch { localStorage.removeItem('zeshu_products'); }
       }
+      // Product and seller requests are independent. Do not make shoppers wait
+      // for one response before the other starts on a mobile connection.
+      const sellerPromise = fetch('/api/marketplace/sellers', { cache: 'no-store' })
+        .then(async response => response.json().catch(() => ({})))
+        .catch(() => ({}));
       const productsResult = await supabase.from('products').select('*');
       const pData = productsResult.data;
       const productsError = productsResult.error;
@@ -937,8 +949,7 @@ export default function ZeshuSuperApp() {
       if (productsError) setContentError(true);
 
       try {
-        const sellerResponse = await fetch('/api/marketplace/sellers', { cache: 'no-store' });
-        const sellerPayload = await sellerResponse.json().catch(() => ({}));
+        const sellerPayload = await sellerPromise;
         const sellerRows = Array.isArray(sellerPayload?.sellers) ? sellerPayload.sellers as MarketplaceSeller[] : [];
         setMarketplaceSellers(Object.fromEntries(sellerRows.map((seller) => [String(seller.id), seller])));
       } catch {
@@ -3025,7 +3036,7 @@ export default function ZeshuSuperApp() {
 
   return (
     <div data-zeshu-experience="glossy" className="zeshu-experience min-h-screen bg-[#F7F9F5] font-sans antialiased text-[#111827] overflow-x-hidden relative">
-      <LocationSelector open={locationSelectorOpen} initial={locationSelection} onClose={() => { setLocationSelectorOpen(false); setPendingAddProduct(null); }} onExploreDigital={() => { setLocationSelectorOpen(false); setPendingAddProduct(null); setActiveTab('recharge'); }} onConfirm={(selection, address) => {
+      {locationSelectorOpen && <LocationSelector open={locationSelectorOpen} initial={locationSelection} onClose={() => { setLocationSelectorOpen(false); setPendingAddProduct(null); }} onExploreDigital={() => { setLocationSelectorOpen(false); setPendingAddProduct(null); setActiveTab('recharge'); }} onConfirm={(selection, address) => {
         setDeliveryServiceability('ELIGIBLE');
         setLocationSelection(selection);
         setLocationAccuracy(selection.accuracy);
@@ -3058,7 +3069,7 @@ export default function ZeshuSuperApp() {
         }
         setAddressFormOpen(true);
         showToast(details ? 'Delivery available. Address details were filled from the map.' : 'Delivery available. Add your house or flat details.');
-      }} />
+      }} />}
       {isOffline && <div role="status" aria-live="polite" className="fixed left-1/2 top-20 z-[145] -translate-x-1/2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs font-bold text-amber-900 shadow-sm">You&apos;re offline. Live location and ETA may be delayed.</div>}
       <div className={`fixed bottom-32 left-1/2 -translate-x-1/2 z-[150] transition-all duration-500 ${toastMessage ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-95 pointer-events-none'}`}>
         <div className="bg-[#1F2937]/95 backdrop-blur-xl text-white px-6 py-3.5 rounded-full font-bold text-sm shadow-2xl flex items-center gap-2.5 border border-white/10"><CheckCircle size={18} className="text-[#10B981]"/>{toastMessage}</div>
