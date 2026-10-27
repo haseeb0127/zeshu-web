@@ -25,11 +25,19 @@ assert(!sw.includes('cache.put('),'Do not store private HTML or customer session
 assert(home.includes("import dynamic from 'next/dynamic'"),'Dynamic module loading is required for optional map picker');
 assert(home.includes("dynamic(() => import('./components/LocationSelector')"),'Map picker must be split into a separate client chunk');
 assert(home.includes('locationSelectorOpen && <LocationSelector'),'Map picker JS must load only when opened');
-assert(home.includes('const sellerPromise = fetch(\'/api/marketplace/sellers\''),'Seller lookup must begin without waiting for product query');
-assert(home.indexOf('const sellerPromise = fetch(\'/api/marketplace/sellers\'') <
-  home.indexOf("const productsResult = await supabase.from('products').select('*')"),
-  'Product and seller requests must not form a mobile network waterfall');
-assert(home.includes('const sellerPayload = await sellerPromise'),'Seller responses must still be used');
+assert(home.includes("void fetch('/api/marketplace/sellers'"),'Seller lookup must launch independently and without waiting for products');
+assert(home.indexOf("void fetch('/api/marketplace/sellers'") <
+  home.indexOf("await supabase.from('products').select('*')"),
+  'Product and seller requests must remain concurrent on slow connections');
+assert(!home.includes('await sellerPromise'),'Seller directory must not block product skeleton dismissal');
+assert(home.includes('setProductsLoading(false);')&&home.includes('} finally {'),'Product loader must finish even if live product request fails');
+assert(home.includes("response.ok ? response.json()"),'Failed seller HTTP responses must not block the storefront');
+assert(home.includes('setMarketplaceSellers(Object.fromEntries'),'Seller response must still populate verified labels');
+assert(home.includes("dynamic(() => import('./components/ReviewForm'))"),'Review UI must load only when needed');
+assert(home.includes("dynamic(() => import('./components/OrderStatusTimeline'))"),'Tracking UI must load only when needed');
+assert(home.includes("dynamic(() => import('./components/GreenOrderImpact'))"),'Order-specific green UI should be a deferred chunk');
+assert(home.includes('window.requestIdleCallback(saveProducts'),'Optional product cache writes must not block initial Android paint');
+assert(home.includes('setContentError(true);'),'Live catalog failures must not masquerade as verified inventory');
 assert(home.includes('<Script id="razorpay-checkout-js"'),'Preserve existing checkout script and payment behavior');
 assert(art.includes('loading={loading}') && art.includes('decoding="async"'),'Glossy posters must retain native lazy decoding');
-console.log('PASS: faster PWA/Android launch, deferred map picker, concurrent products/sellers, and unchanged payment / offline privacy.');
+console.log('PASS: faster PWA/Android launch, deferred map/reviews, nonblocking seller request, idle cache and unchanged payment / offline privacy.');
