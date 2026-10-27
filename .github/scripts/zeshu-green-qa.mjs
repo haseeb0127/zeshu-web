@@ -7,7 +7,7 @@ const guard=read('supabase/migrations/20261014235500_zeshu_green_evidence_guards
 const impact=read('app/api/green/impact/route.ts');
 const green=read('app/green/page.tsx');
 const hub=read('app/components/HomeBusinessHub.tsx');
-const lang=read('app/components/CustomerLanguageProvider.tsx');
+const lang=['te','hi','ur'].map(locale=>read('app/components/customer-translations/'+locale+'.ts')).join('\\n');
 const docs=read('docs/ZESHU_GREEN_TREE_PROGRAM.md');
 const ownerApi=read('app/api/admin/green/route.ts');
 const ownerPage=read('app/admin/green/page.tsx');

@@ -8,7 +8,7 @@ const assert = (value: unknown, message: string) => {
 const homeHub = read('app/components/HomeBusinessHub.tsx');
 const page = read('app/page.tsx');
 const layout = read('app/layout.tsx');
-const translations = read('app/components/CustomerLanguageProvider.tsx');
+const translations = ['te','hi','ur'].map(locale=>read('app/components/customer-translations/'+locale+'.ts')).join('\\n');
 
 for (const phrase of [
   'Shop, pay, move and get help with Zeshu.',
@@ -78,8 +78,9 @@ assert(page.includes('Based in Jagtial, Telangana'), 'Homepage footer must state
 assert(layout.includes('Telangana Move & Courier'), 'Site metadata must describe broader Zeshu service scope');
 assert(layout.includes('India-wide digital services'), 'Site metadata must describe digital-service scope');
 
-for (const languageSection of ['te:', 'hi:', 'ur:']) {
-  assert(translations.includes(languageSection), `Translation dictionary missing ${languageSection}`);
+for (const locale of ['te','hi','ur']) {
+  assert(read('app/components/customer-translations/'+locale+'.ts').includes('export default {'),
+    `Deferred translation dictionary missing ${locale}`);
 }
 for (const phrase of [
   '"Zeshu Dine"',
