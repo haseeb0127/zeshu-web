@@ -1,7 +1,6 @@
 import {NextResponse} from 'next/server';
 import {authorizeWhatsAppInboxAdmin,inboxNoStore} from '@/app/lib/whatsapp-inbox-auth';
 import {getRuntimeEnvValue} from '@/app/lib/runtime-env';
-import {greenBatchProgress} from '@/app/lib/zeshu-green-batch';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -51,7 +50,14 @@ export async function GET(request:Request){
     fundedTreeQuota:quota,
     reserved,
     remainingTreeCapacity:Math.max(0,quota-reserved),
-    plantingBatch:greenBatchProgress(reserved),
+    pilotGoal:{
+      eligibleDeliveredOrdersMilestone:1000,
+      plannedTreesMin:1,
+      plannedTreesMax:2,
+      eligibleDeliveredOrdersTracked:null,
+      trackingEnabled:false,
+      note:'The older tree commitment count must never be displayed as progress toward 1,000 actual deliveries.',
+    },
     bulkPlantingAuthorized:false,
     plantingBatchPolicy:'New PLANNING goal: consider planting 1–2 trees after the first 1,000 eligible real delivered orders. No eligible live order counter or partner arrangement has been activated. The legacy internal commitment counter is NOT an order counter and must not be used to claim the milestone. Planting, payment and activation remain separate manual decisions.',
     treeUnitBudgetPaise:unitCost,
