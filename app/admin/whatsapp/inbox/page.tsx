@@ -8,7 +8,8 @@ import {ArrowLeft,RefreshCw,MessageCircle,ShieldCheck,FilePenLine,ChevronLeft} f
 const supabase=adminSupabase();
 type Thread={id:string;customer_wa_id:string;display_name:string;last_message_preview:string;last_message_at:string|null;status:string};
 type Message={id:string;direction:'INBOUND';message_type:string;body:string;sent_at:string};
-type Detail={thread:Thread;messages:Message[];draft:{body:string;updated_at:string}|null;canSend:false};
+type SentReply={id:string;body:string;state:'RESERVED'|'ACCEPTED'|'REJECTED'|'UNKNOWN';created_at:string};
+type Detail={thread:Thread;messages:Message[];draft:{body:string;updated_at:string}|null;sentReplies:SentReply[];canSend:boolean;freeReplyRemaining:number;lastCustomerMessageAt:string|null;manualServiceOnly:true;templatesEnabled:false;promotionsEnabled:false;note:string};
 type WebhookReadiness={
   webhookCallbackUrl:string;webhookSecretsPresent:boolean;accountIdentifiersPresent:boolean;
   observedSignedCallbacks:number;observedMatchingAccountCallbacks:number;
@@ -30,6 +31,7 @@ export default function ZeshuWhatsappInbox(){
   const [draft,setDraft]=useState('');
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
+  const [sending,setSending]=useState(false);
   const [error,setError]=useState('');
   const [notice,setNotice]=useState('');
   const [repairBusy,setRepairBusy]=useState(false);
@@ -201,6 +203,25 @@ export default function ZeshuWhatsappInbox(){
       setRepairOutcome('The private connection check could not complete. No message or phone registration was initiated.');
     }finally{setRepairBusy(false);}
   };
+  const sendManualReply=async()=>{
+    if(!selected||!detail?.canSend||!draft.trim()||saving||sending)return;
+    const approved=window.confirm('Send ONE customer-service reply now? Only customer-initiated windows are eligible. No templates or promotions. Meta shares 1,000 free service messages per number/month ACROSS all senders; if other senders used that allowance Meta may charge. Continue?');
+    if(!approved)return;
+    setSending(true);setError('');setNotice('');
+    const requestId=crypto.randomUUID();
+    try{
+      const response=await fetch('/api/admin/whatsapp/inbox/'+encodeURIComponent(selected),{
+        method:'POST',headers:{...(await auth()),'Content-Type':'application/json'},
+        body:JSON.stringify({action:'send_free_service_reply',body:draft.trim(),requestId,confirmedHumanReply:true}),
+      });
+      const result=await response.json().catch(()=>({}));
+      if(!response.ok)throw Error(result.error||'Meta did not confirm the reply. Do not resend blindly.');
+      setDraft('');
+      await loadThread(selected);
+      setNotice('Meta accepted the reply (delivery not yet confirmed). No template or campaign was sent.');
+    }catch(e){setError(e instanceof Error?e.message:'Reply status uncertain. Do not resend blindly.');}
+    finally{setSending(false);}
+  };
   const saveDraft=async()=>{
     if(!selected||!draft.trim()||saving)return;
     setSaving(true);setError('');setNotice('');
@@ -233,7 +254,7 @@ export default function ZeshuWhatsappInbox(){
     <div className="mx-auto max-w-5xl px-3 py-4 md:px-5">
       <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
         <p className="flex items-center gap-2 font-black"><ShieldCheck size={18}/>Customer messaging is OFF</p>
-        <p className="mt-1 leading-5">Only messages actually received via your verified Meta webhook appear here. Replies are saved as drafts and are <strong>never sent</strong>. Do not expect mobile-app chats to sync without approved Coexistence.</p>
+        <p className="mt-1 leading-5">Only messages received through Meta and human-approved service replies appear here. Replies are limited to an eligible customer-service window with a conservative safety cap. No promotional templates, automation or mobile-app Coexistence.</p>
       </div>
       {!loading&&webhook&&
         <section aria-label="WhatsApp connection status"
@@ -370,16 +391,34 @@ export default function ZeshuWhatsappInbox(){
                     <p className="whitespace-pre-wrap break-words text-sm leading-6">{m.body}</p>
                     <p className="mt-1 text-right text-[10px] text-slate-500">{date(m.sent_at)} · Received</p>
                   </div>)}
+                {(detail.sentReplies||[]).length>0&&<section aria-label="Manual reply attempts" className="border-t border-emerald-300 pt-2">
+                  <p className="mb-2 text-xs font-black text-emerald-950">Manual replies (Meta acceptance is not delivery)</p>
+                  {(detail.sentReplies||[]).map(item=><div key={item.id} className="mb-2 ml-auto max-w-[93%] rounded-2xl bg-[#d4f6dc] p-3 shadow-sm sm:max-w-[85%]">
+                    <p className="whitespace-pre-wrap break-words text-sm">{item.body}</p>
+                    <p className="mt-1 text-right text-[10px] text-emerald-900">{date(item.created_at)} · {item.state==='ACCEPTED'?'Meta accepted; delivery not confirmed':item.state==='REJECTED'?'Rejected by Meta':item.state==='UNKNOWN'?'Unknown; do not retry':'Reserved; check before resending'}</p>
+                  </div>)}
+                </section>}
               </div>
               <form onSubmit={e=>{e.preventDefault();void saveDraft();}} className="space-y-2 border-t border-slate-100 p-4">
-                <label htmlFor="whatsapp-inbox-draft" className="flex items-center gap-2 text-sm font-black"><FilePenLine size={17}/>Reply draft (not sent)</label>
+                <label htmlFor="whatsapp-inbox-draft" className="flex items-center gap-2 text-sm font-black"><FilePenLine size={17}/>Customer-service reply</label>
                 <textarea id="whatsapp-inbox-draft" value={draft} onChange={e=>setDraft(e.target.value)}
-                  maxLength={4000} rows={3} placeholder="Write a response to save for later review…"
+                  maxLength={4000} rows={3} placeholder="Write a customer-support reply (no promotions)…"
                   className="w-full resize-y rounded-xl border border-slate-300 bg-white p-3 text-sm outline-none focus:border-emerald-700"/>
-                <button type="submit" disabled={saving||!draft.trim()} className="w-full rounded-xl bg-[#075e45] px-4 py-3 font-bold text-white disabled:opacity-50 sm:w-auto">
-                  {saving?'Saving…':'Save draft only'}
-                </button>
-                <p className="text-xs text-slate-500">No send action is available. We will add sending only after Cloud API ownership, webhooks, customer consent and your approval are verified.</p>
+                <div className="flex flex-wrap gap-2">
+                  <button type="submit" disabled={saving||sending||!draft.trim()} className="rounded-xl border border-emerald-800 bg-white px-4 py-3 font-bold text-emerald-900 disabled:opacity-50">
+                    {saving?'Saving…':'Save private draft'}
+                  </button>
+                  <button type="button" disabled={saving||sending||!draft.trim()||!detail.canSend}
+                    onClick={()=>void sendManualReply()} className="rounded-xl bg-[#075e45] px-4 py-3 font-bold text-white disabled:opacity-50">
+                    {sending?'Requesting one reply…':'Send free-tier support reply'}
+                  </button>
+                </div>
+                <p className="text-xs leading-5 text-slate-600">
+                  {detail.canSend
+                    ?'Customer-service window open. Remaining Zeshu safety slots: '+detail.freeReplyRemaining+' (maximum 500 reply reservations in any 35 days).'
+                    :'Sending is blocked unless a customer messaged within 23 hours 50 minutes and the quota/configuration checks pass.'}
+                  {' '}Meta allows 1,000 free service messages per number/month across all senders. After this, Meta charges. Marketing, templates, bulk and automated messages stay OFF.
+                </p>
               </form>
             </>}
         </section>
