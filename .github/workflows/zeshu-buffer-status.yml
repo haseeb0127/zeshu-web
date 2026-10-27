@@ -1,0 +1,26 @@
+name: Zeshu Buffer publication status (read only)
+on:
+  push:
+    branches:
+      - automation/buffer-social-publisher-20261027
+    paths:
+      - "scripts/zeshu-buffer-post-status.mjs"
+      - ".github/workflows/zeshu-buffer-status.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  status:
+    if: github.repository == 'haseeb0127/zeshu-web'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: automation/buffer-social-publisher-20261027
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read current Buffer platform publication states
+        env:
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+        run: node scripts/zeshu-buffer-post-status.mjs
