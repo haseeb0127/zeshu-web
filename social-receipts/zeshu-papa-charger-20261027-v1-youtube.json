@@ -1,7 +1,11 @@
 {
   "id": "zeshu-papa-charger-20261027-v1",
   "platform": "youtube",
-  "status": "submitting",
-  "at": "2026-10-27T16:23:08.079Z",
-  "note": "Check Buffer before any retry."
+  "status": "buffer_accepted",
+  "buffer_post_id": "6ae0cfefb256432e54176a09",
+  "buffer_status": "sent",
+  "due_at": "2026-10-27T16:23:11.150Z",
+  "external_link": "https://www.youtube.com/watch?v=DYWAvlflvrk",
+  "at": "2026-10-27T16:23:14.279Z",
+  "note": "Buffer accepted the submission. Verify public platform publication separately."
 }
