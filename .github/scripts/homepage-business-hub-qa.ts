@@ -8,7 +8,7 @@ const assert = (value: unknown, message: string) => {
 const homeHub = read('app/components/HomeBusinessHub.tsx');
 const page = read('app/page.tsx');
 const layout = read('app/layout.tsx');
-const translations = read('app/components/CustomerLanguageProvider.tsx');
+const translations = ['te','hi','ur'].map(locale=>read('app/components/customer-translations/'+locale+'.ts')).join('\\n');
 
 for (const phrase of [
   'Shop, pay, move and get help with Zeshu.',
