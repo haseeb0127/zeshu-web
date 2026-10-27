@@ -75,6 +75,8 @@ jobs:
         run: node --experimental-strip-types .github/scripts/support-priority-qa.ts
       - name: Verify support assistant coverage
         run: node --experimental-strip-types .github/scripts/support-assistant-coverage-qa.ts
+      - name: Verify saved Urdu RTL hydration cannot be reset by stale English
+        run: node .github/scripts/urdu-first-hydration-qa.mjs
       - name: Verify mobile launch and homepage performance safety
         run: node .github/scripts/mobile-startup-performance-qa.mjs
       - name: Verify public SEO sitemap and private URL exclusion
