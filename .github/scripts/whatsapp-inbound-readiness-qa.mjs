@@ -27,9 +27,11 @@ assert(inbox.includes("open={webhook.observedInboundMessageEvents===0}"),
  'Avoid showing huge Meta repair controls over working conversations.');
 assert(inbox.includes('attachment not retrieved')&&inbox.includes("m.message_type!=='text'"),
  'Explain the non-text placeholder instead of pretending to show the media.');
-assert(inbox.includes('Reply drafts are saved privately and never sent.'),
- 'No user should mistake drafts for real WhatsApp replies.');
+assert(inbox.includes('Save private draft') && inbox.includes('Send free-tier support reply'),
+ 'Private draft and human-confirmed service reply must be separate, obvious actions.');
+assert(inbox.includes('Meta accepted; delivery not confirmed'),
+ 'Never misrepresent an accepted Meta request as confirmed customer delivery.');
 assert(parser.includes("m.type==='text'") && parser.includes("const messageType=userText?'text':'unsupported'"),
  'Parser must continue classifying genuine customer text and rejecting empty input safely.');
 assert(!health.includes("select('*')"),'Diagnostic cannot fetch all private message fields.');
-console.log('PASS: verified inbound status, privacy-safe non-text counts, mobile admin usability and draft-only messaging.');
+console.log('PASS: verified inbound status, privacy-safe non-text counts, mobile admin usability and explicitly confirmed service replies.');
