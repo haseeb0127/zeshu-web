@@ -965,10 +965,10 @@ export default function ZeshuSuperApp() {
             try { localStorage.setItem('zeshu_products', JSON.stringify(freshProducts)); }
             catch { /* Storage full or disabled: live products still display. */ }
           };
-          if ('requestIdleCallback' in window) {
+          if (typeof window.requestIdleCallback === 'function') {
             window.requestIdleCallback(saveProducts, { timeout: 2000 });
           } else {
-            window.setTimeout(saveProducts, 0);
+            setTimeout(saveProducts, 0);
           }
         }
       } catch {
