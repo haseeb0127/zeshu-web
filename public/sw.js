@@ -18,6 +18,12 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
+    // Chrome/Android PWA: start fetching the requested page while this worker
+    // boots, rather than waiting for service-worker JavaScript startup first.
+    // This never caches account, checkout, order or private HTML responses.
+    if (self.registration.navigationPreload) {
+      try { await self.registration.navigationPreload.enable(); } catch { /* Optional browser capability */ }
+    }
     const names = await caches.keys();
     await Promise.all(names.filter(name => name.startsWith('zeshu-public-offline-') && name !== OFFLINE_CACHE).map(name => caches.delete(name)));
     await self.clients.claim();
@@ -32,7 +38,7 @@ self.addEventListener('fetch', event => {
   event.respondWith((async () => {
     try {
       // Network-first. Successful navigation is NEVER stored by this worker.
-      const response = await fetch(request);
+      const response = await event.preloadResponse || await fetch(request);
       // A temporary Cloudflare gateway failure should show a branded retry
       // rather than a browser-black-screen. Never cache customer HTML or APIs.
       if ([502, 503, 504].includes(response.status)) {
