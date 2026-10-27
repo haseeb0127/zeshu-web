@@ -1,0 +1,25 @@
+name: Zeshu social publisher static validation
+on:
+  push:
+    branches:
+      - automation/buffer-social-publisher-20261027
+    paths:
+      - "scripts/zeshu-buffer-social.mjs"
+      - "docs/ZESHU_SOCIAL_EXAMPLE.json"
+      - ".github/workflows/zeshu-social-check.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    if: github.repository == 'haseeb0127/zeshu-web'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: node --check scripts/zeshu-buffer-social.mjs
+      - name: Validate example manifest WITHOUT contacting Buffer
+        run: node scripts/zeshu-buffer-social.mjs --validate docs/ZESHU_SOCIAL_EXAMPLE.json
