@@ -1,7 +1,11 @@
 {
   "id": "zeshu-papa-newspaper-surprise-2026-11-02-v1",
   "platform": "facebook",
-  "status": "submitting",
-  "at": "2026-10-29T04:42:32.112Z",
-  "note": "Check Buffer before any retry."
+  "status": "buffer_accepted",
+  "buffer_post_id": "6ae2ceba2c7019aafe33dbe1",
+  "buffer_status": "scheduled",
+  "due_at": "2026-11-02T14:00:00.000Z",
+  "external_link": null,
+  "at": "2026-10-29T04:42:34.302Z",
+  "note": "Buffer accepted the submission. Verify public platform publication separately."
 }
