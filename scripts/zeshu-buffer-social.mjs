@@ -41,7 +41,7 @@ function loadManifest(path) {
   assert(['addToQueue', 'shareNow', 'customScheduled'].includes(mode), 'Unsupported publishing mode');
   const dueAt = mode === 'customScheduled' ? str(raw.due_at, 48) : null;
   if (mode === 'customScheduled') {
-    assert(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$/.test(dueAt || ''), 'customScheduled requires ISO UTC due_at');
+    assert(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(dueAt || ''), 'customScheduled requires ISO UTC due_at');
     assert(Number.isFinite(Date.parse(dueAt)) && Date.parse(dueAt) > Date.now() + 5 * 60_000, 'Post time must be at least five minutes in the future');
   }
   return { id, url, caption, youtubeTitle, platforms, mode, dueAt };
