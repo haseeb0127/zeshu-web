@@ -1,7 +1,11 @@
 {
   "id": "zeshu-ai-speaker-mummy-2026-10-29-v1",
   "platform": "facebook",
-  "status": "submitting",
-  "at": "2026-10-29T04:41:59.863Z",
-  "note": "Check Buffer before any retry."
+  "status": "buffer_accepted",
+  "buffer_post_id": "6ae2ce9ac2255f48b9c72386",
+  "buffer_status": "scheduled",
+  "due_at": "2026-10-29T14:00:00.000Z",
+  "external_link": null,
+  "at": "2026-10-29T04:42:02.175Z",
+  "note": "Buffer accepted the submission. Verify public platform publication separately."
 }
