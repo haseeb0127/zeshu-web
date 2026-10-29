@@ -1,7 +1,11 @@
 {
   "id": "zeshu-biscuit-dabba-surprise-2026-10-30-v1",
   "platform": "facebook",
-  "status": "submitting",
-  "at": "2026-10-29T04:42:10.697Z",
-  "note": "Check Buffer before any retry."
+  "status": "buffer_accepted",
+  "buffer_post_id": "6ae2cea4403488e83c97c8fb",
+  "buffer_status": "scheduled",
+  "due_at": "2026-10-30T14:00:00.000Z",
+  "external_link": null,
+  "at": "2026-10-29T04:42:12.527Z",
+  "note": "Buffer accepted the submission. Verify public platform publication separately."
 }
