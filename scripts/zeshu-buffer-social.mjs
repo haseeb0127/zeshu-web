@@ -38,8 +38,13 @@ function loadManifest(path) {
   const platforms = raw.platforms ?? PLATFORMS;
   assert(Array.isArray(platforms) && platforms.length && platforms.every(x => PLATFORMS.includes(x)) && new Set(platforms).size === platforms.length, 'Invalid platform list');
   const mode = raw.mode || 'addToQueue';
-  assert(['addToQueue', 'shareNow'].includes(mode), 'Unsupported publishing mode');
-  return { id, url, caption, youtubeTitle, platforms, mode };
+  assert(['addToQueue', 'shareNow', 'customScheduled'].includes(mode), 'Unsupported publishing mode');
+  const dueAt = mode === 'customScheduled' ? str(raw.due_at, 48) : null;
+  if (mode === 'customScheduled') {
+    assert(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$/.test(dueAt || ''), 'customScheduled requires ISO UTC due_at');
+    assert(Number.isFinite(Date.parse(dueAt)) && Date.parse(dueAt) > Date.now() + 5 * 60_000, 'Post time must be at least five minutes in the future');
+  }
+  return { id, url, caption, youtubeTitle, platforms, mode, dueAt };
 }
 
 async function graphql(query, variables = {}) {
@@ -102,6 +107,7 @@ async function submit(job, platform, channelId) {
       channelId,
       schedulingType: 'automatic',
       mode: job.mode,
+      ...(job.dueAt ? { dueAt: job.dueAt } : {}),
       aiAssisted: true,
       assets: [{ video: { url: job.url } }],
       metadata: networkMeta(platform, job),
@@ -134,7 +140,7 @@ async function main() {
   const jobs = files.map(loadManifest);
   assert(new Set(jobs.map(j => j.id)).size === jobs.length, 'Duplicate job IDs');
   if (DRY_RUN) {
-    console.log(JSON.stringify(jobs.map(j => ({ id: j.id, platforms: j.platforms, mode: j.mode, youtubeTitle: j.youtubeTitle })), null, 2));
+    console.log(JSON.stringify(jobs.map(j => ({ id: j.id, platforms: j.platforms, mode: j.mode, dueAt: j.dueAt, youtubeTitle: j.youtubeTitle })), null, 2));
     return;
   }
   const channels = await resolveChannelIds();
