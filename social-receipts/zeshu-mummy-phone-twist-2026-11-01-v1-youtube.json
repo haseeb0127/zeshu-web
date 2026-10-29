@@ -1,7 +1,11 @@
 {
   "id": "zeshu-mummy-phone-twist-2026-11-01-v1",
   "platform": "youtube",
-  "status": "submitting",
-  "at": "2026-10-29T04:42:25.092Z",
-  "note": "Check Buffer before any retry."
+  "status": "buffer_accepted",
+  "buffer_post_id": "6ae2ceb3403488e83c97ccf4",
+  "buffer_status": "scheduled",
+  "due_at": "2026-11-01T14:00:00.000Z",
+  "external_link": null,
+  "at": "2026-10-29T04:42:27.343Z",
+  "note": "Buffer accepted the submission. Verify public platform publication separately."
 }
