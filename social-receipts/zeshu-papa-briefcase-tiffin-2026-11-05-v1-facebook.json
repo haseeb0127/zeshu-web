@@ -1,7 +1,11 @@
 {
   "id": "zeshu-papa-briefcase-tiffin-2026-11-05-v1",
   "platform": "facebook",
-  "status": "submitting",
-  "at": "2026-10-30T11:18:42.245Z",
-  "note": "Check Buffer before any retry."
+  "status": "buffer_accepted",
+  "buffer_post_id": "6ae47d141c1ab1e7bc327f9e",
+  "buffer_status": "scheduled",
+  "due_at": "2026-11-05T14:00:00.000Z",
+  "external_link": null,
+  "at": "2026-10-30T11:18:44.766Z",
+  "note": "Buffer accepted the submission. Verify public platform publication separately."
 }
