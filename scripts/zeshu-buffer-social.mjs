@@ -42,7 +42,7 @@ function loadManifest(path) {
   const dueAt = mode === 'customScheduled' ? str(raw.due_at, 48) : null;
   if (mode === 'customScheduled') {
     assert(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(dueAt || ''), 'customScheduled requires ISO UTC due_at');
-    assert(Number.isFinite(Date.parse(dueAt)) && Date.parse(dueAt) > Date.now() + 5 * 60_000, 'Post time must be at least five minutes in the future');
+    assert(Number.isFinite(Date.parse(dueAt)), 'Post time must be a valid UTC timestamp');
   }
   return { id, url, caption, youtubeTitle, platforms, mode, dueAt };
 }
@@ -97,6 +97,11 @@ async function submit(job, platform, channelId) {
   const receipt = resolve('social-receipts', `${job.id}-${platform}.json`);
   if (existsSync(receipt)) {
     console.log(`SKIP ${job.id}/${platform}: receipt already exists. No duplicate submission.`);
+    return;
+  }
+  if (job.dueAt && Date.parse(job.dueAt) <= Date.now() + 5 * 60_000) {
+    console.error(`NEEDS REVIEW ${job.id}/${platform}: scheduled time has passed without a receipt; refusing late or duplicate submission.`);
+    process.exitCode = 1;
     return;
   }
   // Must be durably saved before external side effect.
