@@ -1,7 +1,11 @@
 {
   "id": "zeshu-locked-biscuit-dabba-2026-11-06-v1",
   "platform": "instagram",
-  "status": "submitting",
-  "at": "2026-10-30T11:18:27.491Z",
-  "note": "Check Buffer before any retry."
+  "status": "buffer_accepted",
+  "buffer_post_id": "6ae47d05e9727055055701fe",
+  "buffer_status": "scheduled",
+  "due_at": "2026-11-06T14:00:00.000Z",
+  "external_link": null,
+  "at": "2026-10-30T11:18:29.993Z",
+  "note": "Buffer accepted the submission. Verify public platform publication separately."
 }
