@@ -1,7 +1,11 @@
 {
   "id": "zeshu-bottle-mummy-twist-2026-11-04-v1",
   "platform": "instagram",
-  "status": "submitting",
-  "at": "2026-10-30T11:18:16.595Z",
-  "note": "Check Buffer before any retry."
+  "status": "buffer_accepted",
+  "buffer_post_id": "6ae47cfb1c1ab1e7bc327684",
+  "buffer_status": "scheduled",
+  "due_at": "2026-11-04T14:00:00.000Z",
+  "external_link": null,
+  "at": "2026-10-30T11:18:19.190Z",
+  "note": "Buffer accepted the submission. Verify public platform publication separately."
 }
