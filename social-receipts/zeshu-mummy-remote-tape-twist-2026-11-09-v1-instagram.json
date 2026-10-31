@@ -1,7 +1,11 @@
 {
   "id": "zeshu-mummy-remote-tape-twist-2026-11-09-v1",
   "platform": "instagram",
-  "status": "submitting",
-  "at": "2026-10-31T08:57:39.310Z",
-  "note": "Check Buffer before any retry."
+  "status": "buffer_accepted",
+  "buffer_post_id": "6ae5ad86406ab8a018aa5c98",
+  "buffer_status": "scheduled",
+  "due_at": "2026-11-09T14:00:00.000Z",
+  "external_link": null,
+  "at": "2026-10-31T08:57:42.551Z",
+  "note": "Buffer accepted the submission. Verify public platform publication separately."
 }
