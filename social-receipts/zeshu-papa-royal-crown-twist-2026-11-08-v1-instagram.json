@@ -1,7 +1,11 @@
 {
   "id": "zeshu-papa-royal-crown-twist-2026-11-08-v1",
   "platform": "instagram",
-  "status": "submitting",
-  "at": "2026-10-31T08:57:51.782Z",
-  "note": "Check Buffer before any retry."
+  "status": "buffer_accepted",
+  "buffer_post_id": "6ae5ad92a11457434995af3e",
+  "buffer_status": "scheduled",
+  "due_at": "2026-11-08T14:00:00.000Z",
+  "external_link": null,
+  "at": "2026-10-31T08:57:54.959Z",
+  "note": "Buffer accepted the submission. Verify public platform publication separately."
 }
