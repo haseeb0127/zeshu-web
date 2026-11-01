@@ -1,7 +1,11 @@
 {
   "id": "zeshu-footprints-mummy-raid-2026-11-11-v1",
   "platform": "facebook",
-  "status": "submitting",
-  "at": "2026-11-01T15:39:37.306Z",
-  "note": "Check Buffer before any retry."
+  "status": "buffer_accepted",
+  "buffer_post_id": "6ae75d3c7924eda132d31954",
+  "buffer_status": "scheduled",
+  "due_at": "2026-11-11T14:00:00.000Z",
+  "external_link": null,
+  "at": "2026-11-01T15:39:40.585Z",
+  "note": "Buffer accepted the submission. Verify public platform publication separately."
 }
