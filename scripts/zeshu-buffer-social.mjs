@@ -96,8 +96,22 @@ function networkMeta(platform, job) {
 async function submit(job, platform, channelId) {
   const receipt = resolve('social-receipts', `${job.id}-${platform}.json`);
   if (existsSync(receipt)) {
-    console.log(`SKIP ${job.id}/${platform}: receipt already exists. No duplicate submission.`);
-    return;
+    // Buffer's explicit queue-full rejection guarantees no post was created.
+    // Only that exact rejection is safe to retry after a queue slot frees.
+    // All other receipts, including ambiguous failures, remain immutable to prevent duplicate posts.
+    let previous;
+    try { previous = JSON.parse(readFileSync(receipt, 'utf8')); } catch {
+      console.error(`NEEDS REVIEW ${job.id}/${platform}: unreadable receipt; refusing retry.`);
+      process.exitCode = 1;
+      return;
+    }
+    const queueFull = previous?.status === 'needs_manual_review'
+      && previous?.error === 'Scheduled posts limit reached. You have 10 scheduled posts out of 10 allowed.';
+    if (!queueFull) {
+      console.log(`SKIP ${job.id}/${platform}: receipt already exists. No duplicate submission.`);
+      return;
+    }
+    console.log(`QUEUE SLOT RETRY ${job.id}/${platform}: prior attempt explicitly rejected, safe to retry.`);
   }
   if (job.dueAt && Date.parse(job.dueAt) <= Date.now() + 5 * 60_000) {
     console.error(`NEEDS REVIEW ${job.id}/${platform}: scheduled time has passed without a receipt; refusing late or duplicate submission.`);
