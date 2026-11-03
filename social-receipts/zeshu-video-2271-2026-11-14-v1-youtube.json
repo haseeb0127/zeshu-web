@@ -1,7 +1,7 @@
 {
   "id": "zeshu-video-2271-2026-11-14-v1",
   "platform": "youtube",
-  "status": "needs_manual_review",
-  "at": "2026-11-03T04:59:08.717Z",
-  "error": "Scheduled posts limit reached. You have 10 scheduled posts out of 10 allowed."
+  "status": "submitting",
+  "at": "2026-11-03T05:00:40.653Z",
+  "note": "Check Buffer before any retry."
 }
