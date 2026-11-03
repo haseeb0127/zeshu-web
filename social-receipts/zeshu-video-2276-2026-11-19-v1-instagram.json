@@ -1,7 +1,7 @@
 {
   "id": "zeshu-video-2276-2026-11-19-v1",
   "platform": "instagram",
-  "status": "submitting",
-  "at": "2026-11-03T04:59:55.005Z",
-  "note": "Check Buffer before any retry."
+  "status": "needs_manual_review",
+  "at": "2026-11-03T04:59:57.913Z",
+  "error": "Scheduled posts limit reached. You have 10 scheduled posts out of 10 allowed."
 }
