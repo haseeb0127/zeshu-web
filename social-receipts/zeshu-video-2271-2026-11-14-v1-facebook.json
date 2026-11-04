@@ -1,7 +1,7 @@
 {
   "id": "zeshu-video-2271-2026-11-14-v1",
   "platform": "facebook",
-  "status": "submitting",
-  "at": "2026-11-04T03:32:47.639Z",
-  "note": "Check Buffer before any retry."
+  "status": "needs_manual_review",
+  "at": "2026-11-04T03:32:50.780Z",
+  "error": "Scheduled posts limit reached. You have 10 scheduled posts out of 10 allowed."
 }
