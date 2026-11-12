@@ -225,6 +225,52 @@ jobs:
 
             await search.fill('');
             await page.waitForTimeout(500);
+            // Crash regression: older PWAs may hold invalid persisted JSON, while
+            // private/restricted Android WebViews may deny local/session storage.
+            // Neither may trigger the root recovery screen or break shopping.
+            const corrupted = await browser.newPage({viewport:{width:390,height:844}});
+            await corrupted.addInitScript(() => {
+              try {
+                localStorage.setItem('zeshu_products','{"invalid":"old-app-cache"}');
+                localStorage.setItem('zeshu_customer_cart','{"invalid":"old-cart"}');
+              }catch{}
+            });
+            await corrupted.goto(base,{waitUntil:'domcontentloaded',timeout:60000});
+            await corrupted.locator('input[aria-label="Search Zeshu"]').waitFor({state:'visible',timeout:20000});
+            await corrupted.waitForTimeout(1000);
+            assert(await corrupted.locator('[data-zeshu-recovery]').count()===0,
+              'Corrupted Android cached products/cart crashed the customer storefront');
+            await corrupted.close();
+
+            const blocked = await browser.newPage({viewport:{width:390,height:844}});
+            await blocked.addInitScript(() => {
+              const origGet=Storage.prototype.getItem;
+              const origSet=Storage.prototype.setItem;
+              const origRemove=Storage.prototype.removeItem;
+              const blockedKeys=new Set([
+                'zeshu_products','zeshu_customer_cart','zeshu_delivery_address',
+                'zeshu_pending_grocery_confirmation',
+              ]);
+              Storage.prototype.getItem=function(key){
+                if(blockedKeys.has(String(key)))throw new DOMException('Storage blocked','SecurityError');
+                return origGet.call(this,key);
+              };
+              Storage.prototype.setItem=function(key,value){
+                if(blockedKeys.has(String(key)))throw new DOMException('Storage blocked','SecurityError');
+                return origSet.call(this,key,value);
+              };
+              Storage.prototype.removeItem=function(key){
+                if(blockedKeys.has(String(key)))throw new DOMException('Storage blocked','SecurityError');
+                return origRemove.call(this,key);
+              };
+            });
+            await blocked.goto(base,{waitUntil:'domcontentloaded',timeout:60000});
+            await blocked.locator('input[aria-label="Search Zeshu"]').waitFor({state:'visible',timeout:20000});
+            await blocked.waitForTimeout(1000);
+            assert(await blocked.locator('[data-zeshu-recovery]').count()===0,
+              'Denied Android storage caused the recurring Zeshu root/page error');
+            await blocked.close();
+
             await page.screenshot({ path: 'mobile-storefront.png', fullPage: true });
             console.log('CUSTOMER_STAGING_BROWSER_QA=PASS');
           } finally {
