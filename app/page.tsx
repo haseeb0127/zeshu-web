@@ -28,6 +28,7 @@ import {
   Crown, MessageCircle, Home, Share2, Bell
 } from 'lucide-react';
 import { customerSupabase } from './lib/browser-supabase';
+import { readBrowserStorage, writeBrowserStorage, removeBrowserStorage, parseStoredArray } from './lib/safe-browser-storage';
 import { isJagtialDeliveryCity } from './lib/service-scope';
 import { catalogSearchScore, getCatalogSearchRecommendations, isCatalogSearchMatch, smartTextMatchScore } from './lib/catalog-search';
 import { CUSTOMER_CATEGORY_DEFINITIONS, campaignMatchesCustomerCategory, categoryDefinition, productMatchesCustomerCategory } from './lib/catalog-categories';
@@ -350,6 +351,7 @@ export default function ZeshuSuperApp() {
   const [voiceSearchMessage, setVoiceSearchMessage] = useState('');
   const speechRecognitionRef = useRef<any>(null);
   const [cart, setCart] = useState<{item: any, qty: number}[]>([]);
+  const [cartRestored, setCartRestored] = useState(false);
   
   const [user, setUser] = useState<any>(null);
   const [rewardBalance, setRewardBalance] = useState(0);
@@ -908,36 +910,57 @@ export default function ZeshuSuperApp() {
   }, [isAuthModalOpen, isCartOpen, isAccountOpen, isTrackingOpen]);
 
   useEffect(() => {
-    try {
-      const savedCart = localStorage.getItem(CART_STORAGE_KEY);
-      if (savedCart) {
-        const parsedCart = JSON.parse(savedCart);
-        if (Array.isArray(parsedCart)) {
-          setCart(parsedCart.filter((entry: any) => entry?.item?.id !== undefined && Number.isInteger(entry?.qty) && entry.qty > 0));
-        }
-      }
-      const savedAddress = localStorage.getItem(DELIVERY_ADDRESS_STORAGE_KEY);
-      if (savedAddress?.trim()) setCurrentAddress(savedAddress.trim());
-    } catch {
-      localStorage.removeItem(CART_STORAGE_KEY);
+    // Restore before enabling writes: the initial empty React cart must never
+    // overwrite a customer's saved cart during the first mount.
+    const rawCart = readBrowserStorage('local', CART_STORAGE_KEY);
+    const savedCart = parseStoredArray(rawCart, 100);
+    if (savedCart) {
+      setCart(savedCart.filter((entry): entry is {item:any;qty:number} => {
+        if (!entry || typeof entry !== 'object') return false;
+        const item = (entry as {item?:unknown}).item;
+        const qty = (entry as {qty?:unknown}).qty;
+        return !!item && typeof item === 'object' && !Array.isArray(item)
+          && typeof (item as {id?:unknown}).id === 'string'
+          && (item as {id:string}).id.length > 0
+          && typeof qty === 'number' && Number.isSafeInteger(qty) && qty > 0 && qty <= 1000;
+      }));
+    } else if (rawCart !== null) {
+      // Only invalid stored JSON is removed. Disabled storage is left alone.
+      removeBrowserStorage('local', CART_STORAGE_KEY);
     }
+    const savedAddress = readBrowserStorage('local', DELIVERY_ADDRESS_STORAGE_KEY);
+    if (savedAddress?.trim()) setCurrentAddress(savedAddress.trim().slice(0, 600));
+    setCartRestored(true);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
-  }, [cart]);
+    if (!cartRestored) return;
+    writeBrowserStorage('local', CART_STORAGE_KEY, JSON.stringify(cart));
+  }, [cart, cartRestored]);
 
   useEffect(() => {
     const address = currentAddress.trim();
-    if (address && address !== 'Location not set') localStorage.setItem(DELIVERY_ADDRESS_STORAGE_KEY, address);
+    if (address && address !== 'Location not set') {
+      writeBrowserStorage('local', DELIVERY_ADDRESS_STORAGE_KEY, address);
+    }
   }, [currentAddress]);
 
   useEffect(() => {
     const fetchAppContent = async () => {
       setProductsLoading(true);
-      const cachedProducts = localStorage.getItem('zeshu_products');
+      const rawCachedProducts = readBrowserStorage('local', 'zeshu_products');
+      const cachedProducts = parseStoredArray(rawCachedProducts, 500);
       if (cachedProducts) {
-        try { setProducts(JSON.parse(cachedProducts)); } catch { localStorage.removeItem('zeshu_products'); }
+        // Ignore invalid browser cache data rather than render a malformed
+        // product object and crash the installed Android/PWA storefront.
+        const validProducts = cachedProducts.filter((product): product is any =>
+          product !== null && typeof product === 'object' && !Array.isArray(product)
+          && (typeof (product as {id?:unknown}).id === 'string' || typeof (product as {id?:unknown}).id === 'number')
+          && typeof (product as {name?:unknown}).name === 'string');
+        if (validProducts.length === cachedProducts.length) setProducts(validProducts);
+        else removeBrowserStorage('local', 'zeshu_products');
+      } else if (rawCachedProducts !== null) {
+        removeBrowserStorage('local', 'zeshu_products');
       }
       // Product and seller requests are independent. Do not make shoppers wait
       // for one response before the other starts on a mobile connection.
@@ -962,8 +985,9 @@ export default function ZeshuSuperApp() {
           // Synchronous storage serialization can block entry-level Android
           // devices. Defer this optional cache write until after paint.
           const saveProducts = () => {
-            try { localStorage.setItem('zeshu_products', JSON.stringify(freshProducts)); }
-            catch { /* Storage full or disabled: live products still display. */ }
+            // This optional cache is best-effort; storage exceptions are handled
+            // inside the safe helper instead of crashing the storefront.
+            writeBrowserStorage('local', 'zeshu_products', JSON.stringify(freshProducts));
           };
           if (typeof window.requestIdleCallback === 'function') {
             window.requestIdleCallback(saveProducts, { timeout: 2000 });
@@ -1461,7 +1485,7 @@ export default function ZeshuSuperApp() {
       return false;
     }
 
-    sessionStorage.removeItem(PENDING_GROCERY_CONFIRMATION_KEY);
+    removeBrowserStorage('session', PENDING_GROCERY_CONFIRMATION_KEY);
     const rewardMessage = Number(confirmationData.zeshuCashUsed || 0) > 0 ? ` ₹${Number(confirmationData.zeshuCashUsed).toFixed(0)} Zeshu Cash used.` : '';
     if (Number(confirmationData.zeshuCashUsed || 0) > 0) setRewardBalance((current) => Math.max(0, current - Number(confirmationData.zeshuCashUsed)));
     showToast(`${confirmationData.duplicate ? 'Order confirmation restored.' : 'Order placed!'}${rewardMessage}`);
@@ -1476,7 +1500,7 @@ export default function ZeshuSuperApp() {
 
   useEffect(() => {
     if (!user) return;
-    const storedConfirmation = sessionStorage.getItem(PENDING_GROCERY_CONFIRMATION_KEY);
+    const storedConfirmation = readBrowserStorage('session', PENDING_GROCERY_CONFIRMATION_KEY);
     if (!storedConfirmation) return;
     try {
       const pending = JSON.parse(storedConfirmation) as PendingGroceryConfirmation;
@@ -1484,7 +1508,7 @@ export default function ZeshuSuperApp() {
       showToast('Finishing your previous payment confirmation...');
       void confirmPendingGroceryOrder(pending);
     } catch {
-      sessionStorage.removeItem(PENDING_GROCERY_CONFIRMATION_KEY);
+      removeBrowserStorage('session', PENDING_GROCERY_CONFIRMATION_KEY);
     }
   }, [user]);
 
@@ -2954,7 +2978,7 @@ export default function ZeshuSuperApp() {
             razorpay_order_id: response.razorpay_order_id,
             razorpay_signature: response.razorpay_signature,
           };
-          sessionStorage.setItem(PENDING_GROCERY_CONFIRMATION_KEY, JSON.stringify(pendingConfirmation));
+          writeBrowserStorage('session', PENDING_GROCERY_CONFIRMATION_KEY, JSON.stringify(pendingConfirmation));
           await confirmPendingGroceryOrder(pendingConfirmation);
           setIsLoading(false);
           setIsCheckoutOpening(false);
