@@ -985,8 +985,9 @@ export default function ZeshuSuperApp() {
           // Synchronous storage serialization can block entry-level Android
           // devices. Defer this optional cache write until after paint.
           const saveProducts = () => {
+            // This optional cache is best-effort; storage exceptions are handled
+            // inside the safe helper instead of crashing the storefront.
             writeBrowserStorage('local', 'zeshu_products', JSON.stringify(freshProducts));
-            catch { /* Storage full or disabled: live products still display. */ }
           };
           if (typeof window.requestIdleCallback === 'function') {
             window.requestIdleCallback(saveProducts, { timeout: 2000 });
