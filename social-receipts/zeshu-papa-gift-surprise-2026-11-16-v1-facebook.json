@@ -1,7 +1,11 @@
 {
   "id": "zeshu-papa-gift-surprise-2026-11-16-v1",
   "platform": "facebook",
-  "status": "submitting",
-  "at": "2026-11-15T15:33:44.200Z",
-  "note": "Check Buffer before any retry."
+  "status": "buffer_accepted",
+  "buffer_post_id": "6af9d0dbc5b364e0626527ce",
+  "buffer_status": "scheduled",
+  "due_at": "2026-11-16T14:00:00.000Z",
+  "external_link": null,
+  "at": "2026-11-15T15:33:47.762Z",
+  "note": "Buffer accepted the submission. Verify public platform publication separately."
 }
