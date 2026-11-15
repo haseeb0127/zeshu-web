@@ -35,7 +35,7 @@ for (const href of ['/fashion']) {
   assert(homeHub.includes(`href="${href}"`), `Homepage business hub missing key customer destination: ${href}`);
 }
 
-for (const destination of ['/professional-services/weddings', '/professional-services/interiors', '/dine']) {
+for (const destination of ['/professional-services/weddings', '/professional-services/interiors', '/dine', '/green']) {
   assert(homeHub.includes(destination), `Homepage carousel missing service destination: ${destination}`);
 }
 
@@ -49,7 +49,7 @@ assert(!homeHub.includes('Book your table now'), 'Dining promo must not advertis
 assert(homeHub.includes('snap-mandatory'), 'Homepage must expose the Zeshu self-promotion carousel');
 assert(homeHub.includes('data-slide'), 'Homepage promo carousel must render slide markers');
 assert(homeHub.includes('slides = ['), 'Homepage promo carousel must be driven by the compact customer slide set');
-for (const promo of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move']) {
+for (const promo of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Zeshu Green']) {
   assert(homeHub.includes(promo), `Homepage promo carousel missing ${promo}`);
 }
 assert(!homeHub.includes('title:t("Marketplace")'), 'Homepage must not duplicate Marketplace as a promo department');
