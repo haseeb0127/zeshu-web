@@ -26,6 +26,8 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Payment receipt and order summary": "చెల్లింపు రసీదు మరియు ఆర్డర్ వివరాలు",
     "Zeshu Green": "జెషు గ్రీన్",
     "Our first goal: 1–2 trees after 1,000 eligible deliveries.": "మొదటి లక్ష్యం: 1,000 అర్హమైన డెలివరీల తర్వాత 1–2 చెట్లు.",
+    "Help us grow a greener Jagtial.": "జగిత్యాలను మరింత పచ్చగా మార్చేందుకు మాతో కలిసి రండి.",
+    "No extra fee.": "అదనపు రుసుము లేదు.",
     "Still planning — no trees planted for orders yet.": "ఇంకా ప్రణాళికలో ఉంది — ఆర్డర్ల కోసం చెట్లు నాటలేదు.",
     "Planting starts after partner verification and funded capacity.": "భాగస్వామి ధృవీకరణ, నిధుల ఏర్పాటు తర్వాత చెట్లు నాటడం మొదలవుతుంది.",
     "See the plan": "కార్యక్రమం వివరాలు",
@@ -969,6 +971,8 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
   hi: {
     "Payment receipt and order summary": "भुगतान रसीद और ऑर्डर विवरण",
     "Zeshu Green": "ज़ेशु ग्रीन",
+    "Help us grow a greener Jagtial.": "जगतियाल को और हरा-भरा बनाने में हमारा साथ दें।",
+    "No extra fee.": "कोई अतिरिक्त शुल्क नहीं।",
     "Our first goal: 1–2 trees after 1,000 eligible deliveries.": "पहला लक्ष्य: 1,000 पात्र डिलीवरी के बाद 1–2 पेड़।",
     "Still planning — no trees planted for orders yet.": "अभी योजना बन रही है — ऑर्डरों के लिए पेड़ नहीं लगाए गए।",
     "Planting starts after partner verification and funded capacity.": "साझेदार सत्यापन और फंड मिलने के बाद ही वृक्षारोपण शुरू होगा।",
@@ -1893,6 +1897,8 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
   ur: {
     "Payment receipt and order summary": "ادائیگی کی رسید اور آرڈر کی تفصیلات",
     "Zeshu Green": "زیشو گرین",
+    "Help us grow a greener Jagtial.": "جگتیال کو مزید سرسبز بنانے میں ہمارا ساتھ دیں۔",
+    "No extra fee.": "کوئی اضافی فیس نہیں۔",
     "Our first goal: 1–2 trees after 1,000 eligible deliveries.": "پہلا ہدف: 1,000 اہل ڈیلیوریوں کے بعد 1–2 درخت۔",
     "Still planning — no trees planted for orders yet.": "ابھی منصوبہ بندی ہے — آرڈرز کے لیے درخت نہیں لگائے گئے۔",
     "Planting starts after partner verification and funded capacity.": "پارٹنر کی تصدیق اور فنڈ دستیاب ہونے کے بعد شجرکاری شروع ہوگی۔",

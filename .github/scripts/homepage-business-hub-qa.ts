@@ -35,7 +35,7 @@ for (const href of ['/fashion']) {
   assert(homeHub.includes(`href="${href}"`), `Homepage business hub missing key customer destination: ${href}`);
 }
 
-for (const destination of ['/professional-services/weddings', '/professional-services/interiors', '/dine']) {
+for (const destination of ['/professional-services/weddings', '/professional-services/interiors', '/dine', '/green']) {
   assert(homeHub.includes(destination), `Homepage carousel missing service destination: ${destination}`);
 }
 
@@ -44,12 +44,16 @@ assert(page.includes('data-category-strip="marketplace"'), 'Mobile homepage must
 const productCard = read('app/components/ProductCard.tsx');
 assert(productCard.includes('data-product-card="marketplace"'), 'Product cards must use the professional marketplace card system');
 assert(homeHub.includes('DineBannerArtwork'), 'Dine must have its own dining poster, not unrelated CGI artwork');
+assert(homeHub.includes('GreenBannerArtwork'), 'Zeshu Green must have its own homepage banner artwork');
+assert(homeHub.includes('action:"green"'), 'Zeshu Green must be included in the homepage promotional carousel');
+assert(homeHub.includes('1–2 trees after 1,000 eligible deliveries'), 'Green banner must disclose the honest pilot milestone');
+assert(homeHub.includes('No extra fee.'), 'Green banner must disclose that customers pay no extra fee');
 assert(homeHub.includes('action:"dine"') && homeHub.includes('poster:"dine"'), 'Dine must have its own clickable promotional slide');
 assert(!homeHub.includes('Book your table now'), 'Dining promo must not advertise live reservations without verified partners');
 assert(homeHub.includes('snap-mandatory'), 'Homepage must expose the Zeshu self-promotion carousel');
 assert(homeHub.includes('data-slide'), 'Homepage promo carousel must render slide markers');
 assert(homeHub.includes('slides = ['), 'Homepage promo carousel must be driven by the compact customer slide set');
-for (const promo of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move']) {
+for (const promo of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Zeshu Green']) {
   assert(homeHub.includes(promo), `Homepage promo carousel missing ${promo}`);
 }
 assert(!homeHub.includes('title:t("Marketplace")'), 'Homepage must not duplicate Marketplace as a promo department');
