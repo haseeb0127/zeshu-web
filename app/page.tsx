@@ -18,6 +18,7 @@ const LocationSelector = dynamic(() => import('./components/LocationSelector'), 
   loading: () => <div role="status" className="fixed inset-0 z-[120] grid place-items-center bg-white/95 text-sm font-semibold text-[#075e45]">Opening location picker…</div>,
 });
 import HomeBusinessHub from './components/HomeBusinessHub';
+import GreenImpactBanner from './components/GreenImpactBanner';
 import ReferenceArtwork from './components/ReferenceArtwork';
 import { LanguageSwitcher, useCustomerLanguage } from './components/CustomerLanguageProvider';
 import { 
@@ -3207,6 +3208,8 @@ export default function ZeshuSuperApp() {
                }}
              />
            )}
+
+           {activeTab === 'home' && normalizedSearch === '' && <GreenImpactBanner />}
 
            {activeTab === 'home' && normalizedSearch === '' && (
              <nav
