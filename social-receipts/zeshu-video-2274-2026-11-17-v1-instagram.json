@@ -1,7 +1,11 @@
 {
   "id": "zeshu-video-2274-2026-11-17-v1",
   "platform": "instagram",
-  "status": "submitting",
-  "at": "2026-11-15T15:34:23.583Z",
-  "note": "Check Buffer before any retry."
+  "status": "buffer_accepted",
+  "buffer_post_id": "6af9d102e5a113497af748e7",
+  "buffer_status": "scheduled",
+  "due_at": "2026-11-17T14:00:00.000Z",
+  "external_link": null,
+  "at": "2026-11-15T15:34:27.069Z",
+  "note": "Buffer accepted the submission. Verify public platform publication separately."
 }
