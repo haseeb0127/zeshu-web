@@ -75,7 +75,9 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
           {s.action==="shop" || s.action==="pay"
             ? <button type="button" aria-label={s.action==="shop"?"Open Zeshu Shop":"Open Zeshu Pay"} onClick={s.action==="shop"?onShopNearby:onOpenServices}
                 className="absolute inset-0 z-[1] cursor-pointer rounded-[24px] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[-3px] focus-visible:outline-white"/>
-            : <Link href={s.action==="weddings"?"/professional-services/weddings":s.action==="interiors"?"/professional-services/interiors":s.action==="services"?"/professional-services":s.action==="support"?"/help":s.action==="app"?"/app":s.action==="fashion"?"/fashion":s.action==="green"?"/green":s.action==="green"?"/green":s.action==="dine"?"/dine":"/move"}
+            : s.action==="green"
+              ? <Link href="/green" aria-label="Open Zeshu Green" className="absolute inset-0 z-[1] cursor-pointer rounded-[24px] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[-3px] focus-visible:outline-white"><span className="sr-only">Zeshu Green</span></Link>
+              : <Link href={s.action==="weddings"?"/professional-services/weddings":s.action==="interiors"?"/professional-services/interiors":s.action==="services"?"/professional-services":s.action==="support"?"/help":s.action==="app"?"/app":s.action==="fashion"?"/fashion":s.action==="dine"?"/dine":"/move"}
                 aria-label={`Open ${s.title}`} className="absolute inset-0 z-[1] cursor-pointer rounded-[24px] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[-3px] focus-visible:outline-white"><span className="sr-only">{s.title}</span></Link>}
           <div className="pointer-events-none relative z-10 max-w-[62%] md:max-w-[60%]">
             <span className="inline-flex rounded-full bg-white/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.15em] ring-1 ring-white/10 md:text-[11px]">Zeshu · {s.scope}</span>
@@ -83,10 +85,12 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
               {i===0 && language==='en' ? <><span className="block">Shop in</span>{" "}<span className="block text-[#a6eb4a]">Jagtial</span></> : s.title}
             </h2>
             <p className="mt-2.5 max-w-[165px] text-[11.5px] font-semibold leading-[1.45] text-white/95 md:mt-4 md:max-w-none md:text-base">{s.description}</p>
+            {s.action==="green" ? <p className="mt-1.5 max-w-[165px] text-[9px] font-semibold leading-4 text-white/75 md:max-w-none md:text-xs">{t("Still planning — no trees planted for orders yet.")}</p> : null}
             <div className="pointer-events-none mt-3 md:mt-5">
               {s.action==="shop" ? <button onClick={onShopNearby} className="pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-[18px] bg-white px-5 text-xs font-black text-[#142034] shadow-[0_8px_16px_rgba(0,0,0,.14)] md:min-h-11 md:text-sm">{s.cta}<ChevronRight size={16}/></button>
                 :s.action==="pay" ? <button onClick={onOpenServices} className="pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></button>
                 :s.action==="fashion" ? <Link href="/fashion" className="pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>
+                :s.action==="green" ? <Link href="/green" className="pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>
                 :<Link href={s.action==="weddings"?"/professional-services/weddings":s.action==="interiors"?"/professional-services/interiors":s.action==="services"?"/professional-services":s.action==="support"?"/help":s.action==="app"?"/app":s.action==="dine"?"/dine":"/move"} className="pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>}
             </div>
           </div>
