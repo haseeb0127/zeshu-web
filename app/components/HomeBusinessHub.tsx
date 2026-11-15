@@ -2,7 +2,7 @@
 
 import Link from "@/app/components/DocumentLink";
 import { useEffect, useRef, useState } from "react";
-import { BadgeCheck, Car, ChevronLeft, ChevronRight, Leaf, Paintbrush, PartyPopper, Receipt, ShoppingBag, ShoppingBasket, CreditCard, CarFront, Grid2X2, Bot, Sparkles, ArrowUpRight } from "lucide-react";
+import { BadgeCheck, Car, ChevronLeft, ChevronRight, Leaf, TreePine, Paintbrush, PartyPopper, Receipt, ShoppingBag, ShoppingBasket, CreditCard, CarFront, Grid2X2, Bot, Sparkles, ArrowUpRight } from "lucide-react";
 import ReferenceArtwork from "@/app/components/ReferenceArtwork";
 import GlossyArtwork from "@/app/components/GlossyArtwork";
 import DineBannerArtwork from "@/app/components/DineBannerArtwork";
@@ -30,6 +30,7 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
   const slides = [
     { scope:"Jagtial", title:t("Shop in Jagtial"), description:t("Groceries and everyday essentials from nearby sellers."), cta:t("Shop now"), action:"shop", poster:"shop", icon:ShoppingBag, theme:"bg-[#044c37]" },
     { scope:"Jagtial", title:t("Zeshu Dine"), description:t("Table reservations and meal pre-orders after restaurant verification. Kitchen-confirmed serving times."), cta:t("Explore dining"), action:"dine", poster:"dine", icon:ShoppingBag, theme:"bg-[#4a2810]" },
+    { scope:"India", title:t("Zeshu Green"), description:t("Every order helps us move toward our tree-planting goal. Follow our transparent plan and verified progress."), cta:t("Explore Zeshu Green"), action:"green", poster:"green", icon:Leaf, theme:"bg-[#06452f]" },
     { scope:"India", title:t("Zeshu Fashion"), description:t("Explore clothing and accessories from independent sellers where stock is available."), cta:t("Explore fashion"), action:"fashion", poster:"fashion", icon:ShoppingBag, theme:"bg-[#074734]" },
     { scope:"India", title:t("Zeshu Pay"), description:t("Explore recharge and bill services supported by available providers."), cta:t("Explore Zeshu Pay"), action:"pay", poster:"pay", icon:Receipt, theme:"bg-[#074734]" },
     { scope:"Telangana", title:t("Zeshu Move"), description:t("Check rides and courier availability for your area."), cta:anyMoveReady?t("Check availability"):t("See services"), action:"move", poster:"move", icon:Car, theme:"bg-[#074734]" },
@@ -67,13 +68,13 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
     <div className="relative mt-0 md:mt-4">
       <div ref={trackRef} onScroll={onScroll} className="flex snap-x snap-mandatory gap-3 overflow-x-auto no-scrollbar scroll-smooth">
         {slides.map((s,i) => <article key={s.title} data-slide data-glossy-banner={s.poster} className={`zeshu-premium-hero relative isolate min-w-full snap-start overflow-hidden rounded-[24px] ${s.theme} h-[245px] min-h-[245px] px-5 py-4 text-white shadow-[0_12px_26px_rgba(0,65,40,.16)] md:min-h-[350px] md:rounded-[30px] md:px-9 md:py-9`}>
-          {s.poster==="dine" ? <DineBannerArtwork/> : <GlossyArtwork kind={s.poster as "shop"|"fashion"|"pay"|"move"|"services"|"weddings"|"interiors"|"support"|"app"} loading={i===0?"eager":"lazy"}/>}
+          {s.poster==="dine" ? <DineBannerArtwork/> : s.poster==="green" ? <div className="pointer-events-none absolute inset-0 overflow-hidden"><div className="absolute -right-10 -top-16 h-64 w-64 rounded-full bg-emerald-300/10 blur-2xl"/><TreePine className="absolute -bottom-8 right-0 h-[210px] w-[46%] text-emerald-100/25 md:h-[310px]" strokeWidth={0.8}/><Leaf className="absolute bottom-5 right-[27%] h-20 w-20 rotate-[-24deg] text-lime-200/70 md:h-28 md:w-28" strokeWidth={1.1}/></div> : <GlossyArtwork kind={s.poster as "shop"|"fashion"|"pay"|"move"|"services"|"weddings"|"interiors"|"support"|"app"} loading={i===0?"eager":"lazy"}/>}
           {/* The full glossy promotion is tappable, including the illustration.
               Use document links to avoid the reproduced Next.js Android navigation crash. */}
           {s.action==="shop" || s.action==="pay"
             ? <button type="button" aria-label={s.action==="shop"?"Open Zeshu Shop":"Open Zeshu Pay"} onClick={s.action==="shop"?onShopNearby:onOpenServices}
                 className="absolute inset-0 z-[1] cursor-pointer rounded-[24px] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[-3px] focus-visible:outline-white"/>
-            : <Link href={s.action==="weddings"?"/professional-services/weddings":s.action==="interiors"?"/professional-services/interiors":s.action==="services"?"/professional-services":s.action==="support"?"/help":s.action==="app"?"/app":s.action==="fashion"?"/fashion":s.action==="dine"?"/dine":"/move"}
+            : <Link href={s.action==="weddings"?"/professional-services/weddings":s.action==="interiors"?"/professional-services/interiors":s.action==="services"?"/professional-services":s.action==="support"?"/help":s.action==="app"?"/app":s.action==="fashion"?"/fashion":s.action==="dine"?"/dine":s.action==="green"?"/green":"/move"}
                 aria-label={`Open ${s.title}`} className="absolute inset-0 z-[1] cursor-pointer rounded-[24px] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[-3px] focus-visible:outline-white"><span className="sr-only">{s.title}</span></Link>}
           <div className="pointer-events-none relative z-10 max-w-[62%] md:max-w-[60%]">
             <span className="inline-flex rounded-full bg-white/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.15em] ring-1 ring-white/10 md:text-[11px]">Zeshu · {s.scope}</span>
