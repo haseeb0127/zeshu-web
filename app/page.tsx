@@ -3672,6 +3672,11 @@ export default function ZeshuSuperApp() {
               <button ref={modalCloseRef} aria-label="Close cart" onClick={() => setIsCartOpen(false)} className="p-2.5 bg-[#F3F4F6] rounded-full active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#075E45]"><X size={20}/></button>
             </div>
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 pb-6 pt-4 md:px-6 md:pt-5">
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
+                <p className="font-black">🌱 Zeshu Green</p>
+                <p className="mt-1 text-xs leading-5">Your shopping helps Zeshu work towards a greener future. Our first goal is to explore planting 1–2 suitable local trees after 1,000 eligible delivered orders—not one tree per order. No extra checkout fee.</p>
+                <Link href="/green" className="mt-2 inline-flex text-xs font-black text-emerald-800 underline underline-offset-2">See our transparent planting plan</Link>
+              </div>
               {cart.length === 0 && <div className="rounded-3xl border border-dashed border-[#cbd8cf] bg-white p-10 text-center"><ShoppingBag size={32} className="mx-auto mb-3 text-[#075E45]"/><h3 className="font-black">{t('Your cart is empty')}</h3><p className="mt-2 text-sm text-gray-500">{t('Add essentials when you are ready.')}</p><button onClick={() => setIsCartOpen(false)} className="mt-5 rounded-xl bg-[#075E45] px-4 py-2.5 text-sm font-bold text-white">{t('Browse products')}</button></div>}
               {cartFulfillmentGroups.map((group) => (
                 <section key={group.key} className="overflow-hidden rounded-3xl border border-[#dce8df] bg-[#f8fbf8]">
