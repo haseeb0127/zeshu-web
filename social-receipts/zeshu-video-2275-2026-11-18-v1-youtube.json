@@ -1,7 +1,11 @@
 {
   "id": "zeshu-video-2275-2026-11-18-v1",
   "platform": "youtube",
-  "status": "submitting",
-  "at": "2026-11-15T15:34:47.783Z",
-  "note": "Check Buffer before any retry."
+  "status": "buffer_accepted",
+  "buffer_post_id": "6af9d11ae5a113497af7540f",
+  "buffer_status": "scheduled",
+  "due_at": "2026-11-18T14:00:00.000Z",
+  "external_link": null,
+  "at": "2026-11-15T15:34:50.823Z",
+  "note": "Buffer accepted the submission. Verify public platform publication separately."
 }
