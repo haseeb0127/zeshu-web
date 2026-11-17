@@ -26,6 +26,7 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Payment receipt and order summary": "చెల్లింపు రసీదు మరియు ఆర్డర్ వివరాలు",
     "Zeshu Green": "జెషు గ్రీన్",
     "Our goal: one tree for every eligible delivered order.": "ప్రతి అర్హమైన డెలివరీ ఆర్డర్‌కు ఒక చెట్టు మా లక్ష్యం.",
+     "Our goal: one tree for every eligible delivered order. Funding and local planting are being prepared. No extra fee.": "ప్రతి అర్హమైన డెలివరీ ఆర్డర్‌కు ఒక చెట్టు మా లక్ష్యం. నిధులు, స్థానిక ఏర్పాట్లు సిద్ధమవుతున్నాయి. అదనపు రుసుము లేదు.",
     "Help us grow a greener Jagtial.": "జగిత్యాలను మరింత పచ్చగా మార్చేందుకు మాతో కలిసి రండి.",
     "No extra fee.": "అదనపు రుసుము లేదు.",
     "Still planning — no trees planted for orders yet.": "ఇంకా ప్రణాళికలో ఉంది — ఆర్డర్ల కోసం చెట్లు నాటలేదు.",
@@ -974,6 +975,7 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Help us grow a greener Jagtial.": "जगतियाल को और हरा-भरा बनाने में हमारा साथ दें।",
     "No extra fee.": "कोई अतिरिक्त शुल्क नहीं।",
     "Our goal: one tree for every eligible delivered order.": "हर पात्र डिलीवर ऑर्डर पर एक पेड़ हमारा लक्ष्य है।",
+     "Our goal: one tree for every eligible delivered order. Funding and local planting are being prepared. No extra fee.": "हर पात्र डिलीवर ऑर्डर पर एक पेड़ हमारा लक्ष्य है। फंडिंग और स्थानीय व्यवस्था तैयार हो रही है। कोई अतिरिक्त शुल्क नहीं।",
     "Still planning — no trees planted for orders yet.": "अभी योजना बन रही है — ऑर्डरों के लिए पेड़ नहीं लगाए गए।",
     "Planting starts after partner verification and funded capacity.": "साझेदार सत्यापन और फंड मिलने के बाद ही वृक्षारोपण शुरू होगा।",
     "See the plan": "कार्यक्रम देखें",
@@ -1900,6 +1902,7 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Help us grow a greener Jagtial.": "جگتیال کو مزید سرسبز بنانے میں ہمارا ساتھ دیں۔",
     "No extra fee.": "کوئی اضافی فیس نہیں۔",
     "Our goal: one tree for every eligible delivered order.": "ہر اہل ڈیلیور آرڈر پر ایک درخت ہمارا مقصد ہے۔",
+     "Our goal: one tree for every eligible delivered order. Funding and local planting are being prepared. No extra fee.": "ہر اہل ڈیلیور آرڈر پر ایک درخت ہمارا مقصد ہے۔ فنڈنگ اور مقامی انتظام تیار ہو رہا ہے۔ کوئی اضافی فیس نہیں۔"
     "Still planning — no trees planted for orders yet.": "ابھی منصوبہ بندی ہے — آرڈرز کے لیے درخت نہیں لگائے گئے۔",
     "Planting starts after partner verification and funded capacity.": "پارٹنر کی تصدیق اور فنڈ دستیاب ہونے کے بعد شجرکاری شروع ہوگی۔",
     "See the plan": "پروگرام دیکھیں",
