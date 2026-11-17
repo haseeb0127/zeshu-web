@@ -6,6 +6,7 @@ import { useCustomerLanguage } from "./CustomerLanguageProvider";
 const roles = [
   ["DELIVERY_RIDER", "Zeshu Delivery Rider"],
   ["BIKE_COURIER", "Bike Courier"],
+  ["BIKE_RIDE_INTEREST", "Passenger Bike Ride — founding partner interest only"],
   ["AUTO_DRIVER", "Auto Driver"],
   ["CAB_DRIVER", "Cab / Car Driver"],
   ["GOODS_DRIVER", "Goods / Mini Truck Driver"],
@@ -65,6 +66,9 @@ export default function DriverRiderInterestForm() {
           {roles.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
         </select>
       </label>
+      {form.role === "BIKE_RIDE_INTEREST" && <div className="md:col-span-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+        <strong>Bike Ride pilot — interest only.</strong> Telangana's gig-worker Act and Rules are now in force, but gig-worker registration is separate from Transport Department permission to carry passengers. Zeshu is collecting founding rider interest only. No paid rides, passenger bookings, dispatch or earnings are available until the required aggregator authorisation, transport registration/permit, insurance and safety checks are confirmed. Do not convert your vehicle or pay an agent based on this form.
+      </div>}
       <label className="text-sm font-black text-slate-700">{t("Name")}
         <input required maxLength={120} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3" />
       </label>
