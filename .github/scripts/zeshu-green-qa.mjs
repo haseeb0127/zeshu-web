@@ -46,7 +46,7 @@ for(const phrase of ['"Our goal: one tree for every eligible delivered order."',
   '"Still planning — no trees planted for orders yet."']){
  assert(lang.split(phrase).length-1===3,'All three translation dictionaries need '+phrase);
 }
-assert(docs.includes('one tree for each eligible, completed customer delivery order'));
+assert(docs.includes('fund one tree for each eligible completed delivery order'));
 assert(docs.includes('No third-party spend without owner approval'));
 assert(docs.includes('Keep the existing programme in PLANNING and its activation gates closed'));
 assert(adminNav.includes('href="/admin/green"'));
