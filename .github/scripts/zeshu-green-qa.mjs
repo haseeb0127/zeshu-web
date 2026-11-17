@@ -34,7 +34,7 @@ assert(!ownerApi.includes('export async function POST'));
 assert(!ownerApi.includes('export async function PATCH'));
 assert(ownerPage.includes('Goal: one tree for every eligible completed delivery order'));
 assert(!ownerPage.includes('10,000 tree planting drive'));
-assert(ownerPage.includes('legacy commitment counter does not track')||ownerPage.includes('Legacy commitment counter does not track'));
+assert(ownerPage.includes('Legacy tree-commitment slots are not customer-order counts'));
 assert(green.includes('one tree for every eligible completed delivery order'));
 assert(green.includes('verifiedPlanted')&&green.includes('No tree is claimed'));
 assert(green.includes('This is not a carbon-offset'));
@@ -47,7 +47,7 @@ for(const phrase of ['"Our goal: one tree for every eligible delivered order."',
  assert(lang.split(phrase).length-1===3,'All three translation dictionaries need '+phrase);
 }
 assert(docs.includes('one tree for each eligible, completed customer delivery order'));
-assert(docs.includes('Razorpay remains in TEST mode'));
+assert(docs.includes('No third-party spend without owner approval'));
 assert(docs.includes('Keep the existing programme in PLANNING and its activation gates closed'));
 assert(adminNav.includes('href="/admin/green"'));
 console.log('PASS: compact truthful Zeshu Green pilot, legacy one-tree trigger disabled, secure evidence-only tree reporting.');
