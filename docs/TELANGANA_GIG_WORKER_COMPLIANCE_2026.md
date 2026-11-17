@@ -6,7 +6,8 @@
 
 - The Telangana Platform Based Gig Workers (Registration, Social Security and Welfare) Act, 2026 is Act No. 21 of 2026. It received assent on 25 April and was published in the Telangana Gazette on 28 April 2026.
 - G.O.Ms.No.7 dated 1 June 2026 appointed 2 June 2026 as its commencement date.
-- Telangana announced the Rules and launch of the Gig Workers Social Security and Welfare Scheme on 14 November 2026. The Government's announcement says the scheme includes ₹5 lakh life cover and ₹10 lakh health cover through Rajiv Aarogyasri. Treat these as government-announced scheme benefits, not a guarantee for every applicant: eligibility, claims and implementation are controlled by the Government and Welfare Board.
+- Telangana issued the final Telangana Platform Based Gig Workers (Registration, Social Security and Welfare) Rules, 2026 through G.O.Ms.No.18 on 14 November 2026 and launched the worker-registration process. The official State announcement says the scheme includes ₹5 lakh life cover and ₹10 lakh health cover through Rajiv Aarogyasri. Treat these as government-announced scheme benefits, not a guarantee for every applicant: eligibility, claims and implementation are controlled by the Government and Welfare Board.
+- The final Rules now operationalise worker/aggregator registration, a cross-platform Gig Identification Number (GID), transparent contracts and pay statements, task refusal without retaliation, advance notice of material changes, due process and human review for deactivation, payout timing, safety/grievance channels and Welfare Fund Fee reporting. Use the final G.O.Ms.No.18 text and subsequent notifications for filing fields, dates and calculations.
 - The Act Schedule I expressly includes ride-sharing, food/grocery delivery, logistics, e-marketplaces (marketplace and inventory models), professional activity providers, healthcare, travel/hospitality, content/media and other goods/services platforms. Zeshu's business model may fall within one or more categories; obtain a written CA/legal determination rather than assuming it is excluded because Zeshu is asset-light.
 - The State Government's official launch release says the online worker-registration process was launched on 14 November. Do not invent a portal URL. Link only to the official Telangana announcement until a verified Board registration portal and API/contact are published.
 
@@ -26,11 +27,25 @@ The Act text (sections 8, 10–17, 20–25, 30; Schedule I and II) establishes, 
 - Section 21 requires transaction/payout and welfare-fee information to be mapped to the Government's Welfare Fund Fee Verification System (WFFVS) as prescribed.
 - Section 22 provides a government grievance-redressal officer and a 30-day order timeline. Section 24 requires an internal dispute resolution committee for a platform with at least 100 registered gig workers, with a 30-day disposal period. Publish official Board links/contact only when verified.
 
-## 3. Central and Telangana passenger-bike rules are a separate question
+## 3. Final Rules — operational controls to implement now
+
+The final Rules were released through G.O.Ms.No.18 on 14 November 2026. Based on available published summaries, implement these controls while obtaining the authoritative 35-page Government order and legal review:
+
+- Register Zeshu as an aggregator/platform with the Telangana Welfare Board and submit the worker database in the prescribed machine-readable format. The Act's 45-day commencement deadline appears to have elapsed; immediately seek written directions on registration, transitional filing and any late compliance. Do not claim registration until a certificate/official record exists.
+- Support government GID linkage and avoid issuing a Zeshu-created ID as though it were the statutory GID.
+- Provide worker contracts and remuneration/incentive/deduction calculations in clear language understood by the worker. Give at least 14 days' notice of material contract or automated decision-system changes.
+- Workers must be able to decline tasks without retaliatory rating, reduced allocation or suspension.
+- Build deactivation controls: written reason and at least seven days' notice, fair enquiry, written decision, and human approval/review when an automated system proposes blocking. Immediate action is limited to the specified clear and imminent customer-threat exceptions; retain evidence and provide the required reasons/appeal route.
+- Provide timely payouts and itemised digital statements showing gross earnings, incentives, deductions and net payout. The final Rules describe payout within seven days after the payout cycle; confirm exact cycle mechanics against G.O.Ms.No.18 before configuring production payouts.
+- The Welfare Fund Fee is borne by the aggregator/platform, not workers, and cannot exceed 2% of each worker payout. Do not hardcode 1% from launch-day reporting: use only the applicable Government notification and Board calculation/reporting specification. Build a monthly reconciliation and WFFVS export after official schema access is confirmed.
+- Publish safety contact/helpline and grievance process. Platforms with 100 or more registered workers need the prescribed internal dispute-resolution committee; implement the applicable membership and response timelines from the final Rules.
+- Do not collect Aadhaar, bank or sensitive documents in the public rider-interest form. Statutory worker data must go only through the approved secure government/contractor workflow with privacy controls.
+
+## 4. Central and Telangana passenger-bike rules are a separate question
 
 - MoRTH's Motor Vehicle Aggregator Guidelines, 2025 clause 23 says a State Government may permit aggregation of non-transport motorcycles for passenger journeys under section 67(3) of the Motor Vehicles Act and may issue authorisations/fees. It is an enabling provision, not automatic permission for every bike taxi operator in every State.
 - Telangana Transport Minister's August 2026 public statements reported that a state Motor Vehicle Aggregator Policy was being finalised; August/September reporting also described a proposed yellow-plate/commercial-registration requirement. These reports are not themselves a Gazette notification.
-- As at 17 November 2026, this repo's legal watch has not verified a final Telangana Transport Gazette notification granting Zeshu authority to aggregate passenger motorcycles. Re-check the official Telangana Gazette and Transport Department before every activation decision.
+- As at 17 November 2026, the current legal watch has not verified a final Telangana Transport Gazette notification granting Zeshu authority to aggregate passenger motorcycles. The new gig-worker Act/Rules do not themselves grant passenger-bike taxi permission. Re-check the official Telangana Gazette and Transport Department before every activation decision.
 - Gig-worker Act registration does not replace Motor Vehicles Act aggregator licensing, vehicle transport registration/permit, driver licence, insurance or passenger safety requirements.
 
 ## 4. Bike Ride launch plan
