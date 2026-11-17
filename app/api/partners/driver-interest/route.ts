@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 const ROLES = new Set([
   'DELIVERY_RIDER',
   'BIKE_COURIER',
+  'BIKE_RIDE_INTEREST',
   'AUTO_DRIVER',
   'CAB_DRIVER',
   'GOODS_DRIVER',

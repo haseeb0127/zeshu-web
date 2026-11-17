@@ -15,7 +15,7 @@ type ServiceCard = {
 };
 
 const localRides: ServiceCard[] = [
-  { title: "Bike Ride", description: "Passenger bike ride — coming soon", icon: <Bike size={22} />, actionLabel: "Coming soon", regulatoryHold: true },
+  { title: "Bike Ride", description: "Register founding rider interest. Passenger bookings remain disabled until Telangana transport approvals and safety requirements are verified.", icon: <Bike size={22} />, actionLabel: "Register rider interest", regulatoryHold: true },
   { title: "Auto", description: "Auto-rickshaw rides", icon: <Car size={22} />, actionLabel: "Request auto" },
   { title: "Cab", description: "Local and outstation cabs", icon: <Car size={22} />, actionLabel: "Request cab" },
   { title: "Rental Car", description: "Hourly and day rentals", icon: <Car size={22} />, actionLabel: "Request rental" },
@@ -54,7 +54,9 @@ function ServiceSection({ title, cards }: { title: string; cards: ServiceCard[] 
             <h3 className="mt-4 font-black text-slate-900">{t(card.title)}</h3>
             <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{t(card.description)}</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {card.regulatoryHold ? (
+              {card.regulatoryHold && card.title === "Bike Ride" ? (
+                <Link href="/earn#join" className="inline-flex rounded-xl bg-[#075E45] px-3 py-2 text-xs font-black text-white">{t(card.actionLabel || "Register interest")}</Link>
+              ) : card.regulatoryHold ? (
                 <span className="inline-flex cursor-not-allowed rounded-xl bg-slate-200 px-3 py-2 text-xs font-black text-slate-600">{t(card.actionLabel || "View status")}</span>
               ) : (
                 <Link href={`/move/request?service=${encodeURIComponent(card.title)}`} className="inline-flex rounded-xl bg-[#075E45] px-3 py-2 text-xs font-black text-white">{t(card.actionLabel || "Request with Zeshu")}</Link>
@@ -90,7 +92,7 @@ export default function MoveTravelPage() {
               </div>
               <h1 className="mt-4 text-3xl font-black tracking-tight md:text-5xl">{t("Zeshu Move & Travel")}</h1>
               <p className="mt-3 text-base font-bold text-[#d9f3e3] md:text-lg">{t("Rides, courier and travel — one trusted place.")}</p>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[#bfe2cd]">{t("Auto, cab, courier, rentals and travel can be explored here. Final booking, fare and payment are confirmed only through an eligible verified provider. Bike Ride is coming soon.")}</p>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-[#bfe2cd]">{t("Auto, cab, courier, rentals and travel can be explored here. Final booking, fare and payment are confirmed only through an eligible verified provider. Bike Ride founding rider interest is open; passenger bookings remain disabled pending Transport Department approval and verified safety compliance.")}</p>
             </div>
           </div>
         </header>

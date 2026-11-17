@@ -70,9 +70,10 @@ function RequestForm() {
       <section className="rounded-[28px] border border-amber-200 bg-white p-6 shadow-sm md:p-8">
         <ShieldCheck className="text-amber-700" size={36} />
         <h1 className="mt-4 text-2xl font-black text-slate-950">{t("Zeshu Bike Taxi is visible, but passenger requests are on hold")}</h1>
-        <p className="mt-2 text-sm leading-6 text-slate-600">{t("Telangana is finalising rules affecting passenger bike taxis, including the proposed yellow-plate requirement. Zeshu will keep this service disabled until the applicable state requirements are clear and our provider setup is compliant.")}</p>
+        <p className="mt-2 text-sm leading-6 text-slate-600">{t("Telangana’s gig-worker Act and Rules are now in force, but worker welfare registration is separate from permission to operate passenger bike taxis. Zeshu is accepting founding rider interest only. Passenger requests, matching and payments remain disabled until Telangana Transport Department aggregator authorisation, eligible transport registration/permit, commercial insurance and all safety requirements are verified. Do not convert your vehicle or pay an agent based on this interest form.")}</p>
         <div className="mt-5 flex flex-wrap gap-2">
           <Link href="/move" className="rounded-xl bg-[#075E45] px-4 py-3 text-sm font-black text-white">{t("View other services")}</Link>
+          <Link href="/earn#join" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-[#075E45]">{t("Register Bike Ride interest")}</Link>
           <Link href="/help?service=Bike%20Ride" className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700">{t("Ask Zeshu Assistant")}</Link>
         </div>
       </section>
