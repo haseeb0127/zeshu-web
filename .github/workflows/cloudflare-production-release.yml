@@ -271,7 +271,7 @@ jobs:
               assert(departmentText.includes(department), `Live homepage department navigation is missing ${department}`);
             }
             await page.setViewportSize({ width: 390, height: 844 });
-            assert(await page.locator('[data-glossy-banner]').count() === 10, 'Live site must display ten premium promotional banners including Zeshu Dine');
+            assert(await page.locator('[data-glossy-banner]').count() === 11, 'Live site must display eleven premium promotional banners including Zeshu Green');
             assert(await page.locator('[data-glossy-banner="dine"] [data-dine-artwork]').count() === 1, 'Dining poster must be present on live homepage');
             const firstArt = page.locator('img[data-glossy-image="shop"]');
             await firstArt.waitFor({state:'attached',timeout:10000});
