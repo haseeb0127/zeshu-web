@@ -11,7 +11,7 @@ type Readiness={
  gates:{verifiedPlantingAgreement:boolean;publicPartnerWebsite:boolean;actualPerTreeCost:boolean;
  realFundedQuota:boolean;operatorVerifiedLiveOrders:boolean;paymentGatewayLive:boolean;explicitActivation:boolean};
  fundedTreeQuota:number;reserved:number;remainingTreeCapacity:number;treeUnitBudgetPaise:number|null;
- pilotGoal:{eligibleDeliveredOrdersMilestone:number;plannedTreesMin:number;plannedTreesMax:number;eligibleDeliveredOrdersTracked:null;trackingEnabled:false;note:string};
+ pilotGoal:{treePerEligibleDeliveredOrder:1;eligibleDeliveredOrdersTracked:null;trackingEnabled:false;fundingConfirmed:false;plantingPartnerConfirmed:boolean;note:string};
  bulkPlantingAuthorized:false;plantingBatchPolicy:string;
  totalAllocatedBudgetPaise:number|null;counts:{pledged:number;reported:number;verified:number;voided:number};
  lastConfigurationUpdate:string;canAnnouncePerOrderPromise:boolean;
@@ -60,7 +60,7 @@ export default function AdminGreen(){
    </div>
    <header className="mt-4 rounded-[28px] bg-[linear-gradient(110deg,#064c37,#0f633f)] px-5 py-7 text-white md:px-8">
     <h1 className="flex items-center gap-2 text-2xl font-black md:text-3xl"><Leaf size={30}/> Zeshu Green HQ</h1>
-    <p className="mt-2 max-w-3xl text-sm leading-6 text-emerald-50">Keep Zeshu's small first milestone financially responsible: consider planting 1–2 trees after 1,000 eligible delivered orders. This is a planning dashboard. This is a private planning dashboard: it never spends money, plants a tree, enables payments or activates the campaign.</p>
+    <p className="mt-2 max-w-3xl text-sm leading-6 text-emerald-50">Zeshu Green goal: fund one tree for every eligible completed delivery order, with no extra customer fee. This is a planning dashboard only: it never spends money, plants a tree, enables payments or activates the campaign.</p>
     <button type="button" disabled={loading} onClick={()=>void reload()} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/40 bg-white/10 px-4 py-2 text-sm font-extrabold disabled:opacity-50"><RefreshCw size={17}/> Refresh readiness</button>
    </header>
    {error&&<p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800">{error}</p>}
@@ -70,7 +70,7 @@ export default function AdminGreen(){
      <h2 className="flex items-center gap-2 text-lg font-black text-amber-950"><ShieldCheck size={22}/> Programme: {info.mode}</h2>
      <p className="mt-2 text-sm leading-6 text-amber-900">{info.canAnnouncePerOrderPromise?
       'No one-tree-per-order customer promise is authorized by this new small pilot.':
-      'The first 1,000 eligible deliveries → 1–2 trees is a plan, not a pledge or a planted-tree claim. The old one-tree-per-order system is disabled and must be redesigned before activation.'}</p>
+      'The one-tree-per-eligible-delivered-order goal is not yet funded or live. No customer promise, order-level reservation or planted-tree claim is authorized.'}</p>
      <p className="mt-2 text-xs font-semibold text-amber-950">Payment gateway: {info.paymentGatewayMode}. No customer tree fee. No false carbon-offset or survival guarantee.</p>
     </section>
     <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Verified tree operation counts">
@@ -85,14 +85,14 @@ export default function AdminGreen(){
       <h3 className="mt-1 text-xs font-bold text-slate-600">{label}</h3>
      </article>)}
     </section>
-    <section className="mt-5 rounded-2xl border border-teal-200 bg-white p-5 md:p-7" aria-label="Planned first thousand eligible deliveries tree milestone">
-      <h2 className="text-xl font-black text-emerald-950">First goal: 1,000 eligible deliveries → aim for 1–2 trees</h2>
-      <p className="mt-2 text-sm leading-6 text-slate-600">Planning only: once 1,000 genuinely eligible delivered orders have been completed after an approved start, arrange a modest planting of 1–2 suitable trees, subject to permission, care, funding and evidence. This is not one tree per order.</p>
-      <p className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-xs leading-6 text-emerald-950">Real qualifying delivery progress is not yet tracked for the new pilot. Current legacy funded commitments: {info.reserved.toLocaleString('en-IN')}; verified planted trees: {info.counts.verified.toLocaleString('en-IN')}.</p>
-      <p className="mt-3 text-xs font-semibold text-emerald-900">The legacy commitment counter does not track the new 1,000-order pilot. Do not use it as an order-count progress indicator.</p>
-      <p className="mt-2 rounded-lg bg-amber-50 p-3 text-xs leading-6 text-amber-950">Planning only. Real eligible deliveries must be counted separately in the redesigned campaign. No payment, automatic planting, or per-order pledge.</p>
-    </section>
-    <section className="mt-5 grid gap-4 rounded-2xl border border-emerald-100 bg-white p-5 md:grid-cols-2 md:p-7">
+    <section className="mt-5 rounded-2xl border border-teal-200 bg-white p-5 md:p-7" aria-label="One tree per eligible completed delivery order goal">
+      <h2 className="text-xl font-black text-emerald-950">Goal: one tree for every eligible completed delivery order</h2>
+      <p className="mt-2 text-sm leading-6 text-slate-600">Planning only: Zeshu intends to fund one suitable tree per eligible completed delivery order without adding a customer checkout fee. The goal cannot become a customer promise until per-order funding, planting partner, land permissions, long-term care and evidence are confirmed.</p>
+      <p className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-xs leading-6 text-emerald-950">Per-order funding: {info.pilotGoal.fundingConfirmed?'confirmed':'not confirmed'} · planting partner: {info.pilotGoal.plantingPartnerConfirmed?'recorded':'not confirmed'} · live qualifying-order tracker: {info.pilotGoal.trackingEnabled?'enabled':'not enabled'}. Current legacy funded commitments: {info.reserved.toLocaleString('en-IN')}; verified planted trees: {info.counts.verified.toLocaleString('en-IN')}.</p>
+      <p className="mt-3 text-xs font-semibold text-emerald-900">Legacy tree-commitment slots are not customer-order counts. Cancellations, refunds and TEST orders must never qualify.</p>
+      <p className="mt-2 rounded-lg bg-amber-50 p-3 text-xs leading-6 text-amber-950">PLANNING only. No per-order funds are reserved, no planting is automatic, and the existing legacy database trigger remains gated.</p>
+     </section>
+     <section className="mt-5 grid gap-4 rounded-2xl border border-emerald-100 bg-white p-5 md:grid-cols-2 md:p-7">
      <div>
       <h2 className="text-lg font-black">Funded campaign budget</h2>
       <p className="mt-2 text-sm">Approved tree quota: <strong>{info.fundedTreeQuota.toLocaleString('en-IN')}</strong></p>
