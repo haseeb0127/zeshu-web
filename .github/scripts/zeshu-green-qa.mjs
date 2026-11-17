@@ -25,7 +25,7 @@ assert(guard.includes("status not in ('PLANTED','VERIFIED')"));
 assert(guard.includes("coalesce(proof_url,'')"));
 assert(impact.includes(".eq('status','VERIFIED')"));
 assert(impact.includes('no-store')&&!impact.includes("select('*')"));
-assert(impact.includes('one tree for every eligible delivered order'));
+assert(impact.includes('treePerEligibleDeliveredOrder:1')&&impact.includes('fundingConfirmed:false'));
 assert(ownerApi.includes('canAnnouncePerOrderPromise:false'));
 assert(ownerApi.includes('authorizeWhatsAppInboxAdmin(request)'));
 assert(ownerApi.includes('bulkPlantingAuthorized:false'));
