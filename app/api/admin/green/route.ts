@@ -51,21 +51,21 @@ export async function GET(request:Request){
     reserved,
     remainingTreeCapacity:Math.max(0,quota-reserved),
     pilotGoal:{
-      eligibleDeliveredOrdersMilestone:1000,
-      plannedTreesMin:1,
-      plannedTreesMax:2,
+      treePerEligibleDeliveredOrder:1,
       eligibleDeliveredOrdersTracked:null,
       trackingEnabled:false,
-      note:'The older tree commitment count must never be displayed as progress toward 1,000 actual deliveries.',
+      fundingConfirmed:false,
+      plantingPartnerConfirmed:Boolean(p.planting_partner),
+      note:'One tree per eligible completed delivery order is the goal, not a funded or activated commitment. Legacy tree slots are not qualifying orders.',
     },
     bulkPlantingAuthorized:false,
-    plantingBatchPolicy:'New PLANNING goal: consider planting 1–2 trees after the first 1,000 eligible real delivered orders. No eligible live order counter or partner arrangement has been activated. The legacy internal commitment counter is NOT an order counter and must not be used to claim the milestone. Planting, payment and activation remain separate manual decisions.',
+    plantingBatchPolicy:'New PLANNING goal: fund one tree for each eligible completed delivery order, with no customer checkout fee. No order counter, per-order funding, or partner arrangement is active. Fulfilment must be reconciled in monthly planting batches with partner evidence and aftercare. Legacy commitment counters are not order counts. Planting, payment and activation remain separate manual decisions.',
     treeUnitBudgetPaise:unitCost,
     totalAllocatedBudgetPaise:unitCost!==null?quota*unitCost:null,
     counts:{pledged:pledged.count||0,reported:reported.count||0,verified:verified.count||0,voided:voided.count||0},
     lastConfigurationUpdate:p.updated_at,
-    canAnnouncePerOrderPromise:false, // Old one-tree-per-order infrastructure is NOT the new 1–2-tree pilot.
-    communicationPolicy:'Customer copy may explain the planned first 1,000 eligible deliveries and 1–2 possible trees. Do not say every order funds, reserves or plants a tree. Old per-order trigger must be redesigned and explicitly approved before any activation. No payments or carbon-offset claims.',
+    canAnnouncePerOrderPromise:false, // Goal is not a customer promise until per-order funding and evidence are approved.
+    communicationPolicy:'The long-term goal is one funded tree per eligible completed delivery order, with no customer checkout fee. Do not say a particular order funds, reserves or plants a tree until per-order funding, partner, care and tracking are approved. Keep the legacy trigger gated; no payments or carbon-offset claims.',
     changesMade:false,sendingEnabled:false,
   });
 }
