@@ -90,6 +90,24 @@ export default function EarnWithZeshuPage() {
           </div>
         </header>
 
+        <section className="mt-6 rounded-3xl border border-emerald-200 bg-white p-5 md:p-7">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-3xl">
+              <p className="text-xs font-black uppercase tracking-wider text-[#075E45]">Telangana Gig Worker Programme · 2026</p>
+              <h2 className="mt-2 text-xl font-black text-slate-950 md:text-2xl">Your work. Your rights. Your safety.</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">The Telangana Platform Based Gig Workers (Registration, Social Security and Welfare) Act, 2026 came into force on 2 June 2026. The State launched its worker welfare scheme and Rules on 14 November 2026. The Government announced life cover of ₹5 lakh and health cover of ₹10 lakh through Rajiv Aarogyasri; actual eligibility, claims and scheme conditions are determined by the Government and Welfare Board.</p>
+              <ul className="mt-3 grid gap-2 text-sm leading-5 text-slate-700 sm:grid-cols-2">
+                <li>• Worker registration and a government-issued identity</li>
+                <li>• Social-security and welfare scheme access, subject to eligibility</li>
+                <li>• Clear remuneration, incentives and deductions</li>
+                <li>• Safety, health and grievance protections</li>
+              </ul>
+              <p className="mt-3 text-xs leading-5 text-slate-500">Zeshu will complete its own aggregator registration, worker-data reporting, welfare-fee and grievance obligations as applicable. Applying here does not register you with the Government or guarantee benefits. Never share Aadhaar or bank details in this public form.</p>
+            </div>
+            <a href="https://www.telangana.gov.in/news/2026/11/honble-cm-sri-a-revanth-reddy-along-with-honble-leader-of-opposition-in-the-lok-sabha-sri-rahul-gandhi-participates-in-the-launch-of-telangana-gig-workers-social-security-and-welfar/" target="_blank" rel="noreferrer" className="rounded-xl border border-emerald-200 px-4 py-3 text-sm font-black text-[#075E45]">Official Telangana announcement ↗</a>
+          </div>
+        </section>
+
         <section className="mt-6 rounded-3xl border border-emerald-200 bg-white p-6"><h2 className="text-xl font-black">Become a Zeshu Field Promoter</h2><p className="mt-2 text-sm text-slate-600">Visit shops, drivers, wedding professionals and interior designers. Apply to recruit verified partners and earn approved onboarding incentives.</p><Link href="/earn/promoters" className="mt-4 inline-flex rounded-xl bg-[#075E45] px-4 py-3 text-sm font-black text-white">Apply as a field promoter</Link></section><section className="mt-6 overflow-hidden rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm md:p-7">
           <div className="grid gap-5 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
             <div>
@@ -97,7 +115,7 @@ export default function EarnWithZeshuPage() {
                 <MapPin size={15} aria-hidden="true" /> {t("Jagtial founding driver network")}
               </div>
               <h2 className="mt-4 text-2xl font-black tracking-tight text-slate-950 md:text-3xl">{t("Build driver supply before expanding the map")}</h2>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{t("Zeshu is prioritising a dense local pilot instead of collecting inactive registrations across Telangana. Auto, Cab, Courier, Delivery and Goods applicants can register now. Passenger Bike Taxi remains unavailable for activation while the applicable Telangana position is unresolved.")}</p>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{t("Zeshu is prioritising a dense local pilot instead of collecting inactive registrations across Telangana. Auto, Cab, Courier, Delivery and Goods applicants can register now. Passenger Bike Ride founding-partner interest is also open, but paid passenger bookings and rider activation remain disabled until Transport Department authorisation and all vehicle, permit, insurance and safety requirements are verified.")}</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link href="#join" className="rounded-xl bg-[#075E45] px-4 py-3 text-sm font-black text-white">{t("Join the pilot")}</Link>
                 <Link href="/help?service=Drive%20%26%20Deliver" className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-800">{t("Ask about onboarding")}</Link>
@@ -167,7 +185,7 @@ export default function EarnWithZeshuPage() {
 
         <section className="mt-7 rounded-3xl border border-emerald-100 bg-emerald-50 p-5">
           <h2 className="text-xl font-black">{t("Ready with your documents?")}</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-700">{t("Individual Auto, Cab, Delivery, Bike Courier and Goods applicants can now use the secure verification flow. Passenger Bike Taxi is not available in this flow while Telangana rules remain pending.")}</p>
+          <p className="mt-2 text-sm leading-6 text-slate-700">{t("Individual Auto, Cab, Delivery, Bike Courier and Goods applicants can use the secure verification flow. Passenger Bike Ride applicants can register interest only; do not upload documents or begin passenger work until Zeshu opens a separate compliant verification flow.")}</p>
           <Link href="/earn/onboard" className="mt-4 inline-flex rounded-xl bg-[#075E45] px-4 py-3 text-sm font-black text-white">{t("Verify securely")}</Link>
         </section>
 
