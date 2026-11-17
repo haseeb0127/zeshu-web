@@ -31,20 +31,20 @@ export async function GET(){
     partnerWebsite:active&&program.data.partner_public_website?program.data.partner_public_website:null,
     treeCommitments:committed.count||0,
     pilotGoal:{
-      eligibleDeliveredOrdersMilestone:1000,
-      plannedTreesMin:1,
-      plannedTreesMax:2,
+      treePerEligibleDeliveredOrder:1,
       eligibleDeliveredOrdersTracked:null,
       trackingEnabled:false,
-      note:'The 1,000-order pilot has no approved live qualifying-order tracker yet. Old tree commitments are not customer orders.',
+      fundingConfirmed:false,
+      plantingPartnerConfirmed:Boolean(program.data.planting_partner),
+      note:'One tree per eligible completed delivery order is a programme goal, not an active funded commitment. Do not count, reserve or claim trees until funding, partner, permissions, care and order-level tracking are approved.',
     },
-    plantingPolicy:'The new planned first milestone is 1,000 genuinely eligible delivered orders followed by consideration of 1–2 trees, subject to funding, a suitable planting site, care and evidence. No planted or reserved tree is attributed to each order. Legacy pledge counters are not counts of qualifying orders.',
+    plantingPolicy:'Zeshu goal: fund one tree for each eligible completed delivery order without adding a customer checkout fee. The programme remains PLANNING until per-order funding, a suitable local planting partner, land permissions, long-term care and order-level reconciliation are confirmed. Cancellations, refunds and TEST orders do not qualify. Legacy pledge counters are not counts of qualifying customer orders.',
     plantingReported:planted.count||0,
     verifiedPlanted:verified.count||0,
     isPlantingLive:active,
     countPolicy:'Only evidence-backed VERIFIED records are reported as verified planted. No historical or TEST orders are counted.',
     message:active
       ?'An older funded commitment programme is active but must not be represented as the new 1–2-tree pilot. Planting is verified separately.'
-      :'Zeshu Green is planning a small first milestone: explore 1–2 trees after 1,000 eligible future live delivered orders. No tree is currently reserved or planted for any new checkout, and past/TEST orders do not count.',
+      :'Zeshu Green is preparing a one-tree-per-eligible-delivered-order goal. It is not yet funded or live: no tree is reserved or planted for a new checkout. Cancellations, refunds and TEST orders do not count.',
   });
 }
