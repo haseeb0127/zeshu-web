@@ -36,6 +36,6 @@ assert(orderApi.includes('feePaise:0'));
 assert(!orderApi.includes('export async function POST'));
 assert(!orderApi.includes('insert(')&&!orderApi.includes('update('));
 assert(green.includes('One eligible completed delivery order → one tree goal'));
-assert(docs.includes('one tree for each eligible, completed customer delivery order'));
+assert(docs.includes('one locally suitable tree for each eligible'));
 assert(translations.split('"Payment receipt and order summary"').length>=4);
 console.log('PASS: two-line Green cart, truthful post-order status and private verified-only evidence; no one-tree-per-order claim.');
