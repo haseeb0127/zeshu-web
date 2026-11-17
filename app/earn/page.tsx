@@ -95,14 +95,18 @@ export default function EarnWithZeshuPage() {
             <div className="max-w-3xl">
               <p className="text-xs font-black uppercase tracking-wider text-[#075E45]">Telangana Gig Worker Programme · 2026</p>
               <h2 className="mt-2 text-xl font-black text-slate-950 md:text-2xl">Your work. Your rights. Your safety.</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">The Telangana Platform Based Gig Workers (Registration, Social Security and Welfare) Act, 2026 came into force on 2 June 2026. The State launched its worker welfare scheme and Rules on 14 November 2026. The Government announced life cover of ₹5 lakh and health cover of ₹10 lakh through Rajiv Aarogyasri; actual eligibility, claims and scheme conditions are determined by the Government and Welfare Board.</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">The Telangana Platform Based Gig Workers (Registration, Social Security and Welfare) Act, 2026 came into force on 2 June 2026. Final implementing Rules (G.O.Ms.No.18) were released on 14 November 2026. The Government announced ₹5 lakh life cover and ₹10 lakh health cover through Rajiv Aarogyasri; benefits, eligibility and claims remain subject to official scheme conditions and the Welfare Board. The Rules also strengthen worker registration, transparent pay and deductions, task refusal, fair deactivation, timely payouts, safety and grievance protections.</p>
               <ul className="mt-3 grid gap-2 text-sm leading-5 text-slate-700 sm:grid-cols-2">
                 <li>• Worker registration and a government-issued identity</li>
                 <li>• Social-security and welfare scheme access, subject to eligibility</li>
                 <li>• Clear remuneration, incentives and deductions</li>
+                <li>• The right to refuse tasks without retaliation</li>
+                <li>• Advance notice of material contract/algorithm changes</li>
+                <li>• Written reasons, enquiry and human review before ordinary deactivation</li>
+                <li>• Timely payouts and itemised earnings/deduction statements</li>
                 <li>• Safety, health and grievance protections</li>
               </ul>
-              <p className="mt-3 text-xs leading-5 text-slate-500">Zeshu will complete its own aggregator registration, worker-data reporting, welfare-fee and grievance obligations as applicable. Applying here does not register you with the Government or guarantee benefits. Never share Aadhaar or bank details in this public form.</p>
+              <p className="mt-3 text-xs leading-5 text-slate-500">Zeshu is preparing its own aggregator registration, worker-data reporting, Welfare Fund Fee, WFFVS, safety and grievance obligations. The Welfare Fund Fee is borne by the platform, is capped by the Rules at 2% of each worker payout, and the operative rate must be confirmed from a Government notification before it is configured. Applying here does not register you with the Government or guarantee benefits. Never share Aadhaar or bank details in this public form.</p>
             </div>
             <a href="https://www.telangana.gov.in/news/2026/11/honble-cm-sri-a-revanth-reddy-along-with-honble-leader-of-opposition-in-the-lok-sabha-sri-rahul-gandhi-participates-in-the-launch-of-telangana-gig-workers-social-security-and-welfar/" target="_blank" rel="noreferrer" className="rounded-xl border border-emerald-200 px-4 py-3 text-sm font-black text-[#075E45]">Official Telangana announcement ↗</a>
           </div>
