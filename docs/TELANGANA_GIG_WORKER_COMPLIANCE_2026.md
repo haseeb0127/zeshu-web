@@ -48,7 +48,7 @@ The final Rules were released through G.O.Ms.No.18 on 14 November 2026. Based on
 - As at 17 November 2026, the current legal watch has not verified a final Telangana Transport Gazette notification granting Zeshu authority to aggregate passenger motorcycles. The new gig-worker Act/Rules do not themselves grant passenger-bike taxi permission. Re-check the official Telangana Gazette and Transport Department before every activation decision.
 - Gig-worker Act registration does not replace Motor Vehicles Act aggregator licensing, vehicle transport registration/permit, driver licence, insurance or passenger safety requirements.
 
-## 4. Bike Ride launch plan
+## 5. Bike Ride launch plan
 
 ### Phase A — open interest only (safe to do now)
 - Accept founding rider interest through Zeshu /earn#join with an explicit BIKE_RIDE_INTEREST category.
@@ -73,7 +73,7 @@ The final Rules were released through G.O.Ms.No.18 on 14 November 2026. Based on
 - Maintain worker choice, fair payout records, worker safety and the required government reporting from day one.
 - Expand from Jagtial only after local legal/operational sign-off.
 
-## 5. Zeshu release gates
+## 6. Zeshu release gates
 
 - BIKE_RIDE_INTEREST is an interest-only lead type and must never be mapped to a dispatchable driver service.
 - Keep passenger_bike_taxi_available=false, no bike passenger service in ACTIVATABLE, and no passenger booking, fare, payment, dispatch or matching until written approvals and service gates are satisfied.
@@ -83,7 +83,7 @@ The final Rules were released through G.O.Ms.No.18 on 14 November 2026. Based on
 - Do not encode welfare-fee percentages until the final applicable notification is confirmed.
 - Keep worker-facing disclosures accessible in Telugu, English and Hindi, and add Urdu where supported.
 
-## 6. Primary references
+## 7. Primary references
 
 - Telangana official launch announcement (14 Nov 2026): https://www.telangana.gov.in/news/2026/11/honble-cm-sri-a-revanth-reddy-along-with-honble-leader-of-opposition-in-the-lok-sabha-sri-rahul-gandhi-participates-in-the-launch-of-telangana-gig-workers-social-security-and-welfar/
 - Telangana Gazette, Act No.21 of 2026 (text copy): https://prsindia.org/files/bills_acts/acts_states/telangana/2026/Act21of2026TG.pdf — for official legal reliance, obtain the authoritative Gazette and subsequent rules/notifications.
