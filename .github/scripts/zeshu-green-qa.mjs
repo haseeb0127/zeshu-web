@@ -25,29 +25,29 @@ assert(guard.includes("status not in ('PLANTED','VERIFIED')"));
 assert(guard.includes("coalesce(proof_url,'')"));
 assert(impact.includes(".eq('status','VERIFIED')"));
 assert(impact.includes('no-store')&&!impact.includes("select('*')"));
-assert(impact.includes('1–2 trees'));
+assert(impact.includes('one tree for every eligible delivered order'));
 assert(ownerApi.includes('canAnnouncePerOrderPromise:false'));
 assert(ownerApi.includes('authorizeWhatsAppInboxAdmin(request)'));
 assert(ownerApi.includes('bulkPlantingAuthorized:false'));
 assert(ownerApi.includes("razorpayId.startsWith('rzp_test_')"));
 assert(!ownerApi.includes('export async function POST'));
 assert(!ownerApi.includes('export async function PATCH'));
-assert(ownerPage.includes('First goal: 1,000 eligible deliveries → aim for 1–2 trees'));
+assert(ownerPage.includes('Goal: one tree for every eligible completed delivery order'));
 assert(!ownerPage.includes('10,000 tree planting drive'));
 assert(ownerPage.includes('legacy commitment counter does not track')||ownerPage.includes('Legacy commitment counter does not track'));
-assert(green.includes('1–2 trees')&&green.includes('1,000'));
+assert(green.includes('one tree for every eligible completed delivery order'));
 assert(green.includes('verifiedPlanted')&&green.includes('No tree is claimed'));
 assert(green.includes('This is not a carbon-offset'));
 assert(!green.includes('10,000 eligible orders'));
 assert(hub.includes('href="/green"'));
-assert(hub.includes('Our first goal: 1–2 trees after 1,000 eligible deliveries.'));
+assert(hub.includes('Our goal: one tree for every eligible delivered order.'));
 assert(hub.includes('Still planning — no trees planted for orders yet.'));
-for(const phrase of ['"Our first goal: 1–2 trees after 1,000 eligible deliveries."',
+for(const phrase of ['"Our goal: one tree for every eligible delivered order."',
   '"Still planning — no trees planted for orders yet."']){
  assert(lang.split(phrase).length-1===3,'All three translation dictionaries need '+phrase);
 }
-assert(docs.includes('first 1,000-order, 1–2 tree pilot'));
+assert(docs.includes('one tree for each eligible, completed customer delivery order'));
 assert(docs.includes('Razorpay remains in TEST mode'));
-assert(docs.includes('No automatic sending, payment, purchases or planting'));
+assert(docs.includes('Keep the existing programme in PLANNING and its activation gates closed'));
 assert(adminNav.includes('href="/admin/green"'));
 console.log('PASS: compact truthful Zeshu Green pilot, legacy one-tree trigger disabled, secure evidence-only tree reporting.');
