@@ -15,8 +15,9 @@ for(const [name,source] of [['public impact',publicApi],['private planning dashb
  assert(!source.includes('plantingBatch:greenBatchProgress'),name+' must not expose the old 10,000 legacy tree-commitment batch as orders');
  assert(!source.includes("from '@/app/lib/zeshu-green-batch'"),name+' must not conflate legacy commitments with delivered orders');
 }
-assert(adminUi.includes('eligibleDeliveredOrdersTracked:null'), 'Admin should preserve untracked pilot semantics');
+assert(adminUi.includes('trackingEnabled:false')&&adminUi.includes('fundingConfirmed:false'), 'Admin should preserve unfunded and untracked pilot semantics');
 assert(greenPage.includes('No tree is claimed'), 'Public page must not promise trees were planted');
+assert(adminUi.includes('Goal: one tree for every eligible completed delivery order'), 'Admin HQ must show the one-tree goal');
 assert(storefront.includes('Our goal: one tree for every eligible delivered order'), 'Homepage goal must match API');
 assert(publicApi.includes(".eq('status','VERIFIED')"),'Only evidence-backed trees may appear in verified total');
 assert(adminApi.includes('canAnnouncePerOrderPromise:false'),'No one-tree-per-order promise before funded activation');
