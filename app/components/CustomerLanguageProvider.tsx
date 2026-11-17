@@ -1902,8 +1902,8 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Help us grow a greener Jagtial.": "جگتیال کو مزید سرسبز بنانے میں ہمارا ساتھ دیں۔",
     "No extra fee.": "کوئی اضافی فیس نہیں۔",
     "Our goal: one tree for every eligible delivered order.": "ہر اہل ڈیلیور آرڈر پر ایک درخت ہمارا مقصد ہے۔",
-     "Our goal: one tree for every eligible delivered order. Funding and local planting are being prepared. No extra fee.": "ہر اہل ڈیلیور آرڈر پر ایک درخت ہمارا مقصد ہے۔ فنڈنگ اور مقامی انتظام تیار ہو رہا ہے۔ کوئی اضافی فیس نہیں۔"
-    "Still planning — no trees planted for orders yet.": "ابھی منصوبہ بندی ہے — آرڈرز کے لیے درخت نہیں لگائے گئے۔",
+     "Our goal: one tree for every eligible delivered order. Funding and local planting are being prepared. No extra fee.": "ہر اہل ڈیلیور آرڈر پر ایک درخت ہمارا مقصد ہے۔ فنڈنگ اور مقامی انتظام تیار ہو رہا ہے۔ کوئی اضافی فیس نہیں۔",
+     "Still planning — no trees planted for orders yet.": "ابھی منصوبہ بندی ہے — آرڈرز کے لیے درخت نہیں لگائے گئے۔",
     "Planting starts after partner verification and funded capacity.": "پارٹنر کی تصدیق اور فنڈ دستیاب ہونے کے بعد شجرکاری شروع ہوگی۔",
     "See the plan": "پروگرام دیکھیں",
     "Zeshu Dine": "زیشو ڈائن",
