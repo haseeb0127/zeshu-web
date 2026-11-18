@@ -46,6 +46,7 @@ assert(productCard.includes('data-product-card="marketplace"'), 'Product cards m
 assert(homeHub.includes('DineBannerArtwork'), 'Dine must have its own dining poster, not unrelated CGI artwork');
 assert(homeHub.includes('GreenBannerArtwork'), 'Zeshu Green must have its own homepage banner artwork');
 assert(homeHub.includes('action:"green"'), 'Zeshu Green must be included in the homepage promotional carousel');
+assert(homeHub.indexOf('title:t("Zeshu Green")') < homeHub.indexOf('title:t("Zeshu Dine")'), 'Zeshu Green must appear near the start of the homepage carousel, immediately after Shop.');
 assert(homeHub.includes('Our goal: one tree for every eligible delivered order'), 'Green banner must disclose the one-tree-per-order goal honestly');
 assert(homeHub.includes('No extra fee.'), 'Green banner must disclose that customers pay no extra fee');
 assert(homeHub.includes('action:"dine"') && homeHub.includes('poster:"dine"'), 'Dine must have its own clickable promotional slide');
