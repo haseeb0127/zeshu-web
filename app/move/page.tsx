@@ -54,8 +54,8 @@ function ServiceSection({ title, cards }: { title: string; cards: ServiceCard[] 
             <h3 className="mt-4 font-black text-slate-900">{t(card.title)}</h3>
             <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{t(card.description)}</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {card.regulatoryHold && card.title === "Bike Ride" ? (
-                <Link href="/earn#join" className="inline-flex rounded-xl bg-[#075E45] px-3 py-2 text-xs font-black text-white">{t(card.actionLabel || "Register interest")}</Link>
+              {(card.title === "Bike Ride" || card.title === "Bike Courier") ? (
+                <Link href="/bike" className="inline-flex rounded-xl bg-[#075E45] px-3 py-2 text-xs font-black text-white">{t(card.title === "Bike Ride" ? "Explore Zeshu Bike" : "Explore Bike Courier")}</Link>
               ) : card.regulatoryHold ? (
                 <span className="inline-flex cursor-not-allowed rounded-xl bg-slate-200 px-3 py-2 text-xs font-black text-slate-600">{t(card.actionLabel || "View status")}</span>
               ) : (

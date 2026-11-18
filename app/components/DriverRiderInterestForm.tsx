@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useCustomerLanguage } from "./CustomerLanguageProvider";
 
 const roles = [
@@ -35,6 +35,13 @@ export default function DriverRiderInterestForm() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const requestedRole = new URLSearchParams(window.location.search).get("role");
+    if (requestedRole && roles.some(([value]) => value === requestedRole)) {
+      setForm((current) => ({ ...current, role: requestedRole }));
+    }
+  }, []);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
