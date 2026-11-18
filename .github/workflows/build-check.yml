@@ -99,6 +99,8 @@ jobs:
         run: node --experimental-strip-types .github/scripts/driver-rider-foundation-qa.ts
       - name: Verify Telangana gig-worker and Bike Ride interest-only compliance gates
         run: node .github/scripts/telangana-bike-ride-gig-worker-qa.mjs
+      - name: Verify Zeshu Bike pilot landing and rider onboarding routes
+        run: node .github/scripts/zeshu-bike-pilot-qa.mjs
       - name: Verify captured TEST checkout recovery guards
         run: node --experimental-strip-types .github/scripts/razorpay-captured-recovery.test.mjs
       - name: Verify WhatsApp template approval safety
