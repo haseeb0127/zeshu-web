@@ -19,6 +19,7 @@ import { LanguageSwitcher, useCustomerLanguage } from "../components/CustomerLan
 const roles = [
   { title: "Delivery Rider", body: "Local Zeshu order delivery and seller-to-customer fulfilment.", icon: <Bike size={22} /> },
   { title: "Bike Courier", body: "Secure document verification is available for parcel delivery onboarding.", icon: <Package size={22} /> },
+  { title: "Passenger Bike Ride — founding interest only", body: "Register interest in a future Zeshu passenger bike service. Telangana gig-worker registration does not authorise passenger rides; bookings and activation remain disabled until Transport Department approval, eligible vehicle permits, commercial insurance and passenger-safety checks are confirmed.", icon: <Bike size={22} /> },
   { title: "Auto Driver", body: "Complete identity, DL, RC, insurance, fitness and permit verification now; live passenger activation remains compliance/provider gated.", icon: <Car size={22} /> },
   { title: "Cab / Car Driver", body: "Secure verification is available now; live dispatch starts only after the compliant mobility setup is enabled.", icon: <Car size={22} /> },
   { title: "Goods Driver", body: "Auto, mini-truck and cargo delivery using the applicable goods-vehicle permits.", icon: <Truck size={22} /> },
