@@ -11,6 +11,7 @@ const hold=file('app/move/request/page.tsx');
 const compliance=file('docs/TELANGANA_GIG_WORKER_COMPLIANCE_2026.md');
 const home=file('app/components/HomeBusinessHub.tsx');
 assert(form.includes('BIKE_RIDE_INTEREST'),'Interest form exposes founding Bike Ride rider interest');
+assert(earn.includes('Passenger Bike Ride — founding interest only'),'Earn page prominently explains the Bike Ride founding interest path.');
 assert(form.includes('interest only')&&form.includes('Do not convert your vehicle'),'Bike Ride interest is clearly not approval or permission');
 assert(form.includes('Do not enter your driving-licence number, RC number, Aadhaar, PAN, bank details or OTP'),'Public interest form avoids sensitive identity/financial collection');
 assert(api.includes("'BIKE_RIDE_INTEREST'"),'API accepts the new interest-only role');
