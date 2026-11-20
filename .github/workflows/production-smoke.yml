@@ -41,6 +41,21 @@ jobs:
             fi
           done
 
+      - name: Verify public sitemap and robots endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          for route in "/sitemap.xml" "/robots.txt"; do
+            code="$(curl -L -sS -o "/tmp/zeshu-seo$(echo "$route" | tr '/' '_')" -w '%{http_code}' "https://zeshu.in$route" || true)"
+            if [ "$code" != "200" ]; then
+              echo "Expected 200 from production $route, got $code"
+              exit 1
+            fi
+          done
+          grep -q '<urlset' /tmp/zeshu-seo_sitemap.xml || { echo "Production sitemap is not XML urlset output"; cat /tmp/zeshu-seo_sitemap.xml; exit 1; }
+          grep -q 'https://zeshu.in/' /tmp/zeshu-seo_sitemap.xml || { echo "Production sitemap does not contain canonical Zeshu URLs"; exit 1; }
+          grep -q 'Sitemap: https://zeshu.in/sitemap.xml' /tmp/zeshu-seo_robots.txt || { echo "Production robots.txt does not advertise the canonical sitemap"; cat /tmp/zeshu-seo_robots.txt; exit 1; }
+
       - name: Verify support assistant readiness
         shell: bash
         run: |
