@@ -15,6 +15,53 @@ Build Zeshu Pay as a customer-friendly digital-services hub for India, starting 
 - The existing partner page already invites BBPS/Bharat Connect, recharge and utility providers to propose compliant integrations with settlement, commission and dispute-support terms.
 - A previous PlanAPI credential was flagged for rotation. Rotate it before any further provider testing; never put credentials in source control or browser code.
 
+
+## Bharat Connect route — researched partner model
+
+Official Bharat Connect material distinguishes the following roles:
+- **Customer Operating Unit (COU):** an RBI-authorised bank or non-bank organisation on the customer/payment-channel side.
+- **Agent Institution (AI):** an intermediary that onboards agents; it is not itself the same as an RBI-authorised COU.
+- **Biller Operating Unit (BOU):** an RBI-authorised bank or non-bank organisation on the biller/service-provider side.
+- **Biller:** the organisation that generates a bill for its own service.
+- **Developer:** an empanelled technology provider that builds integrations for participants.
+
+The public Bharat Connect eligibility page says a non-bank applicant seeking to operate as an OU must be an Indian incorporated company, have the proposed activity in its MOA, maintain net worth of at least ₹100 crore, have relevant domain experience and obtain the applicable RBI in-principle authorisation and sponsor-bank arrangement. Zeshu is currently a sole proprietorship, so this plan does **not** assume Zeshu can directly become an OU. The practical route to investigate is onboarding as a digital channel/agent or through a suitable existing COU/AI/BOU partner, with the partner confirming the exact permissible role in writing.
+
+Bharat Connect's official partner form currently lists Cashfree Payments India, Easebuzz, Euronet Services India and PayU Payments among selectable Biller Operating Unit options; its separate join-support form also lists customer-side operating-unit options. This makes them legitimate candidates to approach for a partner conversation, but does not prove that any one will onboard Zeshu, offer API access, approve the proposed business model, or provide particular rates. The live form allows selection of up to three BOUs. Ask Bharat Connect to help select the correct customer-side route rather than submitting as a Biller or OU incorrectly.
+
+### Recommended shortlist for written proposals
+
+1. **Cashfree Payments India** — first priority because Zeshu already contacted Cashfree about payment gateway and marketplace split settlement; ask separately whether its Bharat Connect role supports Zeshu's intended customer-side model and what the minimums are.
+2. **Easebuzz** — request its exact Bharat Connect role, digital-channel/agent onboarding path, API access, biller coverage, fees and settlement model.
+3. **Euronet Services India** — request the same details, especially Jagtial/Telangana serviceability and operational support.
+4. **PayU Payments** — request the same details and clarify whether the relevant offering is a payment gateway, Bharat Connect OU relationship, or a distinct product. Do not treat ordinary gateway access as BBPS access.
+
+Select no more than three primary candidates for the first formal comparison. Do not select all four automatically; compare actual written terms first.
+
+### Official onboarding sequence to validate with Bharat Connect
+
+For a Biller applying through an existing BOU, the official route includes submitting the partner form, completing the Biller Consent Form, onboarding formalities and agreement with the BOU, then awaiting the BOU's approval request and Central Unit approval/unique ID. Zeshu must not use this Biller route unless Zeshu is actually the biller for the service being collected.
+
+For a customer-side platform/channel, ask Bharat Connect and the proposed partner to identify whether Zeshu must be onboarded under a COU, an Agent Institution, or another permitted digital-channel arrangement. Get the entity eligibility, KYC documents, agreement, technical certification, transaction limits, customer complaint ownership and settlement responsibilities in writing before building the live path.
+
+### Questions to send every candidate
+
+- Can you onboard an Indian sole proprietorship / Zeshu as a digital customer channel, agent, sub-agent or other permitted participant? Which exact role and agreement?
+- Which Bharat Connect role do you hold (COU, BOU, AI, sponsor, technology provider, or another role), and what authorisation/empanelment evidence can you share?
+- Can Zeshu offer a customer-facing web/PWA experience, and is a separate certification or approval required?
+- Which categories and billers are live for Telangana, including Jagtial PIN codes?
+- Is prepaid recharge supported through the same contract or a separate telecom aggregator arrangement?
+- What are setup fees, deposits, minimum monthly transactions, recurring charges, per-transaction charges, commission, taxes and settlement deductions?
+- Who receives customer funds, who settles to billers, and who owns pending, failed, duplicate, reversal, refund and complaint cases?
+- Can you provide sandbox access, API documentation, signed callback samples, status enquiry, reconciliation reports, UAT support and a production go-live checklist?
+- What is the minimum pilot size and can we start with a no/low-upfront pilot?
+
+### Regulatory reference points
+
+- RBI's Master Direction — Bharat Bill Payment System Directions, 2024 is the governing regulatory reference to review with the proposed partner and legal/compliance adviser.
+- Bharat Connect's public partner information explains the roles and the distinction between COUs, Agent Institutions, BOUs, billers and developers.
+- No statement in this plan is a claim that Zeshu has Bharat Connect approval, OU authorisation, biller ID, agent appointment or production API access.
+
 ## Recommended service roadmap
 
 ### Phase 0 — Trust and commercial foundations
