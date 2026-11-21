@@ -25,16 +25,23 @@ export function groupClientRoute(path:string):RouteGroup{
 export function safeClientDigest(value:unknown):string|null{
   return typeof value==='string'&&/^[a-zA-Z0-9_-]{4,70}$/.test(value)?value:null;
 }
-/** Only one silent hard-reload per 30 minutes for the *same route* and a
- * stale/missing JS chunk. Never reload checkout/payment/admin pages on errors.
- * If sessionStorage is disabled, do not retry automatically (loop safety).
+/** One silent recovery per 30 minutes for stale assets or a genuine hydration
+ * mismatch. Never automatically reload checkout, payment, ordering, or admin
+ * routes. If a grocery payment is pending on the storefront, never reload it.
+ * Blocked sessionStorage means no automatic retry (loop safety).
  */
 export function shouldSelfHealChunk(error:Pick<Error,'name'|'message'>,path:string,now:number=Date.now()):boolean{
-  if(typeof window==='undefined'||classifyClientFailure(error)!=='asset')return false;
-  if(!navigator.onLine)return false;
-  if(/^\/(admin|checkout|payment|payments|orders|account)(?:\/|$)/.test(path))return false;
-  const key='zeshu:safe:asset-recovery:'+groupClientRoute(path);
+  if(typeof window==='undefined')return false;
+  const kind=classifyClientFailure(error);
+  if(kind!=='asset'&&kind!=='hydration')return false;
+  if(typeof navigator==='undefined'||navigator.onLine===false)return false;
+  const pathOnly=path.split(/[?#]/)[0]||'/';
+  if(/^\/(admin|checkout|payment|payments|orders|account|pay|recharge|dine|move)(?:\/|$)/.test(pathOnly))return false;
+  const key='zeshu:safe:asset-recovery:'+groupClientRoute(pathOnly);
   try{
+    // Home includes checkout. Never reload after a successful gateway capture
+    // that is still awaiting confirmation; protect idempotent recovery.
+    if(pathOnly==='/'&&window.sessionStorage.getItem('zeshu_pending_grocery_confirmation'))return false;
     const previous=Number(window.sessionStorage.getItem(key)||'0');
     if(Number.isFinite(previous)&&previous>0&&now-previous<30*60*1000)return false;
     window.sessionStorage.setItem(key,String(now));
