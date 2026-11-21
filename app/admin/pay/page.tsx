@@ -1,8 +1,9 @@
 "use client";
 
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useMemo,useState} from "react";
 import Link from "@/app/components/DocumentLink";
 import {adminSupabase} from "@/app/lib/browser-supabase";
+import {estimatePayContribution} from "@/app/lib/zeshu-pay-economics";
 import {ArrowLeft,CheckCircle2,ShieldCheck,RefreshCw,AlertCircle,Receipt,Smartphone} from "lucide-react";
 
 const supabase=adminSupabase();
@@ -25,6 +26,34 @@ export default function ZeshuPayAdmin(){
  const [report,setReport]=useState<Report|null>(null);
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState("");
+ // Illustrative scenario inputs only: never persisted, sent to a provider or billed.
+ const [scenario,setScenario]=useState({
+  amount:"199",commission:"2",gatewayRate:"1.8",
+  providerFixed:"0",gatewayFixed:"0",support:"0.50",taxAndOther:"0",cashback:"0",
+ });
+ const estimate=useMemo(()=>{
+  try{
+   const n=(key:keyof typeof scenario)=>{
+    const v=scenario[key].trim();
+    return v===""?NaN:Number(v);
+   };
+   const money=(key:keyof typeof scenario)=>Math.round(n(key)*100);
+   const rate=(key:keyof typeof scenario)=>Math.round(n(key)*100);
+   return estimatePayContribution({
+    amountPaise:money("amount"),providerCommissionBps:rate("commission"),
+    paymentGatewayBps:rate("gatewayRate"),providerFixedPaise:money("providerFixed"),
+    gatewayFixedPaise:money("gatewayFixed"),supportCostPaise:money("support"),
+    taxAndOtherCostPaise:money("taxAndOther"),cashbackPaise:money("cashback"),
+   });
+  }catch{return null;}
+ },[scenario]);
+ const moneyDisplay=(paise:number)=>new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:2}).format(paise/100);
+ const field=(key:keyof typeof scenario,title:string,step="0.01")=><label className="block text-xs font-bold text-slate-700">
+  {title}
+  <input aria-label={title} type="number" inputMode="decimal" min="0" max={key==="amount"?"1000000":key==="commission"||key==="gatewayRate"?"100":"1000000"} step={step}
+   value={scenario[key]} onChange={e=>setScenario(previous=>({...previous,[key]:e.target.value}))}
+   className="mt-1 block min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 focus-visible:outline-2 focus-visible:outline-[#075e45]"/>
+ </label>;
  const reload=useCallback(async()=>{
   setLoading(true);setError("");
   try{
@@ -74,6 +103,30 @@ export default function ZeshuPayAdmin(){
       <ul className="mt-3 list-inside list-disc space-y-2 text-xs leading-5 text-slate-600">{report.providers.ezytmPlanapi.blocking.map((item,i)=><li key={i}>{item}</li>)}</ul>
      </section>
     </div>
+    <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5" aria-label="Illustrative Zeshu Pay margin calculator">
+      <h2 className="text-lg font-black">Recharge profitability · decision aid</h2>
+      <p className="mt-2 text-sm leading-6 text-slate-600">Enter your actual written provider commission and payment costs to evaluate a hypothetical transaction. The numbers shown initially are <strong>examples, not A1Topup or Ezytm rates</strong>. Nothing here contacts a provider, changes billing, stores the input, or switches Pay live.</p>
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+       {field("amount","Customer recharge amount (₹)")}
+       {field("commission","Provider commission (%)")}
+       {field("gatewayRate","Payment processor fee (%)")}
+       {field("providerFixed","Provider fixed cost (₹)")}
+       {field("gatewayFixed","Gateway fixed cost (₹)")}
+       {field("support","Support / operational cost (₹)")}
+       {field("taxAndOther","Tax and other allocated costs (₹)")}
+       {field("cashback","Optional cashback (₹)")}
+      </div>
+      {estimate?<>
+       <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs font-semibold text-slate-500">Estimated commission</p><p className="mt-1 font-black">{moneyDisplay(estimate.commissionPaise)}</p></div>
+        <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs font-semibold text-slate-500">Estimated transaction costs</p><p className="mt-1 font-black">{moneyDisplay(estimate.totalCostsPaise)}</p></div>
+        <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs font-semibold text-slate-500">Net contribution</p><p className={`mt-1 font-black ${estimate.viable?"text-emerald-700":"text-red-700"}`}>{moneyDisplay(estimate.contributionPaise)}</p></div>
+        <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs font-semibold text-slate-500">Break-even commission at these costs</p><p className="mt-1 font-black">{(estimate.breakEvenCommissionBps/100).toFixed(2)}%</p></div>
+       </div>
+       <p className="mt-3 text-xs leading-5 text-slate-600">{estimate.viable?"Illustrative positive contribution only; verify refunds, settlement costs, taxes and fixed overhead before launch.":"This example does not cover estimated costs. Do not offer cashback or subsidise this transaction without a funded plan."}</p>
+      </>:<p role="alert" className="mt-4 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-900">Please enter valid non-negative amounts, a recharge of at least ₹1, and percentage rates from 0 to 100.</p>}
+      <p className="mt-2 text-xs text-slate-500">The model excludes unentered costs and assumes the provider pays the commission on the recharge face value. Zeshu currently charges no real recharge customers.</p>
+    </section>
     <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
       <div className="flex items-center gap-2"><Smartphone size={20} className="text-[#075e45]"/><h2 className="text-lg font-black">Transaction safety</h2></div>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
