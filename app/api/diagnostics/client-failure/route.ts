@@ -1,4 +1,6 @@
 import {NextResponse} from 'next/server';
+import {createClient} from '@supabase/supabase-js';
+import {getRuntimeSupabaseEnv} from '@/app/lib/runtime-env';
 
 // Optional, privacy-safe operational diagnostics: no account data, search query,
 // IP address, order/payment reference, URL, message or stack is stored here.
@@ -39,6 +41,21 @@ export async function POST(request:Request){
     console.warn('ZESHU_CLIENT_RECOVERY',{
       kind,group,scope,digest:safeDigest,
     });
+    // Persist only a per-day, per-category total. Raw errors, paths, IPs,
+    // customer identifiers and payment data are never written.
+    // A telemetry outage must never block browsing or customer checkout.
+    try {
+      const env=await getRuntimeSupabaseEnv();
+      if(env.url&&env.serviceRoleKey){
+        const db=createClient(env.url,env.serviceRoleKey,{
+          auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},
+          global:{fetch:(url,options)=>fetch(url,{...options,signal:AbortSignal.timeout(2500)})},
+        });
+        await db.rpc('record_zeshu_client_failure',{
+          p_kind:kind,p_group:group,p_scope:scope,
+        });
+      }
+    }catch{/* Aggregate crash metrics are best-effort only. */}
   }
   return new NextResponse(null,{status:204,headers});
 }
