@@ -83,6 +83,8 @@ jobs:
         run: node .github/scripts/mobile-startup-performance-qa.mjs
       - name: Verify public SEO sitemap and private URL exclusion
         run: node --experimental-strip-types .github/scripts/public-sitemap-qa.mjs
+      - name: Verify safe multilingual Zeshu Pay discovery and provider launch gates
+        run: node .github/scripts/zeshu-pay-qa.mjs
       - name: Verify homepage business hub
         run: node --experimental-strip-types .github/scripts/homepage-business-hub-qa.ts
       - name: Verify honest Zeshu Green goal and private verified-tree accounting
