@@ -105,7 +105,7 @@ jobs:
             for (const service of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Zeshu Services', 'Zeshu Weddings', 'Zeshu Interiors', 'Customer Service', 'Zeshu App']) {
               assert(moveQuickText.includes(service), `Homepage promotional carousel is missing ${service}`);
             }
-            for (const destination of ['/fashion', '/move', '/professional-services/weddings', '/professional-services/interiors', '/green']) {
+            for (const destination of ['/fashion', '/pay', '/move', '/professional-services/weddings', '/professional-services/interiors', '/green']) {
               assert(await moveQuick.locator(`a[href="${destination}"]`).count() > 0, `Homepage promotion link missing: ${destination}`);
             }
             assert(!moveQuickText.includes('Plan something bigger'), 'Homepage must not duplicate Weddings and Interiors below the carousel');
@@ -153,7 +153,7 @@ jobs:
             // Catch black Android/WebView load errors and broken back navigation.
             assert(await page.locator('[data-glossy-banner]').count() === 11, 'Homepage must expose eleven honest service and shopping promotions including Zeshu Green');
             const bannerRoutes = [
-              ['dine','/dine'], ['fashion','/fashion'], ['move','/move'],
+              ['dine','/dine'], ['fashion','/fashion'], ['pay','/pay'], ['move','/move'],
               ['services','/professional-services'],
               ['weddings','/professional-services/weddings'],
               ['interiors','/professional-services/interiors'],
@@ -165,6 +165,11 @@ jobs:
               await link.click();
               await page.waitForURL(url => url.pathname === route, { timeout: 25000 });
               await page.locator('main').first().waitFor({ state: 'visible', timeout: 15000 });
+              if (poster === 'pay') {
+                assert(await page.locator('a[data-pay-service="mobile"]').count() === 1, 'Zeshu Pay mobile recharge discovery card is missing');
+                const payText = await page.locator('main').innerText();
+                assert(payText.includes('Discovery only') && payText.includes('No live transactions'), 'Pay hub must not promise live bill payments');
+              }
               const body = await page.locator('body').innerText();
               assert(!(/This page couldn.t load|This Zeshu page needs another try|Zeshu needs a moment/i).test(body), 'Banner tap failed: ' + poster);
               await page.goBack({ waitUntil: 'domcontentloaded', timeout: 25000 });

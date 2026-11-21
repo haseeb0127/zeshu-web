@@ -69,6 +69,7 @@ const SERVICE_SEARCH_TERMS: Record<string, string> = {
 };
 
 const SITE_SEARCH_SHORTCUTS = [
+  { id: 'pay', label: 'Zeshu Pay', description: 'Discover recharge plans, bill categories and service availability — live bill payments not enabled', href: '/pay', terms: 'zeshu pay recharge bill electricity dth fastag prepaid utility' },
   { id: 'scanner', label: 'Scan QR', description: 'Open the Zeshu QR scanner', href: '/scanner', terms: 'qr scan scanner code merchant upi' },
   { id: 'app', label: 'Get Zeshu', description: 'Install Zeshu on your device', href: '/app', terms: 'app android install download mobile pwa home screen' },
   { id: 'policies', label: 'Policies & Trust', description: 'Refunds, privacy, terms and service information', href: '/policies', terms: 'policy policies refund cancellation privacy terms trust return' },
@@ -309,7 +310,14 @@ export default function ZeshuSuperApp() {
     // installed/PWA launch must reopen the storefront, never trap the customer in Services.
     window.history.replaceState({}, '', '/');
 
-    if (isReload || isStandalone) {
+    // Only explicit Zeshu Pay category clicks may open the services tab from an
+    // installed/PWA session. A normal reload or launch still opens the storefront.
+    let payServiceIntent = false;
+    try {
+      payServiceIntent = window.sessionStorage.getItem('zeshu:pay:service-intent') === '1';
+      window.sessionStorage.removeItem('zeshu:pay:service-intent');
+    } catch {}
+    if (isReload || (isStandalone && !payServiceIntent)) {
       setActiveTab('home');
       return;
     }
@@ -3216,7 +3224,7 @@ export default function ZeshuSuperApp() {
              >
                <button type="button" onClick={() => { setActiveCategory('All'); setFulfillmentFilter('ALL'); requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-emerald-50 hover:text-[#075E45]">{t('Shop')}</button>
                <Link href="/fashion" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-fuchsia-50 hover:text-fuchsia-800">Zeshu Fashion</Link>
-               <button type="button" onClick={() => openServices()} className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-amber-50 hover:text-amber-800">Zeshu Pay <span className="hidden font-bold text-slate-400 lg:inline">· {t('Recharge & bills')}</span></button>
+               <Link href="/pay" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-amber-50 hover:text-amber-800">Zeshu Pay <span className="hidden font-bold text-slate-400 lg:inline">· {t('Recharge & bills')}</span></Link>
                <Link href="/move" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-sky-50 hover:text-sky-800">Zeshu Move</Link>
                <Link href="/help" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-slate-100">{t('Customer Service')}</Link>
                <span className="my-1 hidden w-px shrink-0 bg-slate-200 md:block" aria-hidden="true" />
@@ -3552,7 +3560,7 @@ export default function ZeshuSuperApp() {
           <div className="min-w-0"><h2 className="mb-4 text-sm font-black text-white">{t('Explore Zeshu')}</h2><nav aria-label="Explore Zeshu" className="flex flex-col items-start gap-2.5 text-xs leading-5 sm:text-sm sm:leading-6">
             <button type="button" onClick={() => { setActiveTab('home'); setActiveCategory('All'); setFulfillmentFilter('ALL'); document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-left hover:underline">{t('Shop')}</button>
             <Link href="/fashion" className="hover:underline">Zeshu Fashion</Link>
-            <button type="button" onClick={() => openServices()} className="text-left hover:underline">Zeshu Pay</button>
+            <Link href="/pay" className="hover:underline">Zeshu Pay</Link>
             <Link href="/move" className="hover:underline">Zeshu Move</Link>
             <Link href="/professional-services" className="hover:underline">{t('Zeshu Services')}</Link>
             <Link href="/dine" className="hover:underline">Zeshu Dine</Link>

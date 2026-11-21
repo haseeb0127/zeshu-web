@@ -13,6 +13,7 @@ export default function sitemap():MetadataRoute.Sitemap {
     {path:'/help',priority:.9,changeFrequency:'monthly'},
     {path:'/policies',priority:.8,changeFrequency:'monthly'},
     {path:'/partners',priority:.75,changeFrequency:'monthly'},
+    {path:'/pay',priority:.7,changeFrequency:'weekly'},
     {path:'/fashion',priority:.7,changeFrequency:'weekly'},
     {path:'/dine',priority:.7,changeFrequency:'weekly'},
     {path:'/move',priority:.65,changeFrequency:'weekly'},
