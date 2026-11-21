@@ -271,6 +271,14 @@ jobs:
               'Denied Android storage caused the recurring Zeshu root/page error');
             await blocked.close();
 
+            // Simulate a returning Android/PWA customer loading the same deployment
+            // again after service-worker startup. Never submit any transaction.
+            await page.reload({waitUntil:'domcontentloaded',timeout:60000});
+            await page.locator('input[aria-label="Search Zeshu"]')
+              .waitFor({state:'visible',timeout:20000});
+            assert(await page.locator('[data-zeshu-recovery]').count()===0,
+              'Returning Android customer encountered the global/root recovery screen after reload');
+
             await page.screenshot({ path: 'mobile-storefront.png', fullPage: true });
             console.log('CUSTOMER_STAGING_BROWSER_QA=PASS');
           } finally {
