@@ -3,6 +3,7 @@ import {useCallback,useEffect,useState} from 'react';
 import Link from '@/app/components/DocumentLink';
 import {adminSupabase} from '@/app/lib/browser-supabase';
 import {Leaf,ShieldCheck,RefreshCw,ExternalLink,CheckCircle2,AlertCircle,TreePine} from 'lucide-react';
+import GreenPilotCalculator from './GreenPilotCalculator';
 
 const supabase=adminSupabase();
 type Readiness={
@@ -92,7 +93,8 @@ export default function AdminGreen(){
       <p className="mt-3 text-xs font-semibold text-emerald-900">Legacy tree-commitment slots are not customer-order counts. Cancellations, refunds and TEST orders must never qualify.</p>
       <p className="mt-2 rounded-lg bg-amber-50 p-3 text-xs leading-6 text-amber-950">PLANNING only. No per-order funds are reserved, no planting is automatic, and the existing legacy database trigger remains gated.</p>
      </section>
-     <section className="mt-5 grid gap-4 rounded-2xl border border-emerald-100 bg-white p-5 md:grid-cols-2 md:p-7">
+     <GreenPilotCalculator programmeMode={info.mode}/>
+    <section className="mt-5 grid gap-4 rounded-2xl border border-emerald-100 bg-white p-5 md:grid-cols-2 md:p-7">
      <div>
       <h2 className="text-lg font-black">Funded campaign budget</h2>
       <p className="mt-2 text-sm">Approved tree quota: <strong>{info.fundedTreeQuota.toLocaleString('en-IN')}</strong></p>

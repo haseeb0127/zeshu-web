@@ -6,6 +6,14 @@ The production programme is `PAUSED`, customer homepage promotion/cart/order cop
 
 The sections below describe a **deferred historical proposal, not an active or advertised programme**.
 
+## 21 November 2026 — business viability reevaluation (no launch)
+
+The owner asked whether Zeshu could offer one tree per customer order while remaining business-friendly. This is **not** authorization to incur planting costs, reinstate a storefront pledge, or reactivate the previously paused programme. The private `/admin/green` dashboard now contains a local-only margin-and-budget simulator with editable assumptions for eligible delivered orders, Zeshu's true net contribution per order, all-in planting + care + evidence cost, a monthly cap and contribution allocation percentage.
+
+The simulator estimates (a) cost if every eligible order receives a tree, (b) the smaller of the monthly cap and affordable contribution allocation, and (c) the maximum number of trees that could be funded within that hypothetical budget. It does not use real order counts, store the inputs, move money or create commitments. Hypothetical capacity is not funded quota.
+
+For due diligence, obtain independent full-lifecycle written quotes from at least two partners, including aftercare and tree survival monitoring. External public offers may differ significantly; use them only to inform negotiations, **not** as an approved Zeshu provider or actual per-tree cost. Continue to exclude TEST/cancelled/refunded orders, and consider a prepaid, tightly capped first batch only after owner funds and expressly authorizes it. No customer-facing banner, checkout promotion, donations or live programme are switched on by this administrative planning work.
+
 ## Owner's current goal
 
 - **Goal:** fund one locally suitable tree for each eligible, completed customer delivery order.
