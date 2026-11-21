@@ -35,7 +35,7 @@ assert(home.includes("response.ok ? response.json()"),'Failed seller HTTP respon
 assert(home.includes('setMarketplaceSellers(Object.fromEntries'),'Seller response must still populate verified labels');
 assert(home.includes("dynamic(() => import('./components/ReviewForm'))"),'Review UI must load only when needed');
 assert(home.includes("dynamic(() => import('./components/OrderStatusTimeline'))"),'Tracking UI must load only when needed');
-assert(home.includes("dynamic(() => import('./components/GreenOrderImpact'))"),'Order-specific green UI should be a deferred chunk');
+assert(!home.includes("dynamic(() => import('./components/GreenOrderImpact'))"),'Owner-paused Green must not load a checkout/order chunk');
 assert(home.includes('window.requestIdleCallback(saveProducts'),'Optional product cache writes must not block initial Android paint');
 assert(home.includes('setContentError(true);'),'Live catalog failures must not masquerade as verified inventory');
 assert(home.includes('<Script id="razorpay-checkout-js"'),'Preserve existing checkout script and payment behavior');
