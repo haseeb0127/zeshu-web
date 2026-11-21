@@ -32,5 +32,10 @@ assert(!hub.includes('create-test-payment')&&!hub.includes('create-razorpay-orde
 assert(provider.includes("fulfillment: 'UNAVAILABLE'"),'Recharge fulfilment must remain disabled');
 assert(provider.includes('{ status: 503 }'),'Recharge backend must reject real transactions');
 assert(launch.includes('Do not turn on real bill-payment/recharge fulfilment until'),'Pay provider agreement/compliance gate must remain');
-assert(green.includes('programme is not live yet'),'Tree pledge must not be falsely marketed as live');
-console.log('PASS: multilingual Zeshu Pay discovery, honest provider gates, no payments, PWA deep-link safety and Green pledge.');
+assert(green.includes('Zeshu Green is on hold'),'Paused tree campaign must not be advertised as active');
+assert(src('app/admin/pay/page.tsx').includes('Ezytm · PlanAPI'),'Private Pay HQ must name the selected plan provider');
+assert(src('app/admin/pay/page.tsx').includes('A1Topup'),'Private Pay HQ must name the selected fulfilment provider');
+assert(src('app/api/admin/pay/readiness/route.ts').includes('authorizeWhatsAppInboxAdmin(request)'),'Pay readiness must require owner access');
+assert(src('app/api/admin/pay/readiness/route.ts').includes('providerCallPerformed:false'),'Readiness must not consume paid plan API hits');
+assert(!src('app/api/admin/pay/readiness/route.ts').includes("method:'POST'"),'Provider readiness must not execute transactions');
+console.log('PASS: multilingual Zeshu Pay, selected A1Topup + Ezytm stack, read-only private readiness, payment gates and paused Green.');
