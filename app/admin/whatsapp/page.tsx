@@ -133,6 +133,18 @@ export default function WhatsAppReadinessPage() {
           <p className="mt-2 text-sm leading-6 text-slate-600">A private, mobile-friendly inbox for genuine incoming Cloud API messages. Currently read-only: customer replies can be saved as unsent drafts, but never transmitted.</p>
           <Link href="/admin/whatsapp/inbox" className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-[#075e45] px-5 py-3 text-sm font-black text-white">Open WhatsApp Inbox →</Link>
         </section>
+      <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+        <h2 className="text-base font-black text-amber-950">Move this number to WhatsApp Business mobile first</h2>
+        <p className="mt-2 text-sm leading-6 text-amber-950">
+          A separate owner-confirmed transition can release the existing Cloud API registration
+          without deleting the WABA or Zeshu's message history. This interrupts incoming
+          customer messages until a supported reconnection, and mobile OTP is not guaranteed.
+        </p>
+        <Link href="/admin/whatsapp/mobile-first"
+         className="mt-4 inline-flex min-h-11 items-center rounded-xl border border-amber-600 bg-white px-4 py-3 text-sm font-bold text-amber-950">
+          Review mobile-first transition
+        </Link>
+      </section>
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-black">Incoming webhook connection</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
