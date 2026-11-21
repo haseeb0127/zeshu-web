@@ -87,6 +87,8 @@ jobs:
         run: node .github/scripts/zeshu-pay-qa.mjs
       - name: Verify A1Topup and Ezytm provider readiness and Green owner pause
         run: node .github/scripts/zeshu-pay-provider-readiness-qa.mjs
+      - name: Verify recharge status safety model using mock-only transactions
+        run: node --experimental-strip-types .github/scripts/zeshu-pay-recharge-state-qa.mjs
       - name: Verify homepage business hub
         run: node --experimental-strip-types .github/scripts/homepage-business-hub-qa.ts
       - name: Verify honest Zeshu Green goal and private verified-tree accounting
