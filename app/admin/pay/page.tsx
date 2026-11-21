@@ -26,6 +26,19 @@ export default function ZeshuPayAdmin(){
  const [report,setReport]=useState<Report|null>(null);
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState("");
+ // Owner-reported 1-year Ezytm plan: 20,000 billable lookup hits.
+ // This is a local estimate, NOT the balance returned by the provider.
+ const purchasedEzytmHits=20_000;
+ const [estimatedUsedHits,setEstimatedUsedHits]=useState("0");
+ const [daysRemaining,setDaysRemaining]=useState("365");
+ const hitPlan=useMemo(()=>{
+  const used=Number(estimatedUsedHits);
+  const days=Number(daysRemaining);
+  if(!Number.isSafeInteger(used)||used<0||used>purchasedEzytmHits||
+    !Number.isSafeInteger(days)||days<1||days>365)return null;
+  const estimatedRemaining=purchasedEzytmHits-used;
+  return {estimatedRemaining,conservativeDailyBudget:Math.floor(estimatedRemaining/days)};
+ },[estimatedUsedHits,daysRemaining]);
  // Illustrative scenario inputs only: never persisted, sent to a provider or billed.
  const [scenario,setScenario]=useState({
   amount:"199",commission:"2",gatewayRate:"1.8",
@@ -105,6 +118,35 @@ export default function ZeshuPayAdmin(){
       <ul className="mt-3 list-inside list-disc space-y-2 text-xs leading-5 text-slate-600">{report.providers.ezytmPlanapi.blocking.map((item,i)=><li key={i}>{item}</li>)}</ul>
      </section>
     </div>
+    <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5" aria-label="Existing Ezytm 20000-hit annual subscription planning">
+      <h2 className="text-lg font-black">Already purchased: Ezytm PlanAPI · 20,000 hits / 1 year</h2>
+      <p className="mt-2 text-sm leading-6 text-slate-600">The owner reports an annual allocation of 20,000 lookup hits, plus an existing A1Topup Platinum recharge plan. This is not a verified balance, renewal date, operator commission, merchant approval or prepaid recharge credit. Zeshu will not buy another plan or call a paid provider merely to estimate usage.</p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <label className="text-xs font-bold text-slate-700">Hits already used (copy manually from Ezytm account)
+          <input type="number" inputMode="numeric" min="0" max="20000" step="1"
+            value={estimatedUsedHits} onChange={e=>setEstimatedUsedHits(e.target.value)}
+            className="mt-1 block min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"/>
+        </label>
+        <label className="text-xs font-bold text-slate-700">Calendar days left until actual expiry
+          <input type="number" inputMode="numeric" min="1" max="365" step="1"
+            value={daysRemaining} onChange={e=>setDaysRemaining(e.target.value)}
+            className="mt-1 block min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"/>
+        </label>
+      </div>
+      {hitPlan?
+       <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl bg-emerald-50 p-4">
+          <p className="text-xs font-semibold text-emerald-900">Estimated unused hits · manually entered, not live</p>
+          <p className="mt-1 text-2xl font-black tabular-nums text-emerald-950">{hitPlan.estimatedRemaining.toLocaleString("en-IN")}</p>
+        </div>
+        <div className="rounded-xl bg-slate-50 p-4">
+          <p className="text-xs font-semibold text-slate-600">Suggested maximum daily average over remaining days</p>
+          <p className="mt-1 text-2xl font-black tabular-nums">{hitPlan.conservativeDailyBudget.toLocaleString("en-IN")} hits/day</p>
+        </div>
+       </div>:
+       <p role="alert" className="mt-3 rounded-xl bg-amber-50 p-3 text-xs font-bold text-amber-950">Enter whole-number used hits from 0 to 20,000 and days remaining from 1 to 365.</p>}
+      <p className="mt-3 text-xs leading-5 text-slate-600">Ezytm deducts eligible plan, operator and bill-information lookups from the subscription quota. Refreshing the page, repeated customers and automatic polling could consume hits when provider calls are enabled. Use consented on-demand lookups, server-side caching where permitted, per-user rate limits and a real provider usage report. This offline calculator never sends a request, stores input, or changes provider configuration.</p>
+    </section>
     <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5" aria-label="Illustrative Zeshu Pay margin calculator">
       <h2 className="text-lg font-black">Recharge profitability · decision aid</h2>
       <p className="mt-2 text-sm leading-6 text-slate-600">Enter your actual written provider commission and payment costs to evaluate a hypothetical transaction. The numbers shown initially are <strong>examples, not A1Topup or Ezytm rates</strong>. Nothing here contacts a provider, changes billing, stores the input, or switches Pay live.</p>
