@@ -62,7 +62,9 @@ jobs:
         run: |
           set -euo pipefail
           sha="$(git rev-parse HEAD)"
-          response="$(curl -fsS             -H "Authorization: Bearer $GH_TOKEN"             -H "Accept: application/vnd.github+json"             "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/customer-staging-browser-qa.yml/runs?branch=main&status=success&per_page=30")"
+          # GitHub's status=success index can lag even after a completed successful run.
+          # Query recent main runs, then validate both exact SHA AND conclusion in Node.
+          response="$(curl -fsS             -H "Authorization: Bearer $GH_TOKEN"             -H "Accept: application/vnd.github+json"             "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/customer-staging-browser-qa.yml/runs?branch=main&per_page=30")"
           echo "$response" | node -e '
             let input = "";
             process.stdin.on("data", c => input += c);
