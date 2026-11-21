@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateProviderRequest, authRequiredResponse, rateLimitResponse } from '@/app/lib/provider-security';
-import { getPlanApiCredentials, planApiTimeoutSignal } from '@/app/lib/planapi-config';
+import { getPlanApiCredentials, planApiTimeoutSignal, isPlanApiUnavailableError } from '@/app/lib/planapi-config';
 
 // 🚀 THE SWITCHBOARD
 const SERVICE_API_MAP: Record<string, { endpoint: string; numberParam: string }> = {
@@ -76,8 +76,8 @@ export async function GET(request: Request) {
 
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'unknown error';
-    if (process.env.NODE_ENV === 'development' && message !== 'PLANAPI_NOT_CONFIGURED') console.error('Bill provider request failed:', message);
-    if (message === 'PLANAPI_NOT_CONFIGURED') return NextResponse.json({ success: false, message: 'Bill service is temporarily unavailable.' }, { status: 503 });
+    if (process.env.NODE_ENV === 'development' && !isPlanApiUnavailableError(message)) console.error('Bill provider request failed:', message);
+    if (isPlanApiUnavailableError(message)) return NextResponse.json({ success: false, message: 'Bill service is temporarily unavailable.' }, { status: 503 });
     return NextResponse.json({ success: false, message: "Unable to fetch bill details right now. Please try again." }, { status: 502 });
   }
 }
