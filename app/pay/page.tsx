@@ -100,9 +100,9 @@ export default function ZeshuPayPage(){
       </section>
       <section aria-labelledby="pay-safety-heading" className="mt-10 rounded-3xl border border-[#dce8df] bg-white p-5 sm:p-8">
         <div className="flex items-center gap-2 text-[#075e45]"><Clock3 size={20}/><h2 id="pay-safety-heading" className="text-lg font-black">{w.how}</h2></div>
-        <ol className="mt-4 grid gap-3 text-sm font-medium leading-6 text-slate-700 sm:grid-cols-2">
+        <div data-pay-launch-steps className="mt-4 grid gap-3 text-sm font-medium leading-6 text-slate-700 sm:grid-cols-2">
           {[w.one,w.two,w.three,w.four].map((step,i)=><li key={i} className="rounded-xl bg-emerald-50/70 p-4">{step}</li>)}
-        </ol>
+        </div>
         <p className="mt-5 text-sm leading-6 text-slate-600">{w.footer}</p>
         <Link href="/help" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#075e45] px-5 text-sm font-black text-white">{w.help}<ArrowUpRight size={16}/></Link>
       </section>
