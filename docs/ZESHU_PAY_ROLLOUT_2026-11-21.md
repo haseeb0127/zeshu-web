@@ -35,6 +35,14 @@ Updated 21 November 2026. Zeshu is an asset-light Indian marketplace/service pla
 - **Enforced 21 November:** Every PlanAPI request is now blocked until the previous exposed credentials are rotated in the Ezytm portal AND the replacement is privately configured in Cloudflare with `PLANAPI_CREDENTIALS_ROTATED_CONFIRMED=true`. The default remains `false`. A false/missing attestation returns a safe 503; this prevents billable API hits using unrotated secrets. Attestation is not independent verification and must not be set without actually rotating the credentials.
 - Avoid enabling real money before written permissions, reconciliation, refunds, and Zeshu merchant/KYC requirements are satisfied.
 
+## Existing paid subscriptions — owner confirmation, 21 November 2026
+- The owner reports an **A1Topup Platinum** subscription and an **Ezytm PlanAPI plan purchased for 1 year / 20,000 lookup hits**. Do not propose purchasing duplicate API subscriptions. These are user-reported entitlements, not verified current provider balances, prices, contract dates or enabled transactions.
+- A1Topup continues to be the selected recharge-fulfilment provider **only after** live schema, commission settlement, compliance, refund/reversal and signed callback verification.
+- Ezytm is the selected catalogue/plan/bill-information source; quota means billable API lookups, **not recharges, free traffic clicks or cash available for payments**. Do not trigger provider calls on page load or for admin health checks.
+- Private `/admin/pay` provides an offline manual-use estimator: report the **actual used hits and expiration days shown in the Ezytm portal**; it estimates remaining quota and daily budget without making billable provider requests. The estimator neither reads provider usage nor persists its inputs.
+- Before any real Ezytm calls, rotate the previously exposed PlanAPI credentials, update protected Cloudflare secrets and confirm the attestation. Keep default fail-closed. Avoid assuming provider API cache terms permit public redistribution.
+- The separate Zeshu Green owner pause remains intact; **20,000 API hits do not fund 20,000 trees or 20,000 recharge transactions**.
+
 ## Recommended sequence
 1. **Now / safe:** Make Pay discoverable as a dedicated customer-facing section, with clear no-transaction status and multilingual labels; maintain original read-only service tools.
 2. **Provider onboarding:** Compare certified Bharat Connect partner and telecom recharge providers including A1Topup and other candidates only after written commercial terms. Validate the old exposed PlanAPI credential has been rotated.
