@@ -4,6 +4,7 @@ import "./globals.css";
 import PwaBoot from "./components/PwaBoot";
 import { CustomerLanguageProvider } from "./components/CustomerLanguageProvider";
 import ZeshuAssistantWidget from "./components/ZeshuAssistantWidget";
+import OptionalLayoutFeatureBoundary from "./components/OptionalLayoutFeatureBoundary";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,8 +52,8 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-  <PwaBoot />
-  <CustomerLanguageProvider>{children}<ZeshuAssistantWidget /></CustomerLanguageProvider>
+  <OptionalLayoutFeatureBoundary feature="pwa"><PwaBoot /></OptionalLayoutFeatureBoundary>
+  <CustomerLanguageProvider>{children}<OptionalLayoutFeatureBoundary feature="assistant"><ZeshuAssistantWidget /></OptionalLayoutFeatureBoundary></CustomerLanguageProvider>
 </body>
     </html>
   );
