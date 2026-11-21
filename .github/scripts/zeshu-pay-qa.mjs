@@ -13,6 +13,8 @@ for(const category of ['mobile','electricity','dth','fastag','lpg','water','broa
   assert(main.includes(`id: '${category}'`),`Pay destination isn't recognized by storefront: ${category}`);
 }
 assert(hub.includes('Discovery only · No live transactions'),'Customer must be told there are no real payments');
+assert(hub.includes('<div data-pay-launch-steps'), 'Pay launch steps should use a grid without automatic ordered-list counters');
+assert(!hub.includes('<ol className="mt-4 grid'), 'Numbered text plus ordered-list counters duplicates step numbers');
 assert(hub.includes('No payment or recharge will be completed'),'Avoid misleading recharge claims');
 assert(hub.includes('is not a UPI payment app'),'Never suggest Zeshu has a UPI issuer/payments licence');
 assert(hub.includes('t(item.label)'),'Localized service cards must use existing translations');
