@@ -11,7 +11,7 @@ type Report={
  status:"DISCOVERY_ONLY";
  providers:{
   a1topup:{role:string;credentialsConfigured:boolean;codeExecutionReady:false;liveTransactionEnabled:false;executionFlagRequested:boolean;blocking:string[]};
-  ezytmPlanapi:{role:string;credentialsConfigured:boolean;optionalTokenConfigured:boolean;rotatedCredentialConfirmed:boolean;providerCallPerformed:false;transactionsEnabled:false;blocking:string[]};
+  ezytmPlanapi:{role:string;credentialsConfigured:boolean;optionalTokenConfigured:boolean;rotatedCredentialConfirmed:boolean;discoveryCallsPermitted:boolean;providerCallPerformed:false;transactionsEnabled:false;blocking:string[]};
  };
  checkout:{gatewayEnvironment:"TEST"|"LIVE_CONFIGURED"|"UNCONFIRMED";customerRechargePaymentsEnabled:false;actualTelecomFulfilmentEnabled:false;utilityBillPaymentsEnabled:false;note:string};
  database:{rechargeTransactions:number|null};
