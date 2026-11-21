@@ -35,19 +35,19 @@ assert(!ownerApi.includes('export async function PATCH'));
 assert(ownerPage.includes('Goal: one tree for every eligible completed delivery order'));
 assert(!ownerPage.includes('10,000 tree planting drive'));
 assert(ownerPage.includes('Legacy tree-commitment slots are not customer-order counts'));
-assert(green.includes('one tree for every eligible completed delivery order'));
-assert(green.includes('verifiedPlanted')&&green.includes('No tree is claimed'));
-assert(green.includes('This is not a carbon-offset'));
+assert(green.includes('Zeshu Green is on hold'), 'Green must display only an owner-pause notice');
+assert(green.includes('no tree-planting benefit') || green.includes('no tree-planting benefit attached'), 'Archived page must clearly disclaim benefits');
+assert(!green.includes('fund one tree')&&!green.includes('our goal'), 'Archived page must not market the deferred tree target');
 assert(!green.includes('10,000 eligible orders'));
-assert(hub.includes('href="/green"'));
-assert(hub.includes('Our goal: one tree for every eligible delivered order.'));
-assert(hub.includes('Still planning — no trees planted for orders yet.'));
+assert(!hub.includes('href="/green"'),'Customer homepage must not promote paused Green');
+assert(!hub.includes('action:"green"'),'Customer carousel must not show paused Green');
+assert(!hub.includes('GreenBannerArtwork'),'Paused Green artwork must be removed from customer hero');
 for(const phrase of ['"Our goal: one tree for every eligible delivered order."',
   '"Still planning — no trees planted for orders yet."']){
  assert(lang.split(phrase).length-1===3,'All three translation dictionaries need '+phrase);
 }
 assert(docs.includes('fund one locally suitable tree for each eligible'));
 assert(docs.includes('No third-party spend without owner approval'));
-assert(docs.includes('Keep the existing programme in PLANNING and its activation gates closed'));
+assert(docs.includes('Keep the existing programme PAUSED and its activation gates closed'));
 assert(adminNav.includes('href="/admin/green"'));
-console.log('PASS: compact truthful Zeshu Green pilot, legacy one-tree trigger disabled, secure evidence-only tree reporting.');
+console.log('PASS: owner-paused Zeshu Green is not promoted, funds/trees remain gated and archived evidence stays private.');

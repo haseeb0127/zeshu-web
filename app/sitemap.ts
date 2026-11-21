@@ -23,7 +23,6 @@ export default function sitemap():MetadataRoute.Sitemap {
     {path:'/earn',priority:.65,changeFrequency:'monthly'},
     {path:'/earn/promoters',priority:.55,changeFrequency:'monthly'},
     {path:'/app',priority:.55,changeFrequency:'monthly'},
-    {path:'/green',priority:.5,changeFrequency:'monthly'},
   ] as const;
   return pages.map(p=>({
     url:origin+p.path,

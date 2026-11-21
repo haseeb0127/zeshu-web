@@ -24,6 +24,20 @@ export async function GET(){
   ]);
   if(program.error||committed.error||planted.error||verified.error||!program.data)
     return respond({error:'Verified planting statistics are temporarily unavailable.'},503);
+  // The owner has paused Zeshu Green. Public callers (including older app
+  // versions) must not see a new per-order goal or any programme promotion.
+  // Keep genuine historical verified statistics without implying new orders qualify.
+  if(program.data.mode==='PAUSED')return respond({
+    programmeStatus:'PAUSED',
+    pausedByOwner:true,
+    isPlantingLive:false,
+    partner:null,partnerWebsite:null,
+    treeCommitments:committed.count||0,
+    plantingReported:planted.count||0,
+    verifiedPlanted:verified.count||0,
+    fundingConfirmed:false,trackingEnabled:false,
+    message:'Zeshu Green is on hold by the business owner. No new tree commitments or planting benefits are offered on Zeshu orders.',
+  });
   const active=program.data.mode==='ACTIVE';
   return respond({
     programmeStatus:program.data.mode,

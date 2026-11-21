@@ -28,6 +28,12 @@ Updated 21 November 2026. Zeshu is an asset-light Indian marketplace/service pla
 - Store secrets only as Cloudflare server-side secrets; redact telephone/account references in analytics/logs.
 - Real-money launch requires explicit owner approval and staged rollout by one provider/category.
 
+## Existing owner-selected partner stack (subject to operational verification)
+- **A1Topup:** selected fulfilment/transaction provider; current adapter intentionally rejects live calls because the exact POST parameters, authentication, contract and transaction settlement/callback signature have not been validated end-to-end. Selection is not evidence of a production-ready live account.
+- **Ezytm PlanAPI (`planapi.in`):** selected read-only mobile/DTH plan, operator and utility discovery provider. Its public documentation lists plan/bill lookup APIs. Some API hits are billable; do not ping the provider just to show a green dashboard status.
+- Existing provider credential previously disclosed: **rotate and confirm the old PlanAPI password and keys through Cloudflare provider controls**, and never store values in code or chat.
+- Avoid enabling real money before written permissions, reconciliation, refunds, and Zeshu merchant/KYC requirements are satisfied.
+
 ## Recommended sequence
 1. **Now / safe:** Make Pay discoverable as a dedicated customer-facing section, with clear no-transaction status and multilingual labels; maintain original read-only service tools.
 2. **Provider onboarding:** Compare certified Bharat Connect partner and telecom recharge providers including A1Topup and other candidates only after written commercial terms. Validate the old exposed PlanAPI credential has been rotated.
@@ -36,7 +42,7 @@ Updated 21 November 2026. Zeshu is an asset-light Indian marketplace/service pla
 5. **Later:** DTH/FASTag/electricity categories, broad BBPS, merchant QR/UPI only with appropriately authorised partners, Zeshu Cash funded rewards when unit economics are positive.
 
 ## Separate Zeshu Green programme
-The `/green` goal (one verified planted tree per eligible completed order) is in planning only. Do not advertise trees as planted or promise automatic 1:1 planting until an independently verified and funded planting partner, land permission, species/care plan, and fulfilment evidence are approved. Never add a tree surcharge by default.
+**Owner pause, 21 November 2026:** Green remains `PAUSED` and no customer-facing tree promise is presented; do not restart or schedule reminders without the owner's explicit request. The deferred `/green` goal (one verified planted tree per eligible completed order) is on hold. Do not advertise trees as planted or promise automatic 1:1 planting until an independently verified and funded planting partner, land permission, species/care plan, and fulfilment evidence are approved. Never add a tree surcharge by default.
 
 References:
 - RBI Master Direction (Bharat Bill Payment System) Directions, 2024: https://rbi.org.in/SCRIPTs/BS_ViewMasDirections.aspx?id=12616

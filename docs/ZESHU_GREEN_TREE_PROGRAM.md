@@ -1,6 +1,10 @@
-# Zeshu Green — one eligible delivered order, one tree goal
+# Zeshu Green — paused by owner, no customer promotions
 
-Updated 17 November 2026. This replaces the earlier 1–2 trees after 1,000 orders pilot plan.
+**Owner instruction: 21 November 2026 — stop Zeshu Green until the owner explicitly authorises restarting. No reminder should be scheduled unless separately requested.**
+
+The production programme is `PAUSED`, customer homepage promotion/cart/order copy is removed and no new tree pledges, payments, planting activity or promotional promises are allowed. Keep the programme in admin-only archival state and preserve historical audit evidence. Do not automatically reactivate even if other launch gates later become true.
+
+The sections below describe a **deferred historical proposal, not an active or advertised programme**.
 
 ## Owner's current goal
 
@@ -27,7 +31,7 @@ Before activating one-tree-per-order:
 
 Zeshu's older private schema was designed for a different one-tree-per-order campaign and includes `zeshu_green_tree_commitments`, an AFTER UPDATE `record_zeshu_green_delivery()` trigger, quota gates and a legacy `greenBatchProgress()` counter. These records are not a trusted order-level ledger for the new campaign.
 
-**Keep the existing programme in PLANNING and its activation gates closed.** Do not turn the legacy trigger back on: first review its exact SQL, idempotency, funding quota and RLS with a separate migration and tests. The old commitment count must never be reported as qualifying delivered orders. The new public API explicitly reports `fundingConfirmed:false` and `trackingEnabled:false` until the new ledger is implemented and verified.
+**Keep the existing programme PAUSED and its activation gates closed.** Do not turn the legacy trigger back on: first review its exact SQL, idempotency, funding quota and RLS with a separate migration and tests. The old commitment count must never be reported as qualifying delivered orders. The new public API explicitly reports `fundingConfirmed:false` and `trackingEnabled:false` until the new ledger is implemented and verified.
 
 ## Customer communication
 
@@ -39,7 +43,7 @@ Approved planning copy:
 
 ## Current implementation status
 
-- Homepage Green banner and /green page communicate the one-tree-per-eligible-delivered-order **goal**.
+- Owner pause supersedes the earlier planning copy: homepage Green promotion, cart impact and order impact UI are hidden. `/green` displays only an on-hold notice.
 - Cart/order copy remains explicit that funding and planting are not yet live.
 - Public impact API exposes the goal while stating that tracking and funding are not confirmed.
 - Private Green HQ shows the same goal and the missing gates.
