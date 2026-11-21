@@ -3,7 +3,7 @@
 import {useCallback,useEffect,useState} from 'react';
 import Link from 'next/link';
 import {adminSupabase} from '@/app/lib/browser-supabase';
-import {ArrowLeft,RefreshCw,MessageCircle,ShieldCheck,FilePenLine,ChevronLeft} from 'lucide-react';
+import {ArrowLeft,RefreshCw,MessageCircle,ShieldCheck,FilePenLine,ChevronLeft,Smartphone,Copy} from 'lucide-react';
 
 const supabase=adminSupabase();
 type Thread={id:string;customer_wa_id:string;display_name:string;last_message_preview:string;last_message_at:string|null;status:string};
@@ -32,6 +32,7 @@ export default function ZeshuWhatsappInbox(){
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState('');
   const [notice,setNotice]=useState('');
+  const [shortcutNotice,setShortcutNotice]=useState('');
   const [repairBusy,setRepairBusy]=useState(false);
   const [repairOutcome,setRepairOutcome]=useState('');
   const [fieldBusy,setFieldBusy]=useState(false);
@@ -82,6 +83,23 @@ export default function ZeshuWhatsappInbox(){
     const timer=window.setInterval(()=>{void refresh(true);},30000);
     return()=>window.clearInterval(timer);
   },[refresh]);
+  useEffect(()=>{
+    // On returning to an installed Zeshu app, refresh the inbox list immediately.
+    // This fetches authenticated live data; it never stores messages offline.
+    const onResume=()=>{if(document.visibilityState==='visible')void refresh(true);};
+    document.addEventListener('visibilitychange',onResume);
+    return()=>document.removeEventListener('visibilitychange',onResume);
+  },[refresh]);
+  const copyInboxAddress=async()=>{
+    const url=window.location.origin+'/admin/whatsapp/inbox';
+    try{
+      if(!navigator.clipboard?.writeText)throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(url);
+      setShortcutNotice('Inbox address copied. The page still requires your Zeshu admin sign-in.');
+    }catch{
+      setShortcutNotice('Open this page in Chrome and use its menu to bookmark it: '+url);
+    }
+  };
   // Read only. This never triggers a WhatsApp OTP or registers/deregisters the phone.
   const repairMessagesField=async()=>{
     if(messagesRepairBusy)return;
@@ -231,6 +249,39 @@ export default function ZeshuWhatsappInbox(){
       </div>
     </header>
     <div className="mx-auto max-w-5xl px-3 py-4 md:px-5">
+      <section aria-label="WhatsApp Inbox quick access on Android"
+        className="mb-4 rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm">
+        <div className="flex items-center gap-2 text-[#075e45]">
+          <Smartphone size={21} aria-hidden="true"/>
+          <h2 className="font-black">Open Zeshu Inbox quickly on your phone</h2>
+        </div>
+        <p className="mt-2 text-sm leading-6 text-slate-700">
+          This private Inbox works in Chrome and the installed Zeshu web app, even while
+          the native WhatsApp Business app cannot sign in on this Cloud API number.
+          It is not native WhatsApp Business Coexistence.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Link href="/app"
+            className="inline-flex min-h-11 items-center rounded-xl bg-[#075e45] px-4 py-2.5 text-sm font-bold text-white">
+            Install Zeshu on Android
+          </Link>
+          <button type="button" onClick={()=>void copyInboxAddress()}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-emerald-600 px-4 py-2.5 text-sm font-bold text-[#075e45]">
+            <Copy size={16} aria-hidden="true"/>Copy Inbox link
+          </button>
+        </div>
+        <p className="mt-3 text-xs leading-5 text-slate-600">
+          In Chrome, install Zeshu from the link above. On supported Android home screens,
+          long-press the installed Zeshu icon and select <strong>WhatsApp Inbox</strong> to
+          open this private page directly. If your launcher does not show app shortcuts,
+          bookmark this Inbox page in Chrome instead. Admin sign-in is always required.
+        </p>
+        <p className="mt-1 text-xs leading-5 text-slate-600">
+          The Inbox refreshes on reopening. Push alerts and WhatsApp replies are not enabled.
+          To see the newest messages while reading a conversation, tap Refresh.
+        </p>
+        {shortcutNotice&&<p role="status" className="mt-2 rounded-xl bg-emerald-50 p-3 text-xs font-semibold text-emerald-900">{shortcutNotice}</p>}
+      </section>
       <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
         <p className="flex items-center gap-2 font-black"><ShieldCheck size={18}/>Incoming messages ON · Paid sending OFF</p>
         <p className="mt-1 leading-5">Customer messages arrive through Zeshu's verified Meta webhook at no Meta messaging charge. You can privately save reply drafts here; drafts are <strong>never sent</strong>. Mobile WhatsApp Business chats do not sync without approved Coexistence.</p>
