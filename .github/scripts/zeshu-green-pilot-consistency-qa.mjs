@@ -16,9 +16,9 @@ for(const [name,source] of [['public impact',publicApi],['private planning dashb
  assert(!source.includes("from '@/app/lib/zeshu-green-batch'"),name+' must not conflate legacy commitments with delivered orders');
 }
 assert(adminUi.includes('trackingEnabled:false')&&adminUi.includes('fundingConfirmed:false'), 'Admin should preserve unfunded and untracked pilot semantics');
-assert(greenPage.includes('No tree is claimed'), 'Public page must not promise trees were planted');
+assert(greenPage.includes('Zeshu Green is on hold'), 'Public route must reflect owner pause');
 assert(adminUi.includes('Goal: one tree for every eligible completed delivery order'), 'Admin HQ must show the one-tree goal');
-assert(storefront.includes('Our goal: one tree for every eligible delivered order'), 'Homepage goal must match API');
+assert(!storefront.includes('action:"green"'), 'Paused tree programme must not be promoted on homepage');
 assert(publicApi.includes(".eq('status','VERIFIED')"),'Only evidence-backed trees may appear in verified total');
 assert(adminApi.includes('canAnnouncePerOrderPromise:false'),'No one-tree-per-order promise before funded activation');
-console.log('PASS: Homepage, public Green API and private Green HQ consistently disclose the unfunded one-tree-per-eligible-delivery goal without fabricated order progress.');
+console.log('PASS: Paused Green is absent from customer homepage while private records retain unfunded goal and evidence guards.');
