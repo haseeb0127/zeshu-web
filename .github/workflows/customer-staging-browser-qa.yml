@@ -85,9 +85,9 @@ jobs:
             await moveEntry.waitFor({ state: 'visible', timeout: 10000 });
             assert(await moveEntry.isVisible(), 'Homepage Zeshu Move entry is missing');
             const promoSlides = moveQuick.locator('[data-slide]');
-            assert(await promoSlides.count() === 11, 'Homepage must show all eleven Zeshu promotions including Dine and Green');
+            assert(await promoSlides.count() === 10, 'Homepage must show ten promotions with paused Green removed');
             const promoText = (await promoSlides.allInnerTexts()).join(' ').replace(/\s+/g, ' ');
-            for (const promo of ['Shop in Jagtial', 'Zeshu Dine', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Zeshu Green']) {
+            for (const promo of ['Shop in Jagtial', 'Zeshu Dine', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move']) {
               assert(promoText.includes(promo), `Homepage promo carousel is missing ${promo}`);
             }
             const promoScopes = await promoSlides.evaluateAll((slides) =>
@@ -105,10 +105,11 @@ jobs:
             for (const service of ['Shop in Jagtial', 'Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Zeshu Services', 'Zeshu Weddings', 'Zeshu Interiors', 'Customer Service', 'Zeshu App']) {
               assert(moveQuickText.includes(service), `Homepage promotional carousel is missing ${service}`);
             }
-            for (const destination of ['/fashion', '/pay', '/move', '/professional-services/weddings', '/professional-services/interiors', '/green']) {
+            for (const destination of ['/fashion', '/pay', '/move', '/professional-services/weddings', '/professional-services/interiors']) {
               assert(await moveQuick.locator(`a[href="${destination}"]`).count() > 0, `Homepage promotion link missing: ${destination}`);
             }
             assert(!moveQuickText.includes('Plan something bigger'), 'Homepage must not duplicate Weddings and Interiors below the carousel');
+            assert(await moveQuick.locator('[data-glossy-banner="green"]').count() === 0, 'Paused Green must not appear in the homepage carousel');
             // Mobile header must be clean: location + language only; cart stays in bottom nav.
             assert(await page.locator('header button[aria-label="View notifications and account updates"]').count() === 0, 'Mobile header still has notifications');
             assert(await page.locator('header button[aria-label="Open shopping cart"]').count() === 0, 'Mobile header still duplicates the cart');
