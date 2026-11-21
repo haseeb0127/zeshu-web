@@ -133,6 +133,18 @@ export default function WhatsAppReadinessPage() {
           <p className="mt-2 text-sm leading-6 text-slate-600">A private, mobile-friendly inbox for genuine incoming Cloud API messages. Currently read-only: customer replies can be saved as unsent drafts, but never transmitted.</p>
           <Link href="/admin/whatsapp/inbox" className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-[#075e45] px-5 py-3 text-sm font-black text-white">Open WhatsApp Inbox →</Link>
         </section>
+      <section className="rounded-2xl border border-red-200 bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-black text-red-900">Phone deregistration · advanced</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-700">
+          Only use this if you intend to release the existing +91 95052 11212 number
+          from WhatsApp Cloud API. It stops Cloud API messaging and does not guarantee
+          the WhatsApp Business mobile app will accept a verification OTP.
+        </p>
+        <Link href="/admin/whatsapp/deregister"
+          className="mt-3 inline-flex min-h-11 items-center rounded-xl border border-red-500 px-4 py-3 text-sm font-bold text-red-900">
+          Review Cloud API deregistration
+        </Link>
+      </section>
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-black">Incoming webhook connection</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">

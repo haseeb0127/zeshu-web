@@ -121,6 +121,8 @@ jobs:
         run: node --experimental-strip-types --conditions=react-server .github/scripts/support-whatsapp-template-qa.mjs
       - name: Verify direct Meta signup OAuth, CSRF and encryption safety
         run: node --experimental-strip-types .github/scripts/meta-direct-signup-qa.mjs
+      - name: Verify explicitly confirmed WhatsApp Cloud API deregistration guards (mock-only)
+        run: node --experimental-strip-types .github/scripts/whatsapp-cloud-deregister-qa.mjs
       - name: Verify read-only WhatsApp Cloud API versus mobile-app registration status
         run: node --experimental-strip-types .github/scripts/whatsapp-mobile-registration-qa.mjs
       - name: Verify first-party WhatsApp Cloud API read-only connection
