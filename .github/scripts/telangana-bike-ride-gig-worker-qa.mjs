@@ -27,6 +27,6 @@ assert(compliance.includes('WFFVS')&&compliance.includes('45 days'));
 assert(compliance.includes('G.O.Ms.No.18')&&compliance.includes('14 days'));
 assert(earn.includes('G.O.Ms.No.18'));
 assert(compliance.includes('Do not hardcode a reported percentage'));
-assert(home.includes('Our goal: one tree for every eligible delivered order'));
-assert(home.includes('Still planning — no trees planted for orders yet.'));
+assert(!home.includes('Our goal: one tree for every eligible delivered order'),'Owner-paused Green must not be marketed');
+assert(!home.includes('action:"green"'),'Owner-paused Green must be removed from customer carousel');
 console.log('PASS: Bike Ride founding interest is open, passenger activation stays blocked, Telangana gig-worker readiness is disclosed, and Zeshu Green remains honest and measurable.');
