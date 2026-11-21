@@ -17,8 +17,18 @@ export default function PwaBoot() {
 
     const overlay = document.getElementById('zeshu-installed-app-splash');
     if (!overlay) return;
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-      ('standalone' in navigator && (navigator as Navigator & { standalone?: boolean }).standalone === true);
+    // Older Android WebViews may not implement matchMedia; a splash enhancement
+    // must never crash the root app or hold the storefront behind an overlay.
+    let isStandalone = false;
+    try {
+      isStandalone = (typeof window.matchMedia === 'function' &&
+        window.matchMedia('(display-mode: standalone)').matches) ||
+        ('standalone' in navigator &&
+          (navigator as Navigator & { standalone?: boolean }).standalone === true);
+    } catch {
+      overlay.remove();
+      return;
+    }
     if (!isStandalone) {
       overlay.remove();
       return;
