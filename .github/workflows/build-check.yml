@@ -85,6 +85,8 @@ jobs:
         run: node --experimental-strip-types .github/scripts/public-sitemap-qa.mjs
       - name: Verify safe multilingual Zeshu Pay discovery and provider launch gates
         run: node .github/scripts/zeshu-pay-qa.mjs
+      - name: Block PlanAPI paid lookups until previously exposed credentials are rotated
+        run: node --experimental-strip-types .github/scripts/zeshu-pay-planapi-rotation-qa.mjs
       - name: Verify A1Topup and Ezytm provider readiness and Green owner pause
         run: node .github/scripts/zeshu-pay-provider-readiness-qa.mjs
       - name: Verify offline Zeshu Pay commission economics and paused Green

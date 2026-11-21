@@ -32,6 +32,7 @@ Updated 21 November 2026. Zeshu is an asset-light Indian marketplace/service pla
 - **A1Topup:** selected fulfilment/transaction provider; current adapter intentionally rejects live calls because the exact POST parameters, authentication, contract and transaction settlement/callback signature have not been validated end-to-end. Selection is not evidence of a production-ready live account.
 - **Ezytm PlanAPI (`planapi.in`):** selected read-only mobile/DTH plan, operator and utility discovery provider. Its public documentation lists plan/bill lookup APIs. Some API hits are billable; do not ping the provider just to show a green dashboard status.
 - Existing provider credential previously disclosed: **rotate and confirm the old PlanAPI password and keys through Cloudflare provider controls**, and never store values in code or chat.
+- **Enforced 21 November:** Every PlanAPI request is now blocked until the previous exposed credentials are rotated in the Ezytm portal AND the replacement is privately configured in Cloudflare with `PLANAPI_CREDENTIALS_ROTATED_CONFIRMED=true`. The default remains `false`. A false/missing attestation returns a safe 503; this prevents billable API hits using unrotated secrets. Attestation is not independent verification and must not be set without actually rotating the credentials.
 - Avoid enabling real money before written permissions, reconciliation, refunds, and Zeshu merchant/KYC requirements are satisfied.
 
 ## Recommended sequence

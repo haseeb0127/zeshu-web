@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { discoverPlans } from '@/app/lib/planapi';
+import { isPlanApiUnavailableError } from '@/app/lib/planapi-config';
 import { authenticateProviderRequest, authRequiredResponse, rateLimitResponse } from '@/app/lib/provider-security';
 
 export const dynamic = 'force-dynamic';
@@ -22,8 +23,8 @@ export async function POST(request: Request) {
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
-    if (process.env.NODE_ENV === 'development' && message !== 'PLANAPI_NOT_CONFIGURED') console.error('Plan discovery failed:', message);
-    if (message === 'PLANAPI_NOT_CONFIGURED') return NextResponse.json({ message: 'Recharge plans are temporarily unavailable.' }, { status: 503 });
+    if (process.env.NODE_ENV === 'development' && !isPlanApiUnavailableError(message)) console.error('Plan discovery failed:', message);
+    if (isPlanApiUnavailableError(message)) return NextResponse.json({ message: 'Recharge plans are temporarily unavailable.' }, { status: 503 });
     if (message === 'INVALID_MOBILE') return NextResponse.json({ message: 'Enter a valid 10-digit Indian mobile number.' }, { status: 400 });
     return NextResponse.json({ message: 'Recharge plans are temporarily unavailable.' }, { status: 502 });
   }

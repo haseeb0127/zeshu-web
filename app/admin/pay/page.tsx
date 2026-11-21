@@ -11,7 +11,7 @@ type Report={
  status:"DISCOVERY_ONLY";
  providers:{
   a1topup:{role:string;credentialsConfigured:boolean;codeExecutionReady:false;liveTransactionEnabled:false;executionFlagRequested:boolean;blocking:string[]};
-  ezytmPlanapi:{role:string;credentialsConfigured:boolean;optionalTokenConfigured:boolean;rotatedCredentialConfirmed:boolean;providerCallPerformed:false;transactionsEnabled:false;blocking:string[]};
+  ezytmPlanapi:{role:string;credentialsConfigured:boolean;optionalTokenConfigured:boolean;rotatedCredentialConfirmed:boolean;discoveryCallsPermitted:boolean;providerCallPerformed:false;transactionsEnabled:false;blocking:string[]};
  };
  checkout:{gatewayEnvironment:"TEST"|"LIVE_CONFIGURED"|"UNCONFIRMED";customerRechargePaymentsEnabled:false;actualTelecomFulfilmentEnabled:false;utilityBillPaymentsEnabled:false;note:string};
  database:{rechargeTransactions:number|null};
@@ -99,6 +99,8 @@ export default function ZeshuPayAdmin(){
       <div className="flex items-center justify-between gap-2"><h2 className="text-lg font-black">Ezytm · PlanAPI</h2><StatusLabel ready={report.providers.ezytmPlanapi.credentialsConfigured}/></div>
       <p className="mt-1 text-xs font-semibold text-slate-600">{report.providers.ezytmPlanapi.role}</p>
       <p className="mt-3 text-sm font-semibold">Previously exposed credential rotation: <strong className="text-amber-900">{report.providers.ezytmPlanapi.rotatedCredentialConfirmed?"Owner-attested":"Not yet confirmed"}</strong></p>
+      {!report.providers.ezytmPlanapi.discoveryCallsPermitted&&<p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-950">PlanAPI discovery calls are currently blocked until previously exposed credentials are rotated and their replacement confirmed in Cloudflare. This protects provider balance and customer data.</p>}
+      {report.providers.ezytmPlanapi.discoveryCallsPermitted&&<p className="mt-3 rounded-xl bg-emerald-50 p-3 text-xs font-semibold leading-5 text-emerald-900">PlanAPI credential checks permit read-only lookups. This does not establish contract approval, quota availability or bill-payment processing.</p>}
       <p className="mt-2 text-xs text-slate-600">Optional provider token present: {report.providers.ezytmPlanapi.optionalTokenConfigured?"Yes":"No / not required for all services"}</p>
       <ul className="mt-3 list-inside list-disc space-y-2 text-xs leading-5 text-slate-600">{report.providers.ezytmPlanapi.blocking.map((item,i)=><li key={i}>{item}</li>)}</ul>
      </section>

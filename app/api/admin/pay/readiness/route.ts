@@ -56,6 +56,7 @@ export async function GET(request:Request){
         credentialsConfigured:planapiConfigured,
         optionalTokenConfigured:tokenPresent,
         rotatedCredentialConfirmed:env.PLANAPI_CREDENTIALS_ROTATED_CONFIRMED==="true",
+        discoveryCallsPermitted:planapiConfigured&&env.PLANAPI_CREDENTIALS_ROTATED_CONFIRMED==="true",
         providerCallPerformed:false,
         transactionsEnabled:false,
         blocking:[

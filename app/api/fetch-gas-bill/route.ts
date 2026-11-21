@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateProviderRequest, authRequiredResponse, rateLimitResponse } from '@/app/lib/provider-security';
-import { getPlanApiCredentials, planApiTimeoutSignal } from '@/app/lib/planapi-config';
+import { getPlanApiCredentials, planApiTimeoutSignal, isPlanApiUnavailableError } from '@/app/lib/planapi-config';
 
 export async function GET(request: Request) {
   const user = await authenticateProviderRequest(request);
@@ -64,8 +64,8 @@ export async function GET(request: Request) {
 
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'unknown error';
-    if (process.env.NODE_ENV === 'development' && message !== 'PLANAPI_NOT_CONFIGURED') console.error('Gas provider request failed:', message);
-    if (message === 'PLANAPI_NOT_CONFIGURED') return NextResponse.json({ success: false, message: 'Gas bill service is temporarily unavailable.' }, { status: 503 });
+    if (process.env.NODE_ENV === 'development' && !isPlanApiUnavailableError(message)) console.error('Gas provider request failed:', message);
+    if (isPlanApiUnavailableError(message)) return NextResponse.json({ success: false, message: 'Gas bill service is temporarily unavailable.' }, { status: 503 });
     return NextResponse.json({ 
       success: false, 
       message: "Unable to fetch bill details right now. Please try again." 
