@@ -2829,7 +2829,7 @@ export default function ZeshuSuperApp() {
     setIsLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const orderResponse = await fetch('/api/create-razorpay-order', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` }, body: JSON.stringify({ cartItems: cart, deliveryAddress: currentAddress, deliveryAddressId: selectedAddressId, zeshuCashAmount: requestedZeshuCash, abandonPreviousCheckout }) });
+      const orderResponse = await fetch('/api/create-razorpay-order', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` }, body: JSON.stringify({ cartItems: cart, deliveryAddress: currentAddress, deliveryAddressId: selectedDeliveryAddress?.id || null, zeshuCashAmount: requestedZeshuCash, abandonPreviousCheckout }) });
       let orderData: any;
       try {
         orderData = await orderResponse.json();
