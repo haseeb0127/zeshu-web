@@ -67,7 +67,7 @@ export default function BusinessDetailsPage() {
               </div>
             ))}
           </dl>
-          <p className="mt-4 text-xs leading-5 text-slate-600">These details are transcribed from Zeshu's issued GST REG-06 certificate. For live GST taxpayer status, use the Government of India's GST portal Search Taxpayer feature. The certificate is displayed at the registered premises as required; private KYC files are not published here.</p>
+          <p className="mt-4 text-xs leading-5 text-slate-600">These details are transcribed from Zeshu's issued GST REG-06 certificate. For live GST taxpayer status, use the Government of India's GST portal Search Taxpayer feature. The GST registration certificate must also be displayed at the registered premises as required by law; private KYC files are not published here.</p>
           <a href="https://www.gst.gov.in/" target="_blank" rel="noreferrer" className="mt-3 inline-flex text-xs font-black text-[#075E45] underline">Official GST portal</a>
         </section>
 
