@@ -68,6 +68,21 @@ export default function MoveQuoteAdminPage() {
         <button type="button" onClick={() => void reload()} className="rounded-xl bg-[#075E45] px-4 py-2 text-sm font-bold text-white">Refresh</button>
       </div>
       <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Do not forward personal phone numbers to unverified operators or collect advances for unconfirmed services. Only contact customers about the enquiry they consented to. Do not activate instant dispatch, bike taxis, stranger pooling or fixed-fare claims from this inbox.</p>
+      <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4" aria-label="Move hub activation requirements">
+        <h2 className="font-black text-slate-900">Instant dispatch · activation remains blocked</h2>
+        <p className="mt-1 text-xs leading-5 text-slate-600">Recruitment targets do not establish actual coverage. No hub can be unlocked from this page. Before customer booking, obtain transport and worker-compliance sign-off, verified operator/vehicle documents and insurance, tested online matching and pickup SLAs, safe cancellation/refund handling, and live customer support.</p>
+        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
+          {[
+            { name: 'Hub 1 · Jagtial / nearby Dharmaram', gate: 'Permits, available drivers, pickup tests and worker registration' },
+            { name: 'Hub 2 · Korutla / Metpally', gate: 'Independent local driver coverage and verified commercial vehicles' },
+            { name: 'Hub 3 · Dharmapuri', gate: 'Local operator coverage, temple/outstation serviceability and SLAs' },
+          ].map(hub => <div key={hub.name} className="rounded-xl bg-slate-50 p-3">
+            <p className="font-black text-slate-900">{hub.name}</p>
+            <p className="mt-1 text-slate-600">{hub.gate}</p>
+            <p className="mt-2 font-bold text-amber-700">Not approved for instant launch</p>
+          </div>)}
+        </div>
+      </section>
       {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
       {loading ? <p className="mt-6 text-sm">Loading enquiries…</p> : <>
         <div className="mt-5 flex flex-wrap gap-3">
