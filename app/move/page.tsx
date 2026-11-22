@@ -119,6 +119,20 @@ export default function MoveTravelPage() {
           <p className="mt-4 text-xs leading-5 text-amber-800">Operator availability is reviewed manually. Do not pay an advance to an unverified third party. Instant auto, cab and delivery matching remain locked until provider, transport, insurance, safety and worker-registration checks pass.</p>
         </section>
 
+        <section aria-label="Join the district transport provider network" className="mt-5 rounded-3xl border border-blue-100 bg-white p-5 md:p-7">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="max-w-3xl">
+              <h2 className="text-lg font-black text-slate-950">Own a verified cab, goods vehicle or marriage bus?</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">Zeshu is recruiting operators in Jagtial, Dharmaram, Korutla, Metpally and Dharmapuri. Register interest at no charge. We verify the applicable licences, RC, insurance, permits and operating availability before we refer customer enquiries. No guaranteed bookings or operator subscription charges.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/earn?role=PASSENGER_FLEET_OPERATOR#join" className="rounded-xl bg-[#075E45] px-4 py-3 text-xs font-black text-white">Cab / bus owner</Link>
+              <Link href="/earn?role=LOGISTICS_FLEET_OPERATOR#join" className="rounded-xl border border-[#075E45] bg-white px-4 py-3 text-xs font-black text-[#075E45]">Truck fleet owner</Link>
+              <Link href="/earn/onboard" className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-black text-slate-800">Verify driver documents</Link>
+            </div>
+          </div>
+        </section>
+
         <ServiceSection title="Local rides" cards={localRides} />
         <ServiceSection title="Send & Cargo" cards={courier} />
         <ServiceSection title="Share" cards={sharing} />
