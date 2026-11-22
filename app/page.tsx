@@ -3194,6 +3194,7 @@ export default function ZeshuSuperApp() {
         <div className="flex-1 min-w-0 pb-32">
            {activeTab === 'home' && normalizedSearch === '' && (
              <HomeBusinessHub
+               categoryProductCounts={categoryProductCounts}
                nationwideCheckoutEnabled={fulfillmentStatus.nationwide_checkout_enabled}
                onShopNearby={() => {
                  setFulfillmentFilter('ALL');
