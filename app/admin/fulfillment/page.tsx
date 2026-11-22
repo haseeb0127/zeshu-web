@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PackageCheck, Save, ShieldCheck, Truck, TriangleAlert } from "lucide-react";
 import { adminSupabase } from "../../lib/browser-supabase";
+import FulfillmentEconomicsPlanner from "../../components/FulfillmentEconomicsPlanner";
 
 const supabase = adminSupabase();
 
@@ -158,9 +159,17 @@ export default function FulfillmentAdminPage() {
         <Metric label="India checkout" value={settings?.nationwide_checkout_enabled ? "Enabled" : "Safely off"} />
       </section>
 
+      <FulfillmentEconomicsPlanner
+        liveNationalMinimum={Number(settings?.default_min_contribution_rupees ?? 25)}
+        livePaymentFeePercent={Number(settings?.payment_fee_percent ?? 2)}
+        liveRtoPercent={Number(settings?.default_rto_allowance_percent ?? 5)}
+        liveOperatingPercent={Number(settings?.default_operating_cost_percent ?? 3)}
+        nationwideCheckoutEnabled={settings?.nationwide_checkout_enabled === true}
+      />
+
       <section className="mt-5 rounded-3xl border border-[#dde7df] bg-white p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div><h2 className="text-lg font-black">Profitability gate</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">India-wide shipping is offered only after product cost, packaging, payment cost, courier quote, operating allowance and return/RTO allowance still leave the configured contribution and margin.</p></div>
+          <div><h2 className="text-lg font-black">Live nationwide profitability gate</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">India-wide shipping is offered only after product cost, packaging, payment cost, courier quote, operating allowance and return/RTO allowance still leave the configured contribution and margin.</p></div>
           <button onClick={() => void saveSettings()} disabled={saving === "settings"} className="inline-flex items-center gap-2 rounded-xl bg-[#087443] px-4 py-2.5 text-sm font-black text-white disabled:opacity-50"><Save size={16}/>{saving === "settings" ? "Saving…" : "Save settings"}</button>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
