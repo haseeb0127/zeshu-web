@@ -76,6 +76,7 @@ export function validateMoveQuote(raw: unknown, now = new Date()): MoveQuoteVali
   if (input.consent !== true) return { ok: false, error: 'Consent is required to contact you about this enquiry.' };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: 'Choose a valid travel date.' };
   const day = new Date(date + 'T00:00:00Z');
+  if (Number.isNaN(day.getTime()) || day.toISOString().slice(0, 10) !== date) return { ok: false, error: 'Choose a real calendar date.' };
   const today = getIndiaTodayISO(now);
   const todayDate = new Date(today + 'T00:00:00Z');
   const days = (day.getTime() - todayDate.getTime()) / 86_400_000;
