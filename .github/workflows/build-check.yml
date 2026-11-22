@@ -117,6 +117,8 @@ jobs:
         run: node --experimental-strip-types .github/scripts/move-provider-foundation-qa.ts
       - name: Verify Move matching
         run: node --experimental-strip-types .github/scripts/move-matching-qa.ts
+      - name: Verify district scheduled transport quote safety
+        run: node --experimental-strip-types .github/scripts/move-district-quote-qa.ts
       - name: Verify driver and rider foundation
         run: node --experimental-strip-types .github/scripts/driver-rider-foundation-qa.ts
       - name: Verify Telangana gig-worker and Bike Ride interest-only compliance gates

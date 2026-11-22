@@ -12,31 +12,32 @@ type ServiceCard = {
   icon: React.ReactNode;
   actionLabel?: string;
   regulatoryHold?: boolean;
+  quoteCode?: string;
 };
 
 const localRides: ServiceCard[] = [
   { title: "Bike Ride", description: "Register founding rider interest. Passenger bookings remain disabled until Telangana transport approvals and safety requirements are verified.", icon: <Bike size={22} />, actionLabel: "Register rider interest", regulatoryHold: true },
-  { title: "Auto", description: "Auto-rickshaw rides", icon: <Car size={22} />, actionLabel: "Request auto" },
-  { title: "Cab", description: "Local and outstation cabs", icon: <Car size={22} />, actionLabel: "Request cab" },
-  { title: "Rental Car", description: "Hourly and day rentals", icon: <Car size={22} />, actionLabel: "Request rental" },
+  { title: "Auto", description: "Local auto booking will open only after driver availability and licensing checks.", icon: <Car size={22} />, actionLabel: "Not yet bookable", regulatoryHold: true },
+  { title: "Cab", description: "Scheduled whole-cab quotes are available for enquiry. Live instant matching is not yet enabled.", icon: <Car size={22} />, actionLabel: "Request scheduled quote", regulatoryHold: true, quoteCode: "OUTSTATION_CAB" },
+  { title: "Rental Car", description: "Hourly and day rentals will open only with verified rental partners.", icon: <Car size={22} />, actionLabel: "Not yet bookable", regulatoryHold: true },
 ];
 
 const courier: ServiceCard[] = [
-  { title: "Bike Courier", description: "Documents and small parcels", icon: <Package size={22} />, actionLabel: "Request delivery" },
-  { title: "Auto / Mini Truck", description: "Larger local deliveries", icon: <Truck size={22} />, actionLabel: "Request delivery" },
-  { title: "Shop Delivery", description: "Seller-to-customer delivery", icon: <Package size={22} />, actionLabel: "Request delivery" },
+  { title: "Bike Courier", description: "Instant document and small-parcel matching is not yet active.", icon: <Package size={22} />, actionLabel: "Not yet bookable", regulatoryHold: true },
+  { title: "Auto / Mini Truck", description: "Scheduled mini-truck goods transport enquiry; driver quote required.", icon: <Truck size={22} />, actionLabel: "Request truck quote", regulatoryHold: true, quoteCode: "MINI_TRUCK" },
+  { title: "Shop Delivery", description: "Seller-to-customer dispatch depends on verified shop and rider availability.", icon: <Package size={22} />, actionLabel: "Not yet individually bookable", regulatoryHold: true },
 ];
 
 const sharing: ServiceCard[] = [
-  { title: "Car Share", description: "Split an intercity trip with verified co-travellers", icon: <Users size={22} />, actionLabel: "Plan trip" },
+  { title: "Car Share", description: "Stranger-to-stranger per-seat pooling is not available. Future group fare-splitting would be only for one known group travelling in the same full cab.", icon: <Users size={22} />, actionLabel: "Not bookable", regulatoryHold: true },
 ];
 
 const travel: ServiceCard[] = [
-  { title: "Bus", description: "Bus discovery and booking", icon: <Bus size={22} />, actionLabel: "Plan travel" },
-  { title: "Train", description: "Authorized rail booking partners only", icon: <TrainFront size={22} />, actionLabel: "Plan travel" },
-  { title: "Flights", description: "Flight search and booking partners", icon: <Plane size={22} />, actionLabel: "Plan travel" },
-  { title: "Hotels", description: "Hotel discovery and booking partners", icon: <Hotel size={22} />, actionLabel: "Plan stay" },
-  { title: "Experiences", description: "Activities and local experiences", icon: <Luggage size={22} />, actionLabel: "Explore" },
+  { title: "Bus", description: "Intercity ticket booking is not live. Use whole-bus hire quote requests for planned groups.", icon: <Bus size={22} />, actionLabel: "Not yet bookable", regulatoryHold: true },
+  { title: "Train", description: "Rail ticket booking requires an authorized partner and is not live.", icon: <TrainFront size={22} />, actionLabel: "Not yet bookable", regulatoryHold: true },
+  { title: "Flights", description: "Flight booking will require an authorized distribution partner.", icon: <Plane size={22} />, actionLabel: "Not yet bookable", regulatoryHold: true },
+  { title: "Hotels", description: "Hotel booking requires verified inventory and partner confirmation.", icon: <Hotel size={22} />, actionLabel: "Not yet bookable", regulatoryHold: true },
+  { title: "Experiences", description: "Verified local experience reservations will be introduced later.", icon: <Luggage size={22} />, actionLabel: "Not yet bookable", regulatoryHold: true },
 ];
 
 function ServiceSection({ title, cards }: { title: string; cards: ServiceCard[] }) {
@@ -49,13 +50,15 @@ function ServiceSection({ title, cards }: { title: string; cards: ServiceCard[] 
           <article key={card.title} className="zeshu-gloss-card rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_16px_rgba(15,23,42,.04)]">
             <div className="flex items-start justify-between gap-3">
               <span className="zeshu-gloss-icon grid h-12 w-12 place-items-center rounded-2xl text-white" aria-hidden="true">{card.icon}</span>
-              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#075E45]">{t(card.regulatoryHold ? "Coming soon" : "Check availability")}</span>
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#075E45]">{t(card.quoteCode ? "Quote enquiry" : card.regulatoryHold ? "Coming soon" : "Check availability")}</span>
             </div>
             <h3 className="mt-4 font-black text-slate-900">{t(card.title)}</h3>
             <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{t(card.description)}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {card.regulatoryHold && card.title === "Bike Ride" ? (
                 <Link href="/earn#join" className="inline-flex rounded-xl bg-[#075E45] px-3 py-2 text-xs font-black text-white">{t(card.actionLabel || "Register interest")}</Link>
+              ) : card.quoteCode ? (
+                <Link href={`/move/quote?service=${card.quoteCode}`} className="inline-flex rounded-xl bg-[#075E45] px-3 py-2 text-xs font-black text-white">{t(card.actionLabel || "Request quote")}</Link>
               ) : card.regulatoryHold ? (
                 <span className="inline-flex cursor-not-allowed rounded-xl bg-slate-200 px-3 py-2 text-xs font-black text-slate-600">{t(card.actionLabel || "View status")}</span>
               ) : (
@@ -96,6 +99,25 @@ export default function MoveTravelPage() {
             </div>
           </div>
         </header>
+
+        <section className="mt-7 rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm md:p-8" aria-label="District scheduled transport quotation requests">
+          <p className="text-xs font-black uppercase tracking-widest text-[#075E45]">Five-town pilot · enquiries only</p>
+          <h2 className="mt-2 text-2xl font-black text-slate-900">Scheduled cabs, trucks &amp; marriage buses</h2>
+          <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">From Jagtial, Dharmaram, Korutla, Metpally or Dharmapuri, request a manual operator quote for a planned journey or goods delivery. No instant booking, guaranteed driver, fare or payment is available until an eligible operator confirms the request. Requests are free.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              {code:'OUTSTATION_CAB',name:'Outstation Cab',detail:'Whole commercial cab, not per-seat pooling',icon:Car},
+              {code:'RETURN_CAB',name:'Possible Return Cab',detail:'Request an available whole-car return journey',icon:Car},
+              {code:'MINI_TRUCK',name:'Mini Truck / Pickup',detail:'Scheduled local and district goods transport',icon:Truck},
+              {code:'LARGE_TRUCK',name:'Large Goods Truck',detail:'Operator-confirmed load and route quotation',icon:Truck},
+              {code:'CHARTER_BUS',name:'Marriage / Group Bus',detail:'Whole-bus hire for wedding or family trips',icon:Bus},
+            ].map(item => <Link key={item.code} href={`/move/quote?service=${item.code}`} className="flex items-start gap-3 rounded-xl border border-emerald-100 bg-[#f7fbf8] p-3 transition hover:border-[#087443]">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-100 text-[#075E45]"><item.icon size={21}/></span>
+              <span><span className="block text-sm font-black text-slate-900">{item.name}</span><span className="mt-1 block text-xs leading-4 text-slate-600">{item.detail}</span><span className="mt-2 block text-xs font-black text-[#075E45]">Request quote →</span></span>
+            </Link>)}
+          </div>
+          <p className="mt-4 text-xs leading-5 text-amber-800">Operator availability is reviewed manually. Do not pay an advance to an unverified third party. Instant auto, cab and delivery matching remain locked until provider, transport, insurance, safety and worker-registration checks pass.</p>
+        </section>
 
         <ServiceSection title="Local rides" cards={localRides} />
         <ServiceSection title="Send & Cargo" cards={courier} />
