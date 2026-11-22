@@ -23,6 +23,8 @@ const LANGUAGE_OPTIONS: Array<{ code: CustomerLanguageCode; label: string; short
 const translations: Record<CustomerLanguageCode, Record<string, string>> = {
   en: {},
   te: {
+    "Fresh meat & fish": "తాజా మాంసం & చేపలు",
+    "Jagtial only · Verified sellers and safe delivery required": "జగిత్యాలలో మాత్రమే · ధృవీకరించిన విక్రేతలు, సురక్షిత డెలివరీ తప్పనిసరి",
     "Payment receipt and order summary": "చెల్లింపు రసీదు మరియు ఆర్డర్ వివరాలు",
     "Zeshu Green": "జెషు గ్రీన్",
     "Our goal: one tree for every eligible delivered order.": "ప్రతి అర్హమైన డెలివరీ ఆర్డర్‌కు ఒక చెట్టు మా లక్ష్యం.",
@@ -970,6 +972,8 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Search Contact": "కాంటాక్ట్ వెతకండి",
   },
   hi: {
+    "Fresh meat & fish": "ताज़ा मीट और मछली",
+    "Jagtial only · Verified sellers and safe delivery required": "केवल जगतियाल · सत्यापित विक्रेता और सुरक्षित डिलीवरी ज़रूरी",
     "Payment receipt and order summary": "भुगतान रसीद और ऑर्डर विवरण",
     "Zeshu Green": "ज़ेशु ग्रीन",
     "Help us grow a greener Jagtial.": "जगतियाल को और हरा-भरा बनाने में हमारा साथ दें।",
@@ -1897,6 +1901,8 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
     "Search Contact": "कॉन्टैक्ट खोजें",
   },
   ur: {
+    "Fresh meat & fish": "تازہ گوشت اور مچھلی",
+    "Jagtial only · Verified sellers and safe delivery required": "صرف جگتیال · تصدیق شدہ فروخت کنندگان اور محفوظ ڈیلیوری ضروری",
     "Payment receipt and order summary": "ادائیگی کی رسید اور آرڈر کی تفصیلات",
     "Zeshu Green": "زیشو گرین",
     "Help us grow a greener Jagtial.": "جگتیال کو مزید سرسبز بنانے میں ہمارا ساتھ دیں۔",
