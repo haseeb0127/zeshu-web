@@ -101,6 +101,8 @@ jobs:
         run: node --experimental-strip-types .github/scripts/homepage-business-hub-qa.ts
       - name: Verify local and nationwide economics planner is scenario-only
         run: node --experimental-strip-types .github/scripts/fulfillment-two-profile-planner-qa.ts
+      - name: Verify local paid-delivery pilot and checkout reconciliation
+        run: node --experimental-strip-types .github/scripts/local-paid-delivery-qa.ts
       - name: Verify private Zeshu Green unit economics and no-spend pause safety
         run: node .github/scripts/zeshu-green-unit-economics-qa.mjs
       - name: Verify honest Zeshu Green goal and private verified-tree accounting
