@@ -1,13 +1,14 @@
 import Link from 'next/link';
+import { ZESHU_LEGAL_BUSINESS as business } from '../lib/legal-business-details';
 
 const sections = [
   {
     id: 'terms',
     title: 'Terms & Conditions',
     body: [
-      'Zeshu is a sole proprietorship trading as Zeshu. You must be 18 years or older to independently create an account or place an order. Zeshu does not currently sell age-restricted products.',
+      `ZESHU is the trade name of ${business.legalName}, a GST-registered sole proprietorship in Telangana (GSTIN ${business.gstin}). Zeshu operates an online marketplace and local fulfilment interface. Users must be at least 18 years old to independently create an account or order. Zeshu does not currently sell age-restricted products.`,
       'Use accurate account, address, and order information. Orders are accepted only after successful payment verification and applicable provider confirmation. Zeshu may restrict access where necessary for security, misuse prevention, or operational safety.',
-      'Where third-party sellers participate, the seller is responsible for accurate product information, quality, statutory declarations, and applicable warranty or guarantee information. Customer statutory rights are not excluded.',
+      'When an independent seller supplies an item, the seller remains responsible for lawful product pricing, descriptions, stock, packaging, origin, food safety where applicable, statutory declarations and product invoices. Zeshu remains responsible for its own marketplace, payment-coordination, delivery and consumer-support obligations; seller contracts cannot remove customer statutory rights.',
     ],
   },
   {
@@ -21,10 +22,37 @@ const sections = [
     ],
   },
   {
+    id: 'business-gst',
+    title: 'Registered Business & GST Information',
+    body: [
+      `Trading name: ${business.tradeName}. Legal name: ${business.legalName}. Constitution: ${business.constitution}. GSTIN: ${business.gstin}. REG-06 Regular GST registration effective from ${business.gstEffectiveDate}.`,
+      `Registered principal place of business: ${business.registeredAddress}. For a clear overview of our operations and contact details, visit ${business.website}/business-details.`,
+      'Zeshu’s GST registration is not the GST registration of each independent seller. Product GST, required invoices, marketplace TCS/TDS and platform-service GST depend on the actual taxable supply, seller legal status, collection/settlement arrangement and applicable law. A Regular GST certificate by itself does not prove separate e-commerce-operator TCS registration.',
+    ],
+  },
+  {
+    id: 'marketplace-model',
+    title: 'Marketplace, Product Prices & Seller Identification',
+    body: [
+      'Zeshu provides customer discovery, order coordination, support and, where operational, payment and delivery services for participating sellers. Independent shops maintain and dispatch their inventory; Zeshu does not automatically own or manufacture all items displayed. A seller may act as the seller of record for the goods, while Zeshu invoices its separate platform services where applicable.',
+      'The order page should identify the selling business and provide available statutory information, applicable GSTIN or other registration where required, product price including relevant taxes, delivery eligibility, quantity or weight, availability, expiry/use-before information for relevant foods, warranty or return eligibility, and who to contact for a dispute. Seller registration and trust badges are not a substitute for verified documents.',
+      'Product price, delivery and any platform charges are displayed before payment. Mandatory charges cannot be added as a surprise. Optional sponsored placements must be clearly labelled. Search and category relevance, availability, price, customer-selected sorting and verified delivered-order ratings may influence how listings appear; paid placement must not masquerade as an organic recommendation.',
+    ],
+  },
+  {
+    id: 'seller-payouts-taxes',
+    title: 'Seller Payouts, Fees & Statutory Deductions',
+    body: [
+      'Zeshu is planning a zero-sales-commission seller membership, provisionally ₹299/month inclusive of applicable tax with a 14-day introduction period. This is not an active recurring billing commitment: no seller membership can be charged until its exact contract, invoice, payment method, renewal and cancellation terms are disclosed and accepted.',
+      'Customer payments are handled only through the enabled approved payment-provider checkout. Real linked-seller split settlements and automatic payouts have not yet been verified as live. Before activation, each seller must accept a clear settlement schedule covering fulfilled order values, actual agreed gateway charges, valid refunds/chargebacks, delivery or seller-funded promotions, and applicable government withholding such as TCS/TDS. No unsupported instant-payout promise is made.',
+      'If Zeshu charges a platform fee, it is separately identified on checkout and invoiced according to applicable tax requirements. The proposed ₹10 tax-inclusive Jagtial handling fee and distance-based delivery pilot are staged but not switched on. A seller can be held responsible for costs caused by its own wrong, defective or misdescribed goods under applicable law and an agreed fair policy—not automatically for every customer return or courier incident.',
+    ],
+  },
+  {
     id: 'payments',
     title: 'Payments',
     body: [
-      'Grocery payments use the displayed Razorpay checkout. Zeshu records verified payment identifiers and status for order reconciliation; payment credentials are handled by the payment provider.',
+      'Where a grocery payment flow is available, it uses the configured Razorpay checkout, currently in TEST mode during verification. Zeshu records verified payment references and order status for reconciliation; card data, CVV and UPI PIN are handled through the payment provider or banking app. Do not treat TEST-mode transactions as live seller collections.',
       'Mobile recharge plan discovery may be available, but any Razorpay flow exposed for mobile recharge is TEST-mode only. A successful test payment is not a successful telecom recharge, and no real telecom fulfilment is submitted. Real utility bill payments are currently unavailable.',
       'No payment is currently available for Pharmacy & Health, UPI Tools, or unavailable utility services.',
     ],
@@ -34,7 +62,7 @@ const sections = [
     title: 'Payment Gateway & Failed Transaction Policy',
     body: [
       'Zeshu displays supported payment methods through the configured payment gateway. Payment credentials such as card CVV and UPI PIN are entered with the payment provider or banking application and should never be shared with Zeshu support.',
-      'A bank debit, UPI debit, or gateway success screen is not by itself proof that a Zeshu order has been finalized. Zeshu confirms an order only after server-side payment verification and order reconciliation. If money is debited but the order is not confirmed, do not pay again; use Help & Support so the existing transaction can be checked safely.',
+      'A bank debit, UPI debit, or gateway success screen is not by itself proof that a Zeshu order has been finalized. Zeshu confirms an order only after server-side payment verification and order reconciliation. If money is debited but the order is not confirmed, do not pay again; use Help & Support so the existing transaction can be checked safely. Buyers do not pay separate card or UPI surcharges merely because the payment method is different.',
       'Where a verified payment must be refunded, an approved monetary refund is returned to the original payment method where supported. Bank or payment-provider processing time may apply. Zeshu does not charge a separate payment-gateway, convenience, or payment-processing fee unless a future charge is clearly disclosed before payment and is permitted by applicable law.',
       'Payment providers may have their own technical terms, dispute processes, card-network or UPI rules. Those provider terms do not remove Zeshu customer rights or replace Zeshu policies for orders sold or facilitated through Zeshu.',
     ],
@@ -43,8 +71,8 @@ const sections = [
     id: 'cancellation-refunds',
     title: 'Cancellation & Refunds',
     body: [
-      'Before vendor or order confirmation, a customer may request cancellation. After confirmation, an order is normally not cancellable once fulfilment has materially started, although Zeshu may consider a request case by case where operationally possible. No cancellation fee is charged unless a future product rule expressly introduces one in accordance with applicable law.',
-      'If Zeshu or a vendor cancels an accepted paid order, the applicable monetary refund is made to the original payment method where supported. Approved monetary refunds are normally processed within 5–7 business days after approval; actual credit timing may also depend on the bank or payment provider. Zeshu Cash is never silently substituted for a monetary refund. It may be used only when the customer explicitly chooses it and the relevant flow supports it.',
+      'Customers can request cancellation before the seller starts irreversible preparation or dispatch, and can contact support later where necessary. Some perishable or made-to-order goods cannot be stopped once preparation materially starts; this does not cancel statutory rights for wrong, unsafe, damaged or defective goods. No cancellation fee is currently imposed. Any future fees must be fair, legally permitted and clearly disclosed, including reciprocal rules for unilateral seller/platform cancellations where required.',
+      'If Zeshu or the seller cancels an accepted paid order, any applicable monetary refund is initiated to the original payment method where supported, including relevant delivery/platform fees where due. Approved monetary refunds are normally processed within 5–7 business days after approval; actual credit depends on banks and providers. Refunds must not be delayed merely because a seller payout is pending. Zeshu Cash is never substituted for a monetary refund without the customer explicitly choosing it.',
     ],
   },
   {
@@ -52,7 +80,7 @@ const sections = [
     title: 'Returns & Replacements',
     body: [
       'For food, groceries, and fresh or perishable goods, report a wrong, missing, damaged, expired, spoiled, or materially poor-quality item within 24 hours of delivery where reasonably possible. Opened or perishable items are normally non-returnable merely because of a change of mind, but genuine quality or fulfilment issues remain eligible for review.',
-      'Reasonable evidence, such as photographs, may be requested where appropriate. Depending on the verified issue and applicable law, a replacement, partial refund, or full refund may be available.',
+      'Reasonable evidence, such as photographs, may be requested where appropriate. Depending on the issue and applicable law, a replacement, partial refund or full refund may be available. Zeshu coordinates the complaint instead of simply referring the customer to the seller. The seller ordinarily funds remedies for its own fault under its agreement; courier-fault disputes are investigated with the delivery partner, without unfairly delaying legally required customer relief.',
       'For electronics and clothing, report a wrong product, damage, manufacturing defect, missing component, or materially different item within 7 working days of delivery. Manufacturer or seller warranty may apply. Return eligibility is not promised for every opened or used electronics product.',
     ],
   },
@@ -60,8 +88,8 @@ const sections = [
     id: 'delivery',
     title: 'Shipping & Delivery',
     body: [
-      'Physical delivery for groceries, fresh food, essentials and other eligible physical products is currently limited to the supported Jagtial delivery zone. Estimated delivery times are estimates and may vary because of availability, traffic, weather, address accuracy, order volume, safety conditions, and operational factors. Zeshu does not promise universal 10-minute delivery.',
-      'Zeshu does not currently offer nationwide physical shipping. Digital services can be used across India where the relevant provider integration is available. Keep delivery addresses accurate for Jagtial physical orders.',
+      'Physical delivery for groceries, fresh food and eligible products is currently limited to supported Jagtial areas. Seller and rider capacity, verified address, handling needs, road conditions, weather and order volume determine availability and ETA. The customer sees the actual checkout delivery charge before payment; do not assume free delivery for every basket in future. The proposed local ₹10 platform handling and revised delivery tiers are not live unless the checkout shows them. Zeshu does not promise universal 10-minute delivery.',
+      'Zeshu does not currently offer nationwide physical shipping. A planned future marketplace courier flow will calculate actual eligible-seller pickup, package weight, courier price and destination before payment. Customer returns, refused delivery and failed delivery follow a transparent fault-based policy; chicken, mutton, fish and other perishables remain local unless temperature-controlled fulfilment and licensing are independently approved. Digital services may be used across India only where the respective provider is operational.',
     ],
   },
   {
@@ -93,15 +121,15 @@ const sections = [
     id: 'grievance',
     title: 'Grievance & Customer Support',
     body: [
-      'Haseeb, Proprietor / Grievance Officer, Zeshu, handles consumer complaints and grievance escalation. Email: grievance@zeshu.in. Phone: +91 95052 11212. Postal address: 1-2-210/A/1, Sai Ram Nagar, Jagtial, Telangana – 505327, India.',
-      'Consumer complaints will be acknowledged within 48 hours of receipt and Zeshu will endeavour to resolve or redress them within one month, subject to applicable law and the complexity of the matter. General support: support@zeshu.in and +91 95052 11212. Privacy requests: privacy@zeshu.in.',
+      `${business.legalName}, Proprietor / Grievance Officer, ZESHU, handles consumer complaints and escalation. Email: ${business.grievanceEmail}. Phone: ${business.supportPhone}. Postal address: ${business.registeredAddress}.`,
+      `Consumer complaints will be acknowledged within 48 hours of receipt and Zeshu will work to redress them within one month or the shorter period required by law. A copy or reference of a recorded complaint may be provided to the complainant as applicable. General support: ${business.supportEmail} and ${business.supportPhone}. Privacy requests: ${business.privacyEmail}.`,
     ],
   },
   {
     id: 'seller',
     title: 'Seller / Vendor Terms',
     body: [
-      'Where third-party sellers or vendors participate, they must provide accurate product, stock, quality, statutory-declaration, warranty, and guarantee information applicable to their products. Zeshu may facilitate ordering, payment, support, and delivery depending on the product. Customer rights under applicable law remain unaffected.',
+      'Participating sellers must supply their legal business identity, geographic address, customer care information, applicable GST/MSME/FSSAI registration or other statutory identifiers, verified product prices and stock, lawful country-of-origin/expiry/quantity details, warranty and return conditions, and a valid dispatch location. Zeshu may facilitate ordering, payment, support, and delivery where operational. Seller eligibility, payouts, costs, cancellations and statutory deductions must be defined in the signed seller agreement before activation. Customer rights remain unaffected.',
     ],
   },
   {
@@ -122,8 +150,8 @@ const sections = [
     id: 'contact',
     title: 'Contact Details',
     body: [
-      'Trading / business name: Zeshu. Business form: Sole Proprietorship. Correspondence address: 1-2-210/A/1, Sai Ram Nagar, Jagtial, Telangana – 505327, India.',
-      'Customer support: support@zeshu.in and +91 95052 11212. Privacy: privacy@zeshu.in. Grievance: grievance@zeshu.in, Haseeb, Proprietor / Grievance Officer, +91 95052 11212.',
+      `Trade name: ${business.tradeName}. Registered proprietor: ${business.legalName}. GSTIN: ${business.gstin}. Business form: ${business.constitution}. Registered business address: ${business.registeredAddress}.`,
+      `Customer support: ${business.supportEmail} and ${business.supportPhone}. Privacy: ${business.privacyEmail}. Grievance: ${business.grievanceEmail}, ${business.legalName}, Proprietor / Grievance Officer. See ${business.website}/business-details.`,
     ],
   },
 ];
@@ -137,7 +165,7 @@ export default function PoliciesPage() {
           <p className="text-xs font-black uppercase tracking-[0.18em] text-[#a6dfba]">Zeshu Trust Center</p>
           <h1 className="mt-2 text-3xl font-black tracking-tight md:text-5xl">Policies &amp; customer information</h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-[#d9f3e3]">Clear information about ordering, delivery, payments, rewards, service availability, privacy, and support.</p>
-          <p className="mt-3 text-xs font-bold text-[#b9e8c8]">Last updated: September 2026</p>
+          <p className="mt-3 text-xs font-bold text-[#b9e8c8]">Last updated: 23 November 2026</p>
         </header>
         <nav aria-label="Policy sections" className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
           <p className="text-xs font-black uppercase tracking-wider text-slate-500">On this page</p>
