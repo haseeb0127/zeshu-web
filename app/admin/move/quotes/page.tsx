@@ -137,7 +137,7 @@ export default function MoveQuoteAdminPage() {
                 {needsAttention(row) && <p className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-900">Needs timely review · no guaranteed response SLA</p>}
                 <p className="mt-2 text-sm">Journey: <strong>{row.travel_date}</strong>{row.travel_time ? ' at ' + row.travel_time : ''}</p>
                 <p className="mt-1 text-sm">Customer: <strong>{row.contact_name}</strong> · <a href={'tel:+91' + row.contact_phone} className="font-bold text-[#075E45] underline">{row.contact_phone}</a> (admin only)</p>
-                {row.last_customer_contact_at && <p className="mt-1 text-xs text-slate-500">Last recorded contact attempt: {new Date(row.last_customer_contact_at).toLocaleString('en-IN')}</p>
+                {row.last_customer_contact_at && <p className="mt-1 text-xs text-slate-500">Last recorded contact attempt: {new Date(row.last_customer_contact_at).toLocaleString('en-IN')}</p>}
                 {row.pickup_landmark && <p className="mt-1 text-sm">Pickup landmark: {row.pickup_landmark}</p>}
                 {row.passengers !== null && <p className="mt-1 text-sm">Passenger count: {row.passengers}</p>}
                 {row.load_description && <p className="mt-1 whitespace-pre-wrap text-sm">Load: {row.load_description}</p>}
