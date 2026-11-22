@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useCustomerLanguage } from "./CustomerLanguageProvider";
 
 const roles = [
@@ -10,8 +10,8 @@ const roles = [
   ["AUTO_DRIVER", "Auto Driver"],
   ["CAB_DRIVER", "Cab / Car Driver"],
   ["GOODS_DRIVER", "Goods / Mini Truck Driver"],
-  ["PASSENGER_FLEET_OPERATOR", "Passenger Fleet Operator"],
-  ["LOGISTICS_FLEET_OPERATOR", "Courier / Cargo Fleet Operator"],
+  ["PASSENGER_FLEET_OPERATOR", "Commercial cab / charter bus fleet owner"],
+  ["LOGISTICS_FLEET_OPERATOR", "Mini-truck / goods / courier fleet owner"],
 ] as const;
 
 const emptyForm = {
@@ -35,6 +35,23 @@ export default function DriverRiderInterestForm() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+
+  // Campaign links can preselect only an existing allowed role and district
+  // town; they never auto-submit or approve an operator. No private data in URLs.
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const requestedRole = query.get('role');
+    const requestedTown = query.get('town');
+    const allowedTown = ['Jagtial','Dharmaram','Korutla','Metpally','Dharmapuri'];
+    setForm(previous => ({
+      ...previous,
+      role: requestedRole && roles.some(([value]) => value === requestedRole)
+        ? requestedRole : previous.role,
+      city: requestedTown && allowedTown.includes(requestedTown)
+        ? requestedTown : previous.city,
+    }));
+  }, []);
+
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -66,6 +83,9 @@ export default function DriverRiderInterestForm() {
           {roles.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
         </select>
       </label>
+      {(form.role === "PASSENGER_FLEET_OPERATOR" || form.role === "LOGISTICS_FLEET_OPERATOR") && <div className="md:col-span-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs leading-5 text-emerald-950">
+        <strong>District transport operator enquiry:</strong> Zeshu is building a verified whole-cab, goods and charter-bus quote network in Jagtial, Dharmaram, Korutla, Metpally and Dharmapuri. Provide fleet capacity and relevant service towns in the notes. Registration is free at this stage; this form does not sign a transport contract, approve vehicle permits, guarantee enquiries or create a daily operator pass. KYC documents must be uploaded only through secure onboarding when requested.
+      </div>}
       {form.role === "BIKE_RIDE_INTEREST" && <div className="md:col-span-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
         <strong>Bike Ride pilot — interest only.</strong> Telangana's gig-worker Act and Rules are now in force, but gig-worker registration is separate from Transport Department permission to carry passengers. Zeshu is collecting founding rider interest only. No paid rides, passenger bookings, dispatch or earnings are available until the required aggregator authorisation, transport registration/permit, insurance and safety checks are confirmed. Do not convert your vehicle or pay an agent based on this form.
       </div>}
@@ -79,7 +99,7 @@ export default function DriverRiderInterestForm() {
         <input type="email" maxLength={180} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3" />
       </label>
       <label className="text-sm font-black text-slate-700">{t("City / service area")}
-        <input required maxLength={120} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3" placeholder={t("Jagtial / Karimnagar / Hyderabad")} />
+        <input required maxLength={120} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3" placeholder={t("Jagtial / Dharmaram / Korutla / Metpally / Dharmapuri")} />
       </label>
       <label className="text-sm font-black text-slate-700">{t("Vehicle")}
         <input maxLength={80} value={form.vehicle_type} onChange={(e) => setForm({ ...form, vehicle_type: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3" placeholder={t("Bike / Auto / Car / Mini truck")} />
