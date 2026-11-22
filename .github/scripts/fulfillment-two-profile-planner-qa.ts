@@ -61,5 +61,6 @@ assert(page.includes("Live nationwide profitability gate"), "Existing live natio
 assert(planner.includes("SIMULATION ONLY"), "Planning scenarios must not look like live tariffs");
 assert(planner.includes("Nothing here is saved or applied to checkout"), "Planner must disclose non-live semantics");
 assert(checkout.includes("evaluateNationwideProfitability"), "National checkout safety gate must remain in place");
-assert(checkout.includes("handling_fee: 0"), "Planning fees must not silently alter checkout handling charges");
+assert(checkout.includes("ZESHU_LOCAL_PAID_DELIVERY_PILOT"), "Local handling fee must be behind an explicit server-controlled pilot flag");
+assert(checkout.includes("calculateLocalCheckoutPrice"), "Local pricing must be recomputed by secure checkout");
 console.log("FULFILLMENT_TWO_PROFILE_PLANNER_QA=PASS");

@@ -17,6 +17,7 @@ export default function FulfillmentAdminPage() {
   const [products, setProducts] = useState<Row[]>([]);
   const [vendors, setVendors] = useState<Row[]>([]);
   const [courierConnected, setCourierConnected] = useState(false);
+  const [localPaidPilotEnabled, setLocalPaidPilotEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState("");
   const [error, setError] = useState("");
@@ -53,6 +54,7 @@ export default function FulfillmentAdminPage() {
       setProducts(Array.isArray(payload.products) ? payload.products : []);
       setVendors(Array.isArray(payload.vendors) ? payload.vendors : []);
       setCourierConnected(payload.courier_connected === true);
+      setLocalPaidPilotEnabled(payload.local_paid_pilot_enabled === true);
       setError("");
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Fulfillment data could not be loaded.");
@@ -152,12 +154,15 @@ export default function FulfillmentAdminPage() {
       {error && <div role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}</div>}
       {notice && <div role="status" className="mb-4 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800">{notice}</div>}
 
-      <section className="grid gap-3 md:grid-cols-4">
+      <section className="grid gap-3 md:grid-cols-5">
         <Metric label="30-min Fresh candidates" value={String(freshCandidates)} />
         <Metric label="India candidates" value={String(indiaCandidates)} />
         <Metric label="Courier connection" value={courierConnected ? "Connected" : "Not connected"} />
         <Metric label="India checkout" value={settings?.nationwide_checkout_enabled ? "Enabled" : "Safely off"} />
+        <Metric label="Local paid-fee pilot" value={localPaidPilotEnabled ? "ON (review)" : "OFF (staged)"} />
       </section>
+
+      {!localPaidPilotEnabled && <p role="status" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold leading-5 text-amber-900">The proposed local ₹10 platform fee and ₹29–₹49 distance-zone delivery pricing are staged in code but inactive. Customer checkout continues its existing fees. Activate only after documented rider cost, GST, disclosure and settlement QA.</p>}
 
       <FulfillmentEconomicsPlanner
         liveNationalMinimum={Number(settings?.default_min_contribution_rupees ?? 25)}

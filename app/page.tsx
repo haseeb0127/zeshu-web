@@ -2663,8 +2663,50 @@ export default function ZeshuSuperApp() {
 
   // Reward redemption display math; checkout remains server-authoritative.
   const itemTotal = cart.reduce((acc, curr) => acc + (curr.item.price * curr.qty), 0);
+  // Quote is advisory; checkout independently recomputes the fee from the saved
+  // location and authoritative product prices. Never assume free shipping.
+  const hasIndiaCartProduct = cart.some(entry => entry.item?.delivery_mode === 'INDIA_STANDARD');
+  const [localDeliveryQuote, setLocalDeliveryQuote] = useState<{
+    policy: 'LEGACY' | 'PAID_LOCAL_PILOT';
+    eligible: boolean;
+    deliveryFee: number;
+    handlingFee: number;
+    reason: string;
+  } | null>(null);
+  const [localQuotePending, setLocalQuotePending] = useState(false);
+  useEffect(() => {
+    if (itemTotal <= 0 || hasIndiaCartProduct) {
+      setLocalDeliveryQuote(null);
+      setLocalQuotePending(false);
+      return;
+    }
+    const controller = new AbortController();
+    const address = addresses.find(a => a.id === selectedAddressId) || addresses.find(a => a.is_default);
+    setLocalQuotePending(true);
+    setLocalDeliveryQuote(null);
+    void fetch('/api/local-delivery-quote', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
+      body: JSON.stringify({
+        subtotal: itemTotal,
+        latitude: typeof address?.latitude === 'number' ? address.latitude : null,
+        longitude: typeof address?.longitude === 'number' ? address.longitude : null,
+      }),
+      signal: controller.signal,
+    }).then(async response => {
+      if (!response.ok) throw new Error('Local quote unavailable');
+      return response.json();
+    }).then(data => {
+      if (!controller.signal.aborted && data && typeof data.deliveryFee === 'number' && typeof data.handlingFee === 'number') {
+        setLocalDeliveryQuote(data);
+      }
+    }).catch(() => { if (!controller.signal.aborted) setLocalDeliveryQuote(null); })
+      .finally(() => { if (!controller.signal.aborted) setLocalQuotePending(false); });
+    return () => controller.abort();
+  }, [itemTotal, hasIndiaCartProduct, addresses, selectedAddressId]);
+  const localQuoteReady = hasIndiaCartProduct || (!localQuotePending && localDeliveryQuote?.eligible === true);
+  const deliveryCharge = localDeliveryQuote?.eligible ? localDeliveryQuote.deliveryFee : 0;
+  const platformHandlingFee = localDeliveryQuote?.eligible ? localDeliveryQuote.handlingFee : 0;
   const freeDeliveryThreshold = 299;
-  const deliveryCharge = itemTotal > 0 && itemTotal < freeDeliveryThreshold ? 30 : 0;
 
   const copyPaymentReference = async (paymentId: unknown) => {
     const value = String(paymentId || '').trim();
@@ -2692,7 +2734,7 @@ export default function ZeshuSuperApp() {
 
   const zeshuCashMax = itemTotal > 0 ? Math.max(0, Math.min(rewardBalance, 20, Math.floor(itemTotal * 0.1))) : 0;
   const requestedZeshuCash = useZeshuCash ? Math.max(0, Math.min(Number(zeshuCashAmount || zeshuCashMax), zeshuCashMax)) : 0;
-  const finalCartTotal = itemTotal > 0 ? (itemTotal + deliveryCharge - requestedZeshuCash) : 0;
+  const finalCartTotal = itemTotal > 0 ? (itemTotal + deliveryCharge + platformHandlingFee - requestedZeshuCash) : 0;
   const cartItemCount = cart.reduce((sum, entry) => sum + Number(entry.qty || 0), 0);
   const selectedDeliveryAddress = addresses.find((address) => address.id === selectedAddressId) || addresses.find((address) => address.is_default);
   const deliveryAddressSummary = currentAddress !== 'Location not set' && currentAddress.trim() ? currentAddress : selectedDeliveryAddress ? formatAddress(selectedDeliveryAddress) : '';
@@ -2745,6 +2787,9 @@ export default function ZeshuSuperApp() {
     if (isCheckoutOpening && !bypassOpeningGuard) return;
     setCheckoutError(null);
     if (!cart.length || finalCartTotal === 0) return showCheckoutError('Add an available product before checkout.', 'INVALID_CHECKOUT_DATA');
+    if (!hasIndiaCartProduct && !localQuoteReady) {
+      return showCheckoutError('Confirm a Jagtial delivery address to see your final delivery and platform charges.', 'LOCAL_DELIVERY_QUOTE_UNAVAILABLE');
+    }
     if (!user) return setIsAuthModalOpen(true);
     if (!currentAddress.trim() || currentAddress === 'Location not set' || currentAddress === 'Current GPS Location Synced') {
       setIsCartOpen(true);
@@ -2784,7 +2829,7 @@ export default function ZeshuSuperApp() {
     setIsLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const orderResponse = await fetch('/api/create-razorpay-order', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` }, body: JSON.stringify({ cartItems: cart, deliveryAddress: currentAddress, deliveryAddressId: selectedAddressId, zeshuCashAmount: requestedZeshuCash, abandonPreviousCheckout }) });
+      const orderResponse = await fetch('/api/create-razorpay-order', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` }, body: JSON.stringify({ cartItems: cart, deliveryAddress: currentAddress, deliveryAddressId: selectedDeliveryAddress?.id || null, zeshuCashAmount: requestedZeshuCash, abandonPreviousCheckout }) });
       let orderData: any;
       try {
         orderData = await orderResponse.json();
@@ -3649,6 +3694,7 @@ export default function ZeshuSuperApp() {
               <div className="flex items-center justify-between gap-4"><span className="text-xs font-black uppercase tracking-wider text-slate-500">{t('Order total')}</span><span className="text-lg font-black text-slate-900">₹{Number(trackedOrder.total_paid || 0).toFixed(0)}</span></div>
               {Array.isArray(trackedOrder.items) && trackedOrder.items.length > 0 && <div className="mt-3 space-y-2 text-left">{trackedOrder.items.map((entry: any, index: number) => { const qty = Number(entry.qty ?? entry.quantity ?? 1); const price = Number(entry.item?.price ?? entry.item_snapshot?.price ?? entry.unit_price ?? entry.price ?? 0); return <div key={index} className="flex justify-between gap-3 text-xs text-slate-600"><span>{qty}× {entry.item?.name || entry.item_snapshot?.name || entry.name || 'Item'}</span><span className="font-black text-slate-800">₹{price.toFixed(0)}</span></div>; })}</div>}
               {trackedOrder.delivery_fee != null && <div className="mt-3 flex justify-between text-xs text-slate-600"><span>{t('Delivery fee')}</span><span className="font-black">₹{Number(trackedOrder.delivery_fee).toFixed(0)}</span></div>}
+              {Number(trackedOrder.shipping_snapshot?.platform_handling_fee || 0) > 0 && <div className="mt-1 flex justify-between text-xs text-slate-600"><span>{t('Platform handling (tax inclusive)')}</span><span className="font-black">₹{Number(trackedOrder.shipping_snapshot.platform_handling_fee).toFixed(2)}</span></div>}
               {trackedOrder.status === 'DELIVERED' && rewardHistory.find((entry) => entry.order_id === trackedOrder.id && entry.event_type === 'ORDER_REWARD') && <p className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm font-black text-emerald-700">{t('You earned')} ₹{Number(rewardHistory.find((entry) => entry.order_id === trackedOrder.id && entry.event_type === 'ORDER_REWARD')?.amount || 0).toFixed(2)} {t('Zeshu Cash on this delivered order.')}</p>}
               {Number(trackedOrder.zeshuCashUsed || 0) > 0 && <p className="mt-3 text-sm font-black text-emerald-700">₹{Number(trackedOrder.zeshuCashUsed).toFixed(0)} {t('Zeshu Cash used.')}</p>}
               {trackedOrder.status !== 'DELIVERED' && Number(trackedOrder.pendingReward || 0) > 0 && <p className="mt-2 text-sm font-bold text-slate-600">{t('Earn')} ₹{Number(trackedOrder.pendingReward).toFixed(0)} {t('Zeshu Cash after delivery.')}</p>}
@@ -3721,9 +3767,17 @@ export default function ZeshuSuperApp() {
                   <span className="shrink-0 text-sm font-black text-slate-900">₹{finalCartTotal}</span>
                 </div>
                 <div id="cart-price-details" className="space-y-3 border-t border-[#dce8df] p-4">
-                  {itemTotal > 0 && <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3"><div className="flex items-center justify-between text-xs font-black text-emerald-800"><span>{itemTotal >= freeDeliveryThreshold ? "You've unlocked FREE delivery 🎉" : `Add ₹${freeDeliveryThreshold - itemTotal} more for FREE delivery`}</span><span>{Math.min(100, Math.round((itemTotal / freeDeliveryThreshold) * 100))}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-emerald-100"><div className="h-full rounded-full bg-emerald-600 transition-all" style={{ width: `${Math.min(100, (itemTotal / freeDeliveryThreshold) * 100)}%` }} /></div>{itemTotal < freeDeliveryThreshold && itemTotal < 199 && <p className="mt-2 text-[11px] font-bold text-emerald-700">{t('Add a few more essentials and save on delivery.')}</p>}</div>}
+                  {itemTotal > 0 && <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-xs font-bold text-emerald-800">
+                    {hasIndiaCartProduct ? 'Nationwide shipping is confirmed at checkout when available.' :
+                      localQuotePending ? 'Checking local delivery charges…' :
+                      !localDeliveryQuote?.eligible ? 'Confirm a supported Jagtial delivery address to see the final fees.' :
+                      localDeliveryQuote.policy === 'PAID_LOCAL_PILOT'
+                        ? 'Local delivery is based on the selected delivery area. No automatic free delivery threshold.'
+                        : itemTotal >= freeDeliveryThreshold ? 'Free delivery on this eligible local basket.' : `Add ₹${freeDeliveryThreshold - itemTotal} more for free delivery.`}
+                  </div>}
                   <div className="flex justify-between text-[#4B5563]"><span>{t('Subtotal')}</span><span className="font-bold">₹{itemTotal}</span></div>
-                  <div className="flex justify-between text-[#059669]"><span>{t('Delivery charge')}</span><span className="font-black">{deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}</span></div>
+                  <div className="flex justify-between text-[#059669]"><span>{t('Delivery charge')}</span><span className="font-black">{localQuotePending || (!hasIndiaCartProduct && !localDeliveryQuote?.eligible) ? 'Checking…' : hasIndiaCartProduct ? 'Quoted at checkout' : deliveryCharge === 0 ? t('FREE') : `₹${deliveryCharge}`}</span></div>
+                  {platformHandlingFee > 0 && <div className="flex justify-between text-[#4B5563]"><span>{t('Platform handling (tax inclusive)')}</span><span className="font-black">₹{platformHandlingFee}</span></div>}
                   {requestedZeshuCash > 0 && <div className="flex justify-between text-emerald-700"><span>Zeshu Cash</span><span className="font-black">-₹{requestedZeshuCash}</span></div>}
                   <div className="border-t pt-4 flex justify-between font-black text-xl"><span>{t('Grand total')}</span><span>₹{finalCartTotal}</span></div>
                   <p className="text-center text-[11px] font-bold text-slate-500">{t('No hidden fees. Know your full cost before checkout.')}</p>
@@ -3755,7 +3809,7 @@ export default function ZeshuSuperApp() {
                   void navigator.clipboard.writeText('https://zeshu.in/').then(() => showToast('Zeshu link copied. Paste it into Chrome.')).catch(() => showToast('Open https://zeshu.in directly in Chrome.'));
                 }} className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-[11px] font-black text-emerald-800">Copy website link</button></details>
               </div>}
-              <button disabled={cart.length === 0 || isLoading || isCheckoutOpening || isCheckingPaymentStatus || checkoutError?.code === 'PREVIOUS_PAYMENT_REQUIRES_REVIEW'} onClick={() => void handleCartCheckout()} className="flex min-h-14 w-full items-center justify-between rounded-2xl bg-[#075E45] px-5 py-3.5 text-white font-black shadow-[0_8px_20px_rgba(7,94,69,.18)] disabled:bg-[#a7b6ac] md:px-6 md:text-base">
+              <button disabled={cart.length === 0 || !localQuoteReady || isLoading || isCheckoutOpening || isCheckingPaymentStatus || checkoutError?.code === 'PREVIOUS_PAYMENT_REQUIRES_REVIEW'} onClick={() => void handleCartCheckout()} className="flex min-h-14 w-full items-center justify-between rounded-2xl bg-[#075E45] px-5 py-3.5 text-white font-black shadow-[0_8px_20px_rgba(7,94,69,.18)] disabled:bg-[#a7b6ac] md:px-6 md:text-base">
                 <span>{isCheckingPaymentStatus ? t('Securing your checkout…') : isLoading ? t('Preparing secure checkout…') : t('Proceed to secure payment')}</span><span>₹{finalCartTotal}</span>
               </button>
             </div>

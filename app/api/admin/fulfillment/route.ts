@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireMarketingAdmin } from '@/app/lib/marketing-server';
 import { configuredCourierProvider, isNationwideCourierReady } from '@/app/lib/courier-server';
+import { getRuntimeEnvValue } from '@/app/lib/runtime-env';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,6 +36,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     courier_connected: isNationwideCourierReady(),
+    local_paid_pilot_enabled: await getRuntimeEnvValue('ZESHU_LOCAL_PAID_DELIVERY_PILOT') === 'true',
     settings: settingsResult.data || null,
     products,
     vendors: vendorsResult.data || [],
