@@ -5,8 +5,9 @@ export const CUSTOMER_CATEGORY_DEFINITIONS = [
   { id: 'Beverages', label: 'Drinks & Beverages', icon: '🥤', aliases: ['drinks','drink','beverages','beverage','soft drinks','cold drinks','cool drinks','juice','water','energy drinks'] },
   { id: 'Fresh Fruits', label: 'Fresh Fruits', icon: '🍎', aliases: ['fruits','fruit','fresh fruits','fresh fruit'] },
   { id: 'Vegetables', label: 'Fresh Vegetables', icon: '🥬', aliases: ['vegetables','vegetable','fresh vegetables','fresh vegetable','veg','sabzi'] },
-  { id: 'Chicken', label: 'Chicken & Poultry', icon: '🍗', aliases: ['chicken','poultry','fresh chicken'] },
-  { id: 'Meat & Seafood', label: 'Meat & Seafood', icon: '🥩', aliases: ['mutton','meat','fish & seafood','fish','seafood','fresh meat','fresh fish'] },
+  { id: 'Chicken', label: 'Chicken', icon: '🍗', aliases: ['chicken','chicken & poultry','poultry','fresh chicken'] },
+  { id: 'Mutton', label: 'Mutton', icon: '🥩', aliases: ['mutton','goat meat','goat','fresh mutton'] },
+  { id: 'Fish & Seafood', label: 'Fish & Seafood', icon: '🐟', aliases: ['fish','seafood','fresh fish','prawns','shrimp','machhli','machli'] },
   { id: 'Eggs', label: 'Eggs', icon: '🥚', aliases: ['eggs','egg'] },
   { id: 'Staples & Cooking', label: 'Staples & Cooking', icon: '🌾', aliases: ['staples','grocery','groceries','atta','flour','rice','oil','pulses','dal','spices','masala','sugar','salt'] },
   { id: 'Instant & Frozen', label: 'Instant & Frozen Food', icon: '🍜', aliases: ['instant food','ready to eat','ready to cook','noodles','frozen','frozen food','ice cream','icecream'] },
@@ -32,6 +33,9 @@ export const categoryDefinition = (id: string) =>
 export const productMatchesCustomerCategory = (rawCategory: unknown, customerCategory: string) => {
   if (customerCategory === 'All') return true;
   const raw = normalizeCategoryName(rawCategory);
+  // A legacy combined category cannot be safely classified as fish or mutton.
+  // Keep it visible under All until the seller assigns an accurate category.
+  if (raw === 'meat & seafood' && (customerCategory === 'Mutton' || customerCategory === 'Fish & Seafood')) return false;
   const definition = categoryDefinition(customerCategory);
   const candidates = [definition.id, definition.label, ...definition.aliases]
     .map(normalizeCategoryName)

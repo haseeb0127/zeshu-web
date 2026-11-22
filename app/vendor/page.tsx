@@ -345,6 +345,7 @@ export default function VendorDashboard() {
     const price = Number(productForm.price);
     const quantity = productForm.quantity === "" ? null : Number(productForm.quantity);
     const unit = productForm.unit.trim();
+    const isFreshMeat = ["Chicken", "Mutton", "Fish & Seafood", "Meat & Seafood"].includes(productForm.category.trim());
     const packedWeight = productForm.packed_weight_grams === "" ? null : Number(productForm.packed_weight_grams);
     const packageLength = productForm.package_length_cm === "" ? null : Number(productForm.package_length_cm);
     const packageWidth = productForm.package_width_cm === "" ? null : Number(productForm.package_width_cm);
@@ -355,6 +356,10 @@ export default function VendorDashboard() {
     const costPrice = productForm.cost_price === "" ? null : Number(productForm.cost_price);
     if (!productForm.name.trim() || !productForm.category.trim() || !Number.isFinite(price) || price < 0 || (quantity !== null && (!Number.isFinite(quantity) || quantity < 0)) || !unit) {
       setError("Enter a product name, category, valid price, non-negative quantity, and unit.");
+      return;
+    }
+    if (isFreshMeat && productForm.nationwide_shipping_enabled) {
+      setError("Fresh chicken, mutton and fish are local-only cold-chain products. Turn off India delivery before saving.");
       return;
     }
     if (productForm.nationwide_shipping_enabled && (
@@ -380,15 +385,15 @@ export default function VendorDashboard() {
       name: productForm.name.trim(), price, category: productForm.category.trim(), brand: productForm.brand.trim() || null, quantity,
       weight: productForm.weight.trim() || null, unit,
       image_url: productForm.image_url.trim() || null, in_stock: productForm.in_stock,
-      delivery_mode: productForm.delivery_mode,
-      fresh_eligible: productForm.fresh_eligible,
-      nationwide_shipping_enabled: productForm.nationwide_shipping_enabled,
-      requires_cold_chain: productForm.requires_cold_chain,
+      delivery_mode: isFreshMeat ? "LOCAL_STANDARD" : productForm.delivery_mode,
+      fresh_eligible: isFreshMeat ? false : productForm.fresh_eligible,
+      nationwide_shipping_enabled: isFreshMeat ? false : productForm.nationwide_shipping_enabled,
+      requires_cold_chain: isFreshMeat ? true : productForm.requires_cold_chain,
       packed_weight_grams: packedWeight,
       package_length_cm: packageLength,
       package_width_cm: packageWidth,
       package_height_cm: packageHeight,
-      shipping_class: productForm.shipping_class,
+      shipping_class: isFreshMeat ? "COLD_CHAIN" : productForm.shipping_class,
       min_nationwide_quantity: minNationwideQty,
       min_nationwide_order_value: minNationwideValue,
       handling_minutes: handlingMinutes,
