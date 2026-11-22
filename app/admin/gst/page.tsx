@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Download, FileSpreadsheet, ShieldCheck, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { adminSupabase } from "../../lib/browser-supabase";
+import { ZESHU_LEGAL_BUSINESS as business } from "../../lib/legal-business-details";
 
 const supabase = adminSupabase();
 
@@ -106,6 +107,14 @@ export default function GstAdminPage() {
       </div>
 
       {error && <div role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}</div>}
+
+      <section className="mb-4 rounded-2xl border border-emerald-200 bg-white p-4" aria-label="Issued business GST registration details">
+        <p className="text-sm font-black text-[#075E45]">Issued GST REG-06 · {business.tradeName}</p>
+        <p className="mt-1 text-sm text-slate-700">GSTIN <strong>{business.gstin}</strong> · {business.legalName} · Regular registration effective {business.gstEffectiveDate}.</p>
+        <p className="mt-2 text-xs leading-5 text-slate-600">Based on the GST certificate supplied by the proprietor, not a live GST portal status check. {profile ? 'The GST reporting workspace has an active business profile.' : 'The GST reporting workspace still has no active business tax profile: reconcile the certificate, filing frequency and invoicing details before reporting or filing.'} A Regular registration does not itself confirm marketplace ECO/TCS registration, seller GST verification or payment settlement approval.</p>
+        <a href="https://www.gst.gov.in/" target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs font-black text-[#075E45] underline">Check live status at the official GST portal</a>
+      </section>
+
 
       <section className="grid gap-3 md:grid-cols-4">
         <Metric label="GST profile" value={profile ? "Active" : "Not set"} good={Boolean(profile)} />
