@@ -50,7 +50,7 @@ function ServiceSection({ title, cards }: { title: string; cards: ServiceCard[] 
           <article key={card.title} className="zeshu-gloss-card rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_16px_rgba(15,23,42,.04)]">
             <div className="flex items-start justify-between gap-3">
               <span className="zeshu-gloss-icon grid h-12 w-12 place-items-center rounded-2xl text-white" aria-hidden="true">{card.icon}</span>
-              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#075E45]">{t(card.quoteCode ? "Quote enquiry" : card.regulatoryHold ? "Not bookable" : "Check availability")}</span>
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#075E45]">{t(card.quoteCode ? "Quote enquiry" : card.regulatoryHold ? "Coming soon" : "Check availability")}</span>
             </div>
             <h3 className="mt-4 font-black text-slate-900">{t(card.title)}</h3>
             <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{t(card.description)}</p>
