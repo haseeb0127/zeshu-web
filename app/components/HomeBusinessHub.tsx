@@ -9,10 +9,10 @@ import DineBannerArtwork from "@/app/components/DineBannerArtwork";
 import { useCustomerLanguage } from "@/app/components/CustomerLanguageProvider";
 
 type Readiness = { request_enabled?: boolean; matching_enabled?: boolean; compliance_gate?: boolean };
-type Props = { onShopNearby: () => void; onBrowseCatalog: () => void; onOpenServices: () => void; onSelectCategory: (category: string) => void; nationwideCheckoutEnabled: boolean };
+type Props = { onShopNearby: () => void; onBrowseCatalog: () => void; onOpenServices: () => void; onSelectCategory: (category: string) => void; nationwideCheckoutEnabled: boolean; categoryProductCounts?: Record<string, number> };
 const ready = (state: Readiness | undefined) => Boolean(state?.request_enabled && state?.matching_enabled && !state?.compliance_gate);
 
-export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenServices, onSelectCategory, nationwideCheckoutEnabled }: Props) {
+export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenServices, onSelectCategory, nationwideCheckoutEnabled, categoryProductCounts = {} }: Props) {
   const { t, language } = useCustomerLanguage();
   const [moveServices, setMoveServices] = useState<Record<string, Readiness>>({});
   const trackRef = useRef<HTMLDivElement>(null);
@@ -121,6 +121,27 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
         <span className="mt-1 block min-h-[28px] text-[10px] font-extrabold leading-[1.25] text-[#1c2537] md:text-sm">{t(item.label)}</span>
       </button>)}
     </div>
+    <section className="mt-3 rounded-[22px] border border-emerald-100 bg-[linear-gradient(115deg,#f5fbf6,#ffffff)] p-3 shadow-[0_3px_12px_rgba(17,24,39,.045)] md:mt-5 md:p-5" aria-label={t("Fresh meat & fish")}>
+      <div className="flex flex-wrap items-end justify-between gap-1.5">
+        <h3 className="text-[15px] font-black tracking-tight text-[#153d2a] md:text-xl">{t("Fresh meat & fish")}</h3>
+        <p className="text-[10px] font-semibold text-slate-500 md:text-xs">{t("Jagtial only · Verified sellers and safe delivery required")}</p>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2 md:gap-4">
+        {[
+          { id: "Chicken", icon: "🍗" },
+          { id: "Mutton", icon: "🥩" },
+          { id: "Fish & Seafood", icon: "🐟" },
+        ].map(item => {
+          const hasProducts = Number(categoryProductCounts[item.id] || 0) > 0;
+          return <button key={item.id} type="button" onClick={() => onSelectCategory(item.id)} aria-label={t(item.id)}
+            className="flex min-w-0 flex-col items-center gap-1.5 rounded-2xl border border-[#e6eee8] bg-white px-1.5 py-3 text-center shadow-[0_3px_10px_rgba(17,24,39,.04)] transition hover:border-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 active:scale-[.98] md:py-4">
+            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#f1f8f2] text-[28px] md:h-16 md:w-16 md:text-4xl" aria-hidden="true">{item.icon}</span>
+            <span className="text-[11px] font-black leading-4 text-[#1d2934] md:text-sm">{t(item.id)}</span>
+            <span className={`text-[9px] font-semibold md:text-xs ${hasProducts ? "text-emerald-700" : "text-amber-700"}`}>{hasProducts ? t("Browse products") : t("Opening soon")}</span>
+          </button>;
+        })}
+      </div>
+    </section>
     <button type="button" data-zeshu-home-assistant="true" onClick={()=>window.dispatchEvent(new Event("zeshu:open-assistant"))}
      className="zeshu-gloss-card group mt-3 flex w-full items-center gap-3 rounded-[22px] border border-emerald-100 bg-white px-3.5 py-3 text-left shadow-md md:mt-5 md:px-5 md:py-4">
       <span className="zeshu-gloss-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-white"><Bot size={25}/></span>
