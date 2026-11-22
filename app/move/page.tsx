@@ -28,7 +28,7 @@ const courier: ServiceCard[] = [
 ];
 
 const sharing: ServiceCard[] = [
-  { title: "Car Share", description: "Split an intercity trip with verified co-travellers", icon: <Users size={22} />, actionLabel: "Plan trip" },
+  { title: "Car Share", description: "Stranger-to-stranger per-seat pooling is not available. Future group fare-splitting would be only for one known group travelling in the same full cab.", icon: <Users size={22} />, actionLabel: "Not bookable", regulatoryHold: true },
 ];
 
 const travel: ServiceCard[] = [
@@ -96,6 +96,25 @@ export default function MoveTravelPage() {
             </div>
           </div>
         </header>
+
+        <section className="mt-7 rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm md:p-8" aria-label="District scheduled transport quotation requests">
+          <p className="text-xs font-black uppercase tracking-widest text-[#075E45]">Five-town pilot · enquiries only</p>
+          <h2 className="mt-2 text-2xl font-black text-slate-900">Scheduled cabs, trucks &amp; marriage buses</h2>
+          <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">From Jagtial, Dharmaram, Korutla, Metpally or Dharmapuri, request a manual operator quote for a planned journey or goods delivery. No instant booking, guaranteed driver, fare or payment is available until an eligible operator confirms the request. Requests are free.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              {code:'OUTSTATION_CAB',name:'Outstation Cab',detail:'Whole commercial cab, not per-seat pooling',icon:Car},
+              {code:'RETURN_CAB',name:'Possible Return Cab',detail:'Request an available whole-car return journey',icon:Car},
+              {code:'MINI_TRUCK',name:'Mini Truck / Pickup',detail:'Scheduled local and district goods transport',icon:Truck},
+              {code:'LARGE_TRUCK',name:'Large Goods Truck',detail:'Operator-confirmed load and route quotation',icon:Truck},
+              {code:'CHARTER_BUS',name:'Marriage / Group Bus',detail:'Whole-bus hire for wedding or family trips',icon:Bus},
+            ].map(item => <Link key={item.code} href={`/move/quote?service=${item.code}`} className="flex items-start gap-3 rounded-xl border border-emerald-100 bg-[#f7fbf8] p-3 transition hover:border-[#087443]">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-100 text-[#075E45]"><item.icon size={21}/></span>
+              <span><span className="block text-sm font-black text-slate-900">{item.name}</span><span className="mt-1 block text-xs leading-4 text-slate-600">{item.detail}</span><span className="mt-2 block text-xs font-black text-[#075E45]">Request quote →</span></span>
+            </Link>)}
+          </div>
+          <p className="mt-4 text-xs leading-5 text-amber-800">Operator availability is reviewed manually. Do not pay an advance to an unverified third party. Instant auto, cab and delivery matching remain locked until provider, transport, insurance, safety and worker-registration checks pass.</p>
+        </section>
 
         <ServiceSection title="Local rides" cards={localRides} />
         <ServiceSection title="Send & Cargo" cards={courier} />
