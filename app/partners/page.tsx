@@ -34,6 +34,18 @@ export default function PartnersPage() {
           ))}
         </section>
 
+        <section id="seller-pricing" className="mt-6 rounded-3xl border border-emerald-200 bg-white p-6 md:p-8">
+          <p className="text-xs font-black uppercase tracking-[.16em] text-[#075E45]">Jagtial seller onboarding · proposal</p>
+          <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">A simple, proposed 0% sales-commission plan</h2>
+          <p className="mt-3 text-sm leading-6 text-slate-600">Zeshu is preparing a ₹299/month seller membership inclusive of applicable taxes, with a proposed 14-day introduction period and no percentage commission on product sales. This plan is not yet collecting fees. Final renewal, eligibility, invoicing, withdrawal and cancellation rules will be disclosed and accepted before any merchant is billed.</p>
+          <p className="mt-3 text-sm leading-6 text-slate-600">Each seller keeps its inventory, sets lawful product prices, issues the required product invoice, and confirms dispatch. Where Zeshu provides an approved payment collection and split-settlement flow, seller payouts will show actual agreed payment-provider costs, applicable statutory deductions, valid refunds or chargebacks and seller-funded delivery promotions. Seller-fault returns are handled fairly; a seller is not automatically charged for every customer-choice or courier-fault return.</p>
+          <p className="mt-3 text-sm font-semibold text-amber-800">Nationwide courier checkout and automated seller payouts are not live. No shipping or settlement SLA is promised before provider and legal verification.</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link href="/business-details" className="rounded-xl bg-emerald-50 px-4 py-2.5 text-xs font-black text-[#075E45]">Business &amp; GST details</Link>
+            <Link href="/policies#seller-payouts-taxes" className="rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-black text-slate-800">Seller payout and fee policy</Link>
+          </div>
+        </section>
+
         <section id="fashion-sellers" className="mt-6 rounded-3xl border border-fuchsia-100 bg-white p-6 md:p-8">
           <p className="text-xs font-black uppercase tracking-[.16em] text-[#075E45]">Zeshu Fashion sellers</p>
           <h2 className="mt-2 text-2xl font-black tracking-tight">Sell on Zeshu — keep your inventory with you</h2>
@@ -46,7 +58,7 @@ export default function PartnersPage() {
               <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
                 {[
                   'Catalogue/API feed or structured product file',
-                  'Seller pricing, proposed commission/BFF or margin economics',
+                  'Seller price, proposed zero-commission membership terms and fulfilment economics',
                   'Drop-shipping or direct-fulfilment capability',
                   'Return, exchange and refund responsibility',
                   'Shipping responsibility, serviceability and tracking',
