@@ -1,5 +1,26 @@
 # Zeshu — Meta WhatsApp integration checklist (pre-launch)
 
+## 22 November 2026 — owner has moved number back to the WhatsApp Business mobile app
+
+The owner reports that +91 95052 11212 was **removed from WhatsApp Cloud API** and is now registered in WhatsApp Business on the phone. The older direct Cloud API-only setup instructions below are **not a safe re-registration procedure** for someone wanting to keep the phone app.
+
+To retain **both** mobile WhatsApp Business and Cloud API, use the official mobile-app **Coexistence** route through an eligible Meta Solution Partner or Tech Provider with WhatsApp Business app Embedded Signup. Standard `POST /{phone-number-id}/register`, "Add phone number" or direct API-only re-registration does **not** enable mobile coexistence; don't perform it as a shortcut.
+
+Required before attempting onboarding:
+- Mobile Business app is active on the number; app version and Meta eligibility confirmed by the provider. No deleting the mobile account.
+- Provider explicitly confirms same-number **WhatsApp Business app Coexistence**, its cost structure, webhook and API availability, business ownership and how Zeshu's existing first-party support integration can consume the resulting events. Do not assume a partner-issued API key works as an existing system-user token.
+- Owner approves any recurring fees and completes partner Embedded Signup, Facebook login and WhatsApp Business app QR/phone confirmation in private.
+- Capture the **new/authorized** Meta WABA and phone-number IDs after signup. The old Cloudflare `WHATSAPP_*ID` settings and system-user token may refer to a deregistered asset.
+- Only after provider authorization, update Cloudflare secrets and webhook subscriptions using the approved integration. Verify current Meta ownership, an actually new **signed inbound message**, and continuing mobile app access before considering reconnection complete. Keep automated/paid customer sending OFF.
+
+Historical database webhook counters and archived inbound messages are NOT proof of continued Cloud API operation after the reported deletion. The administrative Zeshu Meta direct-connect flow previously returned a Meta **BSP/Tech Provider restriction** and must not be promoted as a self-service Coexistence bypass.
+
+References: Meta official onboarding documentation:
+https://developers.facebook.com/documentation/business-messaging/whatsapp/embedded-signup/onboarding-business-app-users
+https://developers.facebook.com/documentation/business-messaging/whatsapp/overview
+
+---
+
 This is a **read-only / no-send** setup checklist. The Zeshu WhatsApp sender and customer opt-in UI MUST remain off until the owner explicitly approves a consented pilot.
 
 ## What the existing Meta screenshot proves
