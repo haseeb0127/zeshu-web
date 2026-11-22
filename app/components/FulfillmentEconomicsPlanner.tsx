@@ -19,7 +19,7 @@ const localDefaults: FulfillmentPlanningInput = {
   customerHandlingFee: 10,
   sellerDispatchFee: 0,
   collectedMonthlySubscriptions: 0,
-  monthlyDeliveredOrders: 2250,
+  monthlyDeliveredOrders: 2500,
   customerDeliveryCharge: 0,
   actualDeliveryCost: 30,
   rewardProvision: 3,
