@@ -133,6 +133,35 @@ export default function WhatsAppReadinessPage() {
           <p className="mt-2 text-sm leading-6 text-slate-600">A private, mobile-friendly inbox for genuine incoming Cloud API messages. Currently read-only: customer replies can be saved as unsent drafts, but never transmitted.</p>
           <Link href="/admin/whatsapp/inbox" className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-[#075e45] px-5 py-3 text-sm font-black text-white">Open WhatsApp Inbox →</Link>
         </section>
+      <section className="rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm" aria-label="Keep WhatsApp Business mobile and reconnect Cloud API">
+        <h2 className="text-lg font-black text-[#075e45]">Keep mobile WhatsApp Business and reconnect Cloud API</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-700">
+          If +91 95052 11212 is now active in the WhatsApp Business mobile app, do not use the ordinary
+          Cloud API Add phone or Register phone action. That is not the mobile-app Coexistence onboarding flow
+          and could disconnect the mobile account.
+        </p>
+        <p className="mt-2 text-sm leading-6 text-slate-700">
+          The supported same-number route is Meta WhatsApp Business App Coexistence through an eligible
+          Solution Partner or Tech Provider using the official Embedded Signup flow. Zeshu cannot start
+          that partner-only signup using the existing direct Cloud API application alone.
+        </p>
+        <ol className="mt-3 list-inside list-decimal space-y-2 text-sm leading-6 text-slate-700">
+          <li>Confirm the mobile WhatsApp Business app is working with this exact number.</li>
+          <li>Choose an approved Coexistence provider and review recurring charges, API access and webhook integration before purchasing anything.</li>
+          <li>Use the provider's <strong>Connect existing WhatsApp Business app</strong> Embedded Signup—not ordinary phone registration.</li>
+          <li>Approve the pairing using the WhatsApp Business mobile app when Meta prompts you.</li>
+          <li>After onboarding, privately verify the new WABA and phone IDs; only then update Zeshu's Cloudflare credentials and webhook subscription.</li>
+          <li>Confirm a newly received, signature-verified message in Zeshu and confirm the mobile app still works. Keep customer sending OFF until separately approved.</li>
+        </ol>
+        <p className="mt-3 text-xs leading-5 text-amber-900">
+          Previous webhook counts and saved conversations are historical and do not establish a fresh Cloud API registration.
+          Do not deregister the mobile app, rotate credentials blindly or pay for a partner without checking the plan.
+        </p>
+        <a href="https://developers.facebook.com/documentation/business-messaging/whatsapp/embedded-signup/onboarding-business-app-users"
+          target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-11 items-center rounded-xl border border-emerald-600 px-4 py-2 text-sm font-bold text-[#075e45]">
+          Meta: WhatsApp Business app Coexistence guide
+        </a>
+      </section>
       <section className="rounded-2xl border border-red-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-black text-red-900">Phone deregistration · advanced</h2>
         <p className="mt-2 text-sm leading-6 text-slate-700">
@@ -148,16 +177,18 @@ export default function WhatsAppReadinessPage() {
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-black">Incoming webhook connection</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          The inbox currently has no customer messages. Webhooks must be subscribed in Meta before new messages arrive; the existence of a Cloudflare secret does not confirm that Meta is sending callbacks.
+          This section includes historical signed callbacks and messages. If you removed the phone from Cloud API,
+          those older records do not prove that the newly active mobile-app number has been reconnected to Cloud API.
+          New Coexistence authorization and a fresh signed inbound message are needed for confirmation.
         </p>
         {!health?<p className="mt-3 text-sm text-amber-800">Webhook health information is currently unavailable.</p>:
         <>
           <div className="mt-3 space-y-2 text-sm">
             <p>Webhook verification keys: <strong>{health.webhookSecretsPresent?'Configured':'Missing'}</strong></p>
             <p>Account and phone IDs: <strong>{health.accountIdentifiersPresent?'Configured':'Missing'}</strong></p>
-            <p>Signed Meta callbacks observed: <strong>{health.observedSignedCallbacks}</strong></p>
+            <p>Signed Meta callbacks observed (historical total): <strong>{health.observedSignedCallbacks}</strong></p>
             <p>Callbacks for Zeshu account: <strong>{health.observedMatchingAccountCallbacks}</strong></p>
-            <p>Inbound messages observed: <strong>{health.observedInboundMessageEvents}</strong></p>
+            <p>Inbound messages recorded (historical total): <strong>{health.observedInboundMessageEvents}</strong></p>
           </div>
           <p className="mt-3 break-all rounded-xl bg-slate-50 p-3 font-mono text-xs">{health.webhookCallbackUrl}</p>
           {health.lastSignedCallbackAt
@@ -211,11 +242,11 @@ export default function WhatsAppReadinessPage() {
         </section>
         <section className="rounded-2xl bg-white p-5 shadow-sm">
           <h2 className="flex items-center gap-2 text-lg font-black"><Link2 size={20}/>Connect Zeshu's own WhatsApp Business account</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">Meta's WhatsApp Embedded Signup is restricted to approved Business Solution Providers and Tech Providers. Zeshu does not need that partner onboarding flow just to manage its own business phone. Use the official WhatsApp Cloud API with Zeshu's existing Meta business account instead — no TinyFish required.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Zeshu can use direct Cloud API for an API-only number. However, if your number is already active in the WhatsApp Business mobile app, preserving the app requires the distinct Coexistence Embedded Signup through an eligible Solution Partner or Tech Provider. The direct Cloud API account check below does not enroll mobile-app Coexistence.</p>
           {owned?.verified ? <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
             <p className="font-black text-emerald-900">Existing Zeshu WhatsApp account verified with Meta ✅</p>
             <p className="mt-2 text-sm text-emerald-900">{owned.verifiedName||'Zeshu'} · {owned.phoneNumber||'WhatsApp phone verified'}</p>
-            <p className="mt-2 text-xs text-emerald-900">This is a read-only check. No WhatsApp messages, charges or subscriptions were initiated. Customer sending remains OFF.</p>
+            <p className="mt-2 text-xs text-emerald-900">This read-only ownership check does not prove an active Cloud API registration after number removal, mobile-app Coexistence, current webhook delivery or sending authorization. No message was sent; customer sending remains OFF.</p>
           </div> : <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
             <p className="font-black text-amber-950">Direct Cloud API connection {owned?.status==='MISSING_SETTINGS'?'needs setup':'not yet verified'}</p>
             {owned?.status==='MISSING_SETTINGS' ? <p className="mt-2 break-words font-mono text-xs leading-6 text-amber-950">Cloudflare settings needed: {owned.missing.join(' · ')}</p> : null}
