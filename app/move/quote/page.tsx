@@ -7,7 +7,6 @@ import {
   MOVE_QUOTE_SERVICE_CODES, MOVE_QUOTE_SERVICES, MOVE_QUOTE_TOWNS,
   getIndiaTodayISO, validateMoveQuote, type MoveQuoteService,
 } from '@/app/lib/move-quote-enquiry';
-import { useCustomerLanguage } from '@/app/components/CustomerLanguageProvider';
 
 type Result = { reference: string; message: string };
 const services = MOVE_QUOTE_SERVICE_CODES;
@@ -28,7 +27,6 @@ const initial = {
 
 function RequestQuoteForm() {
   const params = useSearchParams();
-  const { t } = useCustomerLanguage();
   const preselected = params.get('service') || '';
   const [service, setService] = useState<MoveQuoteService>(
     services.includes(preselected as MoveQuoteService) ? preselected as MoveQuoteService : 'OUTSTATION_CAB',
