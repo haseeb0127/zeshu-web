@@ -32,7 +32,7 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
     { scope:"Jagtial", title:t("Zeshu Dine"), description:t("Table reservations and meal pre-orders after restaurant verification. Kitchen-confirmed serving times."), cta:t("Explore dining"), action:"dine", poster:"dine", icon:ShoppingBag, theme:"bg-[#4a2810]" },
     { scope:"India", title:t("Zeshu Fashion"), description:t("Explore clothing and accessories from independent sellers where stock is available."), cta:t("Explore fashion"), action:"fashion", poster:"fashion", icon:ShoppingBag, theme:"bg-[#074734]" },
     { scope:"India", title:t("Zeshu Pay"), description:t("Explore recharge and bill services supported by available providers."), cta:t("Explore Zeshu Pay"), action:"pay", poster:"pay", icon:Receipt, theme:"bg-[#074734]" },
-    { scope:"Telangana", title:t("Zeshu Move"), description:t("Check rides and courier availability for your area."), cta:anyMoveReady?t("Check availability"):t("See services"), action:"move", poster:"move", icon:Car, theme:"bg-[#074734]" },
+    { scope:"Telangana", title:t("Zeshu Move"), description:t("Explore driver availability or request scheduled district transport quotes."), cta:anyMoveReady?t("Check availability"):t("See services"), action:"move", poster:"move", icon:Car, theme:"bg-[#074734]" },
     { scope:"India", title:t("Zeshu Services"), description:t("Discover eligible services and request quotations."), cta:t("Explore services"), action:"services", poster:"services", icon:Grid2X2, theme:"bg-[#074734]" },
     { scope:"India", title:t("Zeshu Weddings"), description:t("Plan celebrations and request quotes from suitable service providers."), cta:t("Explore weddings"), action:"weddings", poster:"weddings", icon:PartyPopper, theme:"bg-[#074734]" },
     { scope:"India", title:t("Zeshu Interiors"), description:t("Discover interior design services and request a quote."), cta:t("Explore interiors"), action:"interiors", poster:"interiors", icon:Paintbrush, theme:"bg-[#074734]" },
@@ -49,20 +49,35 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
       <h1 id="zeshu-home-hub-title" className="mt-2 text-[1.35rem] font-black leading-tight tracking-tight text-slate-950 md:text-3xl">{t("Shop, pay, move and get help with Zeshu.")}</h1>
     </div>
 
-    <nav aria-label="Explore Zeshu departments" className="zeshu-premium-departments mb-2 grid grid-cols-5 gap-2 md:hidden">
-      {[
-        {label:t("Shop"), icon:ShoppingBasket, action:onShopNearby, tone:"bg-[#e7f5e9] text-[#0a8547]"},
-        {label:t("Fashion"), icon:ShoppingBag, href:"/fashion", tone:"bg-[#fff0f4] text-[#ed3370]"},
-        {label:t("Pay"), icon:CreditCard, action:onOpenServices, tone:"bg-[#e9f1ff] text-[#1466ec]"},
-        {label:t("Move"), icon:CarFront, href:"/move", tone:"bg-[#fff2e8] text-[#ef790e]"},
-        {label:t("Services"), icon:Grid2X2, href:"/professional-services", tone:"bg-[#f5eefe] text-[#8c33de]"}
-      ].map(item => <div key={item.label} className="min-w-0 text-center">
-        {'href' in item && item.href
-          ? <Link href={item.href} className={`zeshu-premium-department mx-auto flex h-[49px] w-full items-center justify-center rounded-[17px] ${item.tone}`}><item.icon size={27} strokeWidth={2.7} aria-hidden="true"/></Link>
-          : <button type="button" onClick={item.action} className={`zeshu-premium-department mx-auto flex h-[49px] w-full items-center justify-center rounded-[17px] ${item.tone}`}><item.icon size={27} strokeWidth={2.7} aria-hidden="true"/></button>}
-        <span className="mt-1 block truncate text-[10.5px] font-extrabold leading-4 text-[#171b2d]">{item.label}</span>
-      </div>)}
-    </nav>
+    <div className="mb-2 rounded-2xl border border-emerald-100 bg-white/90 p-2.5 shadow-[0_4px_12px_rgba(8,65,35,.05)] md:p-4" data-zeshu-hub="honest-service-status">
+      <p className="mb-2 text-[11px] font-black uppercase tracking-wider text-[#075E45] md:text-sm">{t("Everyday essentials & services")}</p>
+      <nav aria-label="Explore everyday Zeshu departments" className="grid grid-cols-5 gap-1.5 md:gap-4">
+        {[
+          {label:t("Shop"), icon:ShoppingBasket, action:onShopNearby, status:t("Shop"), tone:"bg-[#e7f5e9] text-[#0a8547]"},
+          {label:t("Meat & Fish"), icon:ShoppingBag, action:()=>document.getElementById("zeshu-meat-fish")?.scrollIntoView({behavior:"smooth",block:"start"}), status:t("Explore"), tone:"bg-[#fff0f0] text-[#ba433c]"},
+          {label:t("Dine"), icon:ShoppingBag, href:"/dine", status:t("Explore"), tone:"bg-[#fff3e4] text-[#b66b16]"},
+          {label:t("Pay"), icon:CreditCard, href:"/pay", status:t("Plans only"), tone:"bg-[#e9f1ff] text-[#1466ec]"},
+          {label:t("Move"), icon:CarFront, href:"/move", status:anyMoveReady?t("Check availability"):t("Quote requests"), tone:"bg-[#fff2e8] text-[#ef790e]"}
+        ].map(item => <div key={item.label} className="min-w-0 text-center">
+          {'href' in item && item.href
+            ? <Link href={item.href} className={`zeshu-premium-department mx-auto flex h-[49px] w-full items-center justify-center rounded-[17px] ${item.tone} md:h-16`} aria-label={item.label}><item.icon size={27} strokeWidth={2.5} aria-hidden="true"/></Link>
+            : <button type="button" onClick={item.action} className={`zeshu-premium-department mx-auto flex h-[49px] w-full items-center justify-center rounded-[17px] ${item.tone} md:h-16`} aria-label={item.label}><item.icon size={27} strokeWidth={2.5} aria-hidden="true"/></button>}
+          <span className="mt-1 block truncate text-[10px] font-extrabold leading-4 text-[#171b2d] md:text-sm">{item.label}</span>
+          <span className="block truncate text-[8.5px] font-semibold text-slate-500 md:text-xs">{item.status}</span>
+        </div>)}
+      </nav>
+      <p className="mb-2 mt-4 text-[11px] font-black uppercase tracking-wider text-[#075E45] md:text-sm">{t("Quotes & Local Pros")}</p>
+      <nav aria-label="Explore professional quotes and fashion" className="grid grid-cols-3 gap-2 md:gap-4">
+        {[
+          {label:t("Weddings"), href:"/professional-services/weddings", icon:PartyPopper, status:t("Get a quote"), tone:"bg-[#fff2eb] text-[#b95b31]"},
+          {label:t("Interiors"), href:"/professional-services/interiors", icon:Paintbrush, status:t("Get a quote"), tone:"bg-[#eff5ee] text-[#397149]"},
+          {label:t("Fashion"), href:"/fashion", icon:ShoppingBag, status:t("Explore listings"), tone:"bg-[#fff0f4] text-[#cb3370]"}
+        ].map(item => <Link key={item.href} href={item.href} className="flex min-w-0 items-center gap-2 rounded-xl border border-[#e8eee7] bg-white p-2 text-left shadow-sm md:px-4 md:py-3">
+          <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${item.tone} md:h-11 md:w-11`}><item.icon size={19} aria-hidden="true"/></span>
+          <span className="min-w-0"><span className="block truncate text-[11px] font-black text-[#171b2d] md:text-sm">{item.label}</span><span className="block truncate text-[9px] font-medium text-slate-500 md:text-xs">{item.status}</span></span>
+        </Link>)}
+      </nav>
+    </div>
 
     <div className="relative mt-0 md:mt-4">
       <div ref={trackRef} onScroll={onScroll} className="flex snap-x snap-mandatory gap-3 overflow-x-auto no-scrollbar scroll-smooth">
@@ -121,7 +136,7 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
         <span className="mt-1 block min-h-[28px] text-[10px] font-extrabold leading-[1.25] text-[#1c2537] md:text-sm">{t(item.label)}</span>
       </button>)}
     </div>
-    <section className="mt-3 rounded-[22px] border border-emerald-100 bg-[linear-gradient(115deg,#f5fbf6,#ffffff)] p-3 shadow-[0_3px_12px_rgba(17,24,39,.045)] md:mt-5 md:p-5" aria-label={t("Fresh meat & fish")}>
+    <section id="zeshu-meat-fish" className="mt-3 rounded-[22px] border border-emerald-100 bg-[linear-gradient(115deg,#f5fbf6,#ffffff)] p-3 shadow-[0_3px_12px_rgba(17,24,39,.045)] md:mt-5 md:p-5" aria-label={t("Fresh meat & fish")}>
       <div className="flex flex-wrap items-end justify-between gap-1.5">
         <h3 className="text-[15px] font-black tracking-tight text-[#153d2a] md:text-xl">{t("Fresh meat & fish")}</h3>
         <p className="text-[10px] font-semibold text-slate-500 md:text-xs">{t("Jagtial only · Verified sellers and safe delivery required")}</p>
