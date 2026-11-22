@@ -71,6 +71,13 @@ export default function BusinessDetailsPage() {
           <a href="https://www.gst.gov.in/" target="_blank" rel="noreferrer" className="mt-3 inline-flex text-xs font-black text-[#075E45] underline">Official GST portal</a>
         </section>
 
+        <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-7">
+          <h2 className="text-lg font-black">Products, pricing &amp; service availability</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Zeshu's shopping catalogue includes eligible seller-listed groceries, snacks, dairy, drinks, household essentials and other categories where valid stock and delivery serviceability are shown. Chicken, mutton and fish categories are being onboarded with appropriate food-safety and cold-chain checks. Fashion, electronics and other seller-marketplace categories may be discoverable before shipment is available; availability and price must be checked on the actual product and checkout screens.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Product prices are set by the relevant selling shop and must comply with MRP, statutory tax and labelling requirements. Any enabled local delivery charge, shipping quote, applicable platform fee and Zeshu Cash redemption must be shown separately before payment. Zeshu does not promise that all services on its roadmap are currently bookable or payable.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">National parcel checkout, courier-on-demand, real telecom/utility payment execution, pharmacy fulfilment and certain mobility/travel services remain disabled or limited to discovery until specifically enabled after compliance and operational verification.</p>
+        </section>
+
         <section className="mt-5 grid gap-4 md:grid-cols-2" aria-label="How Zeshu operates">
           {responsibilities.map(item => (
             <article key={item.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
