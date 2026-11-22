@@ -37,7 +37,7 @@ export async function PATCH(request: Request) {
   const body = await request.json().catch(() => null);
   const id = typeof body?.id === 'string' ? body.id : '';
   const status = typeof body?.status === 'string' ? body.status : '';
-  if (!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(id) || !statuses.has(status))
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) || !statuses.has(status))
     return NextResponse.json({ error: 'Invalid update.' }, { status: 400, headers });
   const { data, error } = await db.from('move_quote_enquiries')
     .update({ status, updated_at: new Date().toISOString() })
