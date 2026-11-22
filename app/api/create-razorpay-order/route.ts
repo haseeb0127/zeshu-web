@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { evaluateJagtialServiceArea, isJagtialServiceAreaEnforced } from '../../lib/service-area';
 import { getNationwideCourierQuotes, isNationwideCourierReady } from '../../lib/courier-server';
 import { evaluateNationwideProfitability } from '../../lib/nationwide-profitability';
+import { calculateLocalCheckoutPrice } from '../../lib/local-checkout-pricing';
 import { getRuntimeEnvValue, getRuntimeSupabaseEnv } from '../../lib/runtime-env';
 
 export const dynamic = 'force-dynamic';
@@ -275,6 +276,7 @@ export async function POST(request: Request) {
     }
 
     const serviceClient = createClient(effectiveUrl, effectiveServiceRoleKey);
+    const localPaidPilotEnabled = await getRuntimeEnvValue('ZESHU_LOCAL_PAID_DELIVERY_PILOT') === 'true';
     stage = 'CUSTOMER_PROFILE';
     let deliveryCoordinates: { latitude: number; longitude: number; accuracyMeters: number | null; source: 'DEVICE' | 'MANUAL_PIN' | 'LEGACY' } | null = null;
     let savedDeliveryAddress: any = null;
@@ -469,13 +471,22 @@ export async function POST(request: Request) {
       const recoveryFulfillmentCompatible = hasIndiaItems
         ? recoverySnapshot.fulfillment_mode === 'INDIA_STANDARD'
         : recoverySnapshot.fulfillment_mode !== 'INDIA_STANDARD';
+      const recoveryLocalPrice = recoverySnapshot.fulfillment_mode === 'INDIA_STANDARD'
+        ? null
+        : calculateLocalCheckoutPrice({
+            subtotal: recoveryMerchandiseSubtotal,
+            pilotEnabled: localPaidPilotEnabled,
+            latitude: deliveryCoordinates?.latitude,
+            longitude: deliveryCoordinates?.longitude,
+          });
       const recoveryDeliveryFee = recoverySnapshot.fulfillment_mode === 'INDIA_STANDARD' && Number.isFinite(recoverySnapshotDeliveryFee)
         ? recoverySnapshotDeliveryFee
-        : Number.isFinite(recoveryMerchandiseSubtotal) && recoveryMerchandiseSubtotal >= 299 ? 0 : 30;
+        : recoveryLocalPrice?.eligible ? recoveryLocalPrice.deliveryFee : NaN;
+      const recoveryHandlingFee = recoveryLocalPrice?.eligible ? recoveryLocalPrice.handlingFee : 0;
       const recoveryExpectedPricing = {
         small_cart_fee: 0,
         delivery_fee: recoveryDeliveryFee,
-        handling_fee: 0,
+        handling_fee: recoveryHandlingFee,
         donation: 0,
         tip: 0,
         pass_fee: 0,
@@ -486,7 +497,7 @@ export async function POST(request: Request) {
         .every(([key, value]) => sameNumber(recoverySnapshot[key], value));
       const recoveryCashDiscount = Number(recoverySnapshot.zeshu_cash_redemption ?? recoverySnapshot.discount_total ?? 0);
       const recoveryExpectedTotal = Number.isFinite(recoveryMerchandiseSubtotal)
-        ? recoveryMerchandiseSubtotal + recoveryDeliveryFee
+        ? recoveryMerchandiseSubtotal + recoveryDeliveryFee + recoveryHandlingFee
         : NaN;
       const sameRecoveryAvailability = sameRecoveryProductSet && recoveryItems.every((item) => {
         const product = recoveryProductsById.get(item.product_id);
@@ -591,13 +602,22 @@ export async function POST(request: Request) {
       const fulfillmentCompatible = hasIndiaItems
         ? snapshot.fulfillment_mode === 'INDIA_STANDARD'
         : snapshot.fulfillment_mode !== 'INDIA_STANDARD';
+      const activeLocalPrice = snapshot.fulfillment_mode === 'INDIA_STANDARD'
+        ? null
+        : calculateLocalCheckoutPrice({
+            subtotal: merchandiseSubtotal,
+            pilotEnabled: localPaidPilotEnabled,
+            latitude: deliveryCoordinates?.latitude,
+            longitude: deliveryCoordinates?.longitude,
+          });
       const deliveryFee = snapshot.fulfillment_mode === 'INDIA_STANDARD' && Number.isFinite(snapshotDeliveryFee)
         ? snapshotDeliveryFee
-        : Number.isFinite(merchandiseSubtotal) && merchandiseSubtotal >= 299 ? 0 : 30;
+        : activeLocalPrice?.eligible ? activeLocalPrice.deliveryFee : NaN;
+      const handlingFee = activeLocalPrice?.eligible ? activeLocalPrice.handlingFee : 0;
       const expectedPricing = {
         small_cart_fee: 0,
         delivery_fee: deliveryFee,
-        handling_fee: 0,
+        handling_fee: handlingFee,
         donation: 0,
         tip: 0,
         pass_fee: 0,
@@ -606,7 +626,7 @@ export async function POST(request: Request) {
       const samePricing = Object.entries(expectedPricing).filter(([key]) => key !== 'discount_total').every(([key, value]) => sameNumber(snapshot[key], value));
       const existingCashDiscount = Number(snapshot.zeshu_cash_redemption || snapshot.discount_total || 0);
       const expectedTotal = Number.isFinite(merchandiseSubtotal)
-        ? merchandiseSubtotal + expectedPricing.delivery_fee
+        ? merchandiseSubtotal + expectedPricing.delivery_fee + expectedPricing.handling_fee
         : NaN;
       const sameCheckout = sameItems
         && sameProductSet
@@ -1092,6 +1112,17 @@ export async function POST(request: Request) {
       ...(createdReservation.pricing_snapshot || {}),
       fulfillment_mode: checkoutFulfillmentMode,
     } as Record<string, unknown>;
+    const authoritativeLocalPrice = checkoutFulfillmentMode === 'INDIA_STANDARD'
+      ? null
+      : calculateLocalCheckoutPrice({
+          subtotal: Number(createdReservation.merchandise_subtotal),
+          pilotEnabled: localPaidPilotEnabled,
+          latitude: deliveryCoordinates?.latitude,
+          longitude: deliveryCoordinates?.longitude,
+        });
+    if (authoritativeLocalPrice && !authoritativeLocalPrice.eligible) {
+      return checkoutError(requestId, stage, 'LOCAL_DELIVERY_QUOTE_UNAVAILABLE', 'Confirm a supported Jagtial delivery location before payment.', 409);
+    }
     const fulfillmentPatch: Record<string, unknown> = {
       fulfillment_mode: checkoutFulfillmentMode,
       pricing_snapshot: pricingSnapshot,
@@ -1103,6 +1134,26 @@ export async function POST(request: Request) {
         promised_eta_minutes: null,
       },
     };
+
+    if (authoritativeLocalPrice?.eligible) {
+      reservationExpectedTotal = authoritativeLocalPrice.totalBeforeRewards!;
+      pricingSnapshot.delivery_fee = authoritativeLocalPrice.deliveryFee;
+      pricingSnapshot.handling_fee = authoritativeLocalPrice.handlingFee;
+      pricingSnapshot.local_pricing_policy = authoritativeLocalPrice.policy;
+      pricingSnapshot.local_pricing_zone_km = authoritativeLocalPrice.zoneKm;
+      fulfillmentPatch.expected_total_paid = reservationExpectedTotal;
+      fulfillmentPatch.pre_reward_total_paid = reservationExpectedTotal;
+      fulfillmentPatch.pricing_snapshot = pricingSnapshot;
+      fulfillmentPatch.shipping_quote_snapshot = {
+        mode: checkoutFulfillmentMode,
+        scope: 'JAGTIAL_LOCAL',
+        rate_source: authoritativeLocalPrice.policy,
+        customer_shipping_charge: authoritativeLocalPrice.deliveryFee,
+        platform_handling_fee: authoritativeLocalPrice.handlingFee,
+        thirty_minute_candidate: checkoutFulfillmentMode === 'LOCAL_30_MIN',
+        promised_eta_minutes: null,
+      };
+    }
 
     if (indiaShipping) {
       const indiaTotal = Number(createdReservation.merchandise_subtotal) + indiaShipping.customerShippingCharge;
