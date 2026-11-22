@@ -3777,7 +3777,7 @@ export default function ZeshuSuperApp() {
                   </div>}
                   <div className="flex justify-between text-[#4B5563]"><span>{t('Subtotal')}</span><span className="font-bold">₹{itemTotal}</span></div>
                   <div className="flex justify-between text-[#059669]"><span>{t('Delivery charge')}</span><span className="font-black">{localQuotePending || (!hasIndiaCartProduct && !localDeliveryQuote?.eligible) ? 'Checking…' : hasIndiaCartProduct ? 'Quoted at checkout' : deliveryCharge === 0 ? t('FREE') : `₹${deliveryCharge}`}</span></div>
-                  {platformHandlingFee > 0 && <div className="flex justify-between text-[#4B5563]"><span>{t('Platform handling (tax inclusive)')}</span><span className="font-black">₹{platformHandlingFee}</span></div>
+                  {platformHandlingFee > 0 && <div className="flex justify-between text-[#4B5563]"><span>{t('Platform handling (tax inclusive)')}</span><span className="font-black">₹{platformHandlingFee}</span></div>}
                   {requestedZeshuCash > 0 && <div className="flex justify-between text-emerald-700"><span>Zeshu Cash</span><span className="font-black">-₹{requestedZeshuCash}</span></div>}
                   <div className="border-t pt-4 flex justify-between font-black text-xl"><span>{t('Grand total')}</span><span>₹{finalCartTotal}</span></div>
                   <p className="text-center text-[11px] font-bold text-slate-500">{t('No hidden fees. Know your full cost before checkout.')}</p>
