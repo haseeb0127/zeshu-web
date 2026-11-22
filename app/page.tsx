@@ -3594,6 +3594,7 @@ export default function ZeshuSuperApp() {
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
             <Link href="/help" className="font-semibold hover:underline">{t('Help & Support')}</Link>
             <Link href="/policies" className="font-semibold hover:underline">{t('Policies & Trust Center')}</Link>
+            <Link href="/business-details" className="font-semibold hover:underline">Business &amp; GST</Link>
             <Link href="/partners" className="font-semibold hover:underline">{t('Work with Zeshu')}</Link>
           </div>
           <p className="mt-3">© {new Date().getFullYear()} Zeshu · {t('Based in Jagtial, Telangana')}</p>
@@ -3613,6 +3614,7 @@ export default function ZeshuSuperApp() {
           <div className="min-w-0"><h2 className="mb-4 text-sm font-black text-white">{t('Customer Service')}</h2><nav aria-label="Customer Service" className="flex flex-col items-start gap-2.5 text-xs leading-5 sm:text-sm sm:leading-6">
             <Link href="/help" className="hover:underline">{t('Help & Support')}</Link>
             <Link href="/policies" className="hover:underline">{t('Policies & Trust Center')}</Link>
+            <Link href="/business-details" className="hover:underline">Business &amp; GST</Link>
             <a href="mailto:support@zeshu.in" className="break-all hover:underline">support@zeshu.in</a>
           </nav></div>
           <div className="min-w-0"><h2 className="mb-4 text-sm font-black text-white">{t('Work with Zeshu')}</h2><nav aria-label="Work with Zeshu" className="flex flex-col items-start gap-2.5 text-xs leading-5 sm:text-sm sm:leading-6">
@@ -3627,7 +3629,7 @@ export default function ZeshuSuperApp() {
             <Link href="/app" className="hover:underline">{t('Get Zeshu')}</Link>
           </div></div>
         </div>
-        <div className="border-t border-white/15 bg-[#223148] px-5 py-5 text-center text-xs text-slate-200"><div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-6 gap-y-2"><Link href="/help" className="hover:underline">{t('Help & Support')}</Link><Link href="/policies" className="hover:underline">{t('Policies & Trust Center')}</Link><Link href="/app" className="hover:underline">{t('Get Zeshu')}</Link><span>{t('Based in Jagtial, Telangana')}</span></div></div>
+        <div className="border-t border-white/15 bg-[#223148] px-5 py-5 text-center text-xs text-slate-200"><div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-6 gap-y-2"><Link href="/help" className="hover:underline">{t('Help & Support')}</Link><Link href="/policies" className="hover:underline">{t('Policies & Trust Center')}</Link><Link href="/business-details" className="hover:underline">Business &amp; GST</Link><Link href="/app" className="hover:underline">{t('Get Zeshu')}</Link><span>{t('Based in Jagtial, Telangana')}</span></div></div>
         <div className="border-t border-white/15 px-5 py-8 text-center text-xs leading-6 text-slate-300">
           <Link href="/" className="inline-flex items-center gap-2 text-base font-black tracking-wider text-white"><span className="grid h-8 w-8 place-items-center rounded-lg bg-[#087a55]">Z</span>ZESHU</Link>
           <p className="mt-3">© {new Date().getFullYear()} Zeshu · {t('Service availability varies by location and verified provider or seller coverage.')}</p>
