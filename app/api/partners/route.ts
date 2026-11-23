@@ -14,6 +14,7 @@ const TYPES = new Set([
   'LOGISTICS_COURIER',
   'TRAVEL',
   'SPONSOR',
+  'HOME_SERVICE_PRO',
   'OTHER',
 ]);
 
