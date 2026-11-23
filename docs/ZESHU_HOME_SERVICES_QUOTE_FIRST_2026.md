@@ -21,13 +21,16 @@ Last reviewed: 23 November 2026
 - Highly regulated home services requiring specialist licences;
 - Work outside approved service town, including nationwide bookings without qualified remote providers.
 
-## Pricing (ideas, NOT LIVE)
-Compare two mutually exclusive provider commercial models only after genuine leads and documented unit economics:
-1. Solo / team monthly: ₹199/₹299 per month, respectively (GST-inclusive where taxable); no per-lead charge, no promise of unlimited leads or priority verified badge for money.
-2. Pay per accepted, qualified lead: proposed ₹15 quick job and ₹50 high-value/recurring enquiry. A 'qualified lead' must meet serviceability, genuine request, valid reachable contact and consent. Set a practical window to dispute/refund failed duplicate/out-of-service/no-response leads. Never charge for opening a listing, duplicate customer, already-booked elsewhere or Zeshu-caused bad lead.
-3. **Do not** activate ₹200 wallet recharges. Stored-value balances, credits and refund mechanics need PSP, GST, contract, and RBI/PPI counsel review. Treat paid-for credits as liabilities until a service is earned; a ₹200 recharge is not automatically ₹200 earned revenue. RBI posted a *draft* of new PPI Directions for 2026, not proof a final rule is effective.
-4. In pilot, customer pays ₹0 to submit enquiry; an inspected/provider-confirmed visit rate, labour/parts, GST, cancel charges and invoice must be given *before* committing. A marketing example '₹99 visit' cannot be a universal Zeshu guarantee.
-5. If Zeshu facilitates direct cash/UPI to a provider in future, maintain confirmation/receipt, dispute/refund/grievance access and legally applicable platform obligations. Direct payment alone is not an exemption.
+## Provider-set service menus and plans (proposals, NOT LIVE)
+- A shared service-menu catalogue now defines standard scope units per eligible Jagtial category; qualified providers enter *their own* proposed labour prices. No rate, work photo, review, provider verification or availability is published on this basis. Unknown materials and complex work must use a written quote.
+- Provider application `/partners?type=HOME_SERVICE_PRO#partner-apply` now captures private primary category, optional menu prices, chosen free travel radius (0/3/5/10/15 km), optional additional per-km travel charge, materials/brand exclusions and preferred future plan; these fields become a structured proposal in the existing private admin lead inbox. No public provider profile/instant-bookable price is created.
+- **Free pilot:** signup and review remain free; customers may submit free manual enquiries. No wallet, monthly subscription or lead fee is charged.
+- **Future pay-as-you-go:** proposed ₹15 for accepted qualified quick opportunities and ₹50 for accepted qualified premium opportunities. Eligibility must require genuine, reachable, serviceable non-duplicate customer requests. Define fair time windows for failed/no-contact/disputed lead credits.
+- **Future subscription:** ₹299 per month (proposed GST-inclusive, subject to confirmation) for eligible qualified opportunities without per-lead fee during subscription period, subject to published fair-use, cancellation, invoice and explicit opt-in. No automatic conversion or renewal.
+- **Future seasonal ₹200 credit pack:** proposed nonexpiring credits solely against Zeshu's own platform charges; **do not activate, sell, escrow, display a balance, top up or deduct** until PSP, RBI/PPI, GST, customer contract, refund and accounting/legal review. Unused prepaid balances are liabilities until fees are earned. Any rollover/expiry rights must be formalised under applicable law.
+- Menu cards must disclose provider-defined included work, travel radius/extra travel, visit charges, minimum home-visit order if any, brand/parts line items, applicable taxes, written approval before extras and complaint handling. No fabricated Jagtial market rates or fake ratings.
+- Customer household help and childcare/domestic placements remain held; these were NOT added to booking.
+- Direct Cash/UPI collection by professionals is NOT assumed to eliminate Zeshu's service-operator GST obligations. Obtain a category-specific Section 9(5) review and assess Telangana gig-worker obligations before enabling real bookings.
 
 ## Illustrative tax-exclusive figures (assuming prices include 18% output GST)
 - ₹15 lead = ₹12.71 revenue + ₹2.29 GST
