@@ -73,8 +73,8 @@ export const metadata: Metadata = {
   },
 };
 
-// Use only real Zeshu identities and actual accessible assets.
-// Social sameAs handles will be added after ownership and public URLs are verified.
+// Social identities cross-checked against Zeshu's connected Metricool brand
+// and their publicly accessible profile pages on 23 November 2026.
 const organizationWebsiteJsonLd = {
   "@context": "https://schema.org",
   "@graph": [
@@ -94,6 +94,11 @@ const organizationWebsiteJsonLd = {
         "@type": "AdministrativeArea",
         name: "Jagtial district, Telangana, India",
       },
+      sameAs: [
+        "https://www.instagram.com/zeshu.in/",
+        "https://www.facebook.com/people/Zeshu/61595101370222/",
+        "https://www.youtube.com/channel/UCl7cbxE4FOSAOTigzePoHSA",
+      ],
     },
     {
       "@type": "WebSite",
