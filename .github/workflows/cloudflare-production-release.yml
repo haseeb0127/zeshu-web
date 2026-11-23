@@ -253,7 +253,7 @@ jobs:
             const brandLogo = page.locator('img[src="/zeshu-bag-logo.svg"]');
             await brandLogo.waitFor({ state: 'visible', timeout: 10000 });
             assert(await brandLogo.isVisible(), 'Bag-style Zeshu logo missing from live homepage');
-            for (const route of ['/fashion','/pay','/move','/professional-services/weddings','/professional-services/interiors']) {
+            for (const route of ['/fashion','/pay','/move','/services','/weddings','/interiors']) {
               const response = await page.request.get('https://zeshu.in' + route);
               assert(response.ok(), `Customer service route unavailable: ${route}`);
             }
@@ -291,7 +291,7 @@ jobs:
             }
             // Check actual production banner taps and browser Back recovery.
             for (const [poster, route] of [
-              ['dine','/dine'], ['pay','/pay'], ['fashion','/fashion'], ['weddings','/professional-services/weddings'],
+              ['dine','/dine'], ['pay','/pay'], ['fashion','/fashion'], ['weddings','/weddings'],
               ['support','/help'], ['app','/app'],
             ]) {
               const link = page.locator('[data-glossy-banner="' + poster + '"] a[aria-label^="Open "]');
