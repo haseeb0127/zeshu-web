@@ -41,6 +41,27 @@ jobs:
       - name: Verify duplicate-charge protection before browser QA
         run: node .github/scripts/razorpay-unpaid-order.test.mjs
 
+      - name: Smoke-test guarded Dine Lite POS staging routes (no orders or payments)
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const origin=process.env.BASE_URL;
+          const checks=[
+            {path:'/dine/table',expected:200},
+            {path:'/dine/kitchen',expected:200},
+            {path:'/api/dine/table',expected:400},
+            {path:'/api/dine/staff',expected:401},
+            {path:'/api/dine/table/order',expected:400},
+          ];
+          for(const c of checks){
+            const res=await fetch(origin+c.path,{redirect:'manual',cache:'no-store'});
+            if(res.status!==c.expected){
+              throw new Error(c.path+' requires HTTP '+c.expected+' on staging; got '+res.status);
+            }
+          }
+          console.log('ZESHU_DINE_LITE_POS_STAGING_GUARDS=PASS');
+          NODE
+
       - name: Smoke-test Zeshu robots sitemap and Organization schema on staging
         shell: bash
         run: |
