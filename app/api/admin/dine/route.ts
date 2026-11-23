@@ -95,6 +95,16 @@ export async function PATCH(request:Request){
  }
  if(x.action==='staffActive'){
   if(!uuid(x.restaurantId)||!uuid(x.userId)||typeof x.active!=='boolean')return no('Invalid staff update.');
+  if(x.active===false){
+   const {data:venue,error:venueError}=await db.from('dine_restaurants').select('qr_order_enabled').eq('id',x.restaurantId).maybeSingle();
+   if(venueError||!venue)return no('Restaurant not found.',404);
+   if(venue.qr_order_enabled){
+    const {data:others,error:othersError}=await db.from('dine_restaurant_staff').select('user_id')
+     .eq('restaurant_id',x.restaurantId).eq('active',true).neq('user_id',x.userId).limit(1);
+    if(othersError)return no('Unable to check remaining staff.',503);
+    if(!others?.length)return no('Pause restaurant QR ordering before revoking its final active staff account.',409);
+   }
+  }
   const {data,error}=await db.from('dine_restaurant_staff').update({active:x.active})
    .eq('restaurant_id',x.restaurantId).eq('user_id',x.userId).select('user_id').maybeSingle();
   return error?no('Staff access update failed.',503):!data?no('Staff membership not found.',404):

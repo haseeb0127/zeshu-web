@@ -59,6 +59,12 @@ export default function DineKitchen(){
    const snapshot=body as Snapshot;
    setData(snapshot);if(snapshot.restaurant)setVenue(snapshot.restaurant.id);
    const pending=new Set(snapshot.orders.filter(o=>o.status==="PENDING_APPROVAL").map(o=>o.id));
+   for(const booking of snapshot.bookings){
+    if(booking.status==="CONFIRMED"&&booking.kitchen_status==="NOT_STARTED"&&booking.prep_start_at
+      &&Date.parse(booking.prep_start_at)<=Date.now()+2*60_000){
+      pending.add("PREBOOK:"+booking.id);
+    }
+   }
    if(alerts&&seen.current&&[...pending].some(k=>!seen.current?.has(k)))bell();
    seen.current=pending;if(!quiet)setError("");
   }catch(e){setError(e instanceof Error?e.message:"Connection unavailable.");}
@@ -127,7 +133,7 @@ export default function DineKitchen(){
     <nav aria-label="Restaurant kitchen sections" className="mt-4 flex flex-wrap gap-2">
      {([["orders","Table orders"],["bookings","Pre-bookings"],["delivery","Delivery"],["standees","Print QR"],["staff","Waiter & stock"]] as const).map(([k,label])=>
       <button key={k} onClick={()=>setTab(k)} className={"rounded-xl px-4 py-3 text-xs font-black "+(tab===k?"bg-emerald-800 text-white":"border bg-white")}>
-       {label}{k==="orders"&&pending>0?" · "+pending+" NEW":""}
+       {label}{k==="orders"&&pending>0?" · "+pending+" NEW":""}{k==="bookings"&&data.bookings.some(b=>b.status==="CONFIRMED"&&b.kitchen_status==="NOT_STARTED"&&!!b.prep_start_at&&Date.parse(b.prep_start_at)<=Date.now()+2*60_000)?" · PREP DUE":""}
       </button>)}
     </nav>
     {tab==="orders"&&<section className="mt-5 space-y-3">

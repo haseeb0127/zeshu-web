@@ -128,6 +128,14 @@ export async function PATCH(request:Request){
   const next=String(input.status||'');
   const previous:Record<string,string>={PREPARING:'NOT_STARTED',READY:'PREPARING',SERVED:'READY'};
   if(!previous[next])return dineError('Invalid kitchen status.');
+  if(next==='PREPARING'){
+   const {data:slot,error:slotErr}=await db.from('dine_bookings')
+    .select('prep_start_at').eq('id',input.bookingId).eq('restaurant_id',restaurantId)
+    .eq('status','CONFIRMED').maybeSingle();
+   if(slotErr||!slot)return dineError('Unable to check the kitchen schedule.',409);
+   if(slot.prep_start_at&&Date.parse(slot.prep_start_at)>Date.now()+15*60_000)
+    return dineError('It is too early to start this pre-booked meal. Check its scheduled preparation time.',409);
+  }
   const {data,error}=await db.from('dine_bookings')
    .update({kitchen_status:next,updated_at:new Date().toISOString()})
    .eq('id',input.bookingId).eq('restaurant_id',restaurantId)
