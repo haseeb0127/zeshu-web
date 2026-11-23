@@ -1,5 +1,6 @@
 "use client";
 import GlossyArtwork from "@/app/components/GlossyArtwork";
+import MoveQuickQuote from "@/app/components/MoveQuickQuote";
 
 
 import Link from "@/app/components/DocumentLink";
@@ -43,7 +44,7 @@ const travel: ServiceCard[] = [
 function ServiceSection({ title, cards }: { title: string; cards: ServiceCard[] }) {
   const { t } = useCustomerLanguage();
   return (
-    <section className="mt-7">
+    <section id={title==="Local rides"?"move-local":undefined} className="mt-7 scroll-mt-36">
       <h2 className="text-lg font-black text-slate-950 md:text-xl">{t(title)}</h2>
       <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
@@ -86,7 +87,7 @@ export default function MoveTravelPage() {
           <LanguageSwitcher compact />
         </div>
 
-        <header className="zeshu-gloss-hero mt-6 overflow-hidden rounded-[30px] bg-[#083b27] p-6 text-white shadow-xl md:p-9">
+        <header className="zeshu-gloss-hero mt-6 overflow-hidden rounded-[30px] bg-[linear-gradient(125deg,#222734,#394455)] p-6 text-white shadow-xl md:p-9">
 <GlossyArtwork kind="move"/>
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="max-w-3xl">
@@ -100,7 +101,9 @@ export default function MoveTravelPage() {
           </div>
         </header>
 
-        <section className="mt-7 rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm md:p-8" aria-label="District scheduled transport quotation requests">
+        <MoveQuickQuote />
+
+        <section id="move-district" className="scroll-mt-36="mt-7 rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm md:p-8" aria-label="District scheduled transport quotation requests">
           <p className="text-xs font-black uppercase tracking-widest text-[#075E45]">Five-town pilot · enquiries only</p>
           <h2 className="mt-2 text-2xl font-black text-slate-900">Scheduled cabs, trucks &amp; marriage buses</h2>
           <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">From Jagtial, Dharmaram, Korutla, Metpally or Dharmapuri, request a manual operator quote for a planned journey or goods delivery. No instant booking, guaranteed driver, fare or payment is available until an eligible operator confirms the request. Requests are free.</p>
