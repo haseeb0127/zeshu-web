@@ -41,6 +41,44 @@ jobs:
       - name: Verify duplicate-charge protection before browser QA
         run: node .github/scripts/razorpay-unpaid-order.test.mjs
 
+      - name: Smoke-test Zeshu robots sitemap and Organization schema on staging
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const origin = process.env.BASE_URL;
+          const [robotsResponse,sitemapResponse,homeResponse] = await Promise.all([
+            fetch(origin+'/robots.txt',{cache:'no-store'}),
+            fetch(origin+'/sitemap.xml',{cache:'no-store'}),
+            fetch(origin+'/',{cache:'no-store'}),
+          ]);
+          for(const [name,response] of [
+            ['robots.txt',robotsResponse],['sitemap.xml',sitemapResponse],['home',homeResponse],
+          ]){
+            if(response.status!==200)throw new Error(name+' must be public HTTP 200; got '+response.status);
+          }
+          const [robots,sitemap,home] = await Promise.all([
+            robotsResponse.text(),sitemapResponse.text(),homeResponse.text(),
+          ]);
+          if(!robots.includes('Sitemap: https://zeshu.in/sitemap.xml') || !robots.includes('Disallow: /api')){
+            throw new Error('Robots sitemap/private crawl rule missing on staging');
+          }
+          for(const route of ['/dine','/fashion','/pay','/move','/services','/weddings','/interiors']){
+            if(!sitemap.includes('<loc>https://zeshu.in'+route+'</loc>')){
+              throw new Error('Sitemap department missing: '+route);
+            }
+          }
+          if(sitemap.includes('<loc>https://zeshu.in/admin')||sitemap.includes('<loc>https://zeshu.in/api')){
+            throw new Error('Private routes leaked into public sitemap');
+          }
+          if(!home.includes('type="application/ld+json"') ||
+             !home.includes('https://schema.org') ||
+             !home.includes('https://zeshu.in/#organization') ||
+             !home.includes('https://zeshu.in/#website')){
+            throw new Error('Organization / WebSite JSON-LD missing from initial server HTML');
+          }
+          console.log('ZESHU_SEO_STAGING_SMOKE=PASS');
+          NODE
+
       - name: Smoke-test Jagtial Home Services page and safe enquiry readiness
         shell: bash
         run: |
