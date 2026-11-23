@@ -35,7 +35,7 @@ for (const href of ['/fashion']) {
   assert(homeHub.includes(`href="${href}"`), `Homepage business hub missing key customer destination: ${href}`);
 }
 
-for (const destination of ['/professional-services/weddings', '/professional-services/interiors', '/dine']) {
+for (const destination of ['/weddings', '/interiors', '/services', '/dine']) {
   assert(homeHub.includes(destination), `Homepage carousel missing service destination: ${destination}`);
 }
 
