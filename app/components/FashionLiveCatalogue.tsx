@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {TwoColumnCatalogGrid} from "@/app/components/departments/PageBlocks";
 
 type FashionProduct = {
   id: string;
@@ -84,7 +85,7 @@ export default function FashionLiveCatalogue() {
       ) : products.length === 0 ? (
         <p className="mt-5 rounded-2xl bg-slate-50 p-5 text-sm font-semibold text-slate-600">No live seller inventory matches these filters right now.</p>
       ) : (
-        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="mt-5"><TwoColumnCatalogGrid>
           {products.map((product) => {
             const prices = product.variants.map((variant) => Number(variant.sale_price ?? product.price)).filter(Number.isFinite);
             const fromPrice = prices.length ? Math.min(...prices) : Number(product.price);
@@ -103,7 +104,7 @@ export default function FashionLiveCatalogue() {
               {product.commerce?.return_eligible && product.commerce.return_window_days && <p className="mt-2 text-[11px] font-bold text-emerald-700">{product.commerce.return_window_days}-day return eligible</p>}
             </article>;
           })}
-        </div>
+        </TwoColumnCatalogGrid></div>
       )}
     </section>
   );
