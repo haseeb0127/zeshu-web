@@ -97,8 +97,9 @@ export default function PartnersPage() {
           <Link href="/earn" className="mt-4 inline-flex rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white">Open Drive & Deliver</Link>
         </section>
 
-        <section className="mt-6 rounded-3xl bg-emerald-50 p-6 md:p-8">
+        <section id="partner-apply" className="mt-6 scroll-mt-16 rounded-3xl bg-emerald-50 p-6 md:p-8">
           <h2 className="text-xl font-black">Become a Zeshu partner</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Jagtial electricians, plumbers, AC/RO technicians, salons, beauticians, makeup and mehndi professionals can choose <strong>Home-service professional / salon</strong> below. Applications are free during the pilot; there is no approved booking, verified badge, monthly pass or prepaid wallet on submission. Do not share Aadhaar, OTPs, school details or complete identity scans in this public form.</p>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Apply directly below. Local physical-fulfilment partners should include their Jagtial capability. Recharge/bill, mobility, logistics and travel providers should include API/white-label, commission, settlement, serviceability, tracking and support terms. Sponsors should include campaign budget and the products/services they want to promote. Pharmacy or medicine-distribution applicants must include valid licence details.</p>
           <PartnerLeadForm />
         </section>
