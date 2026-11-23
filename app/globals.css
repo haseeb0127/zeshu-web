@@ -1,0 +1,254 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f8f4;
+  --foreground: #17201c;
+  --zeshu-green: #075e45;
+  --zeshu-green-dark: #064936;
+  --zeshu-green-fresh: #159a68;
+  --zeshu-mint: #eef7f1;
+  --zeshu-ivory: #f7f8f4;
+  --zeshu-surface: #ffffff;
+  --zeshu-text: #17201c;
+  --zeshu-muted: #66736c;
+  --zeshu-border: #dfe7e1;
+  --zeshu-gold: #ffb84d;
+  --zeshu-blue: #2563eb;
+  --zeshu-warning: #d97706;
+  --zeshu-danger: #dc2626;
+  --zeshu-lime: #b7e34a;
+  --zeshu-lime-soft: #f1f8dc;
+  --zeshu-mango: #ffb84d;
+  --zeshu-mango-soft: #fff3df;
+  --zeshu-shadow: 0 10px 30px rgba(23, 32, 28, .08);
+  --zeshu-shadow-soft: 0 4px 16px rgba(19, 32, 25, .06);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  background: var(--zeshu-ivory);
+}
+
+body {
+  background:
+    radial-gradient(circle at top right, rgba(7, 94, 69, .055), transparent 28rem),
+    var(--zeshu-ivory);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+::selection {
+  background: rgba(7, 94, 69, .16);
+  color: var(--zeshu-text);
+}
+
+button, a, input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(7, 94, 69, .34);
+  outline-offset: 2px;
+}
+
+.zeshu-surface {
+  background: var(--zeshu-surface);
+  border: 1px solid var(--zeshu-border);
+  box-shadow: var(--zeshu-shadow-soft);
+}
+
+.zeshu-primary {
+  background: var(--zeshu-green);
+  color: #fff;
+}
+
+.zeshu-primary:hover {
+  background: var(--zeshu-green-dark);
+}
+
+.zeshu-soft {
+  background: var(--zeshu-mint);
+  color: var(--zeshu-green-dark);
+}
+
+.zeshu-gold {
+  background: var(--zeshu-mango-soft);
+  color: #7a4700;
+  border-color: #ffd89e;
+}
+
+.zeshu-speed {
+  background: var(--zeshu-lime-soft);
+  color: var(--zeshu-green-dark);
+  border-color: #d7eb9d;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Zeshu Emerald Premium: subtle depth, fast rendering, accessible controls. */
+.zeshu-premium-home .zeshu-premium-department {
+  position:relative;
+  border:1px solid rgba(255,255,255,.88);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 6px 15px rgba(15,55,38,.075);
+  transition:transform .2s ease,box-shadow .2s ease;
+}
+.zeshu-premium-home .zeshu-premium-department::before {
+  content:"";pointer-events:none;position:absolute;inset:1px 1px auto;height:43%;
+  border-radius:inherit;background:linear-gradient(180deg,rgba(255,255,255,.48),transparent);
+}
+.zeshu-premium-home .zeshu-premium-department:hover {transform:translateY(-2px);box-shadow:0 10px 22px rgba(15,55,38,.12);}
+.zeshu-premium-home .zeshu-premium-hero {
+  isolation:isolate;
+  border:1px solid rgba(255,255,255,.2);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.24),0 14px 32px rgba(0,61,43,.17);
+}
+.zeshu-premium-home .zeshu-premium-hero::before {
+  content:"";position:absolute;z-index:0;pointer-events:none;inset:0;
+  background:radial-gradient(ellipse at 82% 17%,rgba(167,255,172,.26),transparent 45%),
+  linear-gradient(120deg,transparent 45%,rgba(255,255,255,.075) 63%,transparent 76%);
+}
+.zeshu-premium-home .zeshu-premium-hero img {filter:drop-shadow(0 14px 12px rgba(0,26,14,.28));}
+.zeshu-premium-home .zeshu-premium-shop-card {
+  box-shadow:inset 0 1px 0 #fff,0 9px 25px rgba(16,74,43,.09);
+}
+.zeshu-premium-home .zeshu-premium-category {
+  border-color:rgba(231,239,233,.95);
+  box-shadow:inset 0 1px 0 #fff,0 6px 17px rgba(16,65,39,.09);
+  transition:transform .18s ease,box-shadow .18s ease;
+}
+.zeshu-premium-home .zeshu-premium-category:hover {
+  transform:translateY(-2px);box-shadow:0 10px 24px rgba(16,65,39,.13);
+}
+@media (prefers-reduced-motion:reduce) {
+  .zeshu-premium-home .zeshu-premium-department,
+  .zeshu-premium-home .zeshu-premium-category {transition:none;}
+}
+
+/* Reference screenshot: keep the compact search clean on keyboard focus; the pill provides a ring. */
+input[aria-label="Search Zeshu"]:focus-visible { outline: none; box-shadow: none; }
+/* Blend the owner-approved grocery basket into the white Shop card. */
+.zeshu-premium-shop-card svg[data-reference-art="basket"] { -webkit-mask-image: linear-gradient(to right, transparent, #000 26%); mask-image: linear-gradient(to right, transparent, #000 26%); }
+
+/* Startup treatment from the owner's approved glossy ZESHU splash reference.
+   Visible only to the installed PWA, never during regular browser shopping. */
+.zeshu-installed-app-splash { display: none; }
+@media (display-mode: standalone) {
+  .zeshu-installed-app-splash {
+    position: fixed; inset: 0; z-index: 2147483647;
+    display: flex; align-items: center; justify-content: center;
+    background: #fcfcf9;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    opacity: 1; pointer-events: none;
+    transition: opacity 180ms ease;
+    animation: zeshu-splash-safety-exit 250ms 1.5s forwards;
+  }
+  .zeshu-installed-app-splash img {
+    width: min(56vw, 256px);
+    height: auto; aspect-ratio: 1;
+    object-fit: contain;
+  }
+  .zeshu-installed-app-splash.is-leaving { opacity: 0; }
+}
+@keyframes zeshu-splash-safety-exit { to { opacity: 0; visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) {
+  .zeshu-installed-app-splash { transition: none; }
+}
+
+/* Zeshu Emerald Glass: shared customer app/PWA visual system. Actual catalogue
+   images and database values remain the source of truth; no fake pricing. */
+.zeshu-experience {
+ background-color:#f7faf7;
+ background-image:radial-gradient(ellipse at 12% 0,rgba(136,240,172,.15),transparent 38rem),
+                  radial-gradient(ellipse at 96% 18%,rgba(218,246,224,.18),transparent 35rem);
+}
+.zeshu-gloss-hero {position:relative;isolation:isolate;border:1px solid rgba(255,255,255,.18);
+ box-shadow:inset 0 1px rgba(255,255,255,.28),0 18px 38px rgba(7,64,43,.19);}
+.zeshu-gloss-hero::before {content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+ background:radial-gradient(ellipse at 83% 8%,rgba(224,255,228,.26),transparent 45%),
+ linear-gradient(124deg,rgba(255,255,255,.1),transparent 30%,transparent 66%,rgba(255,255,255,.08) 84%,transparent);}
+.zeshu-gloss-hero>*{position:relative;z-index:1}
+.zeshu-gloss-card {border-color:rgba(224,237,229,.9);
+ background-image:linear-gradient(145deg,rgba(255,255,255,.9),rgba(255,255,255,.28) 70%,rgba(235,249,241,.32));
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 5px 15px rgba(9,71,47,.085),0 13px 30px rgba(9,71,47,.044);
+ transition:transform .18s ease,box-shadow .18s ease;}
+.zeshu-gloss-icon,.zeshu-chat-orb {background:radial-gradient(circle at 30% 7%,#2ac78c,#0a9867 34%,#006e4b 69%,#004d36);
+ box-shadow:inset 0 2px 3px rgba(255,255,255,.37),inset 0 -3px 8px rgba(0,40,25,.27),0 8px 18px rgba(0,99,59,.22);}
+.zeshu-gloss-cta {background:linear-gradient(145deg,#128f60,#006e4a 69%,#005137);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.29),0 5px 13px rgba(0,96,58,.17);}
+.zeshu-product-stage {background:radial-gradient(ellipse at 48% 40%,#fff 4%,#f9fdf9 65%,#eaf5ed 100%);
+ border:1px solid rgba(222,239,229,.78);
+ box-shadow:inset 0 2px 7px rgba(22,81,53,.04),inset 0 -5px 13px rgba(22,81,53,.06);}
+.zeshu-product-photo {filter:drop-shadow(0 9px 8px rgba(18,50,30,.13));}
+.zeshu-chat-orb {border:1px solid rgba(255,255,255,.65);transition:transform .18s ease;}
+.zeshu-chat-panel {box-shadow:0 22px 60px rgba(5,59,37,.23),inset 0 1px 0 #fff;}
+@media(hover:hover) and (pointer:fine){.zeshu-gloss-card:hover{transform:translate3d(0,-2px,0);
+ box-shadow:inset 0 1px 0 #fff,0 15px 32px rgba(4,75,46,.13);}
+ .zeshu-chat-orb:hover{transform:translate3d(0,-2px,0);}
+ .zeshu-gloss-cta:hover{filter:brightness(1.08);}}
+@media(prefers-reduced-motion:reduce){.zeshu-gloss-card,.zeshu-chat-orb{transition:none;transform:none!important}}
+
+/* Zeshu Premium CGI promotional surfaces: realistic 3D visuals, optimized WebP,
+   composited glass highlights, and true DOM controls for all locales. */
+.zeshu-premium-hero { box-shadow:inset 0 1px 0 rgba(255,255,255,.34),0 12px 32px rgba(3,70,39,.24);}
+.zeshu-premium-hero::after {content:"";position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:inherit;background:linear-gradient(128deg,rgba(255,255,255,.14),transparent 22%,transparent 77%,rgba(255,255,255,.09));}
+.zeshu-premium-hero h2 {text-shadow:0 4px 12px rgba(0,28,18,.4);}
+.zeshu-premium-hero a,.zeshu-premium-hero button {box-shadow:inset 0 1px 0 #fff,0 7px 18px rgba(0,33,23,.23);}
+.zeshu-gloss-hero:has([data-glossy-art]) {min-height:280px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;background-color:#064734;}
+.zeshu-gloss-hero:has([data-glossy-art]) > [data-glossy-art] {position:absolute!important;z-index:0!important;}
+.zeshu-gloss-hero:has([data-glossy-art]) > :not([data-glossy-art]) {position:relative;z-index:2;}
+.zeshu-gloss-hero:has([data-glossy-art]) > p,.zeshu-gloss-hero:has([data-glossy-art]) > h1 {position:relative;z-index:2;max-width:65%;}
+@media(min-width:768px){.zeshu-gloss-hero:has([data-glossy-art]){min-height:355px}.zeshu-gloss-hero:has([data-glossy-art]) > :not([data-glossy-art]){max-width:66%;}}
+@media(max-width:767px){.zeshu-gloss-hero [data-glossy-art] {opacity:.66;}}
+
+/* Zeshu Prism Glass: nine distinctive premium 3D marketing departments.
+   Only decorative CGI posters are colour-treated, never real product images. */
+[data-glossy-banner] {
+  --gloss-tint: #034b36;
+  --gloss-glow: rgba(123,255,191,.31);
+  background: radial-gradient(circle at 81% 9%,var(--gloss-glow),transparent 49%),linear-gradient(135deg,var(--gloss-tint),#052e24 85%);
+  box-shadow:inset 0 2px 2px rgba(255,255,255,.26),inset 0 -5px 12px rgba(0,0,0,.15),0 13px 28px rgba(15,36,31,.21);
+}
+[data-glossy-banner]::after {
+ content:"";position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:inherit;
+ background:linear-gradient(118deg,rgba(255,255,255,.13),transparent 24%,transparent 71%,rgba(255,255,255,.17) 86%,transparent 92%);
+}
+[data-glossy-banner] [data-glossy-art] > div:last-child {
+ background:linear-gradient(90deg,color-mix(in srgb,var(--gloss-tint) 94%,#000 6%) 0%,color-mix(in srgb,var(--gloss-tint) 76%,#000 24%) 33%,color-mix(in srgb,var(--gloss-tint) 26%,transparent) 70%,transparent 96%);
+}
+[data-glossy-banner] [data-glossy-image] {filter:saturate(1.13) contrast(1.04); }
+[data-glossy-banner="shop"] {--gloss-tint:#064c34;--gloss-glow:rgba(132,255,162,.35)}
+[data-glossy-banner="dine"] {--gloss-tint:#3b2416;--gloss-glow:rgba(255,197,103,.48)}
+[data-glossy-banner="dine"] [data-dine-artwork] svg {filter:drop-shadow(0 18px 20px rgba(19,9,2,.24));}
+[data-glossy-banner="fashion"] {--gloss-tint:#832f5b;--gloss-glow:rgba(255,131,191,.40)}
+[data-glossy-banner="pay"] {--gloss-tint:#154d93;--gloss-glow:rgba(115,194,255,.40)}
+[data-glossy-banner="move"] {--gloss-tint:#985315;--gloss-glow:rgba(255,192,98,.40)}
+[data-glossy-banner="services"] {--gloss-tint:#583692;--gloss-glow:rgba(190,147,255,.39)}
+[data-glossy-banner="weddings"] {--gloss-tint:#a45064;--gloss-glow:rgba(255,210,180,.37)}
+[data-glossy-banner="interiors"] {--gloss-tint:#68532f;--gloss-glow:rgba(245,219,142,.37)}
+[data-glossy-banner="support"] {--gloss-tint:#0e6471;--gloss-glow:rgba(144,250,244,.36)}
+[data-glossy-banner="app"] {--gloss-tint:#145d62;--gloss-glow:rgba(121,236,234,.39)}
+[data-glossy-banner="fashion"] [data-glossy-image] {filter:hue-rotate(32deg) saturate(1.25) contrast(1.06)}
+[data-glossy-banner="pay"] [data-glossy-image] {filter:hue-rotate(64deg) saturate(1.23) contrast(1.04)}
+[data-glossy-banner="move"] [data-glossy-image] {filter:hue-rotate(-35deg) saturate(1.27) contrast(1.05)}
+[data-glossy-banner="services"] [data-glossy-image] {filter:hue-rotate(86deg) saturate(1.17)}
+[data-glossy-banner="weddings"] [data-glossy-image] {filter:hue-rotate(28deg) saturate(1.18)}
+[data-glossy-banner="interiors"] [data-glossy-image] {filter:sepia(.24) saturate(1.16)}
+[data-glossy-banner="support"] [data-glossy-image] {filter:hue-rotate(56deg) saturate(1.09)}
+@media(prefers-reduced-motion:reduce){[data-glossy-banner]::after{transition:none}}
