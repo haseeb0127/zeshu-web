@@ -103,7 +103,7 @@ export default function MoveTravelPage() {
 
         <MoveQuickQuote />
 
-        <section id="move-district" className="scroll-mt-36="mt-7 rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm md:p-8" aria-label="District scheduled transport quotation requests">
+        <section id="move-district" className="mt-7 scroll-mt-36 rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm md:p-8" aria-label="District scheduled transport quotation requests">
           <p className="text-xs font-black uppercase tracking-widest text-[#075E45]">Five-town pilot · enquiries only</p>
           <h2 className="mt-2 text-2xl font-black text-slate-900">Scheduled cabs, trucks &amp; marriage buses</h2>
           <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">From Jagtial, Dharmaram, Korutla, Metpally or Dharmapuri, request a manual operator quote for a planned journey or goods delivery. No instant booking, guaranteed driver, fare or payment is available until an eligible operator confirms the request. Requests are free.</p>
