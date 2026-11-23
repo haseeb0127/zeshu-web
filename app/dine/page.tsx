@@ -22,6 +22,7 @@ const todayInput=()=>{
 
 export default function DinePage(){
  const [restaurants,setRestaurants]=useState<Restaurant[]>([]);
+ const [searchTerm,setSearchTerm]=useState('');
  const [menu,setMenu]=useState<Dish[]>([]);
  const [restaurantId,setRestaurantId]=useState('');
  const [quantities,setQuantities]=useState<Record<string,number>>({});
@@ -42,6 +43,13 @@ export default function DinePage(){
  const [partnerMessage,setPartnerMessage]=useState('');
  const [partnerError,setPartnerError]=useState('');
  const chosen=restaurants.find(r=>r.id===restaurantId)||null;
+ const matches=useMemo(()=>restaurants.filter(r=>{
+  const q=searchTerm.trim().toLowerCase();
+  if(!q)return true;
+  const dishesHere=menu.filter(d=>d.restaurant_id===r.id).map(d=>d.name+' '+d.category).join(' ');
+  return [r.name,r.city,r.area,dishesHere].join(' ').toLowerCase().includes(q);
+ }),[restaurants,menu,searchTerm]);
+ const liveCravings=useMemo(()=>[...new Set(menu.map(d=>d.category.trim()).filter(Boolean))].slice(0,8),[menu]);
  const dishes=useMemo(()=>menu.filter(x=>x.restaurant_id===restaurantId),[menu,restaurantId]);
  const selected=useMemo(()=>dishes.filter(d=>(quantities[d.id]||0)>0),[dishes,quantities]);
  const estimatedTotal=selected.reduce((sum,d)=>sum+d.price_paise*(quantities[d.id]||0),0);
@@ -71,7 +79,7 @@ export default function DinePage(){
   }catch(e){setError(e instanceof Error?e.message:'Unable to load dining partners.');}
   finally{setLoading(false);}
  },[refreshMine]);
- useEffect(()=>{setArrival(todayInput());void refresh();},[refresh]);
+ useEffect(()=>{setArrival(todayInput());setSearchTerm(new URLSearchParams(window.location.search).get('q')||'');void refresh();},[refresh]);
  // In-page status refresh only; no WhatsApp, SMS or customer notification sends.
  useEffect(()=>{const timer=window.setInterval(()=>void refreshMine().catch(()=>{}),30_000);return()=>window.clearInterval(timer);},[refreshMine]);
 
@@ -138,12 +146,21 @@ export default function DinePage(){
  return <main data-zeshu-experience="glossy" className="zeshu-experience min-h-screen bg-[#f4f8f5] text-slate-900">
   <div className="mx-auto max-w-6xl px-4 py-6 md:py-10">
    <Link href="/" className="text-sm font-bold text-[#075E45]">← Back to Zeshu</Link>
-   <section className="mt-5 overflow-hidden rounded-[28px] bg-[linear-gradient(135deg,#054532,#0d8056)] px-6 py-9 text-white shadow-xl md:px-10">
+   <section className="mt-5 overflow-hidden rounded-[28px] bg-[linear-gradient(135deg,#7f2f16,#d65d18)] px-6 py-9 text-white shadow-xl md:px-10">
     <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-2 text-xs font-black tracking-wide"><UtensilsCrossed size={17}/> ZESHU DINE • JAGTIAL FIRST</p>
     <h1 className="mt-4 max-w-3xl text-3xl font-black leading-tight md:text-5xl">Your table. Your meal. Your arrival time.</h1>
     <p className="mt-4 max-w-3xl text-base leading-7 text-emerald-50">Request a restaurant table and optionally choose your food before you travel. The restaurant confirms the seat and schedules cooking close to your arrival—so your meal can be served fresh with less waiting.</p>
     <p className="mt-3 text-sm font-semibold text-emerald-100">No fake open tables, no guessed kitchen promises and no payment before restaurant confirmation.</p>
    </section>
+   <section aria-label="Dining modes" className="mt-5 grid grid-cols-3 gap-2">
+    {[{name:'Table booking',note:'Enquiry only',enabled:true,href:'#restaurants'},{name:'Food delivery',note:'Not live yet',enabled:false,href:'#restaurants'},{name:'Takeaway',note:'Not live yet',enabled:false,href:'#restaurants'}].map(mode=>
+      mode.enabled?<a key={mode.name} href={mode.href} aria-current="true" className="rounded-xl border border-orange-300 bg-orange-50 p-3 text-left text-xs font-black text-orange-900">{mode.name}<span className="mt-1 block text-[10px] font-semibold">{mode.note}</span></a>
+      :<div key={mode.name} className="rounded-xl border border-slate-200 bg-slate-100 p-3 text-xs font-black text-slate-500">{mode.name}<span className="mt-1 block text-[10px] font-semibold">{mode.note}</span></div>)}
+   </section>
+   {liveCravings.length>0 && <section aria-label="Cravings from verified menus" className="mt-5">
+    <h2 className="text-lg font-black">Explore the real menu</h2>
+    <div className="mt-2 flex gap-2 overflow-x-auto pb-1">{liveCravings.map(craving=><button key={craving} type="button" onClick={()=>setSearchTerm(craving)} className="shrink-0 rounded-full border border-orange-200 bg-white px-4 py-2 text-xs font-black text-orange-900">{craving}</button>)}</div>
+   </section>}
    <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
     {[
      {icon:CalendarDays,title:'1. Choose a real table',body:'Select your restaurant, guests and arrival time. You send a request, not an instant guarantee.'},
@@ -151,16 +168,28 @@ export default function DinePage(){
      {icon:Clock,title:'3. Arrive at the right time',body:'Check your live booking status. Cooking starts near serving time—not too early.'},
     ].map(x=><section key={x.title} className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm"><x.icon size={26} className="text-[#075E45]"/><h2 className="mt-3 font-black">{x.title}</h2><p className="mt-1 text-sm leading-6 text-slate-600">{x.body}</p></section>)}
    </div>
-   <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-7">
+   <section id="restaurants" className="mt-6 scroll-mt-36 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-7">
     <div className="flex items-center justify-between gap-3"><div><h2 className="text-2xl font-black">Reserve & pre-order</h2><p className="mt-1 text-sm text-slate-600">Only restaurants that pass onboarding and provide actual table capacity appear below.</p></div>
      <button type="button" onClick={()=>void refresh()} className="rounded-xl border p-3" aria-label="Refresh dining partners"><RefreshCw size={19}/></button></div>
+    {!loading && restaurants.length>0 && <div className="mt-5">
+      <h3 className="text-base font-black">Verified restaurant directory</h3>
+      <p className="mt-1 text-xs text-slate-600">These providers supplied real capacity data, but open-now status, distance and table availability are not assumed.</p>
+      {searchTerm && <div className="mt-2 flex items-center justify-between gap-2 text-sm"><span>Results for <strong>{searchTerm}</strong>: {matches.length}</span><button type="button" onClick={()=>setSearchTerm('')} className="font-bold text-orange-700 underline">Show all</button></div>}
+      {matches.length===0?<p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">No verified restaurants or menu items match this search yet.</p>:<div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {matches.map(r=><button key={r.id} type="button" onClick={()=>{setRestaurantId(r.id);setQuantities({});document.getElementById('dine-booking-form')?.scrollIntoView({behavior:'smooth',block:'start'});}} className="rounded-xl border border-orange-100 bg-orange-50/40 p-4 text-left transition hover:border-orange-400">
+          <span className="block text-sm font-black">{r.name}</span><span className="mt-1 block text-xs text-slate-600">{r.area ? r.area+', ' : ''}{r.city}</span>
+          <span className="mt-2 block text-xs text-slate-600">Listed hours: {r.opens_at.slice(0,5)}–{r.closes_at.slice(0,5)} IST · table subject to confirmation</span>
+          <span className="mt-3 block text-xs font-black text-orange-800">Request table →</span>
+        </button>)}
+      </div>}
+    </div>}
     {loading?<p className="mt-6 text-sm text-slate-600">Checking verified restaurants…</p>:
      restaurants.length===0?<div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
        <h3 className="text-lg font-black text-amber-950">Restaurant bookings are opening soon</h3>
        <p className="mt-2 text-sm leading-6 text-amber-900">No restaurant has an active, verified Zeshu table inventory yet. We are inviting restaurants in Jagtial first. You cannot book or pre-pay until a real partner is ready.</p>
        <a href="#join" className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-emerald-900 underline">Own a restaurant? Apply here <ArrowRight size={16}/></a>
       </div>:
-      <form onSubmit={reserve} className="mt-5 space-y-4">
+      <form id="dine-booking-form" onSubmit={reserve} className="mt-5 scroll-mt-36 space-y-4">
        <label className="block text-sm font-bold">Restaurant
         <select className={input+' mt-2'} value={restaurantId} onChange={e=>{setRestaurantId(e.target.value);setQuantities({});}}>
          {restaurants.map(r=><option key={r.id} value={r.id}>{r.name} · {r.city}</option>)}</select></label>
@@ -203,7 +232,7 @@ export default function DinePage(){
     {message&&<p role="status" className="mt-4 rounded-xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-900">{message}</p>}
     {error&&<p role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-800">{error}</p>}
    </section>
-   <section className="mt-5 rounded-3xl border bg-white p-5 shadow-sm md:p-7">
+   <section id="my-dining-requests" className="mt-5 scroll-mt-36 rounded-3xl border bg-white p-5 shadow-sm md:p-7">
     <div className="flex items-center justify-between gap-3"><div><h2 className="text-xl font-black">My dining requests</h2><p className="text-sm text-slate-500">Sign in to see your status and restaurant-confirmed arrival and kitchen timings.</p></div>
      <button onClick={()=>void refreshMine()} className="rounded-xl border p-3" aria-label="Refresh my dining requests"><RefreshCw size={18}/></button></div>
     {bookings.length===0?<p className="mt-4 text-sm text-slate-600">No dining requests found for this signed-in customer account.</p>:

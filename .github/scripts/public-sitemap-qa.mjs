@@ -6,7 +6,7 @@ assert(Array.isArray(urls)&&urls.length>=10&&urls.length<=30,'Limit the public s
 const values=urls.map(x=>x.url);
 assert(new Set(values).size===values.length,'Duplicate SEO URLs');
 assert(values.includes('https://zeshu.in/'),'Homepage missing');
-for(const pathname of ['/dine','/fashion','/help','/policies','/partners','/earn','/move','/pay']){
+for(const pathname of ['/dine','/fashion','/help','/policies','/partners','/earn','/move','/pay','/services','/weddings','/interiors']){
  assert(values.includes('https://zeshu.in'+pathname),`Public ${pathname} page missing`);
 }
 assert(!values.includes('https://zeshu.in/green'),'Paused Green must not be indexed');

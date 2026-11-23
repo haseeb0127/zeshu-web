@@ -2,6 +2,7 @@ import GlossyArtwork from "@/app/components/GlossyArtwork";
 import type { Metadata } from "next";
 import Link from "@/app/components/DocumentLink";
 import FashionLiveCatalogue from "../components/FashionLiveCatalogue";
+import {HeroCarousel,HorizontalDealRail} from "../components/departments/PageBlocks";
 import { ArrowRight } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -77,7 +78,7 @@ export default function FashionPage() {
           ← Back to Zeshu
         </Link>
 
-        <header className="zeshu-gloss-hero mt-6 overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#143d2c_0%,#075E45_55%,#2f765a_100%)] p-6 text-white md:p-10">
+        <header className="zeshu-gloss-hero mt-6 overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#3d2039_0%,#742c63_55%,#aa577d_100%)] p-6 text-white md:p-10">
 <GlossyArtwork kind="fashion"/>
           <div className="max-w-3xl">
             <p className="text-xs font-black uppercase tracking-[.18em] text-emerald-100">
@@ -97,6 +98,16 @@ export default function FashionPage() {
           </div>
         </header>
 
+        <nav aria-label="Fashion departments" className="mt-5 flex gap-2 overflow-x-auto pb-2">
+          {[["Women","WOMEN"],["Men","MEN"],["Kids","KIDS"],["Ethnic","WOMEN"],["Footwear","FOOTWEAR"],["Accessories","ACCESSORIES"]].map(([name,dept])=>
+            <Link key={name} href={`/fashion?department=${dept}#live-fashion-title`} className="shrink-0 rounded-full border border-fuchsia-200 bg-white px-4 py-3 text-xs font-black text-[#742c63]">{name}</Link>)}
+        </nav>
+        <div className="mt-5"><HeroCarousel slides={[
+          {title:"Festive & wedding wear",body:"Explore real seller-listed sarees, kurtas and occasion outfits. Inventory is displayed only after seller verification.",href:"/fashion?department=WOMEN#live-fashion-title",cta:"Browse available women’s fashion"},
+          {title:"Everyday essentials",body:"Discover shirts, T-shirts and casual clothing when sizes and stock are supplied by approved sellers.",href:"/fashion?department=MEN#live-fashion-title",cta:"Browse available men’s fashion"},
+          {title:"Shoes & accessories",body:"Compare actual footwear and accessories with verified seller details and product-level return information.",href:"/fashion?department=FOOTWEAR#live-fashion-title",cta:"Explore footwear"},
+        ]}/></div>
+        <HorizontalDealRail items={[]} />
         <section className="mt-7" aria-labelledby="fashion-categories-title">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>

@@ -38,6 +38,13 @@ function RequestQuoteForm() {
   const [error, setError] = useState('');
   const [result, setResult] = useState<Result | null>(null);
   const today = useMemo(() => getIndiaTodayISO(), []);
+  useEffect(()=>{
+    const pickup=params.get('pickup_town')||'';
+    const drop=params.get('destination')||'';
+    if(MOVE_QUOTE_TOWNS.includes(pickup as typeof MOVE_QUOTE_TOWNS[number]) && drop.length>=3 && drop.length<=200) {
+      setForm(prev=>({...prev,pickup_town:pickup,destination:drop}));
+    }
+  },[params]);
 
   useEffect(() => {
     let active = true;
