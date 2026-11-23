@@ -77,7 +77,7 @@ export default function FashionPage() {
           ← Back to Zeshu
         </Link>
 
-        <header className="zeshu-gloss-hero mt-6 overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#143d2c_0%,#075E45_55%,#2f765a_100%)] p-6 text-white md:p-10">
+        <header className="zeshu-gloss-hero mt-6 overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#3d2039_0%,#742c63_55%,#aa577d_100%)] p-6 text-white md:p-10">
 <GlossyArtwork kind="fashion"/>
           <div className="max-w-3xl">
             <p className="text-xs font-black uppercase tracking-[.18em] text-emerald-100">
@@ -97,6 +97,15 @@ export default function FashionPage() {
           </div>
         </header>
 
+        <nav aria-label="Fashion departments" className="mt-5 flex gap-2 overflow-x-auto pb-2">
+          {[["Women","WOMEN"],["Men","MEN"],["Kids","KIDS"],["Ethnic","WOMEN"],["Footwear","FOOTWEAR"],["Accessories","ACCESSORIES"]].map(([name,dept])=>
+            <Link key={name} href={`/fashion?department=${dept}#live-fashion-title`} className="shrink-0 rounded-full border border-fuchsia-200 bg-white px-4 py-3 text-xs font-black text-[#742c63]">{name}</Link>)}
+        </nav>
+        <section className="mt-5 rounded-2xl border border-fuchsia-100 bg-[linear-gradient(110deg,#fff6fc,#f8e9f2)] p-5" aria-label="Editorial fashion discovery">
+          <p className="text-xs font-black uppercase tracking-widest text-[#742c63]">Discover your style</p>
+          <h2 className="mt-2 text-xl font-black text-slate-900">Festive looks · Wedding wear · Everyday essentials</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Explore real seller listings below. Delivery dates, sizes and returns must be shown from actual product data—not assumed for the whole category.</p>
+        </section>
         <section className="mt-7" aria-labelledby="fashion-categories-title">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
