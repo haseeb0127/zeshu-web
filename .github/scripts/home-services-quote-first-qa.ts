@@ -57,7 +57,7 @@ assert(read('app/components/PartnerLeadForm.tsx').includes('Home-service profess
 const policies=read('app/policies/page.tsx');
 assert(policies.includes("id: 'home-services'"));
 assert(policies.includes('babysitting') || policies.includes('Babysitting'));
-assert(policies.includes('₹15/₹50'));
+assert(policies.includes('₹15 per accepted genuine quick opportunity'));
 assert(policies.includes('₹299/month'));
 assert(policies.includes('₹200 prepaid-credit pack'));
 assert(policies.includes('no menu preview') || policies.includes('No menu preview'));
