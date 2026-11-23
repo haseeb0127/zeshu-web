@@ -5,6 +5,7 @@ import { ArrowRight, Building2, HeartHandshake, Home, Paintbrush, PartyPopper, S
 export const metadata = {
   title: "Zeshu Services | Home Repairs, Weddings, Interiors & Dine",
   description: "Explore wedding and interior services on Zeshu and request quotes as provider coverage becomes available.",
+  alternates: { canonical: "/professional-services" },
 };
 
 const services = [
