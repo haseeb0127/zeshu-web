@@ -58,7 +58,17 @@ const policies=read('app/policies/page.tsx');
 assert(policies.includes("id: 'home-services'"));
 assert(policies.includes('babysitting') || policies.includes('Babysitting'));
 assert(policies.includes('₹15/₹50'));
-assert(policies.includes('₹199/₹299'));
+assert(policies.includes('₹299/month'));
+assert(policies.includes('₹200 prepaid-credit pack'));
+assert(policies.includes('no menu preview') || policies.includes('No menu preview'));
+assert(read('app/components/PartnerLeadForm.tsx').includes('HOME_SERVICE_MENUS[homeCategory]'));
+assert(read('app/components/PartnerLeadForm.tsx').includes('Free travel zone'));
+assert(read('app/components/HomeServicesMenuCatalog.tsx').includes('No surprise parts bills'));
+assert(read('app/components/HomeServicePlansPreview.tsx').includes('not current offers'));
+assert(read('app/components/HomeServicePlansPreview.tsx').includes('No automatic upgrade'));
+assert(read('app/professional-services/home-services/page.tsx').includes('<HomeServicesMenuCatalog />'));
+assert(read('app/professional-services/home-services/page.tsx').includes('<HomeServicePlansPreview />'));
+assert(!read('app/api/partners/route.ts').includes('chargeWallet'));
 assert(policies.includes('private to authorised Zeshu staff'));
 assert(!api.includes('confirmed appointment'));
 
