@@ -24,6 +24,8 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
   en: {},
   te: {
     "Fresh meat & fish": "తాజా మాంసం & చేపలు",
+    "Home Services": "ఇంటి సేవలు",
+    "Enquire only": "విచారణ మాత్రమే",
     "Jagtial only · Verified sellers and safe delivery required": "జగిత్యాలలో మాత్రమే · ధృవీకరించిన విక్రేతలు, సురక్షిత డెలివరీ తప్పనిసరి",
     "Payment receipt and order summary": "చెల్లింపు రసీదు మరియు ఆర్డర్ వివరాలు",
     "Zeshu Green": "జెషు గ్రీన్",
@@ -974,6 +976,8 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
   },
   hi: {
     "Fresh meat & fish": "ताज़ा मीट और मछली",
+    "Home Services": "घरेलू सेवाएँ",
+    "Enquire only": "केवल पूछताछ",
     "Jagtial only · Verified sellers and safe delivery required": "केवल जगतियाल · सत्यापित विक्रेता और सुरक्षित डिलीवरी ज़रूरी",
     "Payment receipt and order summary": "भुगतान रसीद और ऑर्डर विवरण",
     "Zeshu Green": "ज़ेशु ग्रीन",
@@ -1904,6 +1908,8 @@ const translations: Record<CustomerLanguageCode, Record<string, string>> = {
   },
   ur: {
     "Fresh meat & fish": "تازہ گوشت اور مچھلی",
+    "Home Services": "گھریلو خدمات",
+    "Enquire only": "صرف معلومات کی درخواست",
     "Jagtial only · Verified sellers and safe delivery required": "صرف جگتیال · تصدیق شدہ فروخت کنندگان اور محفوظ ڈیلیوری ضروری",
     "Payment receipt and order summary": "ادائیگی کی رسید اور آرڈر کی تفصیلات",
     "Zeshu Green": "زیشو گرین",
