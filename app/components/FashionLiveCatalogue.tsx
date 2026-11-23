@@ -29,6 +29,13 @@ export default function FashionLiveCatalogue() {
   const [department, setDepartment] = useState("ALL");
   const [size, setSize] = useState("ALL");
   const [colour, setColour] = useState("ALL");
+  const [searchTerm,setSearchTerm] = useState("");
+  useEffect(()=>{
+    const params=new URLSearchParams(window.location.search);
+    setSearchTerm((params.get("q")||"").slice(0,120));
+    const selected=params.get("department");
+    if(selected && ["WOMEN","MEN","KIDS","FOOTWEAR","ACCESSORIES"].includes(selected)) setDepartment(selected);
+  },[]);
 
   useEffect(() => {
     let active = true;
@@ -41,14 +48,16 @@ export default function FashionLiveCatalogue() {
   }, []);
 
   const products = useMemo(() => payload.products.filter((product) => {
+    const q=searchTerm.trim().toLowerCase();
+    if (q && ![product.name, product.brand||"", product.fashion.department,product.fashion.subcategory||"",product.seller.business_name].join(" ").toLowerCase().includes(q)) return false;
     if (department !== "ALL" && product.fashion.department !== department) return false;
     if (size !== "ALL" && !product.variants.some((variant) => variant.size_label === size)) return false;
     if (colour !== "ALL" && !product.variants.some((variant) => variant.colour_name === colour)) return false;
     return true;
-  }), [payload.products, department, size, colour]);
+  }), [payload.products, department, size, colour, searchTerm]);
 
   return (
-    <section className="mt-7 rounded-3xl border border-slate-200 bg-white p-5 md:p-7" aria-labelledby="live-fashion-title">
+    <section className="mt-7 scroll-mt-36 rounded-3xl border border-slate-200 bg-white p-5 md:p-7" aria-labelledby="live-fashion-title">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#075E45]">Live seller catalogue</p>
@@ -58,6 +67,7 @@ export default function FashionLiveCatalogue() {
         {!loading && <span className="rounded-full bg-slate-100 px-3 py-2 text-xs font-black text-slate-600">{payload.products.length} live products</span>}
       </div>
 
+      {searchTerm && <div className="mt-3 flex items-center justify-between gap-2 text-xs"><span>Search: <strong>{searchTerm}</strong></span><button type="button" onClick={()=>setSearchTerm("")} className="font-bold text-[#742c63] underline">Clear</button></div>}
       {payload.products.length > 0 && <div className="mt-5 grid gap-3 sm:grid-cols-3">
         <Filter label="Department" value={department} onChange={setDepartment} options={payload.filters.departments.map((value) => ({ value, label: departmentLabel[value] || value }))} />
         <Filter label="Size" value={size} onChange={setSize} options={payload.filters.sizes.map((value) => ({ value, label: value }))} />
@@ -74,14 +84,14 @@ export default function FashionLiveCatalogue() {
       ) : products.length === 0 ? (
         <p className="mt-5 rounded-2xl bg-slate-50 p-5 text-sm font-semibold text-slate-600">No live seller inventory matches these filters right now.</p>
       ) : (
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
           {products.map((product) => {
             const prices = product.variants.map((variant) => Number(variant.sale_price ?? product.price)).filter(Number.isFinite);
             const fromPrice = prices.length ? Math.min(...prices) : Number(product.price);
             const sizes = [...new Set(product.variants.map((variant) => variant.size_label).filter(Boolean))];
             const colours = [...new Set(product.variants.map((variant) => variant.colour_name).filter(Boolean))];
             return <article key={product.id} className="zeshu-gloss-card rounded-2xl border border-slate-200 p-3">
-              <div className="zeshu-product-stage aspect-square overflow-hidden rounded-xl bg-slate-50 p-3">
+              <div className="zeshu-product-stage aspect-[3/4] overflow-hidden rounded-xl bg-slate-50 p-3">
                 {product.image_url ? <img src={product.image_url} alt={product.name} className="zeshu-product-photo h-full w-full object-contain" loading="lazy" /> : <div className="grid h-full place-items-center text-xs font-bold text-slate-400">Image unavailable</div>}
               </div>
               <h3 className="mt-3 line-clamp-2 text-sm font-black">{product.name}</h3>
