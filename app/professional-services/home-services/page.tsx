@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import Link from '@/app/components/DocumentLink';
 import GlossyArtwork from '@/app/components/GlossyArtwork';
 import HomeServiceQuoteForm from '@/app/components/HomeServiceQuoteForm';
+import HomeServicesMenuCatalog from '@/app/components/HomeServicesMenuCatalog';
+import HomeServicePlansPreview from '@/app/components/HomeServicePlansPreview';
 import { HOME_SERVICE_CATEGORIES, HOME_SERVICE_HELD_CATEGORIES } from '@/app/lib/home-services-categories';
 import { ArrowRight, BadgeCheck, ClipboardCheck, House, ShieldAlert, Wrench } from 'lucide-react';
 
@@ -36,6 +38,8 @@ export default function HomeServicesPage() {
         </div>
       </section>
 
+      <HomeServicesMenuCatalog />
+
       <section className="mt-6 grid gap-3 md:grid-cols-3" aria-label="Customer protection">
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
           <ClipboardCheck size={21} className="text-[#075E45]"/>
@@ -69,9 +73,11 @@ export default function HomeServicesPage() {
         </div>
       </section>
 
+      <HomeServicePlansPreview />
+
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
         <h2 className="text-lg font-black">Are you a local service professional?</h2>
-        <p className="mt-2 text-sm leading-6 text-slate-600">Zeshu is welcoming interest from electricians, plumbers, AC/RO technicians, salons, beauticians, mehndi and makeup artists. Provider registration and review are free during the pilot. No recurring pass, ₹15/₹50 lead fee, ₹200 wallet recharge or per-job commission is being charged.</p>
+        <p className="mt-2 text-sm leading-6 text-slate-600">Zeshu is welcoming interest from electricians, plumbers, AC/RO technicians, salons, beauticians, mehndi and makeup artists. Provider registration and review are free during the pilot. You can submit your own service rate card and travel zone for private review. Proposed ₹299/month, ₹15/₹50 qualified lead and ₹200 credit-pack models are not being charged or activated.</p>
         <p className="mt-2 text-xs text-slate-600">Before activation, Zeshu must verify the provider's relevant credentials and serviceability. Paid plans will require separately accepted terms, fair lead definitions, GST invoices, refunds and cancellation rules.</p>
         <Link href="/partners?type=HOME_SERVICE_PRO#partner-apply" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#075E45] px-4 py-3 text-xs font-black text-white">Register partnership interest <ArrowRight size={16}/></Link>
       </section>
