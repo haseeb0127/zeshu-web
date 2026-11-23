@@ -39,6 +39,20 @@ export default function DineTablePage(){
   const loc={restaurant:p.get("restaurant")||"",table:p.get("table")||"",key:p.get("key")||""};
   setLocation(loc);void refresh(loc);
  },[]);
+ useEffect(()=>{
+  if(!success?.orderId||!requestKey.current)return;
+  const poll=async()=>{
+   try{
+    const url="/api/dine/table/order?"+new URLSearchParams({order:success.orderId,key:requestKey.current}).toString();
+    const response=await fetch(url,{cache:"no-store"});
+    if(!response.ok)return;
+    const body=await response.json();
+    if(typeof body.status==="string")setSuccess(prev=>prev?{...prev,status:body.status}:prev);
+   }catch{/* Keep the receipt visible even when temporary network access fails. */}
+  };
+  const timer=window.setInterval(()=>void poll(),12_000);
+  return ()=>window.clearInterval(timer);
+ },[success?.orderId]);
  function setQuantity(id:string,change:number){
   setQuantities(q=>({...q,[id]:Math.max(0,Math.min(10,(q[id]||0)+change))}));
   requestKey.current="";
@@ -76,7 +90,7 @@ export default function DineTablePage(){
     <section className="mt-6 rounded-3xl border border-emerald-200 bg-white p-8 text-center shadow-sm" role="status">
       <ChefHat size={42} className="mx-auto text-[#075e45]"/>
       <h2 className="mt-4 text-2xl font-black">Request sent to the counter</h2>
-      <p className="mt-3 text-sm leading-6 text-slate-600">Your food request is pending staff approval. It is not a confirmed kitchen order yet. Please ask staff if you need help.</p>
+      <p className="mt-3 text-sm leading-6 text-slate-600">{success.status==="PENDING_APPROVAL"?"Waiting for restaurant staff to approve your order. Cooking has not started.":success.status==="REJECTED"?"The restaurant could not accept your request. Please speak to staff.":success.status==="ACCEPTED"?"Staff accepted your order; the kitchen has not marked it preparing yet.":success.status==="PREPARING"?"The kitchen has started preparing your order.":success.status==="READY"?"Your food has been marked ready. Please check with restaurant staff.":success.status==="SERVED"?"Your order was marked served. Thank you!":"Please check with restaurant staff."}</p>
       <p className="mt-3 rounded-xl bg-slate-50 p-3 text-xs font-bold">Reference: {success.orderId.slice(0,8).toUpperCase()}</p>
       <p className="mt-4 font-black">Items subtotal: {rupees(subtotal)}</p>
       <p className="mt-2 text-xs text-slate-500">Taxes, discounts and final restaurant bill are determined at the counter. No online charge was taken.</p>
