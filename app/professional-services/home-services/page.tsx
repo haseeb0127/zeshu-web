@@ -73,7 +73,7 @@ export default function HomeServicesPage() {
         <h2 className="text-lg font-black">Are you a local service professional?</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">Zeshu is welcoming interest from electricians, plumbers, AC/RO technicians, salons, beauticians, mehndi and makeup artists. Provider registration and review are free during the pilot. No recurring pass, ₹15/₹50 lead fee, ₹200 wallet recharge or per-job commission is being charged.</p>
         <p className="mt-2 text-xs text-slate-600">Before activation, Zeshu must verify the provider's relevant credentials and serviceability. Paid plans will require separately accepted terms, fair lead definitions, GST invoices, refunds and cancellation rules.</p>
-        <Link href="/partners" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#075E45] px-4 py-3 text-xs font-black text-white">Register partnership interest <ArrowRight size={16}/></Link>
+        <Link href="/partners?type=HOME_SERVICE_PRO#partner-apply" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#075E45] px-4 py-3 text-xs font-black text-white">Register partnership interest <ArrowRight size={16}/></Link>
       </section>
     </div>
   </main>;
