@@ -45,7 +45,12 @@ assert(read('app/professional-services/weddings/page.tsx').includes('wedding-quo
 assert(read('app/professional-services/interiors/page.tsx').includes('interior-quote'));
 assert(!read('app/components/MoveQuickQuote.tsx').includes('razorpay'));
 assert(!read('app/components/departments/PageBlocks.tsx').includes('razorpay'));
-const sitemap=read('app/sitemap.ts');
-for (const route of ['/services','/weddings','/interiors'])assert(sitemap.includes("path:'"+route+"'"));
+const sitemapSource=read('app/sitemap.ts');
+assert(sitemapSource.includes('BASE_URL'), 'SEO sitemap must be generated from a canonical base');
+const sitemap=(await import('../../app/sitemap.ts')).default();
+const urls=new Set(sitemap.map(entry=>entry.url));
+for(const route of ['/services','/weddings','/interiors']){
+  assert(urls.has('https://zeshu.in'+route), 'Published sitemap must include '+route);
+}
 console.log('ZESHU_DEPARTMENT_APP_IN_APP_QA=PASS');
 
