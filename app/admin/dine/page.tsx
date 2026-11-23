@@ -5,15 +5,16 @@ import {adminSupabase} from '@/app/lib/browser-supabase';
 import {CalendarClock,ChefHat,ShieldCheck,RefreshCw,Store} from 'lucide-react';
 
 const supabase=adminSupabase();
-type Restaurant={id:string;name:string;city:string;address:string;fssai_registration:string;fssai_verified:boolean;booking_enabled:boolean;preorder_enabled:boolean};
+type Restaurant={id:string;name:string;city:string;address:string;fssai_registration:string;fssai_verified:boolean;booking_enabled:boolean;preorder_enabled:boolean;qr_order_enabled:boolean};
 type Table={id:string;restaurant_id:string;label:string;seats:number;enabled:boolean};
 type Dish={id:string;restaurant_id:string;name:string;price_paise:number;prep_minutes:number;available:boolean};
 type Lead={id:string;restaurant_name:string;city:string;contact_name:string;contact_phone:string;fssai_registration:string;status:string;created_at:string};
 type Booking={id:string;restaurant_id:string;contact_name:string;contact_phone:string;party_size:number;arrival_at:string;
  requested_serve_at:string;confirmed_serve_at:string|null;preordered_items:Array<{name:string;quantity:number}>;
  estimated_total_paise:number;status:string;kitchen_status:string;guest_journey_status:string;guest_eta_at:string|null;guest_arrived_at:string|null;prep_start_at:string|null;notes:string;created_at:string};
-type Snapshot={restaurants:Restaurant[];tables:Table[];menus:Dish[];bookings:Booking[];leads:Lead[]};
-const empty:Snapshot={restaurants:[],tables:[],menus:[],bookings:[],leads:[]};
+type Staff={restaurant_id:string;user_id:string;role:string;active:boolean};
+type Snapshot={restaurants:Restaurant[];tables:Table[];menus:Dish[];bookings:Booking[];leads:Lead[];staff:Staff[]};
+const empty:Snapshot={restaurants:[],tables:[],menus:[],bookings:[],leads:[],staff:[]};
 const when=(iso:string)=>new Date(iso).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Kolkata'});
 const input='mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm focus:border-emerald-600 focus:outline-none';
 export default function AdminDine(){
@@ -21,6 +22,7 @@ export default function AdminDine(){
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const [restaurant,setRestaurant]=useState({name:'',city:'Jagtial',area:'',address:'',fssaiNumber:'',opensAt:'11:00',closesAt:'22:00'});
  const [table,setTable]=useState({restaurantId:'',label:'T1',seats:4});
+ const [staffAccount,setStaffAccount]=useState({restaurantId:'',userId:'',role:'MANAGER'});
  const [dish,setDish]=useState({restaurantId:'',name:'',category:'Meals',priceRupees:'',prepMinutes:25});
  const [reviewed,setReviewed]=useState<Record<string,boolean>>({});
  const [preorders,setPreorders]=useState<Record<string,boolean>>({});
@@ -86,6 +88,41 @@ export default function AdminDine(){
      <label className="text-sm font-bold">Closing time<input className={input} type="time" value={restaurant.closesAt} onChange={e=>setRestaurant(x=>({...x,closesAt:e.target.value}))}/></label>
      <button disabled={busy} className="rounded-xl bg-[#075e45] px-5 py-3 text-sm font-black text-white disabled:opacity-50">Save private restaurant</button>
     </form>
+   </section>
+   <section className="rounded-2xl border border-emerald-200 bg-white p-5">
+    <h2 className="text-xl font-black">Zeshu Dine Lite POS pilot controls</h2>
+    <p className="mt-2 text-sm leading-6 text-slate-600">Real Table QR and Kitchen orders remain OFF until FSSAI/food-platform operations, a real menu, a real table, and a verified staff account are approved. Only approved restaurant members can access the private <Link href="/dine/kitchen" className="font-bold text-emerald-800 underline">Kitchen Dashboard</Link>.</p>
+    <div className="mt-4 grid gap-3 md:grid-cols-2">
+     <form onSubmit={e=>{e.preventDefault();void send('POST',{action:'staffAssign',...staffAccount});}} className="rounded-xl border p-4">
+      <h3 className="font-black">Assign a restaurant staff account</h3>
+      <label className="mt-2 block text-xs font-bold">Restaurant<select value={staffAccount.restaurantId} onChange={e=>setStaffAccount(s=>({...s,restaurantId:e.target.value}))} className={input} required>
+       <option value="">Choose restaurant</option>{data.restaurants.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
+      </select></label>
+      <label className="mt-2 block text-xs font-bold">Zeshu signed-in user ID<input value={staffAccount.userId} onChange={e=>setStaffAccount(s=>({...s,userId:e.target.value}))} className={input} required placeholder="User UUID from /dine/kitchen"/></label>
+      <label className="mt-2 block text-xs font-bold">Role<select value={staffAccount.role} onChange={e=>setStaffAccount(s=>({...s,role:e.target.value}))} className={input}>
+       {['OWNER','MANAGER','WAITER','KITCHEN'].map(role=><option key={role}>{role}</option>)}
+      </select></label>
+      <button disabled={busy||!staffAccount.restaurantId||!staffAccount.userId} className="mt-3 rounded-xl bg-[#075e45] px-4 py-3 text-sm font-black text-white disabled:opacity-50">Approve staff member</button>
+     </form>
+     <div className="rounded-xl border p-4">
+      <h3 className="font-black">Restaurant QR activation</h3>
+      <div className="mt-3 space-y-2">{data.restaurants.map(r=><div key={r.id} className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 p-3 text-sm">
+       <div><p className="font-bold">{r.name}</p><p className="text-xs text-slate-500">{r.qr_order_enabled?'QR PILOT ACTIVE':'QR PAUSED'} · {r.fssai_verified?'FSSAI checked':'Unverified'}</p></div>
+       <button disabled={busy} onClick={()=>void send('PATCH',{action:'qrPilot',restaurantId:r.id,enabled:!r.qr_order_enabled})}
+        className={"rounded-lg px-3 py-2 text-xs font-black text-white disabled:opacity-50 "+(r.qr_order_enabled?'bg-red-700':'bg-emerald-800')}>{r.qr_order_enabled?'Pause':'Review/Enable'}</button>
+      </div>)}</div>
+      <p className="mt-3 text-xs text-slate-500">QR activation never launches food delivery, online payment, OTP dispatch or rider matching.</p>
+     </div>
+    </div>
+    <h3 className="mt-5 font-black">Current restaurant staff access</h3>
+    <div className="mt-2 grid gap-2 md:grid-cols-2">{data.staff.map(s=><div key={s.restaurant_id+s.user_id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3 text-xs">
+     <div><p className="font-black">{venue(s.restaurant_id)} · {s.role} · {s.active?'Active':'Revoked'}</p><p className="break-all text-slate-500">{s.user_id}</p></div>
+     <button disabled={busy} onClick={()=>void send('PATCH',{action:'staffActive',restaurantId:s.restaurant_id,userId:s.user_id,active:!s.active})} className="rounded-lg border px-3 py-2 font-bold">{s.active?'Revoke access':'Reactivate'}</button>
+    </div>)}</div>
+    {data.staff.length===0&&<p className="mt-2 text-sm text-slate-600">No restaurant staff approved yet.</p>}
+    <h3 className="mt-5 font-black">Table QR security</h3>
+    <p className="mt-1 text-xs text-slate-600">If a standee is photographed or misused, rotate its token and print a replacement. The old QR will stop accepting orders.</p>
+    <div className="mt-2 flex flex-wrap gap-2">{data.tables.map(t=><button key={t.id} disabled={busy} onClick={()=>void send('PATCH',{action:'rotateTableQr',tableId:t.id})} className="rounded-lg border px-3 py-2 text-xs font-bold">Rotate {venue(t.restaurant_id)} · {t.label}</button>)}</div>
    </section>
    <section className="grid gap-4 md:grid-cols-2">
     <form onSubmit={e=>{e.preventDefault();void send('POST',{action:'table',...table});}} className="rounded-2xl border bg-white p-5">

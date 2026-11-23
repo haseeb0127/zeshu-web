@@ -9,15 +9,16 @@ const no=(error:string,status=400)=>response({error},status);
 
 export async function GET(request:Request){
  const db=await dineAdmin(request);if(!db)return no('Admin access required.',403);
- const [restaurants,menus,tables,bookings,leads]=await Promise.all([
+ const [restaurants,menus,tables,bookings,leads,staff]=await Promise.all([
   db.from('dine_restaurants').select('*').order('created_at',{ascending:false}).limit(100),
   db.from('dine_menu_items').select('id,restaurant_id,name,category,price_paise,prep_minutes,available').limit(500),
   db.from('dine_tables').select('id,restaurant_id,label,seats,enabled').limit(500),
   db.from('dine_bookings').select('id,restaurant_id,contact_name,contact_phone,party_size,arrival_at,requested_serve_at,confirmed_serve_at,prep_start_at,preordered_items,estimated_total_paise,status,kitchen_status,guest_journey_status,guest_eta_at,guest_arrived_at,notes,created_at').order('created_at',{ascending:false}).limit(200),
   db.from('dine_partner_leads').select('id,restaurant_name,city,contact_name,contact_phone,fssai_registration,enquiry_notes,status,created_at').order('created_at',{ascending:false}).limit(100),
+  db.from('dine_restaurant_staff').select('restaurant_id,user_id,role,active,created_at').limit(300),
  ]);
- if([restaurants,menus,tables,bookings,leads].some(r=>r.error))return no('Unable to load dining management data.',503);
- return response({restaurants:restaurants.data||[],menus:menus.data||[],tables:tables.data||[],bookings:bookings.data||[],leads:leads.data||[],
+ if([restaurants,menus,tables,bookings,leads,staff].some(r=>r.error))return no('Unable to load dining management data.',503);
+ return response({restaurants:restaurants.data||[],menus:menus.data||[],tables:tables.data||[],bookings:bookings.data||[],leads:leads.data||[],staff:staff.data||[],
   note:'Partner verification, kitchen timing and table confirmations require real operator review.'});
 }
 
@@ -25,6 +26,17 @@ export async function POST(request:Request){
  const db=await dineAdmin(request);if(!db)return no('Admin access required.',403);
  let x:Record<string,unknown>;
  try{const v:unknown=await request.json();if(!obj(v))throw Error();x=v;}catch{return no('Invalid input.');}
+ if(x.action==='staffAssign'){
+  if(!uuid(x.restaurantId)||!uuid(x.userId)||!['OWNER','MANAGER','WAITER','KITCHEN'].includes(String(x.role)))return no('Choose a restaurant, valid Zeshu user ID and staff role.');
+  const {data:venue,error:venueError}=await db.from('dine_restaurants').select('id').eq('id',x.restaurantId).maybeSingle();
+  if(venueError||!venue)return no('Restaurant does not exist.',404);
+  const {data:person,error:userError}=await db.auth.admin.getUserById(String(x.userId));
+  if(userError||!person.user)return no('Customer must sign in to Zeshu first. Use their actual verified user ID.',404);
+  const {error}=await db.from('dine_restaurant_staff').upsert({
+   restaurant_id:x.restaurantId,user_id:x.userId,role:x.role,active:true,
+  },{onConflict:'restaurant_id,user_id'});
+  return error?no('Unable to assign restaurant staff.',503):response({ok:true,note:'Account linked to restaurant. Staff still cannot operate a paused QR pilot.'});
+ }
  if(x.action==='restaurant'){
   const name=safeString(x.name,120),city=safeString(x.city,80),address=safeString(x.address,400),
    area=safeString(x.area,100),fssai_registration=safeString(x.fssaiNumber,14);
@@ -60,6 +72,51 @@ export async function PATCH(request:Request){
  const db=await dineAdmin(request);if(!db)return no('Admin access required.',403);
  let x:Record<string,unknown>;
  try{const v:unknown=await request.json();if(!obj(v))throw Error();x=v;}catch{return no('Invalid update.');}
+ if(x.action==='qrPilot'){
+  if(!uuid(x.restaurantId)||typeof x.enabled!=='boolean')return no('Invalid pilot selection.');
+  if(x.enabled===true&&await getRuntimeEnvValue('DINE_OPERATIONS_APPROVED')!=='true')
+   return no('Zeshu Dine food-platform operations and compliance must be approved before accepting QR orders.',409);
+  const {data:venue,error:venueError}=await db.from('dine_restaurants').select('id,fssai_verified,booking_enabled').eq('id',x.restaurantId).maybeSingle();
+  if(venueError||!venue)return no('Restaurant not found.',404);
+  if(x.enabled===true){
+   if(!venue.fssai_verified||!venue.booking_enabled)return no('Verify FSSAI and enable approved bookings before QR pilot.',409);
+   const [tables,dishes,staff]=await Promise.all([
+    db.from('dine_tables').select('id').eq('restaurant_id',x.restaurantId).eq('enabled',true).limit(1),
+    db.from('dine_menu_items').select('id').eq('restaurant_id',x.restaurantId).eq('available',true).limit(1),
+    db.from('dine_restaurant_staff').select('user_id').eq('restaurant_id',x.restaurantId).eq('active',true).limit(1),
+   ]);
+   if([tables,dishes,staff].some(r=>r.error)||!tables.data?.length||!dishes.data?.length||!staff.data?.length)
+    return no('Add a real table, an available dish and at least one approved restaurant staff account.',409);
+  }
+  const {data,error}=await db.from('dine_restaurants').update({qr_order_enabled:x.enabled,updated_at:new Date().toISOString()})
+   .eq('id',x.restaurantId).select('id').maybeSingle();
+  return error?no('QR pilot status update failed.',503):!data?no('Restaurant not found.',404):
+   response({ok:true,note:x.enabled?'QR pilot enabled for the verified restaurant only. Public requests still require staff approval.':'QR pilot paused. Existing accepted orders still require handling.'});
+ }
+ if(x.action==='staffActive'){
+  if(!uuid(x.restaurantId)||!uuid(x.userId)||typeof x.active!=='boolean')return no('Invalid staff update.');
+  if(x.active===false){
+   const {data:venue,error:venueError}=await db.from('dine_restaurants').select('qr_order_enabled').eq('id',x.restaurantId).maybeSingle();
+   if(venueError||!venue)return no('Restaurant not found.',404);
+   if(venue.qr_order_enabled){
+    const {data:others,error:othersError}=await db.from('dine_restaurant_staff').select('user_id')
+     .eq('restaurant_id',x.restaurantId).eq('active',true).neq('user_id',x.userId).limit(1);
+    if(othersError)return no('Unable to check remaining staff.',503);
+    if(!others?.length)return no('Pause restaurant QR ordering before revoking its final active staff account.',409);
+   }
+  }
+  const {data,error}=await db.from('dine_restaurant_staff').update({active:x.active})
+   .eq('restaurant_id',x.restaurantId).eq('user_id',x.userId).select('user_id').maybeSingle();
+  return error?no('Staff access update failed.',503):!data?no('Staff membership not found.',404):
+   response({ok:true,note:x.active?'Staff account reactivated.':'Staff access revoked.'});
+ }
+ if(x.action==='rotateTableQr'){
+  if(!uuid(x.tableId))return no('Invalid table.');
+  const {data,error}=await db.from('dine_tables').update({qr_token:crypto.randomUUID()})
+   .eq('id',x.tableId).select('id').maybeSingle();
+  return error?no('Could not rotate table QR.',503):!data?no('Table not found.',404):
+   response({ok:true,note:'Table QR rotated. Reprint the standee; previous copies no longer accept orders.'});
+ }
  if(x.action==='menuAvailability'){
   if(!uuid(x.menuItemId)||typeof x.available!=='boolean')return no('Invalid menu update.');
   const {data,error}=await db.from('dine_menu_items').update({available:x.available}).eq('id',x.menuItemId).select('id').maybeSingle();

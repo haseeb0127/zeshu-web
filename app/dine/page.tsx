@@ -152,6 +152,10 @@ export default function DinePage(){
     <p className="mt-4 max-w-3xl text-base leading-7 text-emerald-50">Request a restaurant table and optionally choose your food before you travel. The restaurant confirms the seat and schedules cooking close to your arrival—so your meal can be served fresh with less waiting.</p>
     <p className="mt-3 text-sm font-semibold text-emerald-100">No fake open tables, no guessed kitchen promises and no payment before restaurant confirmation.</p>
    </section>
+   <section className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-white p-4">
+    <div><p className="font-black text-slate-900">Run your restaurant with Zeshu Lite POS</p><p className="mt-1 text-xs text-slate-600">Table QR, kitchen order board, staff-assisted orders, table pre-bookings and stock controls. Pilot access for approved restaurants only.</p></div>
+    <Link href="/dine/kitchen" className="rounded-xl bg-[#075e45] px-4 py-3 text-xs font-black text-white">Restaurant kitchen login →</Link>
+   </section>
    <section aria-label="Dining modes" className="mt-5 grid grid-cols-3 gap-2">
     {[{name:'Table booking',note:'Enquiry only',enabled:true,href:'#restaurants'},{name:'Food delivery',note:'Not live yet',enabled:false,href:'#restaurants'},{name:'Takeaway',note:'Not live yet',enabled:false,href:'#restaurants'}].map(mode=>
       mode.enabled?<a key={mode.name} href={mode.href} aria-current="true" className="rounded-xl border border-orange-300 bg-orange-50 p-3 text-left text-xs font-black text-orange-900">{mode.name}<span className="mt-1 block text-[10px] font-semibold">{mode.note}</span></a>
