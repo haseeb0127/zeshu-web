@@ -33,7 +33,7 @@ export default function HomeServicesPage() {
             <Wrench size={20} className="text-[#075E45]"/>
             <h3 className="mt-3 text-sm font-black">{item.label}</h3>
             <p className="mt-1 text-xs leading-5 text-slate-600">{item.detail}</p>
-            <p className="mt-2 text-[10px] font-bold text-[#075E45]">Explore scope · quote enquiry only</p>
+            <p className="mt-2 text-[10px] font-bold text-[#075E45]">Quote enquiry only · explore scope</p>
           </a>)}
         </div>
       </section>
