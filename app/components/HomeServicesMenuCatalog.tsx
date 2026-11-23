@@ -1,9 +1,17 @@
+'use client';
+
+import {useEffect,useState} from 'react';
 import { HOME_SERVICE_CATEGORIES } from '@/app/lib/home-services-categories';
 import { HOME_SERVICE_MENUS } from '@/app/lib/home-services-menu';
 import { ClipboardList, MapPin, ReceiptText, ShieldCheck } from 'lucide-react';
 
 export default function HomeServicesMenuCatalog() {
-  return <section className="mt-7" aria-label="Standardised home-service menu cards">
+  const [searchTerm,setSearchTerm]=useState('');
+  useEffect(()=>{setSearchTerm((new URLSearchParams(window.location.search).get('q')||'').slice(0,120));},[]);
+  const categories=HOME_SERVICE_CATEGORIES.filter(category=>!searchTerm.trim() ||
+    [category.label,category.detail,...HOME_SERVICE_MENUS[category.code].map(x=>x.name+' '+x.scope)]
+    .join(' ').toLowerCase().includes(searchTerm.trim().toLowerCase()));
+  return <section id="service-menus" className="mt-7 scroll-mt-36" aria-label="Standardised home-service menu cards">
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
         <p className="text-xs font-black uppercase tracking-widest text-[#075E45]">Compare services clearly</p>
@@ -12,8 +20,10 @@ export default function HomeServicesMenuCatalog() {
       </div>
       <span className="rounded-full bg-amber-50 px-3 py-2 text-xs font-black text-amber-900">Pricing &amp; verified listings not yet live</span>
     </div>
+    {searchTerm && <div className="mt-3 flex items-center justify-between gap-2 text-xs"><span>{categories.length} service categories for <strong>{searchTerm}</strong></span><button type="button" onClick={()=>setSearchTerm('')} className="font-bold text-[#087e72] underline">Show all</button></div>}
+    {categories.length===0 && <p className="mt-3 rounded-xl bg-white p-4 text-sm text-slate-600">No standard service menu matches this search. You can still describe the job in a free quote enquiry.</p>}
     <div className="mt-4 grid gap-4 md:grid-cols-2">
-      {HOME_SERVICE_CATEGORIES.map(category => <article key={category.code} className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
+      {categories.map(category => <article id={`service-${category.code.toLowerCase()}`} key={category.code} className="scroll-mt-36 rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
         <div className="flex items-start gap-3"><span className="rounded-xl bg-emerald-50 p-2 text-[#075E45]"><ClipboardList size={21}/></span><div><h3 className="font-black">{category.label}</h3><p className="mt-1 text-xs text-slate-500">{category.visit ? 'Home-visit enquiry' : 'Salon appointment enquiry'} · Jagtial only</p></div></div>
         <ul className="mt-4 divide-y divide-slate-100">
           {HOME_SERVICE_MENUS[category.code].map(item => <li key={item.name} className="flex items-start justify-between gap-3 py-3 text-xs">
