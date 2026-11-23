@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   title: "Zeshu Fashion | Clothing, Footwear & Accessories",
   description:
     "Shop clothing, footwear and accessories on Zeshu Fashion when verified seller stock and delivery are available.",
+  alternates: { canonical: "/fashion" },
 };
 
 const fashionGroups = [
