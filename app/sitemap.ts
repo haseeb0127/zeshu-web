@@ -1,33 +1,44 @@
-import type {MetadataRoute} from 'next';
+import type { MetadataRoute } from "next";
 
 /**
- * Public, crawlable evergreen routes only.
- * Never index private orders, checkout, authentication, admin, internal APIs,
- * placeholder product URLs or unverified individual restaurant/seller pages.
- * Availability on discovery pages is explicitly conditional on real partners.
+ * Only public, working, evergreen discovery pages. Never include an account,
+ * a product/restaurant slug without verified stock, or a blocked admin/API URL.
+ * lastModified is a REAL edit date for pages updated on 23 Nov 2026; do not
+ * overwrite it with new Date() for every crawl/build (Google ignores false dates).
  */
-export default function sitemap():MetadataRoute.Sitemap {
-  const origin='https://zeshu.in';
-  const pages=[
-    {path:'/',priority:1,changeFrequency:'daily'},
-    {path:'/help',priority:.9,changeFrequency:'monthly'},
-    {path:'/policies',priority:.8,changeFrequency:'monthly'},
-    {path:'/partners',priority:.75,changeFrequency:'monthly'},
-    {path:'/pay',priority:.7,changeFrequency:'weekly'},
-    {path:'/fashion',priority:.7,changeFrequency:'weekly'},
-    {path:'/dine',priority:.7,changeFrequency:'weekly'},
-    {path:'/move',priority:.65,changeFrequency:'weekly'},
-    {path:'/professional-services',priority:.65,changeFrequency:'weekly'},
-    {path:'/services',priority:.75,changeFrequency:'weekly'},
-    {path:'/weddings',priority:.65,changeFrequency:'weekly'},
-    {path:'/interiors',priority:.65,changeFrequency:'weekly'},
-    {path:'/earn',priority:.65,changeFrequency:'monthly'},
-    {path:'/earn/promoters',priority:.55,changeFrequency:'monthly'},
-    {path:'/app',priority:.55,changeFrequency:'monthly'},
-  ] as const;
-  return pages.map(p=>({
-    url:origin+p.path,
-    priority:p.priority,
-    changeFrequency:p.changeFrequency,
+const BASE_URL = "https://zeshu.in";
+const DEPARTMENT_UPDATE = new Date("2026-11-23T00:00:00+05:30");
+
+type PublicPage = {
+  path: string;
+  priority: number;
+  changeFrequency: NonNullable<MetadataRoute.Sitemap[number]["changeFrequency"]>;
+  lastModified?: Date;
+};
+
+const pages: readonly PublicPage[] = [
+  { path: "/", priority: 1, changeFrequency: "daily", lastModified: DEPARTMENT_UPDATE },
+  { path: "/dine", priority: 0.9, changeFrequency: "weekly", lastModified: DEPARTMENT_UPDATE },
+  { path: "/move", priority: 0.9, changeFrequency: "weekly", lastModified: DEPARTMENT_UPDATE },
+  { path: "/pay", priority: 0.85, changeFrequency: "weekly", lastModified: DEPARTMENT_UPDATE },
+  { path: "/services", priority: 0.85, changeFrequency: "weekly", lastModified: DEPARTMENT_UPDATE },
+  { path: "/fashion", priority: 0.85, changeFrequency: "weekly", lastModified: DEPARTMENT_UPDATE },
+  { path: "/weddings", priority: 0.75, changeFrequency: "weekly", lastModified: DEPARTMENT_UPDATE },
+  { path: "/interiors", priority: 0.75, changeFrequency: "weekly", lastModified: DEPARTMENT_UPDATE },
+  { path: "/help", priority: 0.75, changeFrequency: "monthly" },
+  { path: "/policies", priority: 0.7, changeFrequency: "monthly" },
+  { path: "/partners", priority: 0.7, changeFrequency: "monthly" },
+  { path: "/professional-services", priority: 0.6, changeFrequency: "monthly" },
+  { path: "/earn", priority: 0.65, changeFrequency: "monthly" },
+  { path: "/earn/promoters", priority: 0.55, changeFrequency: "monthly" },
+  { path: "/app", priority: 0.55, changeFrequency: "monthly" },
+];
+
+export default function sitemap(): MetadataRoute.Sitemap {
+  return pages.map(({ path, priority, changeFrequency, lastModified }) => ({
+    url: BASE_URL + path,
+    priority,
+    changeFrequency,
+    ...(lastModified ? { lastModified } : {}),
   }));
 }
