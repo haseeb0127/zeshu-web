@@ -79,8 +79,8 @@ for (const department of ['Zeshu Fashion', 'Zeshu Pay', 'Zeshu Move', 'Customer 
 }
 assert(page.includes('Based in Jagtial, Telangana'), 'Homepage footer must state business location');
 
-assert(layout.includes('Telangana Move & Courier'), 'Site metadata must describe broader Zeshu service scope');
-assert(layout.includes('India-wide digital services'), 'Site metadata must describe digital-service scope');
+assert(layout.includes('scheduled transport quotes'), 'Site metadata must describe the real quotation-based Move experience');
+assert(layout.includes('recharge or bill discovery'), 'Site metadata must describe bill discovery without claiming live payments');
 
 for (const languageSection of ['te:', 'hi:', 'ur:']) {
   assert(translations.includes(languageSection), `Translation dictionary missing ${languageSection}`);
