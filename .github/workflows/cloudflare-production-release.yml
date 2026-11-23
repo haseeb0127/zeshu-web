@@ -260,10 +260,13 @@ jobs:
             assert(await page.locator('header button[aria-label="View notifications and account updates"]').count() === 0, 'Live mobile bell was not removed');
             assert(await page.locator('header button[aria-label="Open shopping cart"]').count() === 0, 'Live mobile header still has cart');
             assert(await page.locator('nav[aria-label="Primary navigation"] button').count() >= 4, 'Mobile cart navigation unavailable');
-            const mobileQuickNav = page.locator('nav[aria-label="Explore Zeshu departments"]');
-            await mobileQuickNav.waitFor({ state: 'visible', timeout: 10000 });
-            for (const item of ['Shop', 'Fashion', 'Pay', 'Move', 'Services']) {
-              assert((await mobileQuickNav.innerText()).includes(item), `Live mobile launch is missing ${item}`);
+            const everydayQuickNav = page.locator('nav[aria-label="Explore everyday Zeshu departments"]');
+            const specialistQuickNav = page.locator('nav[aria-label="Explore professional quotes and fashion"]');
+            await everydayQuickNav.waitFor({ state: 'visible', timeout: 10000 });
+            await specialistQuickNav.waitFor({ state: 'visible', timeout: 10000 });
+            const quickNavLabels = (await everydayQuickNav.innerText()) + ' ' + (await specialistQuickNav.innerText());
+            for (const item of ['Shop', 'Dine', 'Fashion', 'Pay', 'Move', 'Services', 'Weddings', 'Interiors']) {
+              assert(quickNavLabels.includes(item), `Live mobile launch is missing ${item}`);
             }
             await page.setViewportSize({ width: 1280, height: 900 });
             const departmentNav = page.locator('[data-customer-department-nav="primary"]');
@@ -280,14 +283,16 @@ jobs:
             await firstArt.waitFor({state:'attached',timeout:10000});
             assert((await firstArt.getAttribute('src'))?.includes('.webp'), 'Production must use optimized glossy 3D WebP images');
             // Regression: navigate using real mobile taps and return to Home.
-            for (const route of ['/fashion', '/move', '/professional-services']) {
-              const link = page.locator('nav[aria-label="Explore Zeshu departments"] a[href="' + route + '"]');
+            for (const route of ['/fashion', '/move', '/services']) {
+              const nav = route === '/move' ? everydayQuickNav : specialistQuickNav;
+              const link = nav.locator('a[href="' + route + '"]');
               await link.click();
               await page.waitForURL(url => url.pathname === route, { timeout: 25000 });
               await page.locator('main').first().waitFor({ state: 'visible', timeout: 15000 });
               assert(!(await page.locator('body').innerText()).includes('This Zeshu page needs another try'), 'Mobile navigation failed: ' + route);
               await page.goBack({ waitUntil: 'domcontentloaded', timeout: 25000 });
-              await page.locator('nav[aria-label="Explore Zeshu departments"]').waitFor({ state: 'visible', timeout: 15000 });
+              await page.locator('nav[aria-label="Explore everyday Zeshu departments"]').waitFor({ state: 'visible', timeout: 15000 });
+              await page.locator('nav[aria-label="Explore professional quotes and fashion"]').waitFor({ state: 'visible', timeout: 15000 });
             }
             // Check actual production banner taps and browser Back recovery.
             for (const [poster, route] of [
