@@ -29,12 +29,12 @@ export default function HomeServicesPage() {
         <h2 className="text-xl font-black">Services currently accepting enquiries</h2>
         <p className="mt-1 text-sm text-slate-600">These are quote categories, not an available-technician or instant-booking list.</p>
         <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-          {HOME_SERVICE_CATEGORIES.map(item => <article key={item.code} className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+          {HOME_SERVICE_CATEGORIES.map(item => <a href={`#service-${item.code.toLowerCase()}`} key={item.code} className="block rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
             <Wrench size={20} className="text-[#075E45]"/>
             <h3 className="mt-3 text-sm font-black">{item.label}</h3>
             <p className="mt-1 text-xs leading-5 text-slate-600">{item.detail}</p>
-            <p className="mt-2 text-[10px] font-bold text-[#075E45]">Quote enquiry only</p>
-          </article>)}
+            <p className="mt-2 text-[10px] font-bold text-[#075E45]">Explore scope · quote enquiry only</p>
+          </a>)}
         </div>
       </section>
 
@@ -73,7 +73,7 @@ export default function HomeServicesPage() {
         </div>
       </section>
 
-      <HomeServicePlansPreview />
+      <section id="provider-plans" className="scroll-mt-36"><HomeServicePlansPreview /></section>
 
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
         <h2 className="text-lg font-black">Are you a local service professional?</h2>
