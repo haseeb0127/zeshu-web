@@ -105,6 +105,8 @@ jobs:
         run: node --experimental-strip-types .github/scripts/local-paid-delivery-qa.ts
       - name: Verify Zeshu GST and marketplace customer policies
         run: node --experimental-strip-types .github/scripts/zeshu-gst-kyc-policy-qa.ts
+      - name: Verify seven Zeshu app-in-app departments and safe contextual navigation
+        run: node --experimental-strip-types .github/scripts/departments-app-in-app-qa.ts
       - name: Verify Zeshu Home Services quote-only and safeguarding launch gates
         run: node --experimental-strip-types .github/scripts/home-services-quote-first-qa.ts
       - name: Verify private Zeshu Green unit economics and no-spend pause safety
