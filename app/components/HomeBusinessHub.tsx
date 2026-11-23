@@ -69,9 +69,9 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
       <p className="mb-2 mt-4 text-[11px] font-black uppercase tracking-wider text-[#075E45] md:text-sm">{t("Quotes & Local Pros")}</p>
       <nav aria-label="Explore professional quotes and fashion" className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-4">
         {[
-          {label:t("Weddings"), href:"/professional-services/weddings", icon:PartyPopper, status:t("Get a quote"), tone:"bg-[#fff2eb] text-[#b95b31]"},
-          {label:t("Interiors"), href:"/professional-services/interiors", icon:Paintbrush, status:t("Get a quote"), tone:"bg-[#eff5ee] text-[#397149]"},
-          {label:t("Home Services"), href:"/professional-services/home-services", icon:Grid2X2, status:t("Enquire only"), tone:"bg-[#e8f5fc] text-[#156f90]"},
+          {label:t("Weddings"), href:"/weddings", icon:PartyPopper, status:t("Get a quote"), tone:"bg-[#fff2eb] text-[#b95b31]"},
+          {label:t("Interiors"), href:"/interiors", icon:Paintbrush, status:t("Get a quote"), tone:"bg-[#eff5ee] text-[#397149]"},
+          {label:t("Home Services"), href:"/services", icon:Grid2X2, status:t("Enquire only"), tone:"bg-[#e8f5fc] text-[#156f90]"},
           {label:t("Fashion"), href:"/fashion", icon:ShoppingBag, status:t("Explore listings"), tone:"bg-[#fff0f4] text-[#cb3370]"}
         ].map(item => <Link key={item.href} href={item.href} className="flex min-w-0 items-center gap-2 rounded-xl border border-[#e8eee7] bg-white p-2 text-left shadow-sm md:px-4 md:py-3">
           <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${item.tone} md:h-11 md:w-11`}><item.icon size={19} aria-hidden="true"/></span>
@@ -101,7 +101,7 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
               {s.action==="shop" ? <button onClick={onShopNearby} className="pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-[18px] bg-white px-5 text-xs font-black text-[#142034] shadow-[0_8px_16px_rgba(0,0,0,.14)] md:min-h-11 md:text-sm">{s.cta}<ChevronRight size={16}/></button>
                 :s.action==="pay" ? <Link href="/pay" className="pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>
                 :s.action==="fashion" ? <Link href="/fashion" className="pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>
-                :<Link href={s.action==="weddings"?"/professional-services/weddings":s.action==="interiors"?"/professional-services/interiors":s.action==="services"?"/professional-services":s.action==="support"?"/help":s.action==="app"?"/app":s.action==="dine"?"/dine":"/move"} className="pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>}
+                :<Link href={s.action==="weddings"?"/weddings":s.action==="interiors"?"/interiors":s.action==="services"?"/services":s.action==="support"?"/help":s.action==="app"?"/app":s.action==="dine"?"/dine":"/move"} className="pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-2xl bg-white px-4 text-xs font-black text-slate-900">{s.cta}<ChevronRight size={15}/></Link>}
             </div>
           </div>
           <span className="pointer-events-none absolute bottom-1.5 right-2 z-[2] rounded-full bg-[#003b2a]/65 px-2 py-0.5 text-[8px] font-semibold text-white/95 md:text-[10px]">Illustrative artwork</span>

@@ -138,10 +138,13 @@ jobs:
             assert(await page.locator('header button[aria-label="Open shopping cart"]').count() === 0, 'Mobile header still duplicates the cart');
             assert(await page.locator('nav[aria-label="Primary navigation"] button').count() >= 4, 'Mobile cart navigation missing');
             assert(await page.locator('section[aria-labelledby="shop-jagtial-title"]').count() === 0, 'Duplicate Shop in Jagtial promo still rendered');
-            const mobileDepartments = moveQuick.locator('nav[aria-label="Explore Zeshu departments"]');
-            await mobileDepartments.waitFor({ state: 'visible', timeout: 10000 });
-            const mobileDepartmentText = (await mobileDepartments.innerText()).replace(/\s+/g, ' ');
-            for (const department of ['Shop', 'Fashion', 'Pay', 'Move', 'Services']) {
+            // Zeshu has two deliberate quick-launch rows: everyday and specialist.
+            const everydayDepartments = moveQuick.locator('nav[aria-label="Explore everyday Zeshu departments"]');
+            const specialistDepartments = moveQuick.locator('nav[aria-label="Explore professional quotes and fashion"]');
+            await everydayDepartments.waitFor({ state: 'visible', timeout: 10000 });
+            await specialistDepartments.waitFor({ state: 'visible', timeout: 10000 });
+            const mobileDepartmentText = ((await everydayDepartments.innerText()) + ' ' + (await specialistDepartments.innerText())).replace(/\s+/g, ' ');
+            for (const department of ['Shop', 'Dine', 'Fashion', 'Pay', 'Move', 'Services', 'Weddings', 'Interiors']) {
               assert(mobileDepartmentText.includes(department), `Homepage mobile quick-launch is missing ${department}`);
             }
             const homeChat = moveQuick.locator('[data-zeshu-home-assistant="true"]');
@@ -151,8 +154,9 @@ jobs:
             await page.locator('#zeshu-assistant-panel').getByRole('button',{name:'Close Zeshu Assistant'}).click();
             // Exercise actual taps, not merely HTTP GETs: a mobile webview user
             // must be able to open a department and return without a blank screen.
-            for (const route of ['/fashion', '/move', '/professional-services']) {
-              const link = moveQuick.locator('nav[aria-label="Explore Zeshu departments"] a[href="' + route + '"]');
+            for (const route of ['/fashion', '/move', '/services']) {
+              const nav = route === '/move' ? everydayDepartments : specialistDepartments;
+              const link = nav.locator('a[href="' + route + '"]');
               await link.click();
               await page.waitForURL(url => url.pathname === route, { timeout: 25000 });
               try {
@@ -167,7 +171,8 @@ jobs:
               }
               assert(!(await page.locator('body').innerText()).includes('This Zeshu page needs another try'), 'Department tap triggered the error boundary: ' + route);
               await page.goBack({ waitUntil: 'domcontentloaded', timeout: 25000 });
-              await page.locator('nav[aria-label="Explore Zeshu departments"]').waitFor({ state: 'visible', timeout: 15000 });
+              await page.locator('nav[aria-label="Explore everyday Zeshu departments"]').waitFor({ state: 'visible', timeout: 15000 });
+              await page.locator('nav[aria-label="Explore professional quotes and fashion"]').waitFor({ state: 'visible', timeout: 15000 });
             }
             // Checkout flow stays customer-friendly while reconciliation is
             // server-side; never expose a manual previous-payment status panel.
