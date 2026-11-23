@@ -2,6 +2,7 @@
 
 import Link from "@/app/components/DocumentLink";
 import {useCustomerLanguage} from "@/app/components/CustomerLanguageProvider";
+import {useEffect,useState} from "react";
 import {ArrowLeft,ArrowUpRight,BadgeCheck,CarFront,Clock3,Droplets,Flame,Receipt,ShieldCheck,Smartphone,Tv,Wifi,Zap} from "lucide-react";
 
 const copy={
@@ -56,6 +57,9 @@ const categories=[
 
 export default function ZeshuPayPage(){
   const {t,language}=useCustomerLanguage();
+  const [searchTerm,setSearchTerm]=useState("");
+  useEffect(()=>{setSearchTerm(new URLSearchParams(window.location.search).get("q")||"");},[]);
+  const matches=categories.filter(item=>[item.id,item.label,item.desc].join(" ").toLowerCase().includes(searchTerm.trim().toLowerCase()));
   const lang=(language in copy?language:"en") as keyof typeof copy;
   const w=copy[lang];
   const markIntent=()=>{
@@ -63,8 +67,8 @@ export default function ZeshuPayPage(){
     // without making a PWA restart or page refresh reopen checkout/services.
     try{window.sessionStorage.setItem("zeshu:pay:service-intent","1");}catch{}
   };
-  return <main dir={lang==="ur"?"rtl":"ltr"} className="min-h-screen bg-[#f5f8f5] pb-16 text-slate-900">
-    <div className="bg-[#065a41] text-white">
+  return <main dir={lang==="ur"?"rtl":"ltr"} className="min-h-screen bg-[#f1f8fc] pb-16 text-slate-900">
+    <div className="bg-[linear-gradient(125deg,#094d79,#0b7897)] text-white">
       <div className="mx-auto max-w-6xl px-4 pb-10 pt-6 sm:px-6 sm:pb-14">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link href="/" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-4 text-sm font-bold"><ArrowLeft size={18}/>{w.home}</Link>
@@ -83,11 +87,17 @@ export default function ZeshuPayPage(){
         <ShieldCheck className="shrink-0 text-amber-600" size={23}/>
         <div className="min-w-0 flex-1"><p className="text-sm font-black text-amber-900">{w.badge}</p><p className="mt-1 text-xs leading-5 text-slate-600">{w.note}</p></div>
       </div>
-      <section aria-labelledby="pay-service-heading" className="mt-9">
+      <section aria-label="Shared Zeshu account" className="mt-6 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-2xl border border-cyan-100 bg-white p-4"><p className="text-xs font-black uppercase tracking-widest text-[#09658a]">Zeshu Cash</p><p className="mt-2 text-sm font-semibold text-slate-800">Your Zeshu Cash belongs to the same Zeshu account across departments.</p><p className="mt-2 text-xs text-slate-500">No amount is shown here without a verified signed-in balance; digital bill payments are still disabled.</p></div>
+        <div className="rounded-2xl border border-cyan-100 bg-white p-4"><p className="text-xs font-black uppercase tracking-widest text-[#09658a]">Saved billers &amp; receipts</p><p className="mt-2 text-sm font-semibold text-slate-800">Transaction history will appear after real verified bill-pay transactions are enabled.</p><p className="mt-2 text-xs text-slate-500">No fabricated paid bills, UTRs or saved numbers are displayed.</p></div>
+      </section>
+      <section aria-labelledby="pay-service-heading" className="mt-9 scroll-mt-36">
         <h2 id="pay-service-heading" className="text-2xl font-black">{w.heading}</h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">{w.description}</p>
+        {searchTerm && <div className="mt-4 flex items-center justify-between gap-2 text-sm"><span>{matches.length} service categories for <strong>{searchTerm}</strong></span><button type="button" onClick={()=>setSearchTerm("")} className="font-bold text-[#09658a] underline">Show all</button></div>}
+        {matches.length===0 && <p className="mt-4 rounded-xl bg-white p-4 text-sm text-slate-600">No bill or recharge category matches that search. Check the name or ask Zeshu Help.</p>}
         <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {categories.map(item=><Link key={item.id} data-pay-service={item.id}
+          {matches.map(item=><Link key={item.id} data-pay-service={item.id}
              href={`/?view=services&service=${item.id}`} onClick={markIntent}
              className="group flex min-h-[180px] flex-col rounded-2xl border border-[#dce8df] bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[#075e45] hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#075e45]">
             <span className={`grid h-12 w-12 place-items-center rounded-2xl ${item.shade}`}><item.icon size={25}/></span>
@@ -98,7 +108,7 @@ export default function ZeshuPayPage(){
         </div>
         <p className="mt-4 text-xs font-semibold leading-6 text-slate-500">{w.upi}</p>
       </section>
-      <section aria-labelledby="pay-safety-heading" className="mt-10 rounded-3xl border border-[#dce8df] bg-white p-5 sm:p-8">
+      <section aria-labelledby="pay-safety-heading" className="mt-10 scroll-mt-36 rounded-3xl border border-[#dce8df] bg-white p-5 sm:p-8">
         <div className="flex items-center gap-2 text-[#075e45]"><Clock3 size={20}/><h2 id="pay-safety-heading" className="text-lg font-black">{w.how}</h2></div>
         <ol className="mt-4 grid gap-3 text-sm font-medium leading-6 text-slate-700 sm:grid-cols-2">
           {[w.one,w.two,w.three,w.four].map((step,i)=><li key={i} className="rounded-xl bg-emerald-50/70 p-4">{step}</li>)}
