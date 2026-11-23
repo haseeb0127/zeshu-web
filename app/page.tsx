@@ -77,6 +77,9 @@ const SITE_SEARCH_SHORTCUTS = [
   { id: 'dine', label: 'Zeshu Dine', description: 'Request restaurant tables and pre-order food for an agreed serving time', href: '/dine', terms: 'restaurant restaurants reservation reserve table dining dine food order preorder meal lunch dinner breakfast eat out kitchen prep ready time wait free' },
   { id: 'fashion', label: 'Zeshu Fashion', description: 'Clothing, footwear and accessories from seller-owned inventory', href: '/fashion', terms: 'fashion clothing clothes saree sarees sari kurtis kurti women womens western wear men mens shirts t-shirts tshirts jeans kids kidswear footwear shoes sandals bags accessories jewellery jewelry watches' },
   { id: 'move', label: 'Move & Travel', description: 'Rides, courier, car share and travel', href: '/move', terms: 'move travel ride rides bike taxi auto cab car share carpool courier parcel delivery cargo porter bus train flight flights hotel hotels rental outstation' },
+  { id: 'services', label: 'Zeshu Services', description: 'Jagtial home service menus and free quote requests', href: '/services', terms: 'services ac repair plumber electrician beautician mehndi makeup technician home maintenance' },
+  { id: 'weddings', label: 'Zeshu Weddings', description: 'Wedding planning and venue enquiries', href: '/weddings', terms: 'wedding planner marriage hall mehndi bridal decor decorator catering event' },
+  { id: 'interiors', label: 'Zeshu Interiors', description: 'Interior design, kitchens and renovation enquiries', href: '/interiors', terms: 'interior interiors home design modular kitchen painting renovation carpentry wardrobe' },
   { id: 'earn', label: 'Drive & Deliver', description: 'Join Zeshu as a rider, driver or fleet partner', href: '/earn', terms: 'earn rider delivery rider driver auto driver cab driver bike courier goods driver mini truck fleet partner join jobs work' },
 ] as const;
 
@@ -3271,6 +3274,10 @@ export default function ZeshuSuperApp() {
                <Link href="/fashion" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-fuchsia-50 hover:text-fuchsia-800">Zeshu Fashion</Link>
                <Link href="/pay" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-amber-50 hover:text-amber-800">Zeshu Pay <span className="hidden font-bold text-slate-400 lg:inline">· {t('Recharge & bills')}</span></Link>
                <Link href="/move" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-sky-50 hover:text-sky-800">Zeshu Move</Link>
+               <Link href="/dine" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-orange-50 hover:text-orange-800">Zeshu Dine</Link>
+               <Link href="/services" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-teal-50 hover:text-teal-800">Zeshu Services</Link>
+               <Link href="/weddings" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-amber-50 hover:text-amber-800">Zeshu Weddings</Link>
+               <Link href="/interiors" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-amber-50 hover:text-amber-800">Zeshu Interiors</Link>
                <Link href="/help" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-slate-100">{t('Customer Service')}</Link>
                <span className="my-1 hidden w-px shrink-0 bg-slate-200 md:block" aria-hidden="true" />
                <Link href="/partners" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-[#075E45] transition hover:bg-emerald-50">{t('Sell on Zeshu')}</Link>
@@ -3608,7 +3615,7 @@ export default function ZeshuSuperApp() {
             <Link href="/fashion" className="hover:underline">Zeshu Fashion</Link>
             <Link href="/pay" className="hover:underline">Zeshu Pay</Link>
             <Link href="/move" className="hover:underline">Zeshu Move</Link>
-            <Link href="/professional-services" className="hover:underline">{t('Zeshu Services')}</Link>
+            <Link href="/services" className="hover:underline">{t('Zeshu Services')}</Link>
             <Link href="/dine" className="hover:underline">Zeshu Dine</Link>
           </nav></div>
           <div className="min-w-0"><h2 className="mb-4 text-sm font-black text-white">{t('Customer Service')}</h2><nav aria-label="Customer Service" className="flex flex-col items-start gap-2.5 text-xs leading-5 sm:text-sm sm:leading-6">
