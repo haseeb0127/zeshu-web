@@ -39,7 +39,14 @@ assert(layout.includes('type="application/ld+json"'),'JSON-LD must be in the ini
 assert(layout.includes('"@type": "Organization"') && layout.includes('"@type": "WebSite"'),'Site must have both verified structured-data types');
 assert(layout.includes('JSON.stringify(organizationWebsiteJsonLd)'),'Use safe server-initial JSON-LD');
 assert(fs.existsSync('public/zeshu-glossy-icon.png'),'Open Graph and Organization logo must be a real local asset');
-assert(!layout.includes('instagram.com/zeshuin/'),'Do not claim unverified public social identities');
+for(const social of [
+ 'https://www.instagram.com/zeshu.in/',
+ 'https://www.facebook.com/people/Zeshu/61595101370222/',
+ 'https://www.youtube.com/channel/UCl7cbxE4FOSAOTigzePoHSA',
+]){
+ assert(layout.includes(social),'Use a verified Zeshu social identity: '+social);
+}
+assert(!layout.includes('instagram.com/zeshuin/'),'Incorrect example Instagram URL must not be claimed');
 assert(!layout.includes('alternates: { canonical: "/" }'),'Never canonicalize every department to the homepage');
 for(const route of ['/dine','/fashion','/pay','/move','/services','/weddings','/interiors']){
  assert(values.includes('https://zeshu.in'+route),'Required department in sitemap: '+route);
