@@ -25,6 +25,10 @@ export default function DepartmentFrame({children}:{children:ReactNode}) {
     }
   },[pathname]);
 
+  // Table QR and kitchen are focused restaurant workflows: a global department
+  // footer would cover the guest's fixed order button and kitchen controls.
+  // The shared auth and language providers remain above this frame.
+  if (pathname === '/dine/table' || pathname === '/dine/kitchen') return <>{children}</>;
   if (!department) return <>{children}</>;
 
   const theme:CSSProperties = {

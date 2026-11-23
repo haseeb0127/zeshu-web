@@ -52,5 +52,9 @@ assert(kitchen.includes('Print/PDF')&&kitchen.includes('Print KOT'),'Kitchen mus
 assert(kitchen.includes('Delivery is held pending partner readiness'),'Delivery must stay off without dispatch providers');
 assert(kitchen.includes('Waiter-assisted order'),'Human ordering fallback must remain available');
 assert(qr.includes('Project Nayuki')&&qr.includes('MIT License'),'Local QR generator must retain license');
+assert(source('app/components/DepartmentFrame.tsx').includes("pathname === '/dine/table'"),'QR ordering must not be covered by the global footer');
+assert(source('app/components/DepartmentFrame.tsx').includes("pathname === '/dine/kitchen'"),'Kitchen must have a focused dashboard layout');
+assert(source('app/dine/table/layout.tsx').includes('index:false'),'Private table QR links must be noindex');
+assert(source('app/dine/kitchen/layout.tsx').includes('index:false'),'Private kitchen URLs must be noindex');
 assert(dine.includes('href="/dine/kitchen"'),'Restaurant dashboard must be reachable from Dine');
 console.log('PASS: Dine Lite POS private access, staff approval, QR tokens, anti-spam, idempotent KOT, printable standees and held delivery.');
