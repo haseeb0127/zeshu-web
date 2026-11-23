@@ -41,6 +41,29 @@ jobs:
       - name: Verify duplicate-charge protection before browser QA
         run: node .github/scripts/razorpay-unpaid-order.test.mjs
 
+      - name: Smoke-test Jagtial Home Services page and safe enquiry readiness
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const base = process.env.BASE_URL;
+          const page = await fetch(base + '/professional-services/home-services', { headers: { 'cache-control': 'no-cache' } });
+          if (page.status !== 200) throw new Error('Home Services page unavailable: HTTP ' + page.status);
+          const html = await page.text();
+          if (!html.includes('Zeshu Home Services') || !html.includes('Jagtial pilot') ||
+              !html.includes('Request a home-service quote')) {
+            throw new Error('Home Services page missing truthful Jagtial enquiry content');
+          }
+          const api = await fetch(base + '/api/professional-services/enquiries', { headers: { 'cache-control': 'no-cache' } });
+          if (api.status !== 200) throw new Error('Enquiry readiness API unavailable: HTTP ' + api.status);
+          const body = await api.json();
+          if (typeof body?.home_services_enquiries_enabled !== 'boolean') {
+            throw new Error('Readiness response must be a boolean, not a booking promise');
+          }
+          console.log('ZESHU_HOME_SERVICES_STAGING_SMOKE=PASS; enquiry intake ready=' + body.home_services_enquiries_enabled);
+          NODE
+
+
+
       - name: Verify mobile storefront search and controls
         shell: bash
         run: |
