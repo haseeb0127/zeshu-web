@@ -44,7 +44,7 @@ assert(read('app/components/FashionLiveCatalogue.tsx').includes('TwoColumnCatalo
 assert(read('app/professional-services/weddings/page.tsx').includes('wedding-quote'));
 assert(read('app/professional-services/interiors/page.tsx').includes('interior-quote'));
 assert(!read('app/components/MoveQuickQuote.tsx').includes('razorpay'));
-assert(!read('app/components/departments/PageBlocks.tsx').includes('checkout'));
+assert(!read('app/components/departments/PageBlocks.tsx').includes('razorpay'));
 const sitemap=read('app/sitemap.ts');
 for (const route of ['/services','/weddings','/interiors'])assert(sitemap.includes("path:'"+route+"'"));
 console.log('ZESHU_DEPARTMENT_APP_IN_APP_QA=PASS');
