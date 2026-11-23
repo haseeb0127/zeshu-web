@@ -2,6 +2,7 @@ import GlossyArtwork from "@/app/components/GlossyArtwork";
 import type { Metadata } from "next";
 import Link from "@/app/components/DocumentLink";
 import FashionLiveCatalogue from "../components/FashionLiveCatalogue";
+import {HeroCarousel,HorizontalDealRail} from "../components/departments/PageBlocks";
 import { ArrowRight } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -101,11 +102,12 @@ export default function FashionPage() {
           {[["Women","WOMEN"],["Men","MEN"],["Kids","KIDS"],["Ethnic","WOMEN"],["Footwear","FOOTWEAR"],["Accessories","ACCESSORIES"]].map(([name,dept])=>
             <Link key={name} href={`/fashion?department=${dept}#live-fashion-title`} className="shrink-0 rounded-full border border-fuchsia-200 bg-white px-4 py-3 text-xs font-black text-[#742c63]">{name}</Link>)}
         </nav>
-        <section className="mt-5 rounded-2xl border border-fuchsia-100 bg-[linear-gradient(110deg,#fff6fc,#f8e9f2)] p-5" aria-label="Editorial fashion discovery">
-          <p className="text-xs font-black uppercase tracking-widest text-[#742c63]">Discover your style</p>
-          <h2 className="mt-2 text-xl font-black text-slate-900">Festive looks · Wedding wear · Everyday essentials</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Explore real seller listings below. Delivery dates, sizes and returns must be shown from actual product data—not assumed for the whole category.</p>
-        </section>
+        <div className="mt-5"><HeroCarousel slides={[
+          {title:"Festive & wedding wear",body:"Explore real seller-listed sarees, kurtas and occasion outfits. Inventory is displayed only after seller verification.",href:"/fashion?department=WOMEN#live-fashion-title",cta:"Browse available women’s fashion"},
+          {title:"Everyday essentials",body:"Discover shirts, T-shirts and casual clothing when sizes and stock are supplied by approved sellers.",href:"/fashion?department=MEN#live-fashion-title",cta:"Browse available men’s fashion"},
+          {title:"Shoes & accessories",body:"Compare actual footwear and accessories with verified seller details and product-level return information.",href:"/fashion?department=FOOTWEAR#live-fashion-title",cta:"Explore footwear"},
+        ]}/></div>
+        <HorizontalDealRail items={[]} />
         <section className="mt-7" aria-labelledby="fashion-categories-title">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
