@@ -67,10 +67,11 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
         </div>)}
       </nav>
       <p className="mb-2 mt-4 text-[11px] font-black uppercase tracking-wider text-[#075E45] md:text-sm">{t("Quotes & Local Pros")}</p>
-      <nav aria-label="Explore professional quotes and fashion" className="grid grid-cols-3 gap-2 md:gap-4">
+      <nav aria-label="Explore professional quotes and fashion" className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-4">
         {[
           {label:t("Weddings"), href:"/professional-services/weddings", icon:PartyPopper, status:t("Get a quote"), tone:"bg-[#fff2eb] text-[#b95b31]"},
           {label:t("Interiors"), href:"/professional-services/interiors", icon:Paintbrush, status:t("Get a quote"), tone:"bg-[#eff5ee] text-[#397149]"},
+          {label:t("Home Services"), href:"/professional-services/home-services", icon:Grid2X2, status:t("Enquire only"), tone:"bg-[#e8f5fc] text-[#156f90]"},
           {label:t("Fashion"), href:"/fashion", icon:ShoppingBag, status:t("Explore listings"), tone:"bg-[#fff0f4] text-[#cb3370]"}
         ].map(item => <Link key={item.href} href={item.href} className="flex min-w-0 items-center gap-2 rounded-xl border border-[#e8eee7] bg-white p-2 text-left shadow-sm md:px-4 md:py-3">
           <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${item.tone} md:h-11 md:w-11`}><item.icon size={19} aria-hidden="true"/></span>
