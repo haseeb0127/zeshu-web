@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 const TYPES = [
   ["LOCAL_VENDOR", "Seller / manufacturer / wholesaler"],
@@ -11,6 +11,7 @@ const TYPES = [
   ["LOGISTICS_COURIER", "Courier / logistics provider"],
   ["TRAVEL", "Travel booking provider"],
   ["SPONSOR", "Sponsor / advertiser"],
+  ["HOME_SERVICE_PRO", "Home-service professional / salon"],
   ["OTHER", "Other partnership"],
 ] as const;
 
@@ -33,6 +34,12 @@ export default function PartnerLeadForm() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  useEffect(() => {
+    const type = new URLSearchParams(window.location.search).get("type");
+    if (type && TYPES.some(([code]) => code === type)) {
+      setForm(current => ({ ...current, partner_type: type, city: type === "HOME_SERVICE_PRO" ? "Jagtial" : current.city }));
+    }
+  }, []);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -101,7 +108,7 @@ export default function PartnerLeadForm() {
 
       <div className="md:col-span-2 flex flex-wrap items-center gap-3">
         <button disabled={busy || !form.consent} type="submit" className="rounded-xl bg-[#087443] px-5 py-3 text-sm font-black text-white disabled:opacity-50">{busy ? "Submitting…" : "Submit partnership request"}</button>
-        <span className="text-xs text-slate-500">For urgent commercial enquiries: support@zeshu.in</span>
+        <span className="text-xs text-slate-500">For commercial enquiries: support@zeshu.in</span>
       </div>
     </form>
   );
