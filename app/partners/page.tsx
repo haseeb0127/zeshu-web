@@ -34,6 +34,12 @@ export default function PartnersPage() {
           ))}
         </section>
 
+        <section className="mt-6 rounded-3xl border border-emerald-200 bg-[#ebf8ef] p-6">
+          <h2 className="text-xl font-black">Licensed pharmacy partners — Jagtial pilot</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-700">Zeshu is reviewing a proposed 0% commission, ₹299/month pharmacy membership. No medicine orders, prescriptions, payments or pharmacy subscription purchases are enabled. Licensed local shops can register interest for private Form 20/21 and pharmacist review.</p>
+          <Link href="/pharmacy" className="mt-3 inline-flex rounded-xl bg-[#075e45] px-4 py-3 text-sm font-bold text-white">Explore Zeshu Pharmacy</Link>
+        </section>
+
         <section id="seller-pricing" className="mt-6 rounded-3xl border border-emerald-200 bg-white p-6 md:p-8">
           <p className="text-xs font-black uppercase tracking-[.16em] text-[#075E45]">Jagtial seller onboarding · proposal</p>
           <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">A simple, proposed 0% sales-commission plan</h2>
