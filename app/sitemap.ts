@@ -19,6 +19,7 @@ type PublicPage = {
 const pages: readonly PublicPage[] = [
   { path: "/", priority: 1, changeFrequency: "daily", lastModified: DEPARTMENT_UPDATE },
   { path: "/dine", priority: 0.9, changeFrequency: "weekly", lastModified: DEPARTMENT_UPDATE },
+  { path: "/pharmacy", priority: 0.6, changeFrequency: "monthly" },
   { path: "/move", priority: 0.9, changeFrequency: "weekly", lastModified: DEPARTMENT_UPDATE },
   { path: "/pay", priority: 0.85, changeFrequency: "weekly", lastModified: DEPARTMENT_UPDATE },
   { path: "/services", priority: 0.85, changeFrequency: "weekly", lastModified: DEPARTMENT_UPDATE },

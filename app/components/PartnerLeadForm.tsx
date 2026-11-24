@@ -43,10 +43,12 @@ export default function PartnerLeadForm() {
   const [homeRates, setHomeRates] = useState<Record<string, string>>({});
   const [homeExtras, setHomeExtras] = useState("");
   const isHomePro = form.partner_type === "HOME_SERVICE_PRO";
+  const isPharmacy = form.partner_type === "LICENSED_PHARMACY";
+  const [pharmacyAcknowledged,setPharmacyAcknowledged] = useState(false);
   useEffect(() => {
     const type = new URLSearchParams(window.location.search).get("type");
     if (type && TYPES.some(([code]) => code === type)) {
-      setForm(current => ({ ...current, partner_type: type, city: type === "HOME_SERVICE_PRO" ? "Jagtial" : current.city }));
+      setForm(current => ({ ...current, partner_type: type, city: (type === "HOME_SERVICE_PRO" || type === "LICENSED_PHARMACY") ? "Jagtial" : current.city }));
     }
   }, []);
 
@@ -57,6 +59,9 @@ export default function PartnerLeadForm() {
     setError("");
     setNotice("");
     try {
+      if (isPharmacy && !pharmacyAcknowledged) {
+        throw new Error("Please confirm this is a licensed pharmacy applying for private verification, not a medicine order.");
+      }
       // Home-service rate cards are private partnership proposals, not public
       // rates, confirmed bookings, a plan purchase or a wallet top-up.
       let proposal = form.proposal.trim();
@@ -98,6 +103,7 @@ export default function PartnerLeadForm() {
       if (!response.ok) throw new Error(payload.error || "Partnership request could not be submitted.");
       setNotice("Request received. Zeshu will review the business, compliance and commercial fit before activation.");
       setForm({ ...emptyForm });
+      setPharmacyAcknowledged(false);
       setHomeRates({});
       setHomeExtras("");
       setHomeTravelFee("");
@@ -129,14 +135,22 @@ export default function PartnerLeadForm() {
         <input type="email" maxLength={180} value={form.contact_email} onChange={(event) => setForm({ ...form, contact_email: event.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 font-medium" placeholder="business@example.com" />
       </label>
       <label className="text-sm font-black text-slate-700">City / service area
-        <input maxLength={120} value={form.city} onChange={(event) => setForm({ ...form, city: event.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 font-medium" placeholder="Jagtial / Telangana / India-wide" />
+        <input maxLength={120} required={isPharmacy} value={form.city} onChange={(event) => setForm({ ...form, city: event.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 font-medium" placeholder="Jagtial / Telangana / India-wide" />
       </label>
       <label className="text-sm font-black text-slate-700">Website
         <input maxLength={500} value={form.website} onChange={(event) => setForm({ ...form, website: event.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 font-medium" placeholder="https://…" />
       </label>
       <label className="text-sm font-black text-slate-700">GST / licence / authorization
-        <input maxLength={240} value={form.licence_or_gst} onChange={(event) => setForm({ ...form, licence_or_gst: event.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 font-medium" placeholder="GSTIN, drug licence, API/agent authorization, etc." />
+        <input maxLength={240} value={form.licence_or_gst} onChange={(event) => setForm({ ...form, licence_or_gst: event.target.value })} required={isPharmacy} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 font-medium" placeholder={isPharmacy ? "Your retail drug licence number (Form 20/21)" : "GSTIN, drug licence, API/agent authorization, etc."} />
       </label>
+      {isPharmacy && <fieldset className="md:col-span-2 rounded-2xl border border-emerald-200 bg-[#f5fbf7] p-4">
+        <legend className="px-2 text-sm font-black text-[#075E45]">Licensed Jagtial pharmacy — interest only</legend>
+        <p className="text-sm leading-6 text-slate-700">Enter the actual retail drug licence number above and shop city. Zeshu privately checks Form 20/21, pharmacy premises and registered pharmacist credentials before any approval. This is not a medicine order or an active ₹299 subscription. Never upload or paste prescriptions, patient names, medical histories or personal health details here.</p>
+        <label className="mt-3 flex items-start gap-2 text-sm font-semibold text-slate-800">
+          <input type="checkbox" required checked={pharmacyAcknowledged} onChange={e=>setPharmacyAcknowledged(e.target.checked)} className="mt-1 accent-emerald-700"/>
+          <span>I represent a licensed retail pharmacy and consent to Zeshu contacting me for private licence and pharmacist verification. No patient data is supplied.</span>
+        </label>
+      </fieldset>}
       {isHomePro && <fieldset className="md:col-span-2 rounded-2xl border border-emerald-200 bg-[#f5fbf7] p-4">
         <legend className="px-2 text-sm font-black text-[#075E45]">Home-service rate card &amp; coverage (private review only)</legend>
         <p className="mb-3 text-xs leading-5 text-slate-600">Select a standard service category, propose your own labour rates, and set travel coverage. You are not accepting a paid plan. Prices and verification badges will not be shown to customers without a separate approval process.</p>

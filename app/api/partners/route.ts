@@ -49,6 +49,9 @@ export async function POST(request: Request) {
   if (!emailLooksValid(contactEmail)) return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 });
   if (!phoneLooksValid(contactPhone)) return NextResponse.json({ error: 'Enter a valid phone number.' }, { status: 400 });
   if (!consent) return NextResponse.json({ error: 'Please confirm that Zeshu may contact you about this partnership.' }, { status: 400 });
+  if (partnerType === 'LICENSED_PHARMACY' && (!licenceOrGst || !city)) {
+    return NextResponse.json({ error: 'Licensed pharmacy interest requires the shop city and declared retail drug licence number. Do not enter patient information.' }, { status: 400 });
+  }
 
   const { data, error } = await service.from('partner_leads').insert({
     partner_type: partnerType,

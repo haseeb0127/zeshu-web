@@ -8,7 +8,7 @@ assert(Array.isArray(urls)&&urls.length>=10&&urls.length<=30,'Limit the public s
 const values=urls.map(x=>x.url);
 assert(new Set(values).size===values.length,'Duplicate SEO URLs');
 assert(values.includes('https://zeshu.in/'),'Homepage missing');
-for(const pathname of ['/dine','/fashion','/help','/policies','/partners','/earn','/move','/pay','/services','/weddings','/interiors']){
+for(const pathname of ['/dine','/pharmacy','/fashion','/help','/policies','/partners','/earn','/move','/pay','/services','/weddings','/interiors']){
  assert(values.includes('https://zeshu.in'+pathname),`Public ${pathname} page missing`);
 }
 assert(!values.includes('https://zeshu.in/green'),'Paused Green must not be indexed');
@@ -33,7 +33,7 @@ for(const path of ['/', '/_next/']){
 for(const path of ['/admin','/api','/checkout','/account']){
  assert([universal.disallow].flat().includes(path),`Sensitive route must be excluded: ${path}`);
 }
-assert(urls.length===15,'Only vetted public evergreen URLs should be indexed');
+assert(urls.length===16,'Only vetted public evergreen URLs should be indexed');
 const layout=fs.readFileSync('app/layout.tsx','utf8');
 assert(layout.includes('type="application/ld+json"'),'JSON-LD must be in the initial server layout');
 assert(layout.includes('"@type": "Organization"') && layout.includes('"@type": "WebSite"'),'Site must have both verified structured-data types');

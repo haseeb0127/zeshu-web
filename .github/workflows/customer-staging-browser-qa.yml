@@ -47,6 +47,8 @@ jobs:
           node --input-type=module <<'NODE'
           const origin=process.env.BASE_URL;
           const checks=[
+            {path:'/pharmacy',expected:200},
+            {path:'/api/admin/pharmacy',expected:401},
             {path:'/dine/table',expected:200},
             {path:'/dine/kitchen',expected:200},
             {path:'/api/dine/table',expected:400},

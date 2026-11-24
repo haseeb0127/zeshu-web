@@ -83,6 +83,8 @@ jobs:
         run: node .github/scripts/whatsapp-mobile-inbox-shortcut-qa.mjs
       - name: Verify mobile launch and homepage performance safety
         run: node .github/scripts/mobile-startup-performance-qa.mjs
+      - name: Verify gated Pharmacy partner pilot and private review
+        run: node .github/scripts/pharmacy-pilot-qa.mjs
       - name: Verify public SEO sitemap and private URL exclusion
         run: node --experimental-strip-types .github/scripts/public-sitemap-qa.mjs
       - name: Verify safe multilingual Zeshu Pay discovery and provider launch gates
