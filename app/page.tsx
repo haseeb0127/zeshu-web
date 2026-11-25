@@ -3135,7 +3135,7 @@ export default function ZeshuSuperApp() {
   };
 
   return (
-    <div data-zeshu-experience="glossy" className="zeshu-experience min-h-screen bg-[#F7F9F5] font-sans antialiased text-[#111827] overflow-x-hidden relative">
+    <div data-zeshu-experience="glossy" className="zeshu-experience min-h-screen bg-[#F7F9F5] font-sans antialiased text-[#111827] overflow-x-clip relative">
       {locationSelectorOpen && <LocationSelector open={locationSelectorOpen} initial={locationSelection} onClose={() => { setLocationSelectorOpen(false); setPendingAddProduct(null); }} onExploreDigital={() => { setLocationSelectorOpen(false); setPendingAddProduct(null); setActiveTab('recharge'); }} onConfirm={(selection, address) => {
         setDeliveryServiceability('ELIGIBLE');
         setLocationSelection(selection);
@@ -3175,8 +3175,8 @@ export default function ZeshuSuperApp() {
         <div className="bg-[#1F2937]/95 backdrop-blur-xl text-white px-6 py-3.5 rounded-full font-bold text-sm shadow-2xl flex items-center gap-2.5 border border-white/10"><CheckCircle size={18} className="text-[#10B981]"/>{toastMessage}</div>
       </div>
 
-      <header className="fixed top-0 z-40 w-full border-b border-emerald-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fffb_100%)] pt-[env(safe-area-inset-top)] shadow-[0_8px_26px_rgba(0,70,46,.09)] lg:pt-0">
-        <div className="max-w-[1400px] mx-auto px-3 md:px-8 py-2.5 lg:py-0 lg:h-[88px] flex flex-col lg:flex-row items-center justify-between gap-3 lg:gap-4 2xl:gap-8">
+      <header data-zeshu-home-header="true" className="sticky top-0 z-40 w-full border-b border-emerald-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fffb_100%)] pt-[env(safe-area-inset-top)] shadow-[0_8px_26px_rgba(0,70,46,.09)] lg:pt-0">
+        <div className="max-w-[1400px] mx-auto px-3 md:px-8 py-2.5 lg:py-2 lg:min-h-[88px] flex flex-col lg:flex-row items-center justify-between gap-3 lg:gap-4 2xl:gap-8">
           <div className="flex min-w-0 flex-nowrap items-center justify-between w-full lg:w-auto gap-1.5 sm:gap-3 lg:items-center">
             <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 sm:gap-4 lg:w-auto lg:gap-6">
               <button aria-label="Go to Zeshu home" className="flex shrink-0 items-center gap-2 lg:gap-3 lg:border-r border-gray-200/60 lg:pr-6 active:scale-[0.97] transition-transform" onClick={goToHome}>
@@ -3213,7 +3213,7 @@ export default function ZeshuSuperApp() {
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto w-full md:px-8 py-4 md:py-8 pt-[calc(136px+env(safe-area-inset-top))] sm:pt-[calc(136px+env(safe-area-inset-top))] lg:pt-[120px] flex gap-8">
+      <main className="max-w-[1400px] mx-auto w-full md:px-8 py-4 md:py-8 flex gap-8">
         {activeTab === 'home' && normalizedSearch === '' && (
           <aside className="sticky top-[120px] hidden h-[calc(100vh-120px)] w-[244px] shrink-0 overflow-y-auto pr-4 no-scrollbar lg:block">
             <div className="mb-4 px-3">
@@ -3269,13 +3269,14 @@ export default function ZeshuSuperApp() {
              <nav
                data-customer-department-nav="primary"
                aria-label="Zeshu customer departments"
-               className="mt-4 mb-3 hidden gap-1.5 overflow-x-auto border-y border-slate-200 bg-white px-3 py-1.5 no-scrollbar md:mb-4 md:flex md:rounded-xl md:border md:px-3 md:py-2"
+               className="mt-4 mb-3 hidden flex-wrap gap-1.5 border-y border-slate-200 bg-white px-3 py-1.5 md:mb-4 md:flex md:rounded-xl md:border md:px-3 md:py-2"
              >
                <button type="button" onClick={() => { setActiveCategory('All'); setFulfillmentFilter('ALL'); requestAnimationFrame(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-emerald-50 hover:text-[#075E45]">{t('Shop')}</button>
                <Link href="/fashion" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-fuchsia-50 hover:text-fuchsia-800">Zeshu Fashion</Link>
                <Link href="/pay" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-amber-50 hover:text-amber-800">Zeshu Pay <span className="hidden font-bold text-slate-400 lg:inline">· {t('Recharge & bills')}</span></Link>
                <Link href="/move" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-sky-50 hover:text-sky-800">Zeshu Move</Link>
                <Link href="/dine" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-orange-50 hover:text-orange-800">Zeshu Dine</Link>
+               <Link href="/pharmacy" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-emerald-50 hover:text-[#075E45]">Zeshu Pharmacy <span className="font-bold text-slate-500">· {t("Partner pilot")}</span></Link>
                <Link href="/services" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-teal-50 hover:text-teal-800">Zeshu Services</Link>
                <Link href="/weddings" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-amber-50 hover:text-amber-800">Zeshu Weddings</Link>
                <Link href="/interiors" className="shrink-0 rounded-lg px-3 py-2 text-xs font-black text-slate-800 transition hover:bg-amber-50 hover:text-amber-800">Zeshu Interiors</Link>
