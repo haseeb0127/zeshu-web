@@ -78,6 +78,17 @@ export default function HomeBusinessHub({ onShopNearby, onBrowseCatalog, onOpenS
           <span className="min-w-0"><span className="block truncate text-[11px] font-black text-[#171b2d] md:text-sm">{item.label}</span><span className="block truncate text-[9px] font-medium text-slate-500 md:text-xs">{item.status}</span></span>
         </Link>)}
       </nav>
+      <nav aria-label="More Zeshu departments and business links" className="mt-3 flex flex-wrap gap-1.5 border-t border-emerald-100 pt-3">
+        {[
+          {label:"Pharmacy",href:"/pharmacy",status:"Partner pilot"},
+          {label:"Customer Service",href:"/help"},
+          {label:"Professional Services",href:"/professional-services"},
+          {label:"Partners",href:"/partners"},
+          {label:"Earn with Zeshu",href:"/earn"},
+          {label:"Promoters",href:"/earn/promoters"},
+          {label:"Zeshu App",href:"/app"},
+        ].map(item => <Link key={item.href} href={item.href} className="inline-flex min-h-9 max-w-full flex-wrap items-center gap-x-1 rounded-lg border border-emerald-100 bg-emerald-50/60 px-2.5 py-1.5 text-[11px] font-bold text-[#075E45] hover:bg-emerald-100 md:text-xs"><span>{t(item.label)}</span>{item.status && <span className="text-[10px] font-medium text-slate-600">· {t(item.status)}</span>}</Link>)}
+      </nav>
     </div>
 
     <div className="relative mt-0 md:mt-4">
