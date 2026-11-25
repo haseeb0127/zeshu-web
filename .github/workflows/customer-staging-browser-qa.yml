@@ -125,6 +125,47 @@ jobs:
 
 
 
+      - name: Verify responsive homepage header and complete department navigation
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({headless:true});
+          try {
+            for (const width of [390, 980, 1280]) {
+              const page = await browser.newPage({viewport:{width,height:900}});
+              try {
+                await page.goto(process.env.BASE_URL, {waitUntil:'domcontentloaded',timeout:60000});
+                const header = page.locator('[data-zeshu-home-header="true"]');
+                const hub = page.locator('[data-zeshu-hub="honest-service-status"]');
+                await header.waitFor({state:'visible',timeout:20000});
+                await hub.waitFor({state:'visible',timeout:20000});
+                const h = await header.boundingBox(), b = await hub.boundingBox();
+                if (!h || !b || b.y < h.y+h.height-1) throw new Error('Header overlaps first service cards at '+width);
+                const more = hub.locator('nav[aria-label="More Zeshu departments and business links"]');
+                for (const route of ['/pharmacy','/help','/professional-services','/partners','/earn','/earn/promoters','/app']) {
+                  const link = more.locator('a[href="'+route+'"]');
+                  if (!(await link.isVisible())) throw new Error('Missing department '+route+' at '+width);
+                  const bounds = await link.boundingBox();
+                  if (!bounds || bounds.x < -1 || bounds.x+bounds.width > width+1) throw new Error('Clipped department '+route+' at '+width);
+                }
+                if(width>=768) {
+                  const nav = page.locator('[data-customer-department-nav="primary"]');
+                  if (!(await nav.evaluate(el=>el.scrollWidth<=el.clientWidth+1))) throw new Error('Desktop department navigation overflows at '+width);
+                }
+                await page.screenshot({path:'homepage-responsive-'+width+'.png',fullPage:false});
+                console.log('HOMEPAGE_RESPONSIVE_QA=PASS width='+width);
+              } finally { await page.close(); }
+            }
+          } finally { await browser.close(); }
+          NODE
+
+      - name: Upload responsive homepage screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: homepage-responsive-screenshots
+          path: homepage-responsive-*.png
+
       - name: Verify mobile storefront search and controls
         shell: bash
         run: |
